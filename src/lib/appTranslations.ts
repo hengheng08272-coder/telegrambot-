@@ -121,6 +121,8 @@ export const appText = {
     navSearch: 'Search',
     navWatchlist: 'My List',
     navAccount: 'Account',
+    navMore: 'More',
+    language: 'Language',
 
     // Search overlay
     searchTitle: 'Search',
@@ -411,6 +413,8 @@ export const appText = {
     navSearch: 'ស្វែងរក',
     navWatchlist: 'បញ្ជីរបស់ខ្ញុំ',
     navAccount: 'គណនី',
+    navMore: 'ច្រើនទៀត',
+    language: 'ភាសា',
 
     // Search overlay
     searchTitle: 'ស្វែងរក',
