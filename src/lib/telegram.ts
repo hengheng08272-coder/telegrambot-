@@ -59,6 +59,20 @@ export function getStartParam(): string | null {
   return getTelegramWebApp()?.initDataUnsafe?.start_param ?? null;
 }
 
+// The viewer's own Telegram identity, when opened for real inside
+// Telegram — used to stamp a faint watermark on the video player so a
+// leaked recording can be traced back to whoever's screen it came from.
+// Falls back to null in a plain browser (dev/preview), where no watermark
+// is shown at all.
+export function getCurrentTelegramUser(): { id: number; label: string } | null {
+  const user = getTelegramWebApp()?.initDataUnsafe?.user;
+  if (!user) return null;
+  return {
+    id: user.id,
+    label: user.username ? `@${user.username}` : user.first_name ?? String(user.id),
+  };
+}
+
 // --- Back button -------------------------------------------------------
 // Telegram Mini Apps have no browser chrome, so there is no native back
 // arrow — Telegram gives us one via BackButton.show()/hide() bound to a
