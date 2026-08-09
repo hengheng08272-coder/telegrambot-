@@ -14,16 +14,20 @@ export interface RewardTier {
 }
 
 // Free, one-time lucky draw for VIP members — a small retention perk,
-// not a paid game. Small day increments, plus a 1-month jackpot that's
-// only available to the first 5 winners overall — once claimed 5 times,
-// it drops out of the wheel and everyone spins among the smaller tiers.
+// not a paid game. Finer day increments for more variety on the wheel,
+// plus a 1-month jackpot that's only available to the first 5 winners
+// overall — once claimed 5 times, it drops out and everyone spins among
+// the smaller tiers.
 export const SPIN_TIERS: RewardTier[] = [
-  { key: '2d', label: '2 days', days: 2, weight: 40 },
-  { key: '4d', label: '4 days', days: 4, weight: 28 },
-  { key: '6d', label: '6 days', days: 6, weight: 18 },
-  { key: '8d', label: '8 days', days: 8, weight: 9 },
-  { key: '10d', label: '10 days', days: 10, weight: 4 },
-  { key: '1m', label: '1 month', days: 30, weight: 1 },
+  { key: '1d', label: '1 day', days: 1, weight: 30 },
+  { key: '2d', label: '2 days', days: 2, weight: 22 },
+  { key: '3d', label: '3 days', days: 3, weight: 16 },
+  { key: '5d', label: '5 days', days: 5, weight: 12 },
+  { key: '7d', label: '7 days', days: 7, weight: 8 },
+  { key: '10d', label: '10 days', days: 10, weight: 5 },
+  { key: '15d', label: '15 days', days: 15, weight: 3 },
+  { key: '20d', label: '20 days', days: 20, weight: 1.5 },
+  { key: '1m', label: '1 month', days: 30, weight: 0.5 },
 ];
 
 const JACKPOT_KEY = '1m';
