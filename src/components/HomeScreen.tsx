@@ -274,7 +274,7 @@ export default function HomeScreen({
                 style={{ background: 'radial-gradient(circle, rgba(227,30,36,0.55) 0%, rgba(227,30,36,0) 70%)' }}
               />
               <img
-                src="/assets/logo-transparent.png"
+                src="/assets/images/logo-transparent.png"
                 alt="NINT ANIME"
                 className="relative h-9 w-9 drop-shadow-[0_0_14px_rgba(227,30,36,0.45)]"
               />

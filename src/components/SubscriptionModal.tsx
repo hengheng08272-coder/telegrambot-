@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase/supabaseClient';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 
-const LOGO_URL = '/assets/logo-transparent.png';
+const LOGO_URL = '/assets/images/logo-transparent.png';
 
 // ─── Brand tokens — kept in sync with src/styles/theme.ts so this modal
 // reads as part of the same product, not a bolted-on design. ───────────
@@ -51,10 +51,10 @@ const PLANS: {
 ];
 
 const PLAN_QR: Record<PlanKey, string> = {
-  '1m': '/assets/subscription-1m.png',
-  '2m': '/assets/subscription-2m.png',
-  '6m': '/assets/subscription-6m.png',
-  '1y': '/assets/subscription-1y.png',
+  '1m': '/assets/images/subscription-1m.png',
+  '2m': '/assets/images/subscription-2m.png',
+  '6m': '/assets/images/subscription-6m.png',
+  '1y': '/assets/images/subscription-1y.png',
 };
 
 const KHQR_MERCHANT_NAME = 'PANG SOK HENG S2_Nint.Ani';
