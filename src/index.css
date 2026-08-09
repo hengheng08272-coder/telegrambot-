@@ -205,3 +205,50 @@ h3 {
     transform: scale(1) translateY(0);
   }
 }
+
+/* Rising ember sparks behind the hero coverflow — small warm dots that
+   drift upward and fade, echoing the brand keyart's ember/lightning
+   motif. --ember-drift is set per-particle for a slight horizontal wander. */
+.ember-particle {
+  position: absolute;
+  bottom: 6%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, #ffe3a1 0%, #ffc94a 45%, #e31e24 80%, transparent 100%);
+  opacity: 0;
+  animation-name: ember-rise;
+  animation-timing-function: ease-in;
+  animation-iteration-count: infinite;
+}
+@keyframes ember-rise {
+  0% {
+    transform: translateY(0) translateX(0) scale(0.7);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  75% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-150px) translateX(var(--ember-drift, 10px)) scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* Auto-play countdown bar under the hero dots — fills left to right over
+   one slide's dwell time, restarted by React re-keying the element. */
+.hero-progress-fill {
+  transform-origin: left;
+  animation-name: hero-progress-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes hero-progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
