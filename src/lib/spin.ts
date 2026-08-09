@@ -14,22 +14,29 @@ export interface RewardTier {
 }
 
 // Free, one-time lucky draw for VIP members — a small retention perk,
-// not a paid game. Modest rewards only, capped at 1 month.
+// not a paid game. Small day increments, plus a 1-month jackpot that's
+// only available to the first 5 winners overall — once claimed 5 times,
+// it drops out of the wheel and everyone spins among the smaller tiers.
 export const SPIN_TIERS: RewardTier[] = [
-  { key: '10d', label: '10 days', days: 10, weight: 50 },
-  { key: '15d', label: '15 days', days: 15, weight: 30 },
-  { key: '20d', label: '20 days', days: 20, weight: 15 },
-  { key: '1m', label: '1 month', days: 30, weight: 5 },
+  { key: '2d', label: '2 days', days: 2, weight: 40 },
+  { key: '4d', label: '4 days', days: 4, weight: 28 },
+  { key: '6d', label: '6 days', days: 6, weight: 18 },
+  { key: '8d', label: '8 days', days: 8, weight: 9 },
+  { key: '10d', label: '10 days', days: 10, weight: 4 },
+  { key: '1m', label: '1 month', days: 30, weight: 1 },
 ];
 
-function pickWeightedReward(): RewardTier {
-  const total = SPIN_TIERS.reduce((sum, t) => sum + t.weight, 0);
+const JACKPOT_KEY = '1m';
+const JACKPOT_MAX_WINNERS = 5;
+
+function pickWeightedReward(pool: RewardTier[]): RewardTier {
+  const total = pool.reduce((sum, t) => sum + t.weight, 0);
   let roll = Math.random() * total;
-  for (const tier of SPIN_TIERS) {
+  for (const tier of pool) {
     if (roll < tier.weight) return tier;
     roll -= tier.weight;
   }
-  return SPIN_TIERS[0];
+  return pool[0];
 }
 
 function getTelegramIdentity(): { id: string; username: string | null } {
@@ -59,7 +66,16 @@ export async function claimSpin(): Promise<{ data: SpinResult | null; error: str
   if (checkErr) return { data: null, error: checkErr.message };
   if (existing) return { data: null, error: 'already_used' };
 
-  const tier = pickWeightedReward();
+  const { count: jackpotWinners } = await supabase
+    .from('spin_claims')
+    .select('id', { count: 'exact', head: true })
+    .eq('reward_label', SPIN_TIERS.find((t) => t.key === JACKPOT_KEY)!.label);
+
+  const pool = (jackpotWinners ?? 0) >= JACKPOT_MAX_WINNERS
+    ? SPIN_TIERS.filter((t) => t.key !== JACKPOT_KEY)
+    : SPIN_TIERS;
+
+  const tier = pickWeightedReward(pool);
 
   const { error: insertErr } = await supabase.from('spin_claims').insert({
     telegram_user_id: telegramUserId,
