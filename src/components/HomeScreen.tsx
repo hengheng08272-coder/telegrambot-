@@ -245,7 +245,21 @@ export default function HomeScreen({
   const heroVisible = hero && !query.trim();
 
   return (
-    <div className="min-h-screen bg-[#0A0605] text-white">
+    <div className="relative min-h-screen bg-[#0A0605] text-white">
+      {/* Whole-page ambient glow — two faint warm radials fixed to the
+          viewport corners so the background still feels alive once the
+          user has scrolled past the hero into the rails, instead of
+          flattening to plain black. Kept very low-opacity and behind
+          everything (z-0) so it never competes with poster art. */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(227,30,36,0.10) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(255,201,74,0.07) 0%, rgba(10,6,5,0) 60%)',
+        }}
+        aria-hidden
+      />
+
       {/* Header — floats transparently over the hero cover; only turns solid
           when there's no hero behind it (e.g. search results) */}
       <header
@@ -360,6 +374,7 @@ export default function HomeScreen({
 
       {/* Coverflow hero carousel */}
       {heroVisible && (
+        <div className="relative z-10">
         <CoverflowHero
           shows={bannerShows}
           index={heroIndex}
@@ -379,10 +394,11 @@ export default function HomeScreen({
           }}
           t={t}
         />
+        </div>
       )}
 
       {/* Content rows */}
-      <main className="mx-auto max-w-[1400px] px-4 pb-28 sm:px-8 sm:pb-20">
+      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-28 sm:px-8 sm:pb-20">
         {viewAll ? (
           <section className="pt-28">
             <div className="mb-5 flex items-center gap-3">
@@ -471,7 +487,7 @@ export default function HomeScreen({
         )}
       </main>
 
-      <footer className="border-t border-white/5 px-4 py-8 text-center text-xs text-white/30 sm:px-8">
+      <footer className="relative z-10 border-t border-white/5 px-4 py-8 text-center text-xs text-white/30 sm:px-8">
         {t.footerTagline}
       </footer>
 
@@ -625,14 +641,14 @@ function CoverflowHero({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.52, 440) : 440;
+  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.46, 380) : 380;
   const parallaxOffset = Math.min(scrollY * 0.35, 120);
   const parallaxOpacity = Math.max(1 - scrollY / heroHeightPx, 0);
 
   return (
     <section
-      className="relative w-full overflow-hidden pt-[72px]"
-      style={{ height: 'min(52vh, 440px)' }}
+      className="relative w-full overflow-hidden pt-[68px]"
+      style={{ height: 'min(46vh, 380px)' }}
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
@@ -660,7 +676,7 @@ function CoverflowHero({
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 85% 65% at 50% 22%, rgba(201,122,46,0.22) 0%, rgba(10,6,5,0) 62%), radial-gradient(ellipse 65% 55% at 72% 82%, rgba(227,30,36,0.20) 0%, rgba(10,6,5,0) 58%)',
+              'radial-gradient(ellipse 85% 65% at 50% 18%, rgba(255,201,74,0.24) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 70% 55% at 78% 85%, rgba(227,30,36,0.24) 0%, rgba(10,6,5,0) 58%), radial-gradient(ellipse 60% 50% at 20% 85%, rgba(201,122,46,0.14) 0%, rgba(10,6,5,0) 55%)',
           }}
         />
         <div className="absolute inset-0 bg-[#0A0605]/35" />
@@ -696,7 +712,7 @@ function CoverflowHero({
           className="hero-card-enter relative z-20 flex flex-col items-center"
           style={{
             width: '38%',
-            maxWidth: 190,
+            maxWidth: 164,
             transform: 'translateZ(0)',
           }}
         >
@@ -763,10 +779,10 @@ function CoverflowHero({
 
           {/* Play button — featured card only */}
           <div
-            className="mt-3 flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-black shadow-lg transition active:scale-95"
+            className="mt-2.5 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-black shadow-lg transition active:scale-95"
             style={{ background: 'linear-gradient(135deg, #FFFFFF, #F1F1F1)' }}
           >
-            <Play className="h-4 w-4 fill-black" /> {t.play}
+            <Play className="h-3.5 w-3.5 fill-black" /> {t.play}
           </div>
         </button>
 
@@ -804,6 +820,19 @@ function CoverflowHero({
           ))}
         </div>
       )}
+
+      {/* Tiny "auto-playing" cue — tucked in the corner, low-contrast on
+          purpose so it reads as a quiet detail rather than competing with
+          the poster art or the dots. */}
+      {shows.length > 1 && (
+        <div className="pointer-events-none absolute bottom-3 right-3 z-30 flex items-center gap-1 rounded-full bg-black/30 px-2 py-1 backdrop-blur-sm">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FFC94A]/70" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FFC94A]" />
+          </span>
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-white/50">Auto</span>
+        </div>
+      )}
     </section>
   );
 }
@@ -816,8 +845,8 @@ interface SideCardProps {
 
 function SideCard({ show, offset, onClick }: SideCardProps) {
   const isNear = Math.abs(offset) === 1;
-  const translateX = offset * 82;
-  const scale = isNear ? 0.62 : 0.46;
+  const translateX = offset * 80;
+  const scale = isNear ? 0.6 : 0.44;
   const z = isNear ? 10 : 5;
   const opacity = isNear ? 0.75 : 0.28;
 
@@ -827,7 +856,7 @@ function SideCard({ show, offset, onClick }: SideCardProps) {
       className="absolute z-10"
       style={{
         width: '38%',
-        maxWidth: 190,
+        maxWidth: 164,
         transform: `translateX(${translateX}%) scale(${scale})`,
         zIndex: z,
         opacity,
@@ -924,7 +953,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
       </div>
       <div
         ref={scrollerRef}
-        className="no-scrollbar flex gap-4 overflow-x-auto pb-2"
+        className="no-scrollbar flex gap-3 overflow-x-auto pb-2"
       >
         {shows.map((s) => (
           <ShowCard key={s.id} show={s} onClick={onSelectShow} />
