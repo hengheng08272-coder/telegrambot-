@@ -16,7 +16,7 @@ export default function SupporterTicker() {
         }
       `}</style>
       <div
-        className="ticker-fade flex w-max whitespace-nowrap text-[11px] font-medium tracking-wider text-white/35"
+        className="ticker-fade flex w-max whitespace-nowrap text-[13px] font-semibold tracking-wide text-[#FFC94A]/75"
         style={{ animation: 'nint-ticker-scroll 32s linear infinite' }}
       >
         <span>{repeated}</span>

@@ -10,7 +10,6 @@ import {
   Crown,
   Home as HomeIcon,
   Bookmark,
-  Unlock,
   Sparkles,
   Gift,
   X,
@@ -175,7 +174,6 @@ export default function HomeScreen({
     : shows;
 
   const trending = [...shows].sort((a, b) => b.rating - a.rating).slice(0, 10);
-  const freeShows = shows.filter((s) => s.is_free);
   const newReleases = [...shows]
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
     .slice(0, 10);
@@ -247,18 +245,20 @@ export default function HomeScreen({
 
   return (
     <div className="relative min-h-screen bg-[#0A0605] text-white">
-      {/* Brand key art — sits behind absolutely everything as soft, blurred
-          atmosphere. This replaces a literal logo/wordmark in the header:
-          the art itself carries the identity, dimmed and blurred enough
-          that it never competes with poster thumbnails or text on top. */}
+      {/* Brand key art — sits behind absolutely everything, now shown
+          clearly (no blur, higher opacity) per request. Cropped toward the
+          character on the right so it doesn't fight with the separate
+          wordmark watermark below; a top-to-bottom darkening keeps it
+          vivid near the header and fades it out by the time content rows
+          need clean contrast to read against. */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
         <img
           src="/assets/nint-keyart.jpg"
           alt=""
-          className="h-full w-full object-cover opacity-[0.16] blur-sm"
-          style={{ transform: 'scale(1.1)' }}
+          className="h-full w-full object-cover opacity-[0.34]"
+          style={{ objectPosition: '68% 30%', transform: 'scale(1.1)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/60 via-[#0A0605]/85 to-[#0A0605]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/15 via-[#0A0605]/72 to-[#0A0605]/97" />
         {/* Logo + wordmark watermark — sealed directly into the fixed
             background layer (not the header), so it never scrolls, never
             competes with header controls, and quietly carries the brand
@@ -266,7 +266,7 @@ export default function HomeScreen({
         <img
           src="/assets/images/logo-transparent.png"
           alt=""
-          className="absolute left-1/2 top-[64px] w-[58vw] max-w-[260px] -translate-x-1/2 opacity-[0.14] sm:top-[76px] sm:max-w-[300px]"
+          className="absolute left-1/2 top-[64px] w-[58vw] max-w-[260px] -translate-x-1/2 opacity-[0.22] sm:top-[76px] sm:max-w-[300px]"
           draggable={false}
         />
       </div>
@@ -280,7 +280,7 @@ export default function HomeScreen({
         className="pointer-events-none fixed inset-0 z-0"
         style={{
           background:
-            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(227,30,36,0.10) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(255,201,74,0.07) 0%, rgba(10,6,5,0) 60%)',
+            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(140,15,18,0.20) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(255,201,74,0.10) 0%, rgba(10,6,5,0) 60%)',
         }}
         aria-hidden
       />
@@ -388,7 +388,8 @@ export default function HomeScreen({
             )}
             <button
               onClick={onOpenSubscription}
-              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-2 text-xs font-semibold text-[#FFC94A] backdrop-blur-md transition hover:bg-white/[0.09]"
+              className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-black shadow-[0_4px_18px_rgba(255,201,74,0.35)] transition active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
             >
               <Crown className="h-3.5 w-3.5" />
               {subscribed ? t.premium : t.subscribe}
@@ -435,22 +436,12 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-2">
-            {freeShows.length > 0 && (
-              <RailRow
-                icon={<Unlock className="h-5 w-5 text-[#FFC94A]" />}
-                title={t.freeWatching}
-                shows={freeShows}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.freeWatching, shows: freeShows })}
-                viewAllLabel={t.viewAll}
-              />
-            )}
             <RailRow
               icon={<TrendingUp className="h-5 w-5 text-[#E31E24]" />}
               title={t.trendingNow}
               shows={trending}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.trendingNow, shows: trending })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.trendingNow, shows })}
               viewAllLabel={t.viewAll}
             />
             <RailRow
@@ -458,7 +449,7 @@ export default function HomeScreen({
               title={t.newRelease}
               shows={newReleases}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.newRelease, shows: newReleases })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
               viewAllLabel={t.viewAll}
             />
             <RailRow
@@ -466,7 +457,7 @@ export default function HomeScreen({
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.popularSeason, shows })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.popularSeason, shows })}
               viewAllLabel={t.viewAll}
             />
 
@@ -480,7 +471,7 @@ export default function HomeScreen({
                   title={g.name}
                   shows={list}
                   onSelectShow={onSelectShow}
-                  onViewAll={() => setViewAll({ title: g.name, shows: list })}
+                  onViewAll={() => setViewAll({ title: t.allShowsTitle ?? g.name, shows })}
                   viewAllLabel={t.viewAll}
                 />
               );
@@ -685,6 +676,10 @@ function CoverflowHero({
               'linear-gradient(180deg, rgba(10,6,5,0.9) 0%, rgba(10,6,5,0.55) 14%, rgba(10,6,5,0.1) 28%, rgba(10,6,5,0) 40%, rgba(10,6,5,0) 68%, rgba(10,6,5,1) 100%)',
           }}
         />
+        {/* Rising ember particles — small warm sparks drifting up from the
+            base of the hero, echoing the keyart's ember/lightning motif
+            without needing any extra image assets. */}
+        <EmberParticles />
       </div>
 
       {/* Cards deck */}
@@ -783,7 +778,7 @@ function CoverflowHero({
 
       {/* Dot indicators */}
       {shows.length > 1 && (
-        <div className="absolute inset-x-0 bottom-3 z-30 flex justify-center gap-2">
+        <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center gap-2">
           {shows.map((_, i) => (
             <button
               key={i}
@@ -796,6 +791,24 @@ function CoverflowHero({
               }`}
             />
           ))}
+        </div>
+      )}
+
+      {/* Thin auto-play countdown bar — fills up over each slide's dwell
+          time so the "auto" cue is something you can actually see
+          progressing, not just a static badge. Keyed on the index so it
+          restarts cleanly every time the centered card changes, whether
+          from the timer or a manual swipe/tap. */}
+      {shows.length > 1 && (
+        <div className="absolute inset-x-0 bottom-0 z-30 h-[3px] w-full overflow-hidden bg-white/10">
+          <div
+            key={index}
+            className="hero-progress-fill h-full"
+            style={{
+              animationDuration: `${HERO_AUTO_MS}ms`,
+              background: 'linear-gradient(90deg, #FFC94A, #E31E24)',
+            }}
+          />
         </div>
       )}
 
@@ -819,6 +832,44 @@ interface SideCardProps {
   show: Show;
   offset: number; // -2, -1, 1, 2
   onClick: () => void;
+}
+
+// Small, fixed set of rising ember sparks — purely decorative, positioned
+// with a deterministic spread (not random on every render, so they don't
+// jump around on re-render) and staggered delays/durations for a natural,
+// non-uniform drift.
+const EMBER_SEEDS = [
+  { left: '8%', delay: '0s', duration: '4.2s', size: 3, drift: '10px' },
+  { left: '18%', delay: '1.1s', duration: '5.1s', size: 2, drift: '-8px' },
+  { left: '30%', delay: '2.4s', duration: '4.6s', size: 3, drift: '14px' },
+  { left: '46%', delay: '0.6s', duration: '5.4s', size: 2, drift: '-12px' },
+  { left: '58%', delay: '1.8s', duration: '4.8s', size: 3, drift: '8px' },
+  { left: '70%', delay: '3s', duration: '5.2s', size: 2, drift: '-10px' },
+  { left: '82%', delay: '0.9s', duration: '4.4s', size: 3, drift: '12px' },
+  { left: '92%', delay: '2.1s', duration: '5s', size: 2, drift: '-9px' },
+];
+
+function EmberParticles() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      {EMBER_SEEDS.map((e, i) => (
+        <span
+          key={i}
+          className="ember-particle"
+          style={
+            {
+              left: e.left,
+              width: e.size,
+              height: e.size,
+              animationDelay: e.delay,
+              animationDuration: e.duration,
+              '--ember-drift': e.drift,
+            } as React.CSSProperties & Record<string, string | number>
+          }
+        />
+      ))}
+    </div>
+  );
 }
 
 function SideCard({ show, offset, onClick }: SideCardProps) {
@@ -847,7 +898,10 @@ function SideCard({ show, offset, onClick }: SideCardProps) {
       }}
       aria-label={show.title}
     >
-      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.6)] ring-1 ring-white/10">
+      <div
+        className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl ring-1 ring-[#FFC94A]/15"
+        style={{ boxShadow: '0 16px 40px rgba(0,0,0,0.6), inset 0 0 22px 2px rgba(227,30,36,0.16)' }}
+      >
         <img
           src={show.poster_url ?? show.banner_url ?? ''}
           alt={show.title}
