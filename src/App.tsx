@@ -15,7 +15,7 @@ import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { initTelegramApp, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
+import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
 
 // This build is the Telegram VIP Mini App: access is already gated by
 // Telegram group membership (a separate admin bot bans/kicks non-members),
@@ -160,8 +160,16 @@ function App() {
 
   // Desktop is admin-only. On mobile (the real Telegram Mini App surface)
   // everyone lands straight in the viewer app below — no gate, no login.
-  // The adminOverride (?admin=1) forces the gate on for testing in mobile preview.
-  if ((!isMobile || adminOverride) && !isAdmin) {
+  // Being genuinely inside Telegram (even the Desktop client, which can
+  // report a wide viewport) also skips the gate entirely: group
+  // membership is already the real access control there, so a wide
+  // Telegram window should never get shown the "open on your phone" QR
+  // screen. The adminOverride (?admin=1) forces the gate on for testing
+  // in Bolt's plain-browser mobile preview — it never applies once we're
+  // actually inside Telegram.
+  const inTelegramClient = isInTelegram();
+  const showDesktopGate = !inTelegramClient && (!isMobile || adminOverride);
+  if (showDesktopGate && !isAdmin) {
     return (
       <DesktopBlockedScreen
         authOpen={screen.name === 'auth'}
