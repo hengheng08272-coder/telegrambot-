@@ -193,15 +193,15 @@ h3 {
 
 /* Featured hero card: gentle scale + fade whenever the centered show changes */
 .hero-card-enter {
-  animation: hero-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: hero-card-in 0.42s cubic-bezier(0.3, 1.2, 0.4, 1);
 }
 @keyframes hero-card-in {
   0% {
-    opacity: 0.4;
-    transform: scale(0.94);
+    opacity: 0.35;
+    transform: scale(0.92) translateY(10px);
   }
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
 }
