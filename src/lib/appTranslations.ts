@@ -55,6 +55,7 @@ export const appText = {
     freeBadge: 'Free',
     newRelease: 'New Release',
     viewAll: 'View All',
+    allShowsTitle: 'All Shows',
     footerTagline: '© 2026 NINT ANIME — Stream · Discover · Obsess',
 
     // Profile screen
@@ -347,6 +348,7 @@ export const appText = {
     freeBadge: 'ឥតគិតថ្លៃ',
     newRelease: 'ចេញថ្មីៗ',
     viewAll: 'មើលទាំងអស់',
+    allShowsTitle: 'រឿងទាំងអស់',
     footerTagline: '© ២០២៦ NINT ANIME — មើល · ស្វែងរក · ចូលចិត្ត',
 
     // Profile screen
