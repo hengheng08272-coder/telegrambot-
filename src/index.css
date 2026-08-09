@@ -252,3 +252,31 @@ h3 {
     transform: scaleX(1);
   }
 }
+
+/* Hero title shine — a slow gold sweep across the featured card's title,
+   the kind of small metallic-foil detail that reads as premium without
+   needing any new imagery. Re-keyed per hero id so it restarts cleanly
+   every time the centered show changes. */
+.title-shine {
+  background-image: linear-gradient(
+    100deg,
+    #ffffff 40%,
+    #ffe8a8 48%,
+    #ffffff 56%,
+    #ffffff 100%
+  );
+  background-size: 240% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-shine-sweep 2.6s ease-in-out 0.3s 1;
+}
+@keyframes title-shine-sweep {
+  from {
+    background-position: 160% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
