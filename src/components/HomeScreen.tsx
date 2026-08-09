@@ -15,6 +15,7 @@ import {
   Sparkles,
   Gift,
   X,
+  Globe,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchFeaturedShows, fetchAllShows, fetchGenres } from '@/lib/api';
@@ -42,7 +43,7 @@ interface HomeScreenProps {
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
 
-const HERO_AUTO_MS = 5500;
+const HERO_AUTO_MS = 3200;
 
 // Small, purely-cosmetic emoji lookup for genre rail headers — gives each
 // row a bit of personality at a glance without needing extra icon assets.
@@ -100,6 +101,7 @@ export default function HomeScreen({
   const [query, setQuery] = useState('');
   const [interacting, setInteracting] = useState(false);
   const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -201,12 +203,12 @@ export default function HomeScreen({
         </div>
 
         {/* Hero skeleton */}
-        <div className="relative w-full overflow-hidden" style={{ height: 'min(52vh, 440px)' }}>
+        <div className="relative w-full overflow-hidden" style={{ height: 'min(46vh, 380px)' }}>
           <div className="skeleton-shimmer absolute inset-0 bg-white/[0.03]" />
           <div className="relative flex h-full items-center justify-center gap-3">
-            <div className="h-[62%] w-[22%] max-w-[140px] animate-pulse rounded-2xl bg-white/5" />
-            <div className="h-[78%] w-[38%] max-w-[190px] animate-pulse rounded-2xl bg-white/10" />
-            <div className="h-[62%] w-[22%] max-w-[140px] animate-pulse rounded-2xl bg-white/5" />
+            <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-2xl bg-white/5" />
+            <div className="h-[74%] w-[38%] max-w-[164px] animate-pulse rounded-2xl bg-white/10" />
+            <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-2xl bg-white/5" />
           </div>
         </div>
 
@@ -246,6 +248,20 @@ export default function HomeScreen({
 
   return (
     <div className="relative min-h-screen bg-[#0A0605] text-white">
+      {/* Brand key art — sits behind absolutely everything as soft, blurred
+          atmosphere. This replaces a literal logo/wordmark in the header:
+          the art itself carries the identity, dimmed and blurred enough
+          that it never competes with poster thumbnails or text on top. */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
+        <img
+          src="/assets/nint-keyart.jpg"
+          alt=""
+          className="h-full w-full object-cover opacity-[0.16] blur-sm"
+          style={{ transform: 'scale(1.1)' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/60 via-[#0A0605]/85 to-[#0A0605]" />
+      </div>
+
       {/* Whole-page ambient glow — two faint warm radials fixed to the
           viewport corners so the background still feels alive once the
           user has scrolled past the hero into the rails, instead of
@@ -260,50 +276,35 @@ export default function HomeScreen({
         aria-hidden
       />
 
-      {/* Header — floats transparently over the hero cover; only turns solid
-          when there's no hero behind it (e.g. search results) */}
+      {/* Header v2 — no logo/wordmark lockup anymore (the key-art
+          background above now carries the brand). What used to live here
+          is now just a bold "LIVE" pulse on the left; language + the old
+          subscribe capsule have moved down into the bottom nav's freed-up
+          slot (see "More" tab), since there's no account system to guard
+          in this Mini App build. */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
           heroVisible ? 'bg-transparent' : 'bg-[#0A0605]/85 backdrop-blur-md'
         }`}
       >
-        {/* No separate dark overlay here on purpose — the coverflow hero
-            underneath already fades to dark at its top edge (see
-            CoverflowHero's gradient below), so the header sits directly on
-            top of that same fade instead of painting a second one, which
-            let the banner image show through cleanly right behind the logo
-            and controls instead of washing out to a flat black bar. */}
-        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-8 sm:py-3.5">
-          {/* Logo mark + wordmark + tagline */}
+        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3.5 sm:px-8">
           <button
             onClick={() => {
               setActiveTab('home');
               setQuery('');
             }}
-            className="flex items-center gap-2.5"
+            className="flex items-center gap-2"
           >
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
-              <div
-                className="pointer-events-none absolute inset-0 rounded-full opacity-70 blur-md"
-                style={{ background: 'radial-gradient(circle, rgba(227,30,36,0.55) 0%, rgba(227,30,36,0) 70%)' }}
-              />
-              <img
-                src="/assets/logo-transparent.png"
-                alt="NINT ANIME"
-                className="relative h-9 w-9 drop-shadow-[0_0_14px_rgba(227,30,36,0.45)]"
-              />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span
-                className="text-lg font-black tracking-wider text-white sm:text-xl"
-                style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif' }}
-              >
-                NINT <span className="text-[#E31E24]">ANIME</span>
-              </span>
-              <span className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 sm:inline">
-                {t.tagline}
-              </span>
-            </div>
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
+            </span>
+            <span
+              className="text-2xl font-black italic tracking-wide text-white drop-shadow-[0_2px_10px_rgba(227,30,36,0.5)] sm:text-3xl"
+              style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif' }}
+            >
+              LIVE
+            </span>
           </button>
 
           {/* Desktop nav links */}
@@ -326,9 +327,6 @@ export default function HomeScreen({
               />
             </div>
 
-            {/* Rewards / lucky-draw badge — sits right next to the
-                subscribe capsule so the free-VIP-spin offer stays visible
-                on the home screen even after the popup has been dismissed. */}
             {rewardsAvailable && (
               <button
                 onClick={onOpenRewards}
@@ -342,32 +340,12 @@ export default function HomeScreen({
               </button>
             )}
 
-            {/* Language + subscribe grouped into one glass capsule so the
-                controls read as a single cohesive unit against the cover banner */}
-            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.25)]">
+            {/* Language switcher — desktop only now; on mobile it lives in
+                the bottom nav's "More" tab alongside what used to be the
+                account slot. */}
+            <div className="hidden items-center rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:flex">
               <LanguageSwitcher lang={lang} onChange={setLang} bare />
-              <span className="h-5 w-px bg-white/10" aria-hidden />
-              <button
-                onClick={onOpenSubscription}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/15"
-              >
-                <Crown className="h-3.5 w-3.5" />
-                <span>{subscribed ? t.premium : t.subscribe}</span>
-              </button>
             </div>
-
-            {/* Profile avatar — desktop only, mobile uses bottom nav */}
-            <button
-              onClick={onOpenProfile}
-              className="hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#E31E24] to-[#FFC94A] ring-2 ring-white/10 transition hover:ring-[#E31E24]/50 sm:flex"
-              aria-label="Open profile"
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
-              ) : (
-                <User className="h-4 w-4 text-white" />
-              )}
-            </button>
           </div>
         </div>
       </header>
@@ -513,13 +491,72 @@ export default function HomeScreen({
             onClick={onOpenWatchlist}
           />
           <BottomTab
-            icon={<User className="h-5 w-5" />}
-            label={t.navAccount}
-            active={activeTab === 'account'}
-            onClick={onOpenProfile}
+            icon={<Globe className="h-5 w-5" />}
+            label={t.navMore ?? 'More'}
+            active={moreOpen}
+            onClick={() => setMoreOpen(true)}
           />
         </div>
       </nav>
+
+      {/* "More" bottom sheet — holds what used to live in the header
+          (language switcher, subscribe/VIP entry, rewards) now that the
+          top bar is just the LIVE indicator. Slides up from the freed-up
+          account slot in the bottom nav. */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-[60] md:hidden" role="dialog" aria-modal>
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-white/10 bg-[#120A09] p-5 pb-8 shadow-[0_-20px_60px_rgba(0,0,0,0.6)]">
+            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
+            <div className="mb-5 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-white/40">
+                {t.navMore ?? 'More'}
+              </span>
+              <button
+                onClick={() => setMoreOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/60"
+                aria-label="Close"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              <span className="text-sm font-medium text-white/70">{t.language ?? 'Language'}</span>
+              <LanguageSwitcher lang={lang} onChange={setLang} bare />
+            </div>
+
+            {rewardsAvailable && (
+              <button
+                onClick={() => {
+                  setMoreOpen(false);
+                  onOpenRewards();
+                }}
+                className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-[#FFC94A]/25 bg-gradient-to-r from-[#FFC94A]/15 to-[#B8862E]/5 px-4 py-3 text-left"
+              >
+                <Gift className="h-4 w-4 text-[#FFC94A]" />
+                <span className="text-sm font-semibold text-[#FFC94A]">{t.rewardsBadge}</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setMoreOpen(false);
+                onOpenSubscription();
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left"
+            >
+              <Crown className="h-4 w-4 text-[#FFC94A]" />
+              <span className="text-sm font-medium text-white/80">
+                {subscribed ? t.premium : t.subscribe}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Full-screen search overlay (mobile) */}
       {searchOpen && (
@@ -849,6 +886,10 @@ function SideCard({ show, offset, onClick }: SideCardProps) {
   const scale = isNear ? 0.6 : 0.44;
   const z = isNear ? 10 : 5;
   const opacity = isNear ? 0.75 : 0.28;
+  // A small vertical lift that grows with distance from center — this is
+  // what reads as a "wave": the deck doesn't just slide sideways, the far
+  // cards sit a touch lower like a trough, near cards ride a touch higher.
+  const translateY = Math.abs(offset) * 10;
 
   return (
     <button
@@ -857,10 +898,10 @@ function SideCard({ show, offset, onClick }: SideCardProps) {
       style={{
         width: '38%',
         maxWidth: 164,
-        transform: `translateX(${translateX}%) scale(${scale})`,
+        transform: `translateX(${translateX}%) translateY(${translateY}px) scale(${scale})`,
         zIndex: z,
         opacity,
-        transition: 'transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.5s ease',
+        transition: 'transform 0.42s cubic-bezier(0.34,1.15,0.4,1), opacity 0.42s ease',
         pointerEvents: 'auto',
       }}
       aria-label={show.title}
