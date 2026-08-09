@@ -17,7 +17,7 @@ import AnnouncementBanner from '@/components/AnnouncementBanner';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { initTelegramApp, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
+import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
 
 // This build is the Telegram VIP Mini App: access is already gated by
 // Telegram group membership (a separate admin bot bans/kicks non-members),
@@ -41,12 +41,14 @@ function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showSpin, setShowSpin] = useState(false);
   const isMobile = useIsMobile();
+  // Anyone opening the Mini App from inside Telegram — phone OR the
+  // Telegram Desktop app — should always land in the viewer experience,
+  // regardless of window width. Width alone used to gate this, which
+  // wrongly blocked members using Telegram Desktop (a wide viewport just
+  // like a browser). isMobile stays as a fallback so testing in a plain
+  // narrow browser window still works during development.
+  const isViewerContext = isMobile || isInTelegram();
   const isAdmin = !!profile?.is_admin;
-  // Testing override: ?admin=1 forces the admin gate on regardless of screen
-  // width, so the admin sign-in screen can be reached from Bolt's mobile preview.
-  const adminOverride =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('admin') === '1';
 
   // Tell Telegram the app is ready + expand to full height. Also resolve
   // a deep link: a group message linking to https://t.me/Bot/app?startapp=show_<id>
@@ -120,9 +122,20 @@ function App() {
     };
   }, []);
 
-  const handleAdminAuthSuccess = () => {
-    setScreen({ name: 'admin' });
-  };
+  // Login succeeded, but `profile` (and therefore isAdmin) hasn't caught
+  // up yet — it loads asynchronously from the auth-state-change listener
+  // above. Jumping straight to the 'admin' screen here used to close the
+  // auth form before isAdmin flipped true, which made the gate's
+  // "!isViewerContext && !isAdmin" check re-trigger and bounce back to
+  // the blocked/login screen. Instead, just wait — the effect below moves
+  // to 'admin' itself the moment isAdmin actually becomes true.
+  const handleAdminAuthSuccess = () => {};
+
+  useEffect(() => {
+    if (!isViewerContext && isAdmin && screen.name !== 'admin') {
+      setScreen({ name: 'admin' });
+    }
+  }, [isViewerContext, isAdmin, screen.name]);
 
   // Every episode is free to play — access is gated at the Telegram group
   // level, not inside the app.
@@ -160,10 +173,10 @@ function App() {
     return <div className="min-h-screen bg-[#0A0605]" />;
   }
 
-  // Desktop is admin-only. On mobile (the real Telegram Mini App surface)
-  // everyone lands straight in the viewer app below — no gate, no login.
-  // The adminOverride (?admin=1) forces the gate on for testing in mobile preview.
-  if ((!isMobile || adminOverride) && !isAdmin) {
+  // The gate is admin-only. Anyone inside Telegram (phone or Telegram
+  // Desktop) — or just testing in a narrow browser window — lands
+  // straight in the viewer app below. No gate, no login.
+  if (!isViewerContext && !isAdmin) {
     return (
       <DesktopBlockedScreen
         authOpen={screen.name === 'auth'}
