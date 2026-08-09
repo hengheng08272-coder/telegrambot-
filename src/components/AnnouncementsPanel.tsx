@@ -65,7 +65,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#161228] p-5"
+        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#170D0C] p-5"
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
@@ -83,13 +83,13 @@ export default function AnnouncementsPanel({ onClose }: Props) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="ឧ. ថ្ងៃនេះ episode ថ្មីចេញ 3 ភាគ! / ថ្ងៃស្អែក spin ថ្មីមកដល់..."
             rows={3}
-            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#A855F7]/50"
+            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#E31E24]/50"
           />
           {error && <p className="mb-2 text-xs text-red-300">{error}</p>}
           <button
             onClick={handlePost}
             disabled={posting || !draft.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#A855F7] to-[#7C3AED] py-2.5 text-sm font-bold text-white transition disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#E31E24] to-[#8C0F12] py-2.5 text-sm font-bold text-white transition disabled:opacity-50"
           >
             {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Post announcement

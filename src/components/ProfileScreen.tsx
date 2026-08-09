@@ -165,19 +165,19 @@ export default function ProfileScreen({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0F]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0F8F72]" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0605]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#E31E24]" />
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0A0A0F] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-[#0A0605] text-white">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle at 20% 0%, rgba(15,143,114,0.15) 0%, rgba(10,10,15,0) 45%)',
+            'radial-gradient(circle at 20% 0%, rgba(227,30,36,0.15) 0%, rgba(10,6,5,0) 45%)',
         }}
       />
 
@@ -212,7 +212,7 @@ export default function ProfileScreen({
           {/* Avatar */}
           <div className="flex flex-col items-center">
             <div className="relative">
-              <div className="h-32 w-32 overflow-hidden rounded-full border-2 border-white/10 bg-[#1E1E2A] shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+              <div className="h-32 w-32 overflow-hidden rounded-full border-2 border-white/10 bg-[#241413] shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
                 {profile?.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -220,7 +220,7 @@ export default function ProfileScreen({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#0F8F72] to-[#0B6E58]">
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#E31E24] to-[#8C0F12]">
                     <span
                       className="text-5xl font-black text-white"
                       style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif' }}
@@ -233,7 +233,7 @@ export default function ProfileScreen({
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
-                className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full bg-[#0F8F72] text-white shadow-lg ring-4 ring-[#0A0A0F] transition hover:bg-[#0B6E58] active:scale-95 disabled:opacity-60"
+                className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full bg-[#E31E24] text-white shadow-lg ring-4 ring-[#0A0605] transition hover:bg-[#8C0F12] active:scale-95 disabled:opacity-60"
                 aria-label="Change avatar"
               >
                 {uploading ? (
@@ -265,13 +265,13 @@ export default function ProfileScreen({
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[#0F8F72]/50"
+                    className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[#E31E24]/50"
                     autoFocus
                   />
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center gap-1 rounded-lg bg-[#0F8F72] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#0B6E58] disabled:opacity-60"
+                    className="flex items-center gap-1 rounded-lg bg-[#E31E24] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#8C0F12] disabled:opacity-60"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     {t.save}
@@ -284,7 +284,7 @@ export default function ProfileScreen({
                   </span>
                   <button
                     onClick={() => setEditing(true)}
-                    className="text-white/40 transition hover:text-[#0F8F72]"
+                    className="text-white/40 transition hover:text-[#E31E24]"
                     aria-label="Edit name"
                   >
                     <Edit3 className="h-4 w-4" />
@@ -311,10 +311,10 @@ export default function ProfileScreen({
               className="overflow-hidden rounded-2xl p-4"
               style={{
                 border: subscribed
-                  ? '1px solid rgba(232,169,74,0.3)'
+                  ? '1px solid rgba(255,201,74,0.3)'
                   : '1px solid rgba(255,255,255,0.1)',
                 background: subscribed
-                  ? 'linear-gradient(160deg, rgba(232,169,74,0.1) 0%, rgba(15,143,114,0.05) 100%)'
+                  ? 'linear-gradient(160deg, rgba(255,201,74,0.1) 0%, rgba(227,30,36,0.05) 100%)'
                   : 'rgba(255,255,255,0.03)',
               }}
             >
@@ -324,7 +324,7 @@ export default function ProfileScreen({
               {subscribed ? (
                 <>
                   <div className="flex items-center gap-1.5">
-                    <Crown size={15} className="text-[#E8A94A]" fill="#E8A94A" strokeWidth={0} />
+                    <Crown size={15} className="text-[#FFC94A]" fill="#FFC94A" strokeWidth={0} />
                     <span className="text-base font-bold text-white">{t.premiumActive}</span>
                   </div>
                   <div className="mt-2 flex items-center gap-1.5 text-sm text-white/60">
@@ -339,7 +339,7 @@ export default function ProfileScreen({
                   <button
                     onClick={onOpenSubscription}
                     className="mt-3 rounded-xl px-4 py-2 text-xs font-bold text-black transition hover:opacity-90"
-                    style={{ background: 'linear-gradient(90deg,#E8A94A,#C97A2E)' }}
+                    style={{ background: 'linear-gradient(90deg,#FFC94A,#C97A2E)' }}
                   >
                     {t.renewNow}
                   </button>
@@ -350,7 +350,7 @@ export default function ProfileScreen({
                   <button
                     onClick={onOpenSubscription}
                     className="mt-3 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-black transition hover:opacity-90"
-                    style={{ background: 'linear-gradient(90deg,#E8A94A,#C97A2E)' }}
+                    style={{ background: 'linear-gradient(90deg,#FFC94A,#C97A2E)' }}
                   >
                     <Crown className="h-3.5 w-3.5" />
                     {t.getPremium}
@@ -388,7 +388,7 @@ export default function ProfileScreen({
                       value={newPw}
                       onChange={(e) => setNewPw(e.target.value)}
                       placeholder={t.newPassword}
-                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 pr-10 text-sm text-white outline-none focus:border-[#E8A94A]/50"
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 pr-10 text-sm text-white outline-none focus:border-[#FFC94A]/50"
                     />
                     <button
                       type="button"
@@ -404,7 +404,7 @@ export default function ProfileScreen({
                     value={confirmPw}
                     onChange={(e) => setConfirmPw(e.target.value)}
                     placeholder={t.confirmNewPasswordLabel}
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-[#E8A94A]/50"
+                    className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-[#FFC94A]/50"
                   />
                   {pwError && <p className="text-xs text-[#EF4444]">{pwError}</p>}
                   {pwSaved && <p className="text-xs text-[#22C55E]">{t.passwordUpdated}</p>}
@@ -495,10 +495,10 @@ export default function ProfileScreen({
           {profile?.is_admin && (
           <button
             onClick={onOpenAdmin}
-            className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-[#0F8F72]/30 hover:bg-white/[0.05]"
+            className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-[#E31E24]/30 hover:bg-white/[0.05]"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0F8F72]/15">
-              <Settings className="h-5 w-5 text-[#0F8F72]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#E31E24]/15">
+              <Settings className="h-5 w-5 text-[#E31E24]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white">{t.videoManagement}</p>

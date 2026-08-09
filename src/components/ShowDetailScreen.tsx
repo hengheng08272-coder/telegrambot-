@@ -69,7 +69,7 @@ export default function ShowDetailScreen({
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white">
+    <div className="min-h-screen bg-[#0A0605] text-white">
       {/* Back bar */}
       <button
         onClick={onBack}
@@ -89,7 +89,7 @@ export default function ShowDetailScreen({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(90deg, rgba(10,10,15,0.85) 0%, rgba(10,10,15,0.4) 50%, rgba(10,10,15,0.2) 100%), linear-gradient(0deg, rgba(10,10,15,1) 0%, rgba(10,10,15,0) 45%)',
+              'linear-gradient(90deg, rgba(10,6,5,0.85) 0%, rgba(10,6,5,0.4) 50%, rgba(10,6,5,0.2) 100%), linear-gradient(0deg, rgba(10,6,5,1) 0%, rgba(10,6,5,0) 45%)',
           }}
         />
       </div>
@@ -117,8 +117,8 @@ export default function ShowDetailScreen({
 
             {/* Meta row */}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-              <span className="flex items-center gap-1 font-semibold text-[#E8A94A]">
-                <Star className="h-4 w-4 fill-[#E8A94A]" /> {Number(show.rating).toFixed(1)}
+              <span className="flex items-center gap-1 font-semibold text-[#FFC94A]">
+                <Star className="h-4 w-4 fill-[#FFC94A]" /> {Number(show.rating).toFixed(1)}
               </span>
               {!!show.view_count && (
                 <>
@@ -180,7 +180,7 @@ export default function ShowDetailScreen({
                 onClick={() => {
                   if (episodes.length > 0 && detail) onPlayEpisode(episodes[0], detail);
                 }}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0F8F72] to-[#0B6E58] px-7 py-3 text-sm font-bold text-white shadow-[0_10px_30px_rgba(15,143,114,0.35)] transition hover:shadow-[0_14px_40px_rgba(15,143,114,0.5)] active:scale-95"
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#E31E24] to-[#8C0F12] px-7 py-3 text-sm font-bold text-white shadow-[0_10px_30px_rgba(227,30,36,0.35)] transition hover:shadow-[0_14px_40px_rgba(227,30,36,0.5)] active:scale-95"
               >
                 <Play className="h-5 w-5 fill-white" />
                 {show.type === 'movie' ? t.playMovie : t.playFirstEpisode}
@@ -199,7 +199,7 @@ export default function ShowDetailScreen({
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 animate-pulse rounded-xl bg-[#1E1E2A]" />
+                  <div key={i} className="h-24 animate-pulse rounded-xl bg-[#241413]" />
                 ))}
               </div>
             ) : error ? (
@@ -216,8 +216,8 @@ export default function ShowDetailScreen({
                     onClick={() => detail && onPlayEpisode(ep, detail)}
                     className={`group flex w-full items-center gap-4 overflow-hidden rounded-xl border p-3 text-left transition ${
                       locked
-                        ? 'border-[#E8A94A]/25 bg-[#1A1710] hover:border-[#E8A94A]/60 hover:shadow-[0_0_24px_rgba(232,169,74,0.18)]'
-                        : 'border-white/5 bg-[#14141C] hover:border-[#0F8F72]/30 hover:bg-[#1E1E2A]'
+                        ? 'border-[#FFC94A]/25 bg-[#1A1710] hover:border-[#FFC94A]/60 hover:shadow-[0_0_24px_rgba(255,201,74,0.18)]'
+                        : 'border-white/5 bg-[#170D0C] hover:border-[#E31E24]/30 hover:bg-[#241413]'
                     }`}
                   >
                     <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg sm:w-48">
@@ -234,19 +234,19 @@ export default function ShowDetailScreen({
                           <div
                             className="flex h-10 w-10 items-center justify-center rounded-full transition group-hover:scale-110"
                             style={{
-                              background: 'linear-gradient(145deg, #F3CD82 0%, #E8A94A 45%, #A85D1F 100%)',
-                              boxShadow: '0 0 18px rgba(232,169,74,0.55)',
+                              background: 'linear-gradient(145deg, #F3CD82 0%, #FFC94A 45%, #A85D1F 100%)',
+                              boxShadow: '0 0 18px rgba(255,201,74,0.55)',
                             }}
                           >
                             <Lock className="h-4 w-4 text-[#3A2A00]" strokeWidth={2.5} />
                           </div>
-                          <span className="rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#E8A94A]">
+                          <span className="rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#FFC94A]">
                             {t.lockedVip}
                           </span>
                         </div>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition group-hover:opacity-100">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0F8F72]">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E31E24]">
                             <Play className="h-4 w-4 fill-white text-white" />
                           </div>
                         </div>
@@ -270,20 +270,20 @@ export default function ShowDetailScreen({
                         {locked && (
                           <span
                             className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#3A2A00]"
-                            style={{ background: 'linear-gradient(90deg,#E8A94A,#C97A2E)' }}
+                            style={{ background: 'linear-gradient(90deg,#FFC94A,#C97A2E)' }}
                           >
                             <Lock className="h-2.5 w-2.5" /> {t.lockedVip}
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#0F8F72]">
+                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#E31E24]">
                         {ep.title}
                       </h3>
                       <p className="mt-1 line-clamp-1 text-sm text-white/50">
                         {locked ? t.lockedUnlockHint : ep.description}
                       </p>
                     </div>
-                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-white/30 transition group-hover:text-[#0F8F72] sm:block" />
+                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-white/30 transition group-hover:text-[#E31E24] sm:block" />
                   </button>
                   );
                 })}

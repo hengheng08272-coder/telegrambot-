@@ -23,11 +23,11 @@ const LOGO_URL = '/assets/images/logo-transparent.png';
 // ─── Brand tokens — kept in sync with src/styles/theme.ts so this modal
 // reads as part of the same product, not a bolted-on design. ───────────
 const COLOR = {
-  gold: '#E8A94A',
+  gold: '#FFC94A',
   goldDeep: '#D4821E',
-  primary: '#0F8F72',
-  primaryDeep: '#0B6E58',
-  primaryLight: '#3FD8B0',
+  primary: '#E31E24',
+  primaryDeep: '#8C0F12',
+  primaryLight: '#FF6A57',
   success: '#22C55E',
   error: '#EF4444',
 };
@@ -347,7 +347,7 @@ export default function SubscriptionModal({ onClose }: Props) {
               </button>
 
               {/* Logo — large, centered, no background plate */}
-              <div className="mx-auto mb-2 h-24 w-24 drop-shadow-[0_4px_20px_rgba(232,169,74,0.25)]">
+              <div className="mx-auto mb-2 h-24 w-24 drop-shadow-[0_4px_20px_rgba(255,201,74,0.25)]">
                 <img
                   src={LOGO_URL}
                   alt="NINT ANIME"
@@ -421,7 +421,7 @@ export default function SubscriptionModal({ onClose }: Props) {
                           size={15}
                           className="absolute right-2.5 top-2.5"
                           style={{ color: COLOR.gold }}
-                          fill="rgba(232,169,74,0.18)"
+                          fill="rgba(255,201,74,0.18)"
                         />
                       )}
 

@@ -422,9 +422,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white">
+    <div className="min-h-screen bg-[#0A0605] text-white">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A0A0F]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A0605]/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1200px] items-center gap-4 px-4 py-4 sm:px-8">
           <button
             onClick={onBack}
@@ -482,7 +482,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               return (
                 <div
                   key={show.id}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#14141C]"
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#170D0C]"
                 >
                   {/* Show header */}
                   <button
@@ -491,7 +491,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     }
                     className="flex w-full items-center gap-4 p-4 text-left transition hover:bg-white/[0.02]"
                   >
-                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-[#1E1E2A]">
+                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-[#241413]">
                       {show.poster_url && (
                         <img
                           src={show.poster_url}
@@ -543,7 +543,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                           return (
                             <div
                               key={ep.id}
-                              className="rounded-xl border border-white/5 bg-[#1E1E2A] p-3"
+                              className="rounded-xl border border-white/5 bg-[#241413] p-3"
                             >
                               <div className="flex items-center gap-3">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-white/60">
@@ -559,7 +559,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                         <CheckCircle2 className="h-3 w-3" /> Video ready
                                       </span>
                                     ) : (
-                                      <span className="flex items-center gap-1 text-[#E8A94A]">
+                                      <span className="flex items-center gap-1 text-[#FFC94A]">
                                         <Clock className="h-3 w-3" /> No video uploaded
                                       </span>
                                     )}
@@ -662,7 +662,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                       {(show.type !== 'movie' || show.episodes.length === 0) && (
                         <div className="mt-4">
                           {addEpOpen === show.id ? (
-                            <div className="space-y-3 rounded-xl border border-white/10 bg-[#1E1E2A] p-4">
+                            <div className="space-y-3 rounded-xl border border-white/10 bg-[#241413] p-4">
                               {show.type !== 'movie' && (
                               <div className="grid grid-cols-3 gap-2">
                                 <div>
@@ -848,7 +848,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {/* Add Show modal */}
       {addShowOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#14141C] p-5">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#170D0C] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">New Show / Movie</h2>
               <button
@@ -987,7 +987,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {/* Edit Show modal */}
       {editShow && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#14141C] p-5">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#170D0C] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">Edit Show</h2>
               <button

@@ -19,8 +19,8 @@ export default function ShowCard({ show, onClick }: ShowCardProps) {
       onClick={() => onClick(show)}
       className="group relative w-[160px] shrink-0 text-left sm:w-[180px]"
     >
-      <div className="relative z-10 aspect-[2/3] overflow-hidden rounded-xl bg-[#1E1E2A] shadow-[0_8px_24px_rgba(0,0,0,0.5)] ring-1 ring-white/5 transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)] group-hover:ring-[#0F8F72]/40">
-        {!loaded && <div className="absolute inset-0 animate-pulse bg-[#1E1E2A]" />}
+      <div className="relative z-10 aspect-[2/3] overflow-hidden rounded-xl bg-[#241413] shadow-[0_8px_24px_rgba(0,0,0,0.5)] ring-1 ring-white/5 transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)] group-hover:ring-[#E31E24]/40">
+        {!loaded && <div className="absolute inset-0 animate-pulse bg-[#241413]" />}
         <img
           src={show.poster_url ?? ''}
           alt={show.title}
@@ -35,12 +35,12 @@ export default function ShowCard({ show, onClick }: ShowCardProps) {
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,10,15,0) 50%, rgba(10,10,15,0.9) 100%)',
+              'linear-gradient(180deg, rgba(10,6,5,0) 50%, rgba(10,6,5,0.9) 100%)',
           }}
         />
         {/* Rating badge */}
-        <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-semibold text-[#E8A94A] backdrop-blur-sm">
-          <Star className="h-3 w-3 fill-[#E8A94A] text-[#E8A94A]" />
+        <div className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-semibold text-[#FFC94A] backdrop-blur-sm">
+          <Star className="h-3 w-3 fill-[#FFC94A] text-[#FFC94A]" />
           {Number(show.rating).toFixed(1)}
         </div>
         {/* Free-to-watch ribbon — top-left, only for titles that don't need VIP */}
@@ -51,13 +51,13 @@ export default function ShowCard({ show, onClick }: ShowCardProps) {
         )}
         {/* Hover play overlay */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0F8F72] shadow-[0_0_24px_rgba(15,143,114,0.6)]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E31E24] shadow-[0_0_24px_rgba(227,30,36,0.6)]">
             <Play className="h-5 w-5 fill-white text-white" />
           </div>
         </div>
       </div>
       <div className="mt-2.5 px-0.5">
-        <h3 className="truncate text-sm font-semibold text-white transition group-hover:text-[#0F8F72]">
+        <h3 className="truncate text-sm font-semibold text-white transition group-hover:text-[#E31E24]">
           {show.title}
         </h3>
         <p className="mt-0.5 truncate text-xs text-white/50">

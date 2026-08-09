@@ -186,7 +186,7 @@ export default function HomeScreen({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] text-white">
+      <div className="min-h-screen bg-[#0A0605] text-white">
         {/* Header skeleton */}
         <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-8 sm:py-3.5">
           <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
@@ -233,9 +233,9 @@ export default function HomeScreen({
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0F] px-6">
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0605] px-6">
         <div className="max-w-md text-center">
-          <p className="text-lg font-semibold text-[#0F8F72]">{t.somethingWrong}</p>
+          <p className="text-lg font-semibold text-[#E31E24]">{t.somethingWrong}</p>
           <p className="mt-2 text-sm text-white/60">{error}</p>
         </div>
       </div>
@@ -245,12 +245,12 @@ export default function HomeScreen({
   const heroVisible = hero && !query.trim();
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white">
+    <div className="min-h-screen bg-[#0A0605] text-white">
       {/* Header — floats transparently over the hero cover; only turns solid
           when there's no hero behind it (e.g. search results) */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-          heroVisible ? 'bg-transparent' : 'bg-[#0A0A0F]/85 backdrop-blur-md'
+          heroVisible ? 'bg-transparent' : 'bg-[#0A0605]/85 backdrop-blur-md'
         }`}
       >
         {/* No separate dark overlay here on purpose — the coverflow hero
@@ -271,12 +271,12 @@ export default function HomeScreen({
             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
               <div
                 className="pointer-events-none absolute inset-0 rounded-full opacity-70 blur-md"
-                style={{ background: 'radial-gradient(circle, rgba(15,143,114,0.55) 0%, rgba(15,143,114,0) 70%)' }}
+                style={{ background: 'radial-gradient(circle, rgba(227,30,36,0.55) 0%, rgba(227,30,36,0) 70%)' }}
               />
               <img
                 src="/assets/images/logo-transparent.png"
                 alt="NINT ANIME"
-                className="relative h-9 w-9 drop-shadow-[0_0_14px_rgba(15,143,114,0.45)]"
+                className="relative h-9 w-9 drop-shadow-[0_0_14px_rgba(227,30,36,0.45)]"
               />
             </div>
             <div className="flex flex-col leading-none">
@@ -284,7 +284,7 @@ export default function HomeScreen({
                 className="text-lg font-black tracking-wider text-white sm:text-xl"
                 style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif' }}
               >
-                NINT <span className="text-[#0F8F72]">ANIME</span>
+                NINT <span className="text-[#E31E24]">ANIME</span>
               </span>
               <span className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 sm:inline">
                 {t.tagline}
@@ -294,10 +294,10 @@ export default function HomeScreen({
 
           {/* Desktop nav links */}
           <nav className="ml-6 hidden items-center gap-5 text-sm font-medium text-white/70 md:flex">
-            <span className="cursor-pointer text-white transition hover:text-[#0F8F72]">{t.navHome}</span>
-            <span className="cursor-pointer transition hover:text-[#0F8F72]">{t.navSeries}</span>
-            <span className="cursor-pointer transition hover:text-[#0F8F72]">{t.navMovies}</span>
-            <span className="cursor-pointer transition hover:text-[#0F8F72]">{t.navMyList}</span>
+            <span className="cursor-pointer text-white transition hover:text-[#E31E24]">{t.navHome}</span>
+            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navSeries}</span>
+            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navMovies}</span>
+            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navMyList}</span>
           </nav>
 
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -308,7 +308,7 @@ export default function HomeScreen({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t.searchPlaceholder}
-                className="w-48 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-64 focus:border-[#0F8F72]/50 focus:bg-white/[0.07]"
+                className="w-48 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-64 focus:border-[#E31E24]/50 focus:bg-white/[0.07]"
               />
             </div>
 
@@ -320,11 +320,11 @@ export default function HomeScreen({
                 onClick={onOpenRewards}
                 aria-label={t.rewardsBadge}
                 title={t.rewardsBadge}
-                className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E8A94A]/30 bg-gradient-to-br from-[#E8A94A]/20 to-[#C98A2E]/10 text-[#E8A94A] backdrop-blur-md transition hover:scale-105 hover:bg-[#E8A94A]/25 animate-badge-pop"
+                className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#FFC94A]/30 bg-gradient-to-br from-[#FFC94A]/20 to-[#B8862E]/10 text-[#FFC94A] backdrop-blur-md transition hover:scale-105 hover:bg-[#FFC94A]/25 animate-badge-pop"
               >
                 <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
                 <Gift className="h-4 w-4" />
-                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF5D5D] ring-2 ring-[#0A0A0F]" aria-hidden />
+                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF5D5D] ring-2 ring-[#0A0605]" aria-hidden />
               </button>
             )}
 
@@ -335,7 +335,7 @@ export default function HomeScreen({
               <span className="h-5 w-px bg-white/10" aria-hidden />
               <button
                 onClick={onOpenSubscription}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#E8A94A] transition hover:bg-[#E8A94A]/15"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/15"
               >
                 <Crown className="h-3.5 w-3.5" />
                 <span>{subscribed ? t.premium : t.subscribe}</span>
@@ -345,7 +345,7 @@ export default function HomeScreen({
             {/* Profile avatar — desktop only, mobile uses bottom nav */}
             <button
               onClick={onOpenProfile}
-              className="hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#0F8F72] to-[#E8A94A] ring-2 ring-white/10 transition hover:ring-[#0F8F72]/50 sm:flex"
+              className="hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#E31E24] to-[#FFC94A] ring-2 ring-white/10 transition hover:ring-[#E31E24]/50 sm:flex"
               aria-label="Open profile"
             >
               {avatarUrl ? (
@@ -430,7 +430,7 @@ export default function HomeScreen({
               />
             )}
             <RailRow
-              icon={<TrendingUp className="h-5 w-5 text-[#0F8F72]" />}
+              icon={<TrendingUp className="h-5 w-5 text-[#E31E24]" />}
               title={t.trendingNow}
               shows={trending}
               onSelectShow={onSelectShow}
@@ -438,7 +438,7 @@ export default function HomeScreen({
               viewAllLabel={t.viewAll}
             />
             <RailRow
-              icon={<Sparkles className="h-5 w-5 text-[#0F8F72]" />}
+              icon={<Sparkles className="h-5 w-5 text-[#E31E24]" />}
               title={t.newRelease}
               shows={newReleases}
               onSelectShow={onSelectShow}
@@ -446,7 +446,7 @@ export default function HomeScreen({
               viewAllLabel={t.viewAll}
             />
             <RailRow
-              icon={<Flame className="h-5 w-5 text-[#E8A94A]" />}
+              icon={<Flame className="h-5 w-5 text-[#FFC94A]" />}
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
@@ -476,7 +476,7 @@ export default function HomeScreen({
       </footer>
 
       {/* Bottom navigation bar — mobile only */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0A0A0F]/95 backdrop-blur-md md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0A0605]/95 backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
           <BottomTab
             icon={<HomeIcon className="h-5 w-5" />}
@@ -507,7 +507,7 @@ export default function HomeScreen({
 
       {/* Full-screen search overlay (mobile) */}
       {searchOpen && (
-        <div className="fixed inset-0 z-[60] bg-[#0A0A0F] md:hidden">
+        <div className="fixed inset-0 z-[60] bg-[#0A0605] md:hidden">
           <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
             <Search className="h-5 w-5 text-white/40" />
             <input
@@ -544,7 +544,7 @@ export default function HomeScreen({
                       }}
                       className="text-left"
                     >
-                      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-[#1E1E2A] ring-1 ring-white/5">
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-[#241413] ring-1 ring-white/5">
                         <img
                           src={s.poster_url ?? ''}
                           alt={s.title}
@@ -660,16 +660,16 @@ function CoverflowHero({
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 85% 65% at 50% 22%, rgba(201,122,46,0.22) 0%, rgba(10,10,15,0) 62%), radial-gradient(ellipse 65% 55% at 72% 82%, rgba(15,143,114,0.20) 0%, rgba(10,10,15,0) 58%)',
+              'radial-gradient(ellipse 85% 65% at 50% 22%, rgba(201,122,46,0.22) 0%, rgba(10,6,5,0) 62%), radial-gradient(ellipse 65% 55% at 72% 82%, rgba(227,30,36,0.20) 0%, rgba(10,6,5,0) 58%)',
           }}
         />
-        <div className="absolute inset-0 bg-[#0A0A0F]/35" />
+        <div className="absolute inset-0 bg-[#0A0605]/35" />
         {/* Fade the top into the header and the bottom into the page */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,10,15,0.9) 0%, rgba(10,10,15,0.55) 14%, rgba(10,10,15,0.1) 28%, rgba(10,10,15,0) 40%, rgba(10,10,15,0) 68%, rgba(10,10,15,1) 100%)',
+              'linear-gradient(180deg, rgba(10,6,5,0.9) 0%, rgba(10,6,5,0.55) 14%, rgba(10,6,5,0.1) 28%, rgba(10,6,5,0) 40%, rgba(10,6,5,0) 68%, rgba(10,6,5,1) 100%)',
           }}
         />
       </div>
@@ -719,14 +719,14 @@ function CoverflowHero({
               className="absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(180deg, rgba(10,10,15,0) 42%, rgba(10,10,15,0.6) 74%, rgba(10,10,15,0.96) 100%)',
+                  'linear-gradient(180deg, rgba(10,6,5,0) 42%, rgba(10,6,5,0.6) 74%, rgba(10,6,5,0.96) 100%)',
               }}
             />
             {/* FEATURED pill + rank badge */}
             <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
               <span
                 className="rounded-md px-2 py-[3px] text-[10px] font-bold uppercase tracking-wider text-black shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #E8A94A, #FFAA3C)' }}
+                style={{ background: 'linear-gradient(135deg, #FFC94A, #FFAA3C)' }}
               >
                 {t.featured}
               </span>
@@ -750,8 +750,8 @@ function CoverflowHero({
                 {hero.title.toUpperCase()}
               </h2>
               <div className="mt-1 flex items-center justify-center gap-2 text-xs font-semibold">
-                <span className="flex items-center gap-1 text-[#E8A94A]">
-                  <Star className="h-3 w-3 fill-[#E8A94A]" /> {Number(hero.rating).toFixed(1)}
+                <span className="flex items-center gap-1 text-[#FFC94A]">
+                  <Star className="h-3 w-3 fill-[#FFC94A]" /> {Number(hero.rating).toFixed(1)}
                 </span>
                 <span className="h-3 w-px bg-white/20" aria-hidden />
                 <span className="flex items-center gap-1 text-white/60">
@@ -797,7 +797,7 @@ function CoverflowHero({
               aria-label={`Go to slide ${i + 1}`}
               className={`h-2 rounded-full transition-all duration-300 ${
                 i === index
-                  ? 'w-6 bg-[#0F8F72] shadow-[0_0_10px_rgba(15,143,114,0.8)]'
+                  ? 'w-6 bg-[#E31E24] shadow-[0_0_10px_rgba(227,30,36,0.8)]'
                   : 'w-2 bg-white/35 hover:bg-white/55'
               }`}
             />
@@ -847,13 +847,13 @@ function SideCard({ show, offset, onClick }: SideCardProps) {
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,10,15,0) 50%, rgba(10,10,15,0.85) 100%)',
+              'linear-gradient(180deg, rgba(10,6,5,0) 50%, rgba(10,6,5,0.85) 100%)',
           }}
         />
         <div className="absolute inset-x-0 bottom-0 px-3 pb-3 text-center">
           <p className="truncate text-sm font-bold text-white">{show.title}</p>
-          <div className="mt-0.5 flex items-center justify-center gap-1 text-xs font-semibold text-[#E8A94A]">
-            <Star className="h-3 w-3 fill-[#E8A94A]" /> {Number(show.rating).toFixed(1)}
+          <div className="mt-0.5 flex items-center justify-center gap-1 text-xs font-semibold text-[#FFC94A]">
+            <Star className="h-3 w-3 fill-[#FFC94A]" /> {Number(show.rating).toFixed(1)}
           </div>
         </div>
       </div>
@@ -875,7 +875,7 @@ function BottomTab({ icon, label, active, onClick }: BottomTabProps) {
     <button
       onClick={onClick}
       className={`flex flex-1 flex-col items-center gap-1 rounded-lg py-1.5 transition ${
-        active ? 'text-[#0F8F72]' : 'text-white/50'
+        active ? 'text-[#E31E24]' : 'text-white/50'
       }`}
     >
       {icon}
@@ -916,7 +916,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         {onViewAll && (
           <button
             onClick={onViewAll}
-            className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#0F8F72]"
+            className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
           >
             {viewAllLabel}
           </button>
