@@ -25,8 +25,8 @@ export const theme = {
     glow: 'radial-gradient(circle at 50% 0%, rgba(168,85,247,0.28) 0%, rgba(12,9,22,0) 60%)',
   },
   fonts: {
-    display: '"Poppins", "Battambang", "Noto Sans Khmer", system-ui, sans-serif',
-    body: '"Noto Sans Khmer", "Inter", system-ui, -apple-system, sans-serif',
+    display: '"Battambang", "Poppins", system-ui, sans-serif',
+    body: '"Battambang", "Poppins", "Inter", system-ui, -apple-system, sans-serif',
   },
   radius: {
     sm: '6px',
