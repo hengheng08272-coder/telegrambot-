@@ -100,6 +100,7 @@ export default function HomeScreen({
   const [query, setQuery] = useState('');
   const [interacting, setInteracting] = useState(false);
   const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
+  const [homeTab, setHomeTab] = useState<string>('top10');
 
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -200,7 +201,7 @@ export default function HomeScreen({
         </div>
 
         {/* Hero skeleton */}
-        <div className="relative w-full overflow-hidden" style={{ height: 'min(40vh, 340px)' }}>
+        <div className="relative w-full overflow-hidden" style={{ height: 'min(32vh, 280px)' }}>
           <div className="skeleton-shimmer absolute inset-0 bg-white/[0.03]" />
           <div className="relative flex h-full items-center justify-center gap-3">
             <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-2xl bg-white/5" />
@@ -398,8 +399,13 @@ export default function HomeScreen({
         )}
       </div>
 
-      {/* Content rows */}
-      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-28 sm:px-8 sm:pb-20">
+      {/* Content — default browse state is a single-screen layout (Top 10
+          hero row + a tab switcher for New Release / Popular / each genre,
+          one row visible at a time) so home never needs a vertical drag to
+          see everything. Search results and "View All" stay as normal
+          scrollable grids since those are explicit drill-down views, not
+          the main browse screen. */}
+      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-24 sm:px-8 sm:pb-20">
         {viewAll ? (
           <section className="pt-4">
             <div className="mb-5 flex items-center gap-3">
@@ -435,48 +441,105 @@ export default function HomeScreen({
             )}
           </section>
         ) : (
-          <div className="pt-2">
-            <RailRow
-              icon={<TrendingUp className="h-5 w-5 text-[#E31E24]" />}
-              title={t.trendingNow}
-              shows={trending}
-              onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.trendingNow, shows })}
-              viewAllLabel={t.viewAll}
-            />
-            <RailRow
-              icon={<Sparkles className="h-5 w-5 text-[#E31E24]" />}
-              title={t.newRelease}
-              shows={newReleases}
-              onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
-              viewAllLabel={t.viewAll}
-            />
-            <RailRow
-              icon={<Flame className="h-5 w-5 text-[#FFC94A]" />}
-              title={t.popularSeason}
-              shows={shows.slice(0, 10)}
-              onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.popularSeason, shows })}
-              viewAllLabel={t.viewAll}
-            />
+          (() => {
+            const RECENT_MS = 3 * 24 * 60 * 60 * 1000; // shows added in the last 3 days count as "new"
+            const isRecent = (s: Show) =>
+              !!s.created_at && Date.now() - new Date(s.created_at).getTime() < RECENT_MS;
 
-            {genres.map((g) => {
-              const list = showsByGenre(g.slug);
-              if (list.length === 0) return null;
-              return (
-                <RailRow
-                  key={g.id}
-                  emoji={genreEmoji(g.slug)}
-                  title={g.name}
-                  shows={list}
-                  onSelectShow={onSelectShow}
-                  onViewAll={() => setViewAll({ title: t.allShowsTitle ?? g.name, shows })}
-                  viewAllLabel={t.viewAll}
-                />
-              );
-            })}
-          </div>
+            const tabs = [
+              { key: 'top10', label: 'Top 10', icon: <TrendingUp className="h-4 w-4" />, shows: trending, ranked: true },
+              { key: 'newRelease', label: t.newRelease, icon: <Sparkles className="h-4 w-4" />, shows: newReleases, ranked: false },
+              { key: 'popular', label: t.popularSeason, icon: <Flame className="h-4 w-4" />, shows: shows.slice(0, 10), ranked: false },
+              ...genres
+                .map((g) => ({
+                  key: g.slug,
+                  label: g.name,
+                  icon: <span className="text-sm leading-none">{genreEmoji(g.slug)}</span>,
+                  shows: showsByGenre(g.slug),
+                  ranked: false,
+                }))
+                .filter((tab) => tab.shows.length > 0),
+            ];
+            const active = tabs.find((tab) => tab.key === homeTab) ?? tabs[0];
+
+            return (
+              <div className="pt-3">
+                {/* Tab switcher — one row visible at a time, everything
+                    else is a tap away instead of stacked underneath. A
+                    small pulsing dot marks any tab holding a recently
+                    added show, so switching tabs doesn't feel like a
+                    guess — there's a visible reason to check it. */}
+                <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1">
+                  {tabs.map((tab) => {
+                    const hasNew = tab.key !== 'top10' && tab.shows.some(isRecent);
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={() => setHomeTab(tab.key)}
+                        className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+                          active.key === tab.key
+                            ? 'text-black shadow-[0_4px_14px_rgba(255,201,74,0.3)]'
+                            : 'border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]'
+                        }`}
+                        style={
+                          active.key === tab.key
+                            ? { background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }
+                            : undefined
+                        }
+                      >
+                        {tab.icon} {tab.label}
+                        {hasNew && (
+                          <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5" aria-hidden>
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
+                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E31E24] ring-2 ring-[#0A0605]" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* The one active row. "Top 10" additionally gets a small
+                    LIVE pulse — the hero above already auto-slides, this
+                    just names the connection explicitly. */}
+                <section>
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold tracking-tight">{active.label}</h2>
+                      {active.key === 'top10' && (
+                        <span className="flex items-center gap-1 rounded-full bg-[#E31E24]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#E31E24]">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
+                          </span>
+                          LIVE
+                        </span>
+                      )}
+                      <span className="rounded-full border border-[#FFC94A]/15 bg-[#FFC94A]/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-[#FFC94A]/60">
+                        {active.shows.length}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setViewAll({ title: t.allShowsTitle ?? active.label, shows })}
+                      className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
+                    >
+                      {t.viewAll}
+                    </button>
+                  </div>
+                  <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2">
+                    {active.shows.map((s, i) => (
+                      <ShowCard
+                        key={s.id}
+                        show={s}
+                        onClick={onSelectShow}
+                        rank={active.ranked ? i + 1 : undefined}
+                      />
+                    ))}
+                  </div>
+                </section>
+              </div>
+            );
+          })()
         )}
       </main>
 
@@ -629,14 +692,14 @@ function CoverflowHero({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.4, 340) : 340;
+  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.32, 280) : 340;
   const parallaxOffset = Math.min(scrollY * 0.35, 120);
   const parallaxOpacity = Math.max(1 - scrollY / heroHeightPx, 0);
 
   return (
     <section
       className="relative w-full overflow-hidden"
-      style={{ height: 'min(40vh, 340px)' }}
+      style={{ height: 'min(32vh, 280px)' }}
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
@@ -741,7 +804,8 @@ function CoverflowHero({
             {/* Title + rating + quick meta */}
             <div className="absolute inset-x-0 bottom-0 px-3 pb-3 text-center">
               <h2
-                className="truncate text-base font-black leading-tight text-white sm:text-lg"
+                key={hero.id}
+                className="title-shine truncate text-base font-black leading-tight sm:text-lg"
                 style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif', letterSpacing: '0.02em' }}
               >
                 {hero.title.toUpperCase()}
@@ -946,55 +1010,5 @@ function BottomTab({ icon, label, active, onClick }: BottomTabProps) {
       {icon}
       <span className="text-[10px] font-medium">{label}</span>
     </button>
-  );
-}
-
-/* ---------- Content rail row ---------- */
-
-interface RailRowProps {
-  title: string;
-  icon?: React.ReactNode;
-  /** Optional decorative emoji shown instead of a lucide icon — used for
-   *  genre rows so each one reads with a bit of its own personality. */
-  emoji?: string;
-  shows: Show[];
-  onSelectShow: (s: Show) => void;
-  onViewAll?: () => void;
-  viewAllLabel?: string;
-}
-
-function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLabel }: RailRowProps) {
-  const scrollerRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) node.scrollLeft = 0;
-  }, []);
-
-  return (
-    <section className="mt-10">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-          <h2 className="text-lg font-bold tracking-tight">{title}</h2>
-          <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-white/35">
-            {shows.length}
-          </span>
-        </div>
-        {onViewAll && (
-          <button
-            onClick={onViewAll}
-            className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
-          >
-            {viewAllLabel}
-          </button>
-        )}
-      </div>
-      <div
-        ref={scrollerRef}
-        className="no-scrollbar flex gap-3 overflow-x-auto pb-2"
-      >
-        {shows.map((s) => (
-          <ShowCard key={s.id} show={s} onClick={onSelectShow} />
-        ))}
-      </div>
-    </section>
   );
 }

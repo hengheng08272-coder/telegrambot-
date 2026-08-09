@@ -1,0 +1,92 @@
+import { useEffect, useState } from 'react';
+import { Loader2, AlertTriangle, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase/supabaseClient';
+
+interface Props {
+  onClose: () => void;
+}
+
+interface SuspiciousRow {
+  id: string;
+  telegram_user_id: string;
+  telegram_username: string | null;
+  episode_count: number;
+  window_minutes: number;
+  detected_at: string;
+}
+
+// Read-only — rows are written by the `flag_watch_burst` Postgres trigger
+// (see database/suspicious-activity-addition.sql), not from the client.
+// The same event also DMs the admin instantly via the
+// notify-suspicious-activity Edge Function; this panel is just the
+// in-app history of everything that's ever been flagged.
+export default function SuspiciousActivityPanel({ onClose }: Props) {
+  const [items, setItems] = useState<SuspiciousRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data, error: err } = await supabase
+        .from('suspicious_activity')
+        .select('*')
+        .order('detected_at', { ascending: false })
+        .limit(100);
+      if (err) setError(err.message);
+      setItems(data ?? []);
+      setLoading(false);
+    })();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#170D0C] p-5"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white">
+            <AlertTriangle className="h-4 w-4 text-[#FFC94A]" />
+            <h2 className="text-sm font-bold">Suspicious activity (burst)</h2>
+          </div>
+          <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {error && <p className="mb-2 text-xs text-red-300">{error}</p>}
+
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+          {loading ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-white/40" />
+            </div>
+          ) : items.length === 0 ? (
+            <p className="py-6 text-center text-xs text-white/40">
+              Nothing flagged yet — this list stays empty until someone
+              trips the burst threshold.
+            </p>
+          ) : (
+            items.map((row) => (
+              <div key={row.id} className="rounded-xl border border-red-500/25 bg-red-500/5 px-3 py-2.5">
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-white">
+                    {row.telegram_username ? `@${row.telegram_username}` : row.telegram_user_id}
+                  </p>
+                  <span className="shrink-0 text-[10px] text-white/40">
+                    {new Date(row.detected_at).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-xs text-red-300">
+                  {row.episode_count} episodes within {row.window_minutes} min
+                </p>
+                <p className="mt-1 text-[10px] text-white/30">ID: {row.telegram_user_id}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

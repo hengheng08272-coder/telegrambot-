@@ -16,10 +16,16 @@ import {
   Link2,
   Play,
   Megaphone,
+  ShieldBan,
+  Eye,
+  AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import type { Show, Episode } from '@/lib/types';
 import AnnouncementsPanel from '@/components/AnnouncementsPanel';
+import BanLogPanel from '@/components/BanLogPanel';
+import WatchLogPanel from '@/components/WatchLogPanel';
+import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
 
 interface AdminScreenProps {
   onBack: () => void;
@@ -32,6 +38,9 @@ interface ShowWithEpisodes extends Show {
 export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [shows, setShows] = useState<ShowWithEpisodes[]>([]);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [banLogOpen, setBanLogOpen] = useState(false);
+  const [watchLogOpen, setWatchLogOpen] = useState(false);
+  const [suspiciousOpen, setSuspiciousOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -444,6 +453,24 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             className="flex items-center gap-1.5 rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 px-4 py-2 text-sm font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20"
           >
             <Megaphone className="h-4 w-4" /> Announcements
+          </button>
+          <button
+            onClick={() => setBanLogOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
+          >
+            <ShieldBan className="h-4 w-4" /> Ban log
+          </button>
+          <button
+            onClick={() => setWatchLogOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-bold text-white/70 transition hover:bg-white/10"
+          >
+            <Eye className="h-4 w-4" /> Watch log
+          </button>
+          <button
+            onClick={() => setSuspiciousOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 px-4 py-2 text-sm font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20"
+          >
+            <AlertTriangle className="h-4 w-4" /> Suspicious
           </button>
           <div className="ml-auto relative hidden sm:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -1166,6 +1193,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       />
 
       {announcementsOpen && <AnnouncementsPanel onClose={() => setAnnouncementsOpen(false)} />}
+      {banLogOpen && <BanLogPanel onClose={() => setBanLogOpen(false)} />}
+      {watchLogOpen && <WatchLogPanel onClose={() => setWatchLogOpen(false)} />}
+      {suspiciousOpen && <SuspiciousActivityPanel onClose={() => setSuspiciousOpen(false)} />}
     </div>
   );
 }

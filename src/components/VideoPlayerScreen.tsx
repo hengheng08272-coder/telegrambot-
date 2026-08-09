@@ -14,6 +14,8 @@ import {
 import type { Episode, ShowWithGenres } from '@/lib/types';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
+import { getCurrentTelegramUser } from '@/lib/telegram';
+import { supabase } from '@/lib/supabase/supabaseClient';
 
 interface VideoPlayerScreenProps {
   episode: Episode;
@@ -68,6 +70,26 @@ export default function VideoPlayerScreen({
     }
     setResolving(false);
   }, [episode.id, episode.video_url]);
+
+  // Silent watch-session log — one row per episode open, no visible
+  // watermark on the video itself. If content ever leaks, this narrows
+  // down who was watching that episode around that time. Fire-and-forget:
+  // never blocks playback, and quietly no-ops in a plain browser preview
+  // where there's no Telegram identity to attach.
+  useEffect(() => {
+    const user = getCurrentTelegramUser();
+    if (!user) return;
+    supabase
+      .from('watch_log')
+      .insert({
+        telegram_user_id: String(user.id),
+        telegram_username: user.label,
+        show_id: show.id,
+        show_title: show.title,
+        episode_label: episode.episode_number ? `EP ${episode.episode_number}` : episode.title,
+      })
+      .then(() => {});
+  }, [episode.id, show.id, show.title]);
 
   useEffect(() => {
     const v = videoRef.current;
