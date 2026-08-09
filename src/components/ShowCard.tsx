@@ -45,7 +45,7 @@ export default function ShowCard({ show, onClick }: ShowCardProps) {
         </div>
         {/* Free-to-watch ribbon — top-left, only for titles that don't need VIP */}
         {show.is_free && (
-          <div className="absolute left-2 top-2 flex items-center gap-0.5 rounded-md bg-[#22C55E]/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
+          <div className="absolute left-2 top-2 flex items-center gap-0.5 rounded-md bg-[#FFC94A]/95 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
             🔓 {t.freeBadge}
           </div>
         )}

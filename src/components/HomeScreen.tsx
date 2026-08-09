@@ -421,7 +421,7 @@ export default function HomeScreen({
           <div className={heroVisible ? 'pt-2' : 'pt-28'}>
             {freeShows.length > 0 && (
               <RailRow
-                icon={<Unlock className="h-5 w-5 text-[#22C55E]" />}
+                icon={<Unlock className="h-5 w-5 text-[#FFC94A]" />}
                 title={t.freeWatching}
                 shows={freeShows}
                 onSelectShow={onSelectShow}
@@ -737,7 +737,7 @@ function CoverflowHero({
             {/* Free-to-watch ribbon — opposite corner from Featured, only
                 when this title doesn't require a subscription */}
             {hero.is_free && (
-              <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-md bg-[#22C55E]/90 px-2 py-[3px] text-[10px] font-bold uppercase tracking-wider text-black shadow-lg backdrop-blur-sm">
+              <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-md bg-[#FFC94A]/95 px-2 py-[3px] text-[10px] font-bold uppercase tracking-wider text-black shadow-lg backdrop-blur-sm">
                 🔓 {t.freeBadge}
               </span>
             )}

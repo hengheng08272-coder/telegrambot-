@@ -140,7 +140,7 @@ export default function ShowDetailScreen({
               <span
                 className={`rounded px-2 py-0.5 text-xs font-semibold ${
                   show.status === 'ongoing'
-                    ? 'bg-[#22C55E]/15 text-[#22C55E]'
+                    ? 'bg-[#FFC94A]/15 text-[#FFC94A]'
                     : 'bg-white/10 text-white/60'
                 }`}
               >
@@ -263,7 +263,7 @@ export default function ShowDetailScreen({
                           </span>
                         )}
                         {ep.is_free_preview && (
-                          <span className="rounded-full bg-[#22C55E]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#22C55E]">
+                          <span className="rounded-full bg-[#FFC94A]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FFC94A]">
                             Free
                           </span>
                         )}

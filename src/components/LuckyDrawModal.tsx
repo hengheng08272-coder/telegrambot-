@@ -11,7 +11,14 @@ interface Props {
 
 // Alternating brand wedges (violet/pink); the top 1-month tier gets the
 // gold treatment so it reads as the "big win" slice even before landing.
-const WEDGE_COLORS = ['#3A1414', '#E31E24', '#3A1414', '#E31E24', '#3A1414', '#FFC94A'];
+// Diverse wedge palette pulled from the NINT ANIME brand: blood red,
+// near-black, ember orange, chrome silver (echoing the logo's metallic
+// text), with the gold jackpot slice standing apart at the end.
+const WEDGE_COLORS = [
+  '#3A1414', '#E31E24', '#241413', '#FF6A3D',
+  '#3A1414', '#E31E24', '#241413', '#C9C9CF',
+  '#FFC94A',
+];
 
 const SEGMENT_DEG = 360 / SPIN_TIERS.length;
 
