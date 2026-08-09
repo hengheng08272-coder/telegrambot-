@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  Play,
   Star,
   ChevronLeft,
   ChevronRight,
@@ -15,12 +14,13 @@ import {
   Sparkles,
   Gift,
   X,
-  Globe,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchFeaturedShows, fetchAllShows, fetchGenres } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import SupporterTicker from '@/components/SupporterTicker';
+import CreatorCredit from '@/components/CreatorCredit';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 
@@ -43,7 +43,7 @@ interface HomeScreenProps {
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
 
-const HERO_AUTO_MS = 3200;
+const HERO_AUTO_MS = 2200;
 
 // Small, purely-cosmetic emoji lookup for genre rail headers — gives each
 // row a bit of personality at a glance without needing extra icon assets.
@@ -101,7 +101,6 @@ export default function HomeScreen({
   const [query, setQuery] = useState('');
   const [interacting, setInteracting] = useState(false);
   const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -203,7 +202,7 @@ export default function HomeScreen({
         </div>
 
         {/* Hero skeleton */}
-        <div className="relative w-full overflow-hidden" style={{ height: 'min(46vh, 380px)' }}>
+        <div className="relative w-full overflow-hidden" style={{ height: 'min(40vh, 340px)' }}>
           <div className="skeleton-shimmer absolute inset-0 bg-white/[0.03]" />
           <div className="relative flex h-full items-center justify-center gap-3">
             <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-2xl bg-white/5" />
@@ -260,6 +259,16 @@ export default function HomeScreen({
           style={{ transform: 'scale(1.1)' }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/60 via-[#0A0605]/85 to-[#0A0605]" />
+        {/* Logo + wordmark watermark — sealed directly into the fixed
+            background layer (not the header), so it never scrolls, never
+            competes with header controls, and quietly carries the brand
+            everywhere the way the old "LIVE" label used to. */}
+        <img
+          src="/assets/images/logo-transparent.png"
+          alt=""
+          className="absolute left-1/2 top-[64px] w-[58vw] max-w-[260px] -translate-x-1/2 opacity-[0.14] sm:top-[76px] sm:max-w-[300px]"
+          draggable={false}
+        />
       </div>
 
       {/* Whole-page ambient glow — two faint warm radials fixed to the
@@ -276,57 +285,95 @@ export default function HomeScreen({
         aria-hidden
       />
 
-      {/* Header v2 — no logo/wordmark lockup anymore (the key-art
-          background above now carries the brand). What used to live here
-          is now just a bold "LIVE" pulse on the left; language + the old
-          subscribe capsule have moved down into the bottom nav's freed-up
-          slot (see "More" tab), since there's no account system to guard
-          in this Mini App build. */}
+      {/* Header v3 — the wordmark now lives sealed into the fixed
+          background layer, not up here, so the bar itself only needs to
+          hold navigation: a small tap-to-home brand dot, desktop nav
+          links, and search. Rewards / language / subscribe have all moved
+          down into the UtilityBar just under the hero, freeing this strip
+          up entirely — there's no account system to guard in this Mini
+          App build, so nothing needs to live in the top corner anymore. */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
           heroVisible ? 'bg-transparent' : 'bg-[#0A0605]/85 backdrop-blur-md'
         }`}
       >
-        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3.5 sm:px-8">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-8">
           <button
             onClick={() => {
               setActiveTab('home');
               setQuery('');
             }}
-            className="flex items-center gap-2"
+            aria-label={t.navHome}
+            className="flex h-8 w-8 items-center justify-center"
           >
             <span className="relative flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
             </span>
-            <span
-              className="text-2xl font-black italic tracking-wide text-white drop-shadow-[0_2px_10px_rgba(227,30,36,0.5)] sm:text-3xl"
-              style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif' }}
-            >
-              LIVE
-            </span>
           </button>
 
           {/* Desktop nav links */}
-          <nav className="ml-6 hidden items-center gap-5 text-sm font-medium text-white/70 md:flex">
+          <nav className="hidden items-center gap-5 text-sm font-medium text-white/70 md:flex">
             <span className="cursor-pointer text-white transition hover:text-[#E31E24]">{t.navHome}</span>
             <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navSeries}</span>
             <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navMovies}</span>
             <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navMyList}</span>
           </nav>
 
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            {/* Desktop search box */}
-            <div className="relative hidden sm:block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t.searchPlaceholder}
-                className="w-48 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-64 focus:border-[#E31E24]/50 focus:bg-white/[0.07]"
-              />
-            </div>
+          {/* Desktop search box */}
+          <div className="relative ml-auto hidden sm:block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t.searchPlaceholder}
+              className="w-48 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-64 focus:border-[#E31E24]/50 focus:bg-white/[0.07]"
+            />
+          </div>
+        </div>
+      </header>
 
+      {/* Everything below the fixed header sits in one padded flow —
+          ticker directly under it, hero right after. The ticker used to
+          be a `fixed` overlay guessing the header's pixel height, which is
+          what made it visually collide with the header controls; being
+          in-flow here means it can never land on top of them. */}
+      <div className="relative z-10 pt-[52px] sm:pt-[60px]">
+        <SupporterTicker />
+
+        {/* Coverflow hero carousel */}
+        {heroVisible && (
+          <CoverflowHero
+            shows={bannerShows}
+            index={heroIndex}
+            hero={hero}
+            onSelectShow={onSelectShow}
+            onPrev={prevSlide}
+            onNext={nextSlide}
+            onGoTo={goToSlide}
+            onTouchStart={(x) => {
+              touchStartX.current = x;
+              pauseThenResume();
+            }}
+            onTouchEnd={(x) => {
+              const dx = x - touchStartX.current;
+              if (dx < -40) nextSlide();
+              else if (dx > 40) prevSlide();
+            }}
+            t={t}
+          />
+        )}
+
+        {/* Utility bar — language, rewards, and the premium/subscribe
+            entry, all relocated down here from the old top-right header
+            corner (there's no account slot to guard anymore, so this is
+            the freed-up space the person asked for). Only shown on the
+            plain home view, not while searching or browsing a full list. */}
+        {heroVisible && !viewAll && !query.trim() && (
+          <div className="mx-auto flex max-w-[1400px] items-center justify-center gap-2.5 px-4 pb-1 pt-3 sm:px-8">
+            <div className="flex items-center rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur-md">
+              <LanguageSwitcher lang={lang} onChange={setLang} bare />
+            </div>
             {rewardsAvailable && (
               <button
                 onClick={onOpenRewards}
@@ -339,46 +386,21 @@ export default function HomeScreen({
                 <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF5D5D] ring-2 ring-[#0A0605]" aria-hidden />
               </button>
             )}
-
-            {/* Language switcher — desktop only now; on mobile it lives in
-                the bottom nav's "More" tab alongside what used to be the
-                account slot. */}
-            <div className="hidden items-center rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.25)] sm:flex">
-              <LanguageSwitcher lang={lang} onChange={setLang} bare />
-            </div>
+            <button
+              onClick={onOpenSubscription}
+              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-2 text-xs font-semibold text-[#FFC94A] backdrop-blur-md transition hover:bg-white/[0.09]"
+            >
+              <Crown className="h-3.5 w-3.5" />
+              {subscribed ? t.premium : t.subscribe}
+            </button>
           </div>
-        </div>
-      </header>
-
-      {/* Coverflow hero carousel */}
-      {heroVisible && (
-        <div className="relative z-10">
-        <CoverflowHero
-          shows={bannerShows}
-          index={heroIndex}
-          hero={hero}
-          onSelectShow={onSelectShow}
-          onPrev={prevSlide}
-          onNext={nextSlide}
-          onGoTo={goToSlide}
-          onTouchStart={(x) => {
-            touchStartX.current = x;
-            pauseThenResume();
-          }}
-          onTouchEnd={(x) => {
-            const dx = x - touchStartX.current;
-            if (dx < -40) nextSlide();
-            else if (dx > 40) prevSlide();
-          }}
-          t={t}
-        />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Content rows */}
       <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-28 sm:px-8 sm:pb-20">
         {viewAll ? (
-          <section className="pt-28">
+          <section className="pt-4">
             <div className="mb-5 flex items-center gap-3">
               <button
                 onClick={() => setViewAll(null)}
@@ -396,7 +418,7 @@ export default function HomeScreen({
             </div>
           </section>
         ) : query.trim() ? (
-          <section className="pt-28">
+          <section className="pt-4">
             <h2 className="mb-5 text-xl font-bold">
               {t.resultsFor} &ldquo;{query}&rdquo;{' '}
               <span className="text-white/40">({filteredShows.length})</span>
@@ -412,7 +434,7 @@ export default function HomeScreen({
             )}
           </section>
         ) : (
-          <div className={heroVisible ? 'pt-2' : 'pt-28'}>
+          <div className="pt-2">
             {freeShows.length > 0 && (
               <RailRow
                 icon={<Unlock className="h-5 w-5 text-[#FFC94A]" />}
@@ -458,6 +480,8 @@ export default function HomeScreen({
                   title={g.name}
                   shows={list}
                   onSelectShow={onSelectShow}
+                  onViewAll={() => setViewAll({ title: g.name, shows: list })}
+                  viewAllLabel={t.viewAll}
                 />
               );
             })}
@@ -465,8 +489,9 @@ export default function HomeScreen({
         )}
       </main>
 
-      <footer className="relative z-10 border-t border-white/5 px-4 py-8 text-center text-xs text-white/30 sm:px-8">
-        {t.footerTagline}
+      <footer className="relative z-10 flex flex-col items-center gap-2 border-t border-white/5 px-4 py-8 text-center text-xs text-white/30 sm:px-8">
+        <span>{t.footerTagline}</span>
+        <CreatorCredit />
       </footer>
 
       {/* Bottom navigation bar — mobile only */}
@@ -490,73 +515,8 @@ export default function HomeScreen({
             active={activeTab === 'watchlist'}
             onClick={onOpenWatchlist}
           />
-          <BottomTab
-            icon={<Globe className="h-5 w-5" />}
-            label={t.navMore ?? 'More'}
-            active={moreOpen}
-            onClick={() => setMoreOpen(true)}
-          />
         </div>
       </nav>
-
-      {/* "More" bottom sheet — holds what used to live in the header
-          (language switcher, subscribe/VIP entry, rewards) now that the
-          top bar is just the LIVE indicator. Slides up from the freed-up
-          account slot in the bottom nav. */}
-      {moreOpen && (
-        <div className="fixed inset-0 z-[60] md:hidden" role="dialog" aria-modal>
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMoreOpen(false)}
-          />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-white/10 bg-[#120A09] p-5 pb-8 shadow-[0_-20px_60px_rgba(0,0,0,0.6)]">
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
-            <div className="mb-5 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-white/40">
-                {t.navMore ?? 'More'}
-              </span>
-              <button
-                onClick={() => setMoreOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/60"
-                aria-label="Close"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <div className="mb-3 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-              <span className="text-sm font-medium text-white/70">{t.language ?? 'Language'}</span>
-              <LanguageSwitcher lang={lang} onChange={setLang} bare />
-            </div>
-
-            {rewardsAvailable && (
-              <button
-                onClick={() => {
-                  setMoreOpen(false);
-                  onOpenRewards();
-                }}
-                className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-[#FFC94A]/25 bg-gradient-to-r from-[#FFC94A]/15 to-[#B8862E]/5 px-4 py-3 text-left"
-              >
-                <Gift className="h-4 w-4 text-[#FFC94A]" />
-                <span className="text-sm font-semibold text-[#FFC94A]">{t.rewardsBadge}</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                setMoreOpen(false);
-                onOpenSubscription();
-              }}
-              className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left"
-            >
-              <Crown className="h-4 w-4 text-[#FFC94A]" />
-              <span className="text-sm font-medium text-white/80">
-                {subscribed ? t.premium : t.subscribe}
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Full-screen search overlay (mobile) */}
       {searchOpen && (
@@ -678,14 +638,14 @@ function CoverflowHero({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.46, 380) : 380;
+  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.4, 340) : 340;
   const parallaxOffset = Math.min(scrollY * 0.35, 120);
   const parallaxOpacity = Math.max(1 - scrollY / heroHeightPx, 0);
 
   return (
     <section
-      className="relative w-full overflow-hidden pt-[68px]"
-      style={{ height: 'min(46vh, 380px)' }}
+      className="relative w-full overflow-hidden"
+      style={{ height: 'min(40vh, 340px)' }}
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
@@ -748,8 +708,8 @@ function CoverflowHero({
           onClick={() => onSelectShow(hero)}
           className="hero-card-enter relative z-20 flex flex-col items-center"
           style={{
-            width: '38%',
-            maxWidth: 164,
+            width: '34%',
+            maxWidth: 148,
             transform: 'translateZ(0)',
           }}
         >
@@ -775,25 +735,14 @@ function CoverflowHero({
                   'linear-gradient(180deg, rgba(10,6,5,0) 42%, rgba(10,6,5,0.6) 74%, rgba(10,6,5,0.96) 100%)',
               }}
             />
-            {/* FEATURED pill + rank badge */}
+            {/* Rank badge only — dropped the separate "FEATURED" pill and
+                the free/paid ribbon so the card reads clean against the
+                artwork instead of being framed in badges. */}
             <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
-              <span
-                className="rounded-md px-2 py-[3px] text-[10px] font-bold uppercase tracking-wider text-black shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #FFC94A, #FFAA3C)' }}
-              >
-                {t.featured}
-              </span>
               <span className="flex items-center gap-1 rounded-md bg-black/50 px-2 py-[3px] text-[10px] font-bold text-white backdrop-blur-sm">
                 🔥 #{index + 1}
               </span>
             </div>
-            {/* Free-to-watch ribbon — opposite corner from Featured, only
-                when this title doesn't require a subscription */}
-            {hero.is_free && (
-              <span className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-md bg-[#FFC94A]/95 px-2 py-[3px] text-[10px] font-bold uppercase tracking-wider text-black shadow-lg backdrop-blur-sm">
-                🔓 {t.freeBadge}
-              </span>
-            )}
             {/* Title + rating + quick meta */}
             <div className="absolute inset-x-0 bottom-0 px-3 pb-3 text-center">
               <h2
@@ -812,14 +761,6 @@ function CoverflowHero({
                 </span>
               </div>
             </div>
-          </div>
-
-          {/* Play button — featured card only */}
-          <div
-            className="mt-2.5 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-black shadow-lg transition active:scale-95"
-            style={{ background: 'linear-gradient(135deg, #FFFFFF, #F1F1F1)' }}
-          >
-            <Play className="h-3.5 w-3.5 fill-black" /> {t.play}
           </div>
         </button>
 
@@ -882,26 +823,26 @@ interface SideCardProps {
 
 function SideCard({ show, offset, onClick }: SideCardProps) {
   const isNear = Math.abs(offset) === 1;
-  const translateX = offset * 80;
-  const scale = isNear ? 0.6 : 0.44;
+  const translateX = offset * 84;
+  const scale = isNear ? 0.52 : 0.38;
   const z = isNear ? 10 : 5;
   const opacity = isNear ? 0.75 : 0.28;
   // A small vertical lift that grows with distance from center — this is
   // what reads as a "wave": the deck doesn't just slide sideways, the far
   // cards sit a touch lower like a trough, near cards ride a touch higher.
-  const translateY = Math.abs(offset) * 10;
+  const translateY = Math.abs(offset) * 14;
 
   return (
     <button
       onClick={onClick}
       className="absolute z-10"
       style={{
-        width: '38%',
-        maxWidth: 164,
+        width: '32%',
+        maxWidth: 138,
         transform: `translateX(${translateX}%) translateY(${translateY}px) scale(${scale})`,
         zIndex: z,
         opacity,
-        transition: 'transform 0.42s cubic-bezier(0.34,1.15,0.4,1), opacity 0.42s ease',
+        transition: 'transform 0.34s cubic-bezier(0.34,1.15,0.4,1), opacity 0.34s ease',
         pointerEvents: 'auto',
       }}
       aria-label={show.title}

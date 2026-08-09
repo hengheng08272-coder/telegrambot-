@@ -1,12 +1,14 @@
 const MESSAGE = 'សូមអរគុណដល់សមាជិកគ្រប់រូបដែលគាំទ្រ Nint Anime 💜  ·  ';
 
-// A quiet, always-on marquee — not from the database, not dismissible,
-// just a small thank-you that keeps drifting by under the header without
-// asking for attention.
+// A quiet, always-on marquee — now rendered in normal document flow
+// (previously a `fixed` overlay guessing the header's pixel height, which
+// is what caused it to visually collide with the header controls). Sitting
+// in-flow means it always lands exactly where its parent puts it, with no
+// height assumptions to go stale.
 export default function SupporterTicker() {
   const repeated = MESSAGE.repeat(6);
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-[64px] z-30 overflow-hidden bg-black/15 py-1.5 backdrop-blur-sm sm:top-[72px]">
+    <div className="pointer-events-none relative z-10 w-full overflow-hidden bg-black/15 py-1.5 backdrop-blur-sm">
       <style>{`
         @keyframes nint-ticker-scroll {
           from { transform: translateX(0); }
