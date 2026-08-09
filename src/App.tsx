@@ -164,10 +164,10 @@ function App() {
         onOpenAdminSignIn={() => setScreen({ name: 'auth', mode: 'signin' })}
       >
         <AuthScreen
-          mode="signin"
+          mode={screen.name === 'auth' ? screen.mode : 'signin'}
           onBack={() => setScreen({ name: 'home' })}
           onSuccess={handleAdminAuthSuccess}
-          onSwitch={() => {}}
+          onSwitch={(mode) => setScreen({ name: 'auth', mode })}
           kickedOut={false}
         />
       </DesktopBlockedScreen>
