@@ -2,149 +2,9 @@ import { supabase } from '@/lib/supabase/supabaseClient';
 
 export interface Profile {
   id: string;
-  display_name: string;
-  phone: string | null;
-  avatar_url: string | null;
-  is_locked: boolean | null;
   is_admin: boolean;
-  trial_started_at: string | null;
-  subscription_expires_at: string | null;
-  active_session_id?: string | null;
-  active_session_started_at?: string | null;
-  lucky_draw_used?: boolean;
-}
-
-export function isSubscribed(profile: Profile | null): boolean {
-  if (!profile) return false;
-  if (!profile.subscription_expires_at) return false;
-  return new Date(profile.subscription_expires_at) > new Date();
-}
-
-// --- Single-device sign-in enforcement --------------------------------
-//
-// Every successful sign-in/sign-up writes a fresh random token to both
-// profiles.active_session_id (server) and localStorage (this device). If a
-// second device signs in to the same account, its write overwrites the
-// server value; the first device's realtime subscription (see
-// subscribeToSessionKick) notices the mismatch and signs itself out.
-
-const SESSION_STORAGE_KEY = 'nint_session_id';
-
-export function getLocalSessionId(): string | null {
-  try {
-    return localStorage.getItem(SESSION_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function setLocalSessionId(id: string): void {
-  try {
-    localStorage.setItem(SESSION_STORAGE_KEY, id);
-  } catch {
-    /* localStorage unavailable — single-device enforcement is skipped */
-  }
-}
-
-export function clearLocalSessionId(): void {
-  try {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
-  } catch {
-    /* no-op */
-  }
-}
-
-async function claimSession(userId: string): Promise<void> {
-  const sessionId =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  setLocalSessionId(sessionId);
-  await supabase
-    .from('profiles')
-    .update({
-      active_session_id: sessionId,
-      active_session_started_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
-}
-
-// Subscribes to realtime changes on this user's profile row. Fires
-// `onKicked()` the moment active_session_id changes to something other than
-// this device's own token — i.e. another device just signed in. Returns an
-// unsubscribe function.
-export function subscribeToSessionKick(
-  userId: string,
-  onKicked: () => void,
-): () => void {
-  const channel = supabase
-    .channel(`session-guard-${userId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'profiles',
-        filter: `id=eq.${userId}`,
-      },
-      (payload) => {
-        const newSessionId = (payload.new as { active_session_id?: string | null })
-          .active_session_id;
-        const localId = getLocalSessionId();
-        if (newSessionId && localId && newSessionId !== localId) {
-          onKicked();
-        }
-      },
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}
-
-// Subscribes to realtime changes on this user's profile row and calls
-// `onChange` with the fresh row on every UPDATE — e.g. when an admin
-// confirms a payment, the auto QR-confirm edge function unlocks the
-// account, or claim_new_member_spin() extends subscription_expires_at.
-// Lets the UI (VIP badge, lucky-draw prompt) react live without a reload.
-export function subscribeToProfileChanges(
-  userId: string,
-  onChange: (profile: Profile) => void,
-): () => void {
-  const channel = supabase
-    .channel(`profile-changes-${userId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'profiles',
-        filter: `id=eq.${userId}`,
-      },
-      (payload) => {
-        onChange(payload.new as Profile);
-      },
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}
-
-// One-shot check for cases where the realtime event was missed (e.g. tab was
-// asleep/backgrounded). Call on app resume/focus.
-export async function checkSessionStillValid(userId: string): Promise<boolean> {
-  const localId = getLocalSessionId();
-  if (!localId) return true; // nothing to compare against yet
-  const { data } = await supabase
-    .from('profiles')
-    .select('active_session_id')
-    .eq('id', userId)
-    .maybeSingle();
-  if (!data?.active_session_id) return true;
-  return data.active_session_id === localId;
+  display_name?: string | null;
+  avatar_url?: string | null;
 }
 
 // Convert a phone number into a fake email so Supabase email auth can be used
@@ -176,6 +36,10 @@ export function validatePassword(pw: string): string | null {
   return null;
 }
 
+// This is only ever used to create the admin account (desktop-only login,
+// one person) — there's no viewer signup in this build, and no single-
+// device-session enforcement, since that only matters when many people
+// might share one account.
 export async function signUp(opts: {
   name: string;
   phone: string;
@@ -193,11 +57,8 @@ export async function signUp(opts: {
   const { error: profileError } = await supabase.from('profiles').insert({
     id: user.id,
     display_name: opts.name,
-    phone: opts.phone,
-    avatar_url: null,
   });
   if (profileError) return { error: profileError.message };
-  await claimSession(user.id);
   return { error: null };
 }
 
@@ -206,17 +67,15 @@ export async function signIn(opts: {
   password: string;
 }): Promise<{ error: string | null }> {
   const email = phoneToEmail(opts.phone);
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { error } = await supabase.auth.signInWithPassword({
     email,
     password: opts.password,
   });
   if (error) return { error: error.message };
-  if (data.user) await claimSession(data.user.id);
   return { error: null };
 }
 
 export async function signOut(): Promise<void> {
-  clearLocalSessionId();
   await supabase.auth.signOut();
 }
 
@@ -229,10 +88,14 @@ export async function changePassword(
   return { error: error?.message ?? null };
 }
 
+// Only selects columns this build actually relies on (is_admin) plus a
+// couple of optional display fields — never assumes the table has columns
+// from the old app's schema (phone, session tracking, subscription, etc.),
+// since a mismatch there is a silent 400 that blocks admin login entirely.
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, display_name, phone, avatar_url, is_locked, is_admin, trial_started_at, subscription_expires_at, lucky_draw_used')
+    .select('id, is_admin')
     .eq('id', userId)
     .maybeSingle();
   if (error) return null;
