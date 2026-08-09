@@ -42,6 +42,11 @@ function App() {
   const [showSpin, setShowSpin] = useState(false);
   const isMobile = useIsMobile();
   const isAdmin = !!profile?.is_admin;
+  // Testing override: ?admin=1 forces the admin gate on regardless of screen
+  // width, so the admin sign-in screen can be reached from Bolt's mobile preview.
+  const adminOverride =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('admin') === '1';
 
   // Tell Telegram the app is ready + expand to full height. Also resolve
   // a deep link: a group message linking to https://t.me/Bot/app?startapp=show_<id>
@@ -157,7 +162,8 @@ function App() {
 
   // Desktop is admin-only. On mobile (the real Telegram Mini App surface)
   // everyone lands straight in the viewer app below — no gate, no login.
-  if (!isMobile && !isAdmin) {
+  // The adminOverride (?admin=1) forces the gate on for testing in mobile preview.
+  if ((!isMobile || adminOverride) && !isAdmin) {
     return (
       <DesktopBlockedScreen
         authOpen={screen.name === 'auth'}
