@@ -14,8 +14,6 @@ import AdminScreen from '@/components/AdminScreen';
 import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
-import SupporterTicker from '@/components/SupporterTicker';
-import CreatorCredit from '@/components/CreatorCredit';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { initTelegramApp, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
 
@@ -221,9 +219,7 @@ function App() {
   // spin — available to anyone, once per day, no payment.
   return (
     <>
-      <SupporterTicker />
       <AnnouncementBanner />
-      <CreatorCredit />
       <HomeScreen
         onSelectShow={(show) => setScreen({ name: 'detail', show })}
         onOpenProfile={() => {}}
