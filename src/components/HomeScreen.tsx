@@ -22,6 +22,7 @@ import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
+import { usePresenceCount } from '@/lib/presence';
 
 interface HomeScreenProps {
   onSelectShow: (show: Show) => void;
@@ -38,6 +39,7 @@ interface HomeScreenProps {
   setActiveTab: (tab: Tab) => void;
   searchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
+  onOpenLegal?: () => void;
 }
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
@@ -88,9 +90,11 @@ export default function HomeScreen({
   setActiveTab,
   searchOpen,
   setSearchOpen,
+  onOpenLegal,
 }: HomeScreenProps) {
   const { lang, setLang } = useLang();
   const t = appText[lang];
+  const watchingNow = usePresenceCount();
   const [bannerShows, setBannerShows] = useState<Show[]>([]);
   const [shows, setShows] = useState<ShowWithGenres[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -100,7 +104,6 @@ export default function HomeScreen({
   const [query, setQuery] = useState('');
   const [interacting, setInteracting] = useState(false);
   const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
-  const [homeTab, setHomeTab] = useState<string>('top10');
 
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -256,10 +259,10 @@ export default function HomeScreen({
         <img
           src="/assets/nint-keyart.jpg"
           alt=""
-          className="h-full w-full object-cover opacity-[0.34]"
+          className="h-full w-full object-cover opacity-[0.32]"
           style={{ objectPosition: '68% 30%', transform: 'scale(1.1)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/15 via-[#0A0605]/72 to-[#0A0605]/97" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/25 via-[#0A0605]/55 to-[#0A0605]/88" />
         {/* Logo + wordmark watermark — sealed directly into the fixed
             background layer (not the header), so it never scrolls, never
             competes with header controls, and quietly carries the brand
@@ -313,6 +316,17 @@ export default function HomeScreen({
             </span>
           </button>
 
+          {/* Live "watching now" count — a real Realtime Presence tally
+              (see src/lib/presence.ts), not a randomized/fake number. */}
+          <div className="flex items-center gap-1.5 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-2.5 py-1">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
+            </span>
+            <span className="text-xs font-bold text-white">{watchingNow.toLocaleString()}</span>
+            <span className="hidden text-xs text-white/50 sm:inline">{t.watchingNow ?? 'watching now'}</span>
+          </div>
+
           {/* Desktop nav links */}
           <nav className="hidden items-center gap-5 text-sm font-medium text-white/70 md:flex">
             <span className="cursor-pointer text-white transition hover:text-[#E31E24]">{t.navHome}</span>
@@ -364,39 +378,6 @@ export default function HomeScreen({
             t={t}
           />
         )}
-
-        {/* Utility bar — language, rewards, and the premium/subscribe
-            entry, all relocated down here from the old top-right header
-            corner (there's no account slot to guard anymore, so this is
-            the freed-up space the person asked for). Only shown on the
-            plain home view, not while searching or browsing a full list. */}
-        {heroVisible && !viewAll && !query.trim() && (
-          <div className="mx-auto flex max-w-[1400px] items-center justify-center gap-2.5 px-4 pb-1 pt-3 sm:px-8">
-            <div className="flex items-center rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur-md">
-              <LanguageSwitcher lang={lang} onChange={setLang} bare />
-            </div>
-            {rewardsAvailable && (
-              <button
-                onClick={onOpenRewards}
-                aria-label={t.rewardsBadge}
-                title={t.rewardsBadge}
-                className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#FFC94A]/30 bg-gradient-to-br from-[#FFC94A]/20 to-[#B8862E]/10 text-[#FFC94A] backdrop-blur-md transition hover:scale-105 hover:bg-[#FFC94A]/25 animate-badge-pop"
-              >
-                <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
-                <Gift className="h-4 w-4" />
-                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF5D5D] ring-2 ring-[#0A0605]" aria-hidden />
-              </button>
-            )}
-            <button
-              onClick={onOpenSubscription}
-              className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-black shadow-[0_4px_18px_rgba(255,201,74,0.35)] transition active:scale-95"
-              style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
-            >
-              <Crown className="h-3.5 w-3.5" />
-              {subscribed ? t.premium : t.subscribe}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Content — default browse state is a single-screen layout (Top 10
@@ -441,110 +422,89 @@ export default function HomeScreen({
             )}
           </section>
         ) : (
-          (() => {
-            const RECENT_MS = 3 * 24 * 60 * 60 * 1000; // shows added in the last 3 days count as "new"
-            const isRecent = (s: Show) =>
-              !!s.created_at && Date.now() - new Date(s.created_at).getTime() < RECENT_MS;
+          <div className="pt-3">
+            <RailRow
+              title="Top 10"
+              icon={<TrendingUp className="h-5 w-5 text-[#E31E24]" />}
+              shows={trending}
+              onSelectShow={onSelectShow}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? 'Top 10', shows })}
+              viewAllLabel={t.viewAll}
+              ranked
+            />
+            <RailRow
+              icon={<Sparkles className="h-5 w-5 text-[#E31E24]" />}
+              title={t.newRelease}
+              shows={newReleases}
+              onSelectShow={onSelectShow}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
+              viewAllLabel={t.viewAll}
+            />
+            <RailRow
+              icon={<Flame className="h-5 w-5 text-[#FFC94A]" />}
+              title={t.popularSeason}
+              shows={shows.slice(0, 10)}
+              onSelectShow={onSelectShow}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.popularSeason, shows })}
+              viewAllLabel={t.viewAll}
+            />
 
-            const tabs = [
-              { key: 'top10', label: 'Top 10', icon: <TrendingUp className="h-4 w-4" />, shows: trending, ranked: true },
-              { key: 'newRelease', label: t.newRelease, icon: <Sparkles className="h-4 w-4" />, shows: newReleases, ranked: false },
-              { key: 'popular', label: t.popularSeason, icon: <Flame className="h-4 w-4" />, shows: shows.slice(0, 10), ranked: false },
-              ...genres
-                .map((g) => ({
-                  key: g.slug,
-                  label: g.name,
-                  icon: <span className="text-sm leading-none">{genreEmoji(g.slug)}</span>,
-                  shows: showsByGenre(g.slug),
-                  ranked: false,
-                }))
-                .filter((tab) => tab.shows.length > 0),
-            ];
-            const active = tabs.find((tab) => tab.key === homeTab) ?? tabs[0];
+            {genres.map((g) => {
+              const list = showsByGenre(g.slug);
+              if (list.length === 0) return null;
+              return (
+                <RailRow
+                  key={g.id}
+                  emoji={genreEmoji(g.slug)}
+                  title={g.name}
+                  shows={list}
+                  onSelectShow={onSelectShow}
+                  onViewAll={() => setViewAll({ title: t.allShowsTitle ?? g.name, shows })}
+                  viewAllLabel={t.viewAll}
+                />
+              );
+            })}
 
-            return (
-              <div className="pt-3">
-                {/* Tab switcher — one row visible at a time, everything
-                    else is a tap away instead of stacked underneath. A
-                    small pulsing dot marks any tab holding a recently
-                    added show, so switching tabs doesn't feel like a
-                    guess — there's a visible reason to check it. */}
-                <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1">
-                  {tabs.map((tab) => {
-                    const hasNew = tab.key !== 'top10' && tab.shows.some(isRecent);
-                    return (
-                      <button
-                        key={tab.key}
-                        onClick={() => setHomeTab(tab.key)}
-                        className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
-                          active.key === tab.key
-                            ? 'text-black shadow-[0_4px_14px_rgba(255,201,74,0.3)]'
-                            : 'border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]'
-                        }`}
-                        style={
-                          active.key === tab.key
-                            ? { background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }
-                            : undefined
-                        }
-                      >
-                        {tab.icon} {tab.label}
-                        {hasNew && (
-                          <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5" aria-hidden>
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
-                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E31E24] ring-2 ring-[#0A0605]" />
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* The one active row. "Top 10" additionally gets a small
-                    LIVE pulse — the hero above already auto-slides, this
-                    just names the connection explicitly. */}
-                <section>
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-bold tracking-tight">{active.label}</h2>
-                      {active.key === 'top10' && (
-                        <span className="flex items-center gap-1 rounded-full bg-[#E31E24]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#E31E24]">
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
-                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
-                          </span>
-                          LIVE
-                        </span>
-                      )}
-                      <span className="rounded-full border border-[#FFC94A]/15 bg-[#FFC94A]/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-[#FFC94A]/60">
-                        {active.shows.length}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setViewAll({ title: t.allShowsTitle ?? active.label, shows })}
-                      className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
-                    >
-                      {t.viewAll}
-                    </button>
-                  </div>
-                  <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2">
-                    {active.shows.map((s, i) => (
-                      <ShowCard
-                        key={s.id}
-                        show={s}
-                        onClick={onSelectShow}
-                        rank={active.ranked ? i + 1 : undefined}
-                      />
-                    ))}
-                  </div>
-                </section>
+            {/* Utility bar — language, rewards, and the premium/subscribe
+                entry, pushed all the way down to the bottom of the browse
+                content per the person's request, instead of living right
+                under the hero. */}
+            <div className="mx-auto mt-10 flex max-w-[1400px] items-center justify-center gap-2.5 pb-1 pt-3">
+              <div className="flex items-center rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur-md">
+                <LanguageSwitcher lang={lang} onChange={setLang} bare />
               </div>
-            );
-          })()
+              {rewardsAvailable && (
+                <button
+                  onClick={onOpenRewards}
+                  aria-label={t.rewardsBadge}
+                  title={t.rewardsBadge}
+                  className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#FFC94A]/30 bg-gradient-to-br from-[#FFC94A]/20 to-[#B8862E]/10 text-[#FFC94A] backdrop-blur-md transition hover:scale-105 hover:bg-[#FFC94A]/25 animate-badge-pop"
+                >
+                  <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
+                  <Gift className="h-4 w-4" />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF5D5D] ring-2 ring-[#0A0605]" aria-hidden />
+                </button>
+              )}
+              <button
+                onClick={onOpenSubscription}
+                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-black shadow-[0_4px_18px_rgba(255,201,74,0.35)] transition active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+              >
+                <Crown className="h-3.5 w-3.5" />
+                {subscribed ? t.premium : t.subscribe}
+              </button>
+            </div>
+          </div>
         )}
       </main>
 
       <footer className="relative z-10 flex flex-col items-center gap-2 border-t border-white/5 px-4 py-8 text-center text-xs text-white/30 sm:px-8">
         <span>{t.footerTagline}</span>
+        {onOpenLegal && (
+          <button onClick={onOpenLegal} className="underline decoration-white/20 underline-offset-2 transition hover:text-white/60">
+            {t.legalLink ?? 'Terms & Privacy'}
+          </button>
+        )}
         <CreatorCredit />
       </footer>
 
@@ -1010,5 +970,58 @@ function BottomTab({ icon, label, active, onClick }: BottomTabProps) {
       {icon}
       <span className="text-[10px] font-medium">{label}</span>
     </button>
+  );
+}
+
+/* ---------- Content rail row ---------- */
+
+interface RailRowProps {
+  title: string;
+  icon?: React.ReactNode;
+  /** Optional decorative emoji shown instead of a lucide icon — used for
+   *  genre rows so each one reads with a bit of its own personality. */
+  emoji?: string;
+  shows: Show[];
+  onSelectShow: (s: Show) => void;
+  onViewAll?: () => void;
+  viewAllLabel?: string;
+  /** When true, stamps each card with its 1-based position as a big
+   *  stroked numeral — the "Top 10" treatment. */
+  ranked?: boolean;
+}
+
+function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLabel, ranked }: RailRowProps) {
+  const scrollerRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) node.scrollLeft = 0;
+  }, []);
+
+  return (
+    <section className="mt-9">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
+          <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+          <span className="rounded-full border border-[#FFC94A]/15 bg-[#FFC94A]/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-[#FFC94A]/60">
+            {shows.length}
+          </span>
+        </div>
+        {onViewAll && (
+          <button
+            onClick={onViewAll}
+            className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
+          >
+            {viewAllLabel}
+          </button>
+        )}
+      </div>
+      <div
+        ref={scrollerRef}
+        className={`no-scrollbar flex gap-3 overflow-x-auto pb-2 ${ranked ? 'pt-1' : ''}`}
+      >
+        {shows.map((s, i) => (
+          <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
+        ))}
+      </div>
+    </section>
   );
 }

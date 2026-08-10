@@ -4,22 +4,25 @@ import {
   Play,
   Star,
   Eye,
-  Plus,
   Calendar,
   Building2,
   Clock,
   ChevronRight,
   Lock,
+  UserPlus,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Episode } from '@/lib/types';
-import { fetchShowById, fetchEpisodesByShow } from '@/lib/api';
+import { fetchShowById, fetchEpisodesByShow, fetchAllShows } from '@/lib/api';
+import ShowCard from '@/components/ShowCard';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
+import { inviteFriend } from '@/lib/telegram';
 
 interface ShowDetailScreenProps {
   show: Show;
   onBack: () => void;
   onPlayEpisode: (episode: Episode, show: ShowWithGenres) => void;
+  onSelectShow?: (show: Show) => void;
   subscribed: boolean;
 }
 
@@ -27,14 +30,25 @@ export default function ShowDetailScreen({
   show,
   onBack,
   onPlayEpisode,
+  onSelectShow,
   subscribed,
 }: ShowDetailScreenProps) {
   const { lang } = useLang();
   const t = appText[lang];
   const [detail, setDetail] = useState<ShowWithGenres | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [related, setRelated] = useState<ShowWithGenres[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [inviteState, setInviteState] = useState<'idle' | 'sent'>('idle');
+
+  const handleInvite = async () => {
+    const result = await inviteFriend();
+    if (result === 'shared' || result === 'copied') {
+      setInviteState('sent');
+      window.setTimeout(() => setInviteState('idle'), 2000);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -58,6 +72,25 @@ export default function ShowDetailScreen({
       active = false;
     };
   }, [show.id]);
+
+  // "You might also like" — anything sharing at least one genre with this
+  // show, current one excluded. Reuses the same fetchAllShows() the home
+  // screen already calls, so there's no new API surface to maintain.
+  useEffect(() => {
+    if (!detail?.genres?.length) return;
+    let active = true;
+    const genreIds = new Set(detail.genres.map((g) => g.id));
+    fetchAllShows().then((all) => {
+      if (!active) return;
+      const matches = all
+        .filter((s) => s.id !== show.id && s.genres?.some((g) => genreIds.has(g.id)))
+        .slice(0, 12);
+      setRelated(matches);
+    });
+    return () => {
+      active = false;
+    };
+  }, [detail?.genres, show.id]);
 
   const fmtDuration = (mins: number | null) =>
     mins ? `${Math.floor(mins / 60) > 0 ? Math.floor(mins / 60) + 'h ' : ''}${mins % 60}m` : '';
@@ -162,14 +195,9 @@ export default function ShowDetailScreen({
               </div>
             )}
 
-            {/* Synopsis */}
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/70">
-              {show.synopsis}
-            </p>
-
             {/* Studio */}
             {show.studio && (
-              <p className="mt-4 flex items-center gap-2 text-sm text-white/50">
+              <p className="mt-5 flex items-center gap-2 text-sm text-white/50">
                 <Building2 className="h-4 w-4" /> {t.studio} {show.studio}
               </p>
             )}
@@ -185,8 +213,13 @@ export default function ShowDetailScreen({
                 <Play className="h-5 w-5 fill-white" />
                 {show.type === 'movie' ? t.playMovie : t.playFirstEpisode}
               </button>
-              <button className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20">
-                <Plus className="h-5 w-5" /> {t.myList}
+              <button
+                onClick={handleInvite}
+                className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/10 active:scale-95"
+                aria-label={t.inviteFriend ?? 'Invite a friend'}
+              >
+                <UserPlus className="h-4 w-4" />
+                {inviteState === 'sent' ? t.linkCopied ?? 'Sent!' : t.inviteFriend ?? 'Invite a friend'}
               </button>
             </div>
           </div>
@@ -289,6 +322,18 @@ export default function ShowDetailScreen({
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* You might also like — same genre pool, current show excluded */}
+        {related.length > 0 && (
+          <div className="mt-12">
+            <h2 className="mb-4 text-xl font-bold">{t.relatedShows ?? 'You might also like'}</h2>
+            <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2">
+              {related.map((s) => (
+                <ShowCard key={s.id} show={s} onClick={(sel) => onSelectShow?.(sel)} />
+              ))}
+            </div>
           </div>
         )}
       </div>

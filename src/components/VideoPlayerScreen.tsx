@@ -10,18 +10,32 @@ import {
   SkipBack,
   SkipForward,
   Loader2,
+  RotateCcw,
+  RotateCw,
+  ChevronRight,
+  X,
+  ListVideo,
+  Check,
 } from 'lucide-react';
 import type { Episode, ShowWithGenres } from '@/lib/types';
+import { fetchEpisodesByShow } from '@/lib/api';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
-import { getCurrentTelegramUser } from '@/lib/telegram';
+import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase/supabaseClient';
 
 interface VideoPlayerScreenProps {
   episode: Episode;
   show: ShowWithGenres;
   onBack: () => void;
+  /** Lets the player switch to another episode of the same show without
+   *  leaving fullscreen/the player screen — powers both the manual "Next
+   *  Episode" button and end-of-episode auto-advance. Next/prev controls
+   *  simply don't render when this isn't provided. */
+  onSwitchEpisode?: (episode: Episode) => void;
 }
+
+const RESUME_KEY = (episodeId: string) => `nint_resume_${episodeId}`;
 
 function fmtTime(sec: number) {
   if (!isFinite(sec) || sec < 0) return '0:00';
@@ -38,6 +52,7 @@ export default function VideoPlayerScreen({
   episode,
   show,
   onBack,
+  onSwitchEpisode,
 }: VideoPlayerScreenProps) {
   const { lang } = useLang();
   const t = appText[lang];
@@ -45,6 +60,10 @@ export default function VideoPlayerScreen({
   const containerRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<number | null>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const lastSaveRef = useRef(0);
+  const tapRef = useRef<{ time: number; side: 'left' | 'right' | null }>({ time: 0, side: null });
+  const tapTimeoutRef = useRef<number | null>(null);
+  const autoAdvanceTimer = useRef<number | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -56,6 +75,40 @@ export default function VideoPlayerScreen({
   const [accessError, setAccessError] = useState('');
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [resolving, setResolving] = useState(true);
+  const [seekFlash, setSeekFlash] = useState<{ side: 'left' | 'right'; key: number } | null>(null);
+  const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
+  const [autoAdvanceIn, setAutoAdvanceIn] = useState<number | null>(null);
+  const [episodeListOpen, setEpisodeListOpen] = useState(false);
+
+  const currentIdx = allEpisodes.findIndex((e) => e.id === episode.id);
+  const nextEpisode = currentIdx >= 0 && currentIdx < allEpisodes.length - 1 ? allEpisodes[currentIdx + 1] : null;
+
+  // If the viewer entered Telegram's Mini-App-level fullscreen from the
+  // toggle button, leaving this screen shouldn't leave the whole app
+  // stuck expanded over Telegram's header — collapse it back on unmount.
+  useEffect(() => {
+    return () => {
+      exitTelegramFullscreen();
+    };
+  }, []);
+
+  // The full episode list, sorted — powers both "next episode" and the
+  // in-player episode-switcher panel. Fetched once per show, not per
+  // episode, so skipping around doesn't re-fetch on every switch.
+  useEffect(() => {
+    if (!onSwitchEpisode || show.type === 'movie') return;
+    let cancelled = false;
+    fetchEpisodesByShow(show.id).then((eps) => {
+      if (cancelled) return;
+      const sorted = [...eps].sort((a, b) =>
+        a.season !== b.season ? a.season - b.season : a.episode_number - b.episode_number
+      );
+      setAllEpisodes(sorted);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [show.id, show.type, onSwitchEpisode]);
 
   // No viewer session and no subscription check in this build — the
   // `videos` storage bucket is public, so we just play episode.video_url
@@ -163,11 +216,79 @@ export default function VideoPlayerScreen({
     v.currentTime = Math.min(Math.max(v.currentTime + delta, 0), v.duration || 0);
   };
 
+  const handleZoneTap = (side: 'left' | 'right') => {
+    const now = Date.now();
+    const isDouble = now - tapRef.current.time < 300 && tapRef.current.side === side;
+    tapRef.current = { time: now, side };
+
+    if (isDouble) {
+      if (tapTimeoutRef.current) {
+        window.clearTimeout(tapTimeoutRef.current);
+        tapTimeoutRef.current = null;
+      }
+      skip(side === 'left' ? -10 : 10);
+      setSeekFlash({ side, key: now });
+      window.setTimeout(() => setSeekFlash((f) => (f?.key === now ? null : f)), 550);
+    } else {
+      // Wait to see if a second tap follows before treating this as a
+      // plain single tap — otherwise every double-tap would also toggle
+      // play/pause on its first half.
+      tapTimeoutRef.current = window.setTimeout(() => {
+        togglePlay();
+        revealControls();
+      }, 260);
+    }
+  };
+
+  // Auto-advance countdown after an episode ends — ticks down once a
+  // second and switches when it hits zero, unless the viewer cancels.
+  useEffect(() => {
+    if (autoAdvanceIn === null) return;
+    if (autoAdvanceIn <= 0) {
+      if (nextEpisode && onSwitchEpisode) onSwitchEpisode(nextEpisode);
+      return;
+    }
+    autoAdvanceTimer.current = window.setTimeout(() => setAutoAdvanceIn((n) => (n ?? 1) - 1), 1000);
+    return () => {
+      if (autoAdvanceTimer.current) window.clearTimeout(autoAdvanceTimer.current);
+    };
+  }, [autoAdvanceIn, nextEpisode, onSwitchEpisode]);
+
+  // Three layers, tried in order, because "fullscreen" means something
+  // different depending on where this is actually running:
+  //   1. Inside Telegram — the browser's own Fullscreen API is blocked by
+  //      Telegram's WebView entirely, no matter what we call. The only
+  //      thing that actually works there is Telegram's own Mini-App-level
+  //      fullscreen (requestFullscreen on window.Telegram.WebApp, Bot API
+  //      8.0+), which expands the whole app over Telegram's header.
+  //   2. A normal browser, standard Fullscreen API on the container
+  //      (Android Chrome, desktop) — works for our custom controls overlay.
+  //   3. iOS Safari — historically doesn't support (2) for non-<video>
+  //      elements, only the video tag's own WebKit-specific method.
   const toggleFullscreen = () => {
+    if (isInTelegram()) {
+      if (isTelegramFullscreen()) exitTelegramFullscreen();
+      else enterTelegramFullscreen();
+      return;
+    }
+
     const el = containerRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) document.exitFullscreen();
-    else el.requestFullscreen?.();
+    const v = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+      return;
+    }
+
+    if (el?.requestFullscreen) {
+      el.requestFullscreen().catch(() => {
+        // Standard API rejected (common on iOS) — fall back to the
+        // video's own native fullscreen if this WebKit-only method exists.
+        v?.webkitEnterFullscreen?.();
+      });
+    } else if (v?.webkitEnterFullscreen) {
+      v.webkitEnterFullscreen();
+    }
   };
 
   const revealControls = () => {
@@ -202,17 +323,81 @@ export default function VideoPlayerScreen({
           controlsList="nodownload noremoteplayback noplaybackrate"
           disablePictureInPicture
           disableRemotePlayback
-          onClick={togglePlay}
           onContextMenu={(e) => e.preventDefault()}
           onDragStart={(e) => e.preventDefault()}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
-          onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
-          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+          onTimeUpdate={(e) => {
+            const time = e.currentTarget.currentTime;
+            setCurrent(time);
+            // Save resume position at most once a second — cheap enough
+            // that this never needs to be throttled harder than that.
+            const now = Date.now();
+            if (now - lastSaveRef.current > 1000 && e.currentTarget.duration > 0) {
+              lastSaveRef.current = now;
+              // Don't bother remembering a position in the last few
+              // seconds — that's "finished", not "resume from here".
+              if (time > 5 && time < e.currentTarget.duration - 8) {
+                localStorage.setItem(RESUME_KEY(episode.id), String(time));
+              } else {
+                localStorage.removeItem(RESUME_KEY(episode.id));
+              }
+            }
+          }}
+          onLoadedMetadata={(e) => {
+            setDuration(e.currentTarget.duration);
+            const saved = localStorage.getItem(RESUME_KEY(episode.id));
+            const savedTime = saved ? Number(saved) : 0;
+            if (savedTime > 5 && savedTime < e.currentTarget.duration - 8) {
+              e.currentTarget.currentTime = savedTime;
+            }
+          }}
           onWaiting={() => setBuffering(true)}
           onPlaying={() => setBuffering(false)}
           onError={() => setLoadError(true)}
+          onEnded={() => {
+            localStorage.removeItem(RESUME_KEY(episode.id));
+            if (nextEpisode && onSwitchEpisode) {
+              setAutoAdvanceIn(5);
+            }
+          }}
         />
+
+        {/* Double-tap left/right to skip ±10s, single tap to toggle play —
+            plain onClick can't tell those apart on mobile, so this tracks
+            tap timing/side by hand. Sits above the video but below the
+            paused-state center button and the top/bottom control bars. */}
+        {!resolving && !accessError && !loadError && (
+          <div className="absolute inset-0 z-[5] flex">
+            <div
+              className="h-full w-1/2"
+              onClick={() => handleZoneTap('left')}
+              aria-hidden
+            />
+            <div
+              className="h-full w-1/2"
+              onClick={() => handleZoneTap('right')}
+              aria-hidden
+            />
+          </div>
+        )}
+
+        {/* Brief ±10s flash on double-tap */}
+        {seekFlash && (
+          <div
+            key={seekFlash.key}
+            className={`pointer-events-none absolute top-1/2 z-[6] flex -translate-y-1/2 items-center gap-1 rounded-full bg-black/50 px-4 py-3 text-white seek-flash-pop ${
+              seekFlash.side === 'left' ? 'left-[12%]' : 'right-[12%]'
+            }`}
+          >
+            {seekFlash.side === 'left' ? (
+              <RotateCcw className="h-6 w-6" />
+            ) : (
+              <RotateCw className="h-6 w-6" />
+            )}
+            <span className="text-xs font-bold">10s</span>
+          </div>
+        )}
 
         {/* Resolving playback URL */}
         {resolving && (
@@ -364,6 +549,24 @@ export default function VideoPlayerScreen({
               {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
             </button>
             <div className="ml-auto flex items-center gap-4">
+              {allEpisodes.length > 0 && onSwitchEpisode && (
+                <button
+                  onClick={() => setEpisodeListOpen(true)}
+                  className="text-white/80 transition hover:text-[#E31E24]"
+                  aria-label="Episode list"
+                >
+                  <ListVideo className="h-5 w-5" />
+                </button>
+              )}
+              {nextEpisode && onSwitchEpisode && (
+                <button
+                  onClick={() => onSwitchEpisode(nextEpisode)}
+                  className="flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20"
+                  aria-label="Next episode"
+                >
+                  {t.episodeLabel} {nextEpisode.episode_number} <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              )}
               <button
                 onClick={toggleFullscreen}
                 className="text-white/80 transition hover:text-[#E31E24]"
@@ -374,6 +577,91 @@ export default function VideoPlayerScreen({
             </div>
           </div>
         </div>
+
+        {/* End-of-episode auto-advance prompt */}
+        {autoAdvanceIn !== null && nextEpisode && (
+          <div className="absolute bottom-24 right-4 z-20 flex w-64 items-center gap-3 rounded-2xl border border-white/10 bg-[#170D0C]/95 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.6)] backdrop-blur-md sm:right-6">
+            <img
+              src={nextEpisode.thumbnail_url ?? show.poster_url ?? ''}
+              alt=""
+              className="h-14 w-14 shrink-0 rounded-lg object-cover"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-white">
+                {t.episodeLabel} {nextEpisode.episode_number}: {nextEpisode.title}
+              </p>
+              <p className="text-[11px] text-white/50">
+                {t.upNext} · {autoAdvanceIn}s
+              </p>
+            </div>
+            <button
+              onClick={() => setAutoAdvanceIn(null)}
+              className="shrink-0 rounded-full bg-white/10 p-1.5 text-white/60 transition hover:bg-white/20"
+              aria-label="Cancel"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* In-player episode switcher — a bottom sheet so viewers never
+            have to leave the player (and lose their place) just to pick a
+            different episode. Reuses the same episode list fetched for
+            "next episode". */}
+        {episodeListOpen && (
+          <div className="absolute inset-0 z-30 flex flex-col justify-end" onClick={() => setEpisodeListOpen(false)}>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-h-[70%] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#120A09] p-4 pb-6"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white">{show.title}</h3>
+                <button
+                  onClick={() => setEpisodeListOpen(false)}
+                  className="rounded-full bg-white/10 p-1.5 text-white/60 transition hover:bg-white/20"
+                  aria-label="Close"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {allEpisodes.map((ep) => {
+                  const isCurrent = ep.id === episode.id;
+                  return (
+                    <button
+                      key={ep.id}
+                      onClick={() => {
+                        setEpisodeListOpen(false);
+                        if (!isCurrent) onSwitchEpisode?.(ep);
+                      }}
+                      className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition ${
+                        isCurrent
+                          ? 'border-[#E31E24]/40 bg-[#E31E24]/10'
+                          : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]'
+                      }`}
+                    >
+                      <img
+                        src={ep.thumbnail_url ?? show.poster_url ?? ''}
+                        alt=""
+                        className="h-12 w-20 shrink-0 rounded-lg object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-white">
+                          {t.episodeLabel} {ep.episode_number}: {ep.title}
+                        </p>
+                        {ep.duration && (
+                          <p className="text-[10px] text-white/40">{ep.duration} min</p>
+                        )}
+                      </div>
+                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#E31E24]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

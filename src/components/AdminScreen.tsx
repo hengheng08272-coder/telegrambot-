@@ -26,6 +26,7 @@ import AnnouncementsPanel from '@/components/AnnouncementsPanel';
 import BanLogPanel from '@/components/BanLogPanel';
 import WatchLogPanel from '@/components/WatchLogPanel';
 import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
+import { usePresenceCount } from '@/lib/presence';
 
 interface AdminScreenProps {
   onBack: () => void;
@@ -35,8 +36,58 @@ interface ShowWithEpisodes extends Show {
   episodes: Episode[];
 }
 
+// Reads a remote video's real length so admins never have to type it in
+// by hand or copy it off some other player. Resolves null (rather than
+// rejecting) on any failure — a metadata read that doesn't work just
+// means the duration field stays manual for that one video, not a
+// blocking error for the whole "add episode" flow.
+function detectDurationMinutes(url: string): Promise<number | null> {
+  return new Promise((resolve) => {
+    if (!url.trim()) {
+      resolve(null);
+      return;
+    }
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const cleanup = () => {
+      video.src = '';
+      video.remove();
+    };
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, 8000);
+    video.onloadedmetadata = () => {
+      window.clearTimeout(timeout);
+      const mins = Math.round(video.duration / 60);
+      cleanup();
+      resolve(mins > 0 && isFinite(mins) ? mins : null);
+    };
+    video.onerror = () => {
+      window.clearTimeout(timeout);
+      cleanup();
+      resolve(null);
+    };
+    video.src = url.trim();
+  });
+}
+
 export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [shows, setShows] = useState<ShowWithEpisodes[]>([]);
+  const watchingNow = usePresenceCount();
+  const [watchesToday, setWatchesToday] = useState<number | null>(null);
+
+  // Quick overview numbers for the owner — pulled once on mount, not
+  // meant to be a live dashboard, just a glance at how the app is doing.
+  useEffect(() => {
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    supabase
+      .from('watch_log')
+      .select('id', { count: 'exact', head: true })
+      .gte('started_at', since.toISOString())
+      .then(({ count }) => setWatchesToday(count ?? 0));
+  }, []);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const [banLogOpen, setBanLogOpen] = useState(false);
   const [watchLogOpen, setWatchLogOpen] = useState(false);
@@ -207,9 +258,17 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setSavingUrlFor(episodeId);
     setError('');
 
+    // Same auto-detect as adding a new episode — re-pasting/replacing a
+    // link re-reads the duration too, so it never goes stale against
+    // whatever file is actually live at that URL now.
+    const durationMinutes = await detectDurationMinutes(url);
+
     const { error: updateErr } = await supabase
       .from('episodes')
-      .update({ video_url: url })
+      .update({
+        video_url: url,
+        ...(durationMinutes ? { duration: durationMinutes } : {}),
+      })
       .eq('id', episodeId);
 
     if (updateErr) {
@@ -258,13 +317,22 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setBusy(true);
     setError('');
     const epNumber = movieTitle ? 1 : parseInt(newEp.episode_number) || 1;
+
+    // If the admin didn't type a duration, read it straight off the video
+    // file itself rather than leaving it blank or making them go copy it
+    // from somewhere else.
+    let durationMinutes = newEp.duration ? parseInt(newEp.duration) : null;
+    if (!durationMinutes && newEp.video_url.trim()) {
+      durationMinutes = await detectDurationMinutes(newEp.video_url);
+    }
+
     const { error } = await supabase.from('episodes').insert({
       show_id: showId,
       episode_number: epNumber,
       season: movieTitle ? 1 : parseInt(newEp.season) || 1,
       title: movieTitle || newEp.title.trim() || `Episode ${epNumber}`,
       description: newEp.description.trim() || null,
-      duration: newEp.duration ? parseInt(newEp.duration) : null,
+      duration: durationMinutes,
       video_url: newEp.video_url.trim() || null,
     });
     setBusy(false);
@@ -483,6 +551,24 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           </div>
         </div>
       </header>
+
+      {/* Quick overview — a glance at how the app is doing, not a full
+          analytics dashboard. Total shows/episodes come from data already
+          loaded for the list below; watching-now reuses the same
+          Realtime Presence count shown on the public home screen. */}
+      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-3 px-4 pt-4 sm:grid-cols-4 sm:px-8">
+        {[
+          { label: 'Shows', value: shows.length },
+          { label: 'Episodes', value: shows.reduce((sum, s) => sum + s.episodes.length, 0) },
+          { label: 'Watching now', value: watchingNow },
+          { label: "Watched today", value: watchesToday ?? '—' },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <p className="text-2xl font-black text-white">{stat.value}</p>
+            <p className="text-xs text-white/40">{stat.label}</p>
+          </div>
+        ))}
+      </div>
 
       {error && (
         <div className="mx-auto max-w-[1200px] px-4 pt-4 sm:px-8">
@@ -721,7 +807,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                 </div>
                                 <div>
                                   <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                    Duration (min)
+                                    Duration (min) — auto
                                   </label>
                                   <input
                                     type="number"
@@ -729,8 +815,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                     onChange={(e) =>
                                       setNewEp({ ...newEp, duration: e.target.value })
                                     }
-                                    placeholder="24"
-                                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
+                                    placeholder="Leave blank — read from video"
+                                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none placeholder:text-[11px]"
                                   />
                                 </div>
                               </div>
@@ -738,7 +824,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                               {show.type === 'movie' && (
                                 <div>
                                   <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                    Duration (min)
+                                    Duration (min) — auto
                                   </label>
                                   <input
                                     type="number"
@@ -746,8 +832,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                     onChange={(e) =>
                                       setNewEp({ ...newEp, duration: e.target.value })
                                     }
-                                    placeholder="120"
-                                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
+                                    placeholder="Leave blank — read from video"
+                                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none placeholder:text-[11px]"
                                   />
                                 </div>
                               )}

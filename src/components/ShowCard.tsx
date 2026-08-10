@@ -38,19 +38,19 @@ export default function ShowCard({ show, onClick, rank }: ShowCardProps) {
   return (
     <button
       onClick={() => onClick(show)}
-      className={`group relative w-[124px] shrink-0 text-left sm:w-[150px] ${rank ? 'pl-5 sm:pl-7' : ''}`}
+      className={`group relative w-[124px] shrink-0 text-left sm:w-[150px] ${rank ? 'pl-6 sm:pl-9' : ''}`}
     >
       {rank && (
         <span
           aria-hidden
-          className="pointer-events-none absolute -left-1 bottom-1 z-0 select-none text-transparent sm:-left-2"
+          className="pointer-events-none absolute -left-2 bottom-0 z-0 select-none text-transparent sm:-left-3"
           style={{
-            fontSize: 'clamp(52px, 16vw, 84px)',
+            fontSize: 'clamp(68px, 20vw, 112px)',
             fontWeight: 900,
             lineHeight: 1,
-            WebkitTextStroke: '2px rgba(255,201,74,0.85)',
+            WebkitTextStroke: '2.5px rgba(255,201,74,0.95)',
             fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
-            filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.85))',
+            filter: 'drop-shadow(0 8px 18px rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(255,201,74,0.25))',
           }}
         >
           {rank}
