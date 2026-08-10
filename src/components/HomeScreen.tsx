@@ -8,8 +8,6 @@ import {
   TrendingUp,
   User,
   Crown,
-  Home as HomeIcon,
-  Bookmark,
   Sparkles,
   Gift,
   X,
@@ -289,33 +287,35 @@ export default function HomeScreen({
         aria-hidden
       />
 
-      {/* Header v3 — the wordmark now lives sealed into the fixed
-          background layer, not up here, so the bar itself only needs to
-          hold navigation: a small tap-to-home brand dot, desktop nav
-          links, and search. Rewards / language / subscribe have all moved
-          down into the UtilityBar just under the hero, freeing this strip
-          up entirely — there's no account system to guard in this Mini
-          App build, so nothing needs to live in the top corner anymore. */}
+      {/* Header v4 — one responsive top nav bar for every screen size, per
+          request: no more separate desktop-only nav row vs. a mobile-only
+          bottom tab bar. Home / Series / Movies stay a browse filter right
+          here (Series & Movies reuse the same "View All" grid the rail
+          rows already use); My List actually leaves this screen, so it's
+          styled the same but never shows an active state. Search is an
+          inline expanding box from `sm:` up and a plain icon button that
+          opens the full-screen search overlay below that. */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
           heroVisible ? 'bg-transparent' : 'bg-[#0A0605]/85 backdrop-blur-md'
         }`}
       >
-        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-8">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
           <button
             onClick={() => {
               setActiveTab('home');
               setQuery('');
+              setViewAll(null);
             }}
             aria-label={t.navHome}
-            className="flex h-8 w-8 items-center justify-center"
+            className="flex h-8 w-8 shrink-0 items-center justify-center"
           >
             <span className="h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
           </button>
 
           {/* Live "watching now" count — a real Realtime Presence tally
               (see src/lib/presence.ts), not a randomized/fake number. */}
-          <div className="flex items-center gap-1.5 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-2.5 py-1">
+          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-2 py-1 sm:px-2.5">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
@@ -324,16 +324,48 @@ export default function HomeScreen({
             <span className="hidden text-xs text-white/50 sm:inline">{t.watchingNow ?? 'watching now'}</span>
           </div>
 
-          {/* Desktop nav links */}
-          <nav className="hidden items-center gap-5 text-sm font-medium text-white/70 md:flex">
-            <span className="cursor-pointer text-white transition hover:text-[#E31E24]">{t.navHome}</span>
-            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navSeries}</span>
-            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navMovies}</span>
-            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navMyList}</span>
+          {/* Nav links — scrolls horizontally instead of wrapping/breaking
+              on the narrowest phones, but fits on one line on anything
+              typical. */}
+          <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-4 overflow-x-auto sm:gap-5">
+            <NavLink
+              label={t.navHome}
+              active={!viewAll && !query.trim()}
+              onClick={() => {
+                setActiveTab('home');
+                setQuery('');
+                setViewAll(null);
+              }}
+            />
+            <NavLink
+              label={t.navSeries}
+              active={viewAll?.title === t.navSeries}
+              onClick={() => {
+                setQuery('');
+                setViewAll({ title: t.navSeries, shows: shows.filter((s) => s.type === 'series') });
+              }}
+            />
+            <NavLink
+              label={t.navMovies}
+              active={viewAll?.title === t.navMovies}
+              onClick={() => {
+                setQuery('');
+                setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie') });
+              }}
+            />
+            <NavLink label={t.navMyList} active={false} onClick={onOpenWatchlist} />
           </nav>
 
-          {/* Desktop search box */}
-          <div className="relative ml-auto hidden sm:block">
+          {/* Search — icon button opens the full-screen overlay below
+              `sm:`; an inline expanding box from `sm:` up. */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            aria-label={t.navSearch}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/5 hover:text-white sm:hidden"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+          <div className="relative hidden shrink-0 sm:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
             <input
               value={query}
@@ -383,7 +415,7 @@ export default function HomeScreen({
           see everything. Search results and "View All" stay as normal
           scrollable grids since those are explicit drill-down views, not
           the main browse screen. */}
-      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-24 sm:px-8 sm:pb-20">
+      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-10 sm:px-8 sm:pb-14">
         {viewAll ? (
           <section className="pt-4">
             <div className="mb-5 flex items-center gap-3">
@@ -504,30 +536,6 @@ export default function HomeScreen({
         )}
         <CreatorCredit />
       </footer>
-
-      {/* Bottom navigation bar — mobile only */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0A0605]/95 backdrop-blur-md md:hidden">
-        <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
-          <BottomTab
-            icon={<HomeIcon className="h-5 w-5" />}
-            label={t.navHome}
-            active={activeTab === 'home'}
-            onClick={() => setActiveTab('home')}
-          />
-          <BottomTab
-            icon={<Search className="h-5 w-5" />}
-            label={t.navSearch}
-            active={searchOpen}
-            onClick={() => setSearchOpen(true)}
-          />
-          <BottomTab
-            icon={<Bookmark className="h-5 w-5" />}
-            label={t.navWatchlist}
-            active={activeTab === 'watchlist'}
-            onClick={onOpenWatchlist}
-          />
-        </div>
-      </nav>
 
       {/* Full-screen search overlay (mobile) */}
       {searchOpen && (
@@ -930,25 +938,26 @@ function SideCard({ show, offset, onClick }: SideCardProps) {
   );
 }
 
-/* ---------- Bottom tab ---------- */
+/* ---------- Header nav link ---------- */
 
-interface BottomTabProps {
-  icon: React.ReactNode;
+interface NavLinkProps {
   label: string;
   active: boolean;
   onClick: () => void;
 }
 
-function BottomTab({ icon, label, active, onClick }: BottomTabProps) {
+function NavLink({ label, active, onClick }: NavLinkProps) {
   return (
     <button
       onClick={onClick}
-      className={`flex flex-1 flex-col items-center gap-1 rounded-lg py-1.5 transition ${
-        active ? 'text-[#E31E24]' : 'text-white/50'
+      className={`relative shrink-0 whitespace-nowrap pb-0.5 text-xs font-semibold transition sm:text-sm ${
+        active ? 'text-white' : 'text-white/55 hover:text-white/80'
       }`}
     >
-      {icon}
-      <span className="text-[10px] font-medium">{label}</span>
+      {label}
+      {active && (
+        <span className="absolute -bottom-1.5 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-[#E31E24]" />
+      )}
     </button>
   );
 }
