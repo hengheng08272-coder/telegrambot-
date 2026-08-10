@@ -80,6 +80,14 @@ export function exitTelegramFullscreen(): void {
 export function isTelegramFullscreen(): boolean {
   return !!getTelegramWebApp()?.isFullscreen;
 }
+// Older Telegram client versions don't have requestFullscreen at all —
+// this tells the caller whether it's actually safe to rely on the
+// Telegram-native path, or whether it should fall back to the browser's
+// own Fullscreen API instead (worth trying even inside Telegram, since
+// Android's WebView is Chromium-based and sometimes honors it).
+export function hasTelegramFullscreenAPI(): boolean {
+  return !!getTelegramWebApp()?.requestFullscreen;
+}
 
 // Invites a friend to the VIP group itself — deliberately NOT a deep
 // link into any show. Sharing content directly (even just a "here's a
