@@ -10,9 +10,12 @@ interface ShowCardProps {
   /** 1-based rank — when set, renders a big stroked numeral behind the
    *  bottom-left corner of the poster, Top-10-rail style. */
   rank?: number;
+  /** Bigger poster + deeper drop shadow — used for the Top 10 rail so it
+   *  reads with the same weight as the hero banner above it. */
+  large?: boolean;
 }
 
-export default function ShowCard({ show, onClick, rank }: ShowCardProps) {
+export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) {
   const { lang } = useLang();
   const t = appText[lang];
   const [loaded, setLoaded] = useState(false);
@@ -38,14 +41,14 @@ export default function ShowCard({ show, onClick, rank }: ShowCardProps) {
   return (
     <button
       onClick={() => onClick(show)}
-      className={`group relative w-[124px] shrink-0 text-left sm:w-[150px] ${rank ? 'pl-6 sm:pl-9' : ''}`}
+      className={`group relative shrink-0 text-left ${large ? 'w-[168px] sm:w-[210px]' : 'w-[124px] sm:w-[150px]'} ${rank ? 'pl-6 sm:pl-9' : ''}`}
     >
       {rank && (
         <span
           aria-hidden
           className="pointer-events-none absolute -left-2 bottom-0 z-0 select-none text-transparent sm:-left-3"
           style={{
-            fontSize: 'clamp(68px, 20vw, 112px)',
+            fontSize: large ? 'clamp(84px, 24vw, 138px)' : 'clamp(68px, 20vw, 112px)',
             fontWeight: 900,
             lineHeight: 1,
             WebkitTextStroke: '2.5px rgba(255,201,74,0.95)',
@@ -65,7 +68,13 @@ export default function ShowCard({ show, onClick, rank }: ShowCardProps) {
         className="relative z-10"
         style={{ transition: 'transform 0.35s ease-out', transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }}
       >
-        <div className="aspect-[2/3] overflow-hidden rounded-lg bg-[#241413] shadow-[0_6px_18px_rgba(0,0,0,0.5)] ring-1 ring-white/5 transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)] group-hover:ring-[#E31E24]/40">
+        <div
+          className={`aspect-[2/3] overflow-hidden rounded-lg bg-[#241413] ring-1 ring-white/5 transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-[#E31E24]/40 ${
+            large
+              ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)] group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.8)]'
+              : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)]'
+          }`}
+        >
           {!loaded && <div className="absolute inset-0 animate-pulse bg-[#241413]" />}
           <img
             src={show.poster_url ?? ''}
@@ -89,12 +98,6 @@ export default function ShowCard({ show, onClick, rank }: ShowCardProps) {
             <Star className="h-2.5 w-2.5 fill-[#FFC94A] text-[#FFC94A]" />
             {Number(show.rating).toFixed(1)}
           </div>
-          {/* Free-to-watch ribbon — top-left, only for titles that don't need VIP */}
-          {show.is_free && (
-            <div className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-[#FFC94A]/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
-              🔓 {t.freeBadge}
-            </div>
-          )}
           {/* Hover play overlay */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E31E24] shadow-[0_0_24px_rgba(227,30,36,0.6)]">
@@ -104,7 +107,7 @@ export default function ShowCard({ show, onClick, rank }: ShowCardProps) {
         </div>
       </div>
       <div className="mt-2 px-0.5">
-        <h3 className="truncate text-[13px] font-semibold text-white transition group-hover:text-[#E31E24]">
+        <h3 className={`truncate font-semibold text-white transition group-hover:text-[#E31E24] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
           {show.title}
         </h3>
         <p className="mt-0.5 truncate text-[11px] text-white/50">

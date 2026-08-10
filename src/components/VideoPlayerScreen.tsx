@@ -21,7 +21,7 @@ import type { Episode, ShowWithGenres } from '@/lib/types';
 import { fetchEpisodesByShow } from '@/lib/api';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
-import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen } from '@/lib/telegram';
+import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase/supabaseClient';
 
 interface VideoPlayerScreenProps {
@@ -256,17 +256,19 @@ export default function VideoPlayerScreen({
 
   // Three layers, tried in order, because "fullscreen" means something
   // different depending on where this is actually running:
-  //   1. Inside Telegram — the browser's own Fullscreen API is blocked by
-  //      Telegram's WebView entirely, no matter what we call. The only
-  //      thing that actually works there is Telegram's own Mini-App-level
-  //      fullscreen (requestFullscreen on window.Telegram.WebApp, Bot API
-  //      8.0+), which expands the whole app over Telegram's header.
-  //   2. A normal browser, standard Fullscreen API on the container
-  //      (Android Chrome, desktop) — works for our custom controls overlay.
-  //   3. iOS Safari — historically doesn't support (2) for non-<video>
-  //      elements, only the video tag's own WebKit-specific method.
+  //   1. Inside Telegram, WITH the newer requestFullscreen API — the
+  //      browser's own Fullscreen API is blocked by Telegram's WebView
+  //      entirely, so this is the only thing that works there. Expands
+  //      the whole app over Telegram's header (Bot API 8.0+ clients only).
+  //   2. Inside Telegram, WITHOUT that API (older client) — this used to
+  //      just silently do nothing. Falls through to try the browser path
+  //      below anyway, since Android's Telegram WebView is Chromium-based
+  //      and sometimes honors it even though iOS's generally won't.
+  //   3. A normal browser outside Telegram entirely — standard Fullscreen
+  //      API on the container (Android Chrome, desktop), then iOS
+  //      Safari's WebKit-only video fullscreen as the last resort.
   const toggleFullscreen = () => {
-    if (isInTelegram()) {
+    if (isInTelegram() && hasTelegramFullscreenAPI()) {
       if (isTelegramFullscreen()) exitTelegramFullscreen();
       else enterTelegramFullscreen();
       return;
@@ -282,8 +284,9 @@ export default function VideoPlayerScreen({
 
     if (el?.requestFullscreen) {
       el.requestFullscreen().catch(() => {
-        // Standard API rejected (common on iOS) — fall back to the
-        // video's own native fullscreen if this WebKit-only method exists.
+        // Standard API rejected (common on iOS, and possible inside
+        // Telegram's WebView too) — fall back to the video's own native
+        // fullscreen if this WebKit-only method exists.
         v?.webkitEnterFullscreen?.();
       });
     } else if (v?.webkitEnterFullscreen) {

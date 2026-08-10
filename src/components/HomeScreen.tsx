@@ -310,10 +310,7 @@ export default function HomeScreen({
             aria-label={t.navHome}
             className="flex h-8 w-8 items-center justify-center"
           >
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
-            </span>
+            <span className="h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
           </button>
 
           {/* Live "watching now" count — a real Realtime Presence tally
@@ -800,29 +797,12 @@ function CoverflowHero({
         </button>
       </div>
 
-      {/* Dot indicators */}
-      {shows.length > 1 && (
-        <div className="absolute inset-x-0 bottom-4 z-30 flex justify-center gap-2">
-          {shows.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => onGoTo(i)}
-              aria-label={`Go to slide ${i + 1}`}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === index
-                  ? 'w-6 bg-[#E31E24] shadow-[0_0_10px_rgba(227,30,36,0.8)]'
-                  : 'w-2 bg-white/35 hover:bg-white/55'
-              }`}
-            />
-          ))}
-        </div>
-      )}
-
       {/* Thin auto-play countdown bar — fills up over each slide's dwell
-          time so the "auto" cue is something you can actually see
-          progressing, not just a static badge. Keyed on the index so it
-          restarts cleanly every time the centered card changes, whether
-          from the timer or a manual swipe/tap. */}
+          time, doubling as the position indicator (its reset per slide
+          already shows where you are), so the separate row of dots
+          underneath it was redundant and has been removed. Keyed on the
+          index so it restarts cleanly every time the centered card
+          changes, whether from the timer or a manual swipe/tap. */}
       {shows.length > 1 && (
         <div className="absolute inset-x-0 bottom-0 z-30 h-[3px] w-full overflow-hidden bg-white/10">
           <div
@@ -1019,7 +999,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         className={`no-scrollbar flex gap-3 overflow-x-auto pb-2 ${ranked ? 'pt-1' : ''}`}
       >
         {shows.map((s, i) => (
-          <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
+          <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} large={ranked} />
         ))}
       </div>
     </section>
