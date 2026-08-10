@@ -280,3 +280,28 @@ h3 {
     background-position: -60% 0;
   }
 }
+
+/* Double-tap seek flash — a quick pop-and-fade on the ±10s icon so the
+   gesture feels acknowledged even though there's no visible seek bar
+   movement fast enough to notice at a glance. */
+.seek-flash-pop {
+  animation: seek-flash-pop 0.55s ease-out forwards;
+}
+@keyframes seek-flash-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.85);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.05);
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scale(1);
+  }
+}

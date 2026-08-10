@@ -8,14 +8,16 @@ import { addToContinueWatching } from '@/lib/watchlist';
 import AuthScreen from '@/components/AuthScreen';
 import HomeScreen, { type Tab } from '@/components/HomeScreen';
 import ShowDetailScreen from '@/components/ShowDetailScreen';
+import LegalScreen from '@/components/LegalScreen';
 import VideoPlayerScreen from '@/components/VideoPlayerScreen';
 import WatchlistScreen from '@/components/WatchlistScreen';
 import AdminScreen from '@/components/AdminScreen';
 import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
+import NotMemberScreen from '@/components/NotMemberScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
+import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess, getCurrentTelegramUser } from '@/lib/telegram';
 
 // This build is the Telegram VIP Mini App: access is already gated by
 // Telegram group membership (a separate admin bot bans/kicks non-members),
@@ -28,6 +30,7 @@ type Screen =
   | { name: 'detail'; show: Show }
   | { name: 'player'; episode: Episode; show: ShowWithGenres }
   | { name: 'watchlist' }
+  | { name: 'legal' }
   | { name: 'admin' };
 
 function App() {
@@ -40,6 +43,14 @@ function App() {
   const [showSpin, setShowSpin] = useState(false);
   const isMobile = useIsMobile();
   const isAdmin = !!profile?.is_admin;
+  // 'checking' briefly blanks the screen (loading spinner) while we ask
+  // Telegram whether this viewer is actually in the VIP group.
+  // 'skip' means we're not inside Telegram at all (desktop admin login,
+  // local dev) — that path has its own gate already, so this one is N/A.
+  // On any verification error we fail OPEN ('ok') rather than locking out
+  // a paying member over a transient network hiccup — the cost of a rare
+  // false negative here is much lower than blocking real customers.
+  const [membership, setMembership] = useState<'checking' | 'ok' | 'blocked'>('checking');
   // Testing override: ?admin=1 forces the admin gate on regardless of screen
   // width, so the admin sign-in screen can be reached from Bolt's mobile preview.
   const adminOverride =
@@ -58,6 +69,32 @@ function App() {
         if (show) setScreen({ name: 'detail', show });
       });
     }
+  }, []);
+
+  // The actual access-control check — see supabase/functions/verify-membership.
+  // Runs once per app open, independent of how the person got here
+  // (direct open, deep link, or a link forwarded by someone else via the
+  // Share button).
+  useEffect(() => {
+    if (!isInTelegram()) {
+      setMembership('ok');
+      return;
+    }
+    const user = getCurrentTelegramUser();
+    if (!user) {
+      setMembership('ok');
+      return;
+    }
+    supabase.functions
+      .invoke('verify-membership', { body: { telegram_user_id: user.id } })
+      .then(({ data, error }) => {
+        if (error || !data) {
+          setMembership('ok');
+          return;
+        }
+        setMembership(data.isMember ? 'ok' : 'blocked');
+      })
+      .catch(() => setMembership('ok'));
   }, []);
 
   // Telegram Mini Apps have no browser chrome, so there's no native back
@@ -191,6 +228,18 @@ function App() {
     return <AdminScreen onBack={() => setScreen({ name: 'home' })} />;
   }
 
+  // The actual gate: block viewers who aren't in the VIP group, no matter
+  // how they got the link. Admins skip this — they already proved who
+  // they are via the sign-in screen above.
+  if (!isAdmin) {
+    if (membership === 'checking') {
+      return <div className="min-h-screen bg-[#0A0605]" />;
+    }
+    if (membership === 'blocked') {
+      return <NotMemberScreen groupLink={import.meta.env.VITE_TELEGRAM_GROUP_LINK as string | undefined} />;
+    }
+  }
+
   if (screen.name === 'watchlist') {
     return (
       <WatchlistScreen
@@ -201,12 +250,17 @@ function App() {
     );
   }
 
+  if (screen.name === 'legal') {
+    return <LegalScreen onBack={() => setScreen({ name: 'home' })} />;
+  }
+
   if (screen.name === 'detail') {
     return (
       <ShowDetailScreen
         show={screen.show}
         onBack={() => setScreen({ name: 'home' })}
         onPlayEpisode={handlePlayEpisode}
+        onSelectShow={(s) => setScreen({ name: 'detail', show: s })}
         subscribed
       />
     );
@@ -218,6 +272,11 @@ function App() {
         episode={screen.episode}
         show={screen.show}
         onBack={() => setScreen({ name: 'detail', show: screen.show })}
+        onSwitchEpisode={(ep) => {
+          hapticTap();
+          addToContinueWatching(screen.show, ep, ep.episode_number - 1);
+          setScreen({ name: 'player', episode: ep, show: screen.show });
+        }}
       />
     );
   }
@@ -241,6 +300,7 @@ function App() {
         setActiveTab={setActiveTab}
         searchOpen={searchOpen}
         setSearchOpen={setSearchOpen}
+        onOpenLegal={() => setScreen({ name: 'legal' })}
       />
       {showSpin && (
         <LuckyDrawModal
