@@ -117,6 +117,12 @@ export const appText = {
     videoMissingHint: 'The video file may be missing or corrupted. Try another episode.',
     goBack: 'Go Back',
     episodeLabel: 'Episode',
+    upNext: 'Up next',
+    relatedShows: 'You might also like',
+    legalLink: 'Terms & Privacy',
+    watchingNow: 'watching now',
+    inviteFriend: 'Invite a friend',
+    linkCopied: 'Sent!',
 
     // Bottom navigation
     navSearch: 'Search',
@@ -410,6 +416,12 @@ export const appText = {
     videoMissingHint: 'ឯកសារវីដេអូអាចខ្វះ ឬខូច។ សូមសាកល្បងវគ្គផ្សេង។',
     goBack: 'ថយក្រោយ',
     episodeLabel: 'វគ្គ',
+    upNext: 'បន្ទាប់',
+    relatedShows: 'អ្នកប្រហែលចូលចិត្ត',
+    legalLink: 'លក្ខខណ្ឌ & ឯកជនភាព',
+    watchingNow: 'កំពុងមើលឥឡូវ',
+    inviteFriend: 'អញ្ជើញមិត្តភ័ក្តិ',
+    linkCopied: 'ផ្ញើរួច!',
 
     // Bottom navigation
     navSearch: 'ស្វែងរក',
