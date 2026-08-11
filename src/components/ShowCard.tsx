@@ -45,13 +45,13 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
       {rank && (
         <span
           aria-hidden
-          className="pointer-events-none absolute -left-3 bottom-0 z-0 select-none sm:-left-4"
+          className="pointer-events-none absolute -left-3 top-1/2 z-0 -translate-y-1/2 select-none sm:-left-4"
           style={{
-            fontSize: 'clamp(100px, 32vw, 168px)',
+            fontSize: 'clamp(210px, 52vw, 300px)',
             fontWeight: 900,
             lineHeight: 1,
-            color: 'rgba(20,10,8,0.65)',
-            WebkitTextStroke: '2px rgba(255,201,74,0.7)',
+            color: 'rgba(20,10,8,0.55)',
+            WebkitTextStroke: '2px rgba(255,201,74,0.75)',
             fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
             filter:
               'drop-shadow(0 2px 0 rgba(255,201,74,0.35)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(255,201,74,0.2))',
