@@ -117,22 +117,26 @@ CREATE POLICY "select_own_profile" ON profiles FOR SELECT TO authenticated USING
 CREATE POLICY "insert_own_profile" ON profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 CREATE POLICY "update_own_profile" ON profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
--- ---------- lucky spin: one free spin per VIP member ----------
--- A small retention perk, not a paid game: each Telegram account gets
--- exactly one free spin, ever (enforced by the unique constraint below).
--- Logged here so the (separately managed) VIP group admin can look up
--- what a member won and manually extend their VIP time in the group —
--- this app has no subscription table of its own to auto-extend, since
--- access is controlled at the Telegram group level.
+-- ---------- lucky spin: one free spin, plus one bonus spin per purchase ----------
+-- A small retention perk. Each Telegram account gets exactly one free
+-- spin ever, PLUS one additional bonus spin per approved VIP purchase
+-- (reward pool sized to what they bought — see lib/spin.ts BONUS_POOLS).
+-- `source` distinguishes these ('free' vs 'purchase:<submission_id>'),
+-- and the unique index below allows multiple rows per person as long as
+-- each source is only ever claimed once.
 CREATE TABLE IF NOT EXISTS spin_claims (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  telegram_user_id text NOT NULL UNIQUE,
+  telegram_user_id text NOT NULL,
+  source text NOT NULL DEFAULT 'free',
   telegram_username text,
   reward_days int NOT NULL,
   reward_label text NOT NULL,
   created_at timestamptz DEFAULT now(),
   redeemed boolean NOT NULL DEFAULT false
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS spin_claims_one_per_source
+  ON spin_claims(telegram_user_id, source);
 
 ALTER TABLE spin_claims ENABLE ROW LEVEL SECURITY;
 
