@@ -121,6 +121,7 @@ export const appText = {
     relatedShows: 'You might also like',
     legalLink: 'Terms & Privacy',
     watchingNow: 'watching now',
+    autoLabel: 'Auto',
     inviteFriend: 'Invite a friend',
     linkCopied: 'Sent!',
 
@@ -420,6 +421,7 @@ export const appText = {
     relatedShows: 'អ្នកប្រហែលចូលចិត្ត',
     legalLink: 'លក្ខខណ្ឌ & ឯកជនភាព',
     watchingNow: 'កំពុងមើលឥឡូវ',
+    autoLabel: 'ស្វ័យប្រវត្តិ',
     inviteFriend: 'អញ្ជើញមិត្តភ័ក្តិ',
     linkCopied: 'ផ្ញើរួច!',
 
