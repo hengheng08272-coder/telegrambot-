@@ -6,8 +6,8 @@ import {
   Pause,
   Volume2,
   VolumeX,
-  Maximize,
-  Minimize,
+  Lock,
+  Unlock,
   SkipBack,
   SkipForward,
   Loader2,
@@ -85,12 +85,10 @@ export default function VideoPlayerScreen({
   const currentIdx = allEpisodes.findIndex((e) => e.id === episode.id);
   const nextEpisode = currentIdx >= 0 && currentIdx < allEpisodes.length - 1 ? allEpisodes[currentIdx + 1] : null;
 
-  // Keep isFullscreen in sync with reality, not just with what our own
-  // button last did — the OS/browser can also exit fullscreen on its own
-  // (Android's back button, an ESC key, a swipe-down gesture, iOS's native
-  // player "Done" button), and without this the Maximize/Minimize icon and
-  // any fullscreen-only UI would silently drift out of sync with what's
-  // actually on screen.
+  // Keep isFullscreen (really "locked") in sync with reality — Telegram
+  // can exit its own expanded fullscreen on its own (Android back button,
+  // a swipe gesture), and without this the Lock/Unlock icon would drift
+  // out of sync with what's actually happening.
   useEffect(() => {
     const syncFullscreen = () => {
       const nativeFs = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
@@ -316,71 +314,34 @@ export default function VideoPlayerScreen({
     }
   };
 
-  // Three layers, tried in order, because "fullscreen" means something
-  // different depending on where this is actually running:
-  //   1. Inside Telegram, WITH the newer requestFullscreen API — the
-  //      browser's own Fullscreen API is blocked by Telegram's WebView
-  //      entirely, so this is the only thing that works there. Expands
-  //      the whole app over Telegram's header (Bot API 8.0+ clients only).
-  //   2. Inside Telegram, WITHOUT that API (older client) — this used to
-  //      just silently do nothing. Falls through to try the browser path
-  //      below anyway, since Android's Telegram WebView is Chromium-based
-  //      and sometimes honors it even though iOS's generally won't.
-  //   3. A normal browser outside Telegram entirely — standard Fullscreen
-  //      API on the container (Android Chrome, desktop), then iOS
-  //      Safari's WebKit-only video fullscreen as the last resort.
-  // Every branch is wrapped so a rejected/unsupported call (very common
-  // across mobile browsers) just leaves the player as-is instead of
-  // throwing and taking the whole screen down.
-  const toggleFullscreen = () => {
+  // The screen-rotation lock button. Real cross-browser "fullscreen" (the
+  // Fullscreen API on iOS Safari especially) turned out unreliable — it
+  // would silently half-apply and leave the video rendering smaller than
+  // before instead of bigger. The player is already `fixed inset-0`, so
+  // it already fills the whole viewport (everything JS can control; a
+  // mobile browser's own address bar isn't something a page can hide).
+  // What's actually useful and reliable is locking the screen orientation
+  // to landscape so it doesn't flip back on its own — that's what this
+  // button does now. Inside a real Telegram Mini App we additionally ask
+  // Telegram to expand over its own header (Bot API 8.0+), which is a
+  // separate, reliable mechanism — harmless no-op everywhere else.
+  const toggleLock = () => {
     try {
-      if (isInTelegram() && hasTelegramFullscreenAPI()) {
-        if (isTelegramFullscreen()) {
-          exitTelegramFullscreen();
-          unlockOrientation();
-          setIsFullscreen(false);
-        } else {
+      if (!isFullscreen) {
+        if (isInTelegram() && hasTelegramFullscreenAPI()) {
           enterTelegramFullscreen();
-          lockLandscape();
-          setIsFullscreen(true);
         }
-        return;
-      }
-
-      const el = containerRef.current;
-      const v = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
-
-      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
-        (document.exitFullscreen?.() ?? Promise.resolve()).catch(() => {});
+        lockLandscape();
+        setIsFullscreen(true);
+      } else {
+        if (isInTelegram() && isTelegramFullscreen()) {
+          exitTelegramFullscreen();
+        }
         unlockOrientation();
         setIsFullscreen(false);
-        return;
-      }
-
-      if (el?.requestFullscreen) {
-        el
-          .requestFullscreen()
-          .then(() => {
-            setIsFullscreen(true);
-            lockLandscape();
-          })
-          .catch(() => {
-            // Standard API rejected (common on iOS, and possible inside
-            // Telegram's WebView too) — fall back to the video's own
-            // native fullscreen if this WebKit-only method exists.
-            try {
-              v?.webkitEnterFullscreen?.();
-              setIsFullscreen(true);
-            } catch {
-              /* genuinely unsupported here — leave the player as-is */
-            }
-          });
-      } else if (v?.webkitEnterFullscreen) {
-        v.webkitEnterFullscreen();
-        setIsFullscreen(true);
       }
     } catch {
-      // Never let a fullscreen quirk crash the player screen.
+      // Never let an orientation-lock quirk crash the player screen.
     }
   };
 
@@ -719,11 +680,11 @@ export default function VideoPlayerScreen({
                 </button>
               )}
               <button
-                onClick={toggleFullscreen}
+                onClick={toggleLock}
                 className="-m-2 p-2 text-white/80 transition hover:text-[#E31E24]"
-                aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                aria-label={isFullscreen ? 'Unlock screen rotation' : 'Lock screen rotation'}
               >
-                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+                {isFullscreen ? <Unlock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
               </button>
             </div>
           </div>

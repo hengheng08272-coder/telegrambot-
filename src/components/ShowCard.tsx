@@ -1,8 +1,6 @@
 import { useRef, useState } from 'react';
 import { Star, Play } from 'lucide-react';
 import type { Show } from '@/lib/types';
-import { useLang } from '@/lib/useLang';
-import { appText } from '@/lib/appTranslations';
 
 interface ShowCardProps {
   show: Show;
@@ -16,8 +14,6 @@ interface ShowCardProps {
 }
 
 export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) {
-  const { lang } = useLang();
-  const t = appText[lang];
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
 
@@ -111,10 +107,6 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
         <h3 className={`truncate font-semibold text-white transition group-hover:text-[#E31E24] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
           {show.title}
         </h3>
-        <p className="mt-0.5 truncate text-[11px] text-white/50">
-          {show.type === 'movie' ? '🎬' : '📺'} {show.release_year ?? '—'} · {show.type === 'movie' ? t.movie : t.series}
-          {show.genres?.[0] && <span className="text-white/30"> · {show.genres[0].name}</span>}
-        </p>
       </div>
     </button>
   );

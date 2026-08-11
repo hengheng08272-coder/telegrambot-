@@ -1016,9 +1016,6 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         <div className="flex items-center gap-2">
           {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
           <h2 className="text-lg font-bold tracking-tight">{title}</h2>
-          <span className="rounded-full border border-[#FFC94A]/15 bg-[#FFC94A]/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-[#FFC94A]/60">
-            {shows.length}
-          </span>
         </div>
         {onViewAll && (
           <button
