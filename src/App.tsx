@@ -184,8 +184,8 @@ function App() {
     }
   };
 
-  // Keep activeTab roughly in sync with the screen so the bottom nav
-  // highlights the right icon when we navigate away from home and back.
+  // Keep activeTab roughly in sync with the screen so it's ready if any
+  // header nav state ever needs it when we navigate away from home and back.
   useEffect(() => {
     if (screen.name === 'home') setActiveTab('home');
     else if (screen.name === 'watchlist') setActiveTab('watchlist');
@@ -220,6 +220,22 @@ function App() {
           kickedOut={false}
         />
       </DesktopBlockedScreen>
+    );
+  }
+
+  // Reachable from mobile via the hidden 5-tap logo gesture on the home
+  // header (see HomeScreen's onAdminSecretTap) — the desktop gate above
+  // never fires on mobile/Telegram, so without this branch there'd be no
+  // way to land on the sign-in screen at all outside of desktop.
+  if (screen.name === 'auth') {
+    return (
+      <AuthScreen
+        mode={screen.mode}
+        onBack={() => setScreen({ name: 'home' })}
+        onSuccess={handleAdminAuthSuccess}
+        onSwitch={(mode) => setScreen({ name: 'auth', mode })}
+        kickedOut={false}
+      />
     );
   }
 
@@ -301,6 +317,7 @@ function App() {
         searchOpen={searchOpen}
         setSearchOpen={setSearchOpen}
         onOpenLegal={() => setScreen({ name: 'legal' })}
+        onAdminSecretTap={() => setScreen({ name: 'auth', mode: 'signin' })}
       />
       {showSpin && (
         <LuckyDrawModal
