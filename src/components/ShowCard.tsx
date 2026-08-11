@@ -41,19 +41,20 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
   return (
     <button
       onClick={() => onClick(show)}
-      className={`group relative shrink-0 text-left ${large ? 'w-[168px] sm:w-[210px]' : 'w-[124px] sm:w-[150px]'} ${rank ? 'pl-6 sm:pl-9' : ''}`}
+      className={`group relative shrink-0 text-left ${large ? 'w-[168px] sm:w-[210px]' : 'w-[100px] sm:w-[124px]'} ${rank ? 'pl-7 sm:pl-10' : ''}`}
     >
       {rank && (
         <span
           aria-hidden
-          className="pointer-events-none absolute -left-2 bottom-0 z-0 select-none text-transparent sm:-left-3"
+          className="pointer-events-none absolute -left-3 bottom-0 z-0 select-none sm:-left-4"
           style={{
-            fontSize: large ? 'clamp(84px, 24vw, 138px)' : 'clamp(68px, 20vw, 112px)',
+            fontSize: 'clamp(92px, 30vw, 152px)',
             fontWeight: 900,
             lineHeight: 1,
-            WebkitTextStroke: '2.5px rgba(255,201,74,0.95)',
+            color: 'rgba(0,0,0,0.55)',
+            WebkitTextStroke: '1.5px rgba(255,201,74,0.55)',
             fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
-            filter: 'drop-shadow(0 8px 18px rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(255,201,74,0.25))',
+            filter: 'blur(0.3px) drop-shadow(0 12px 20px rgba(0,0,0,0.85))',
           }}
         >
           {rank}

@@ -38,6 +38,10 @@ interface HomeScreenProps {
   searchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
   onOpenLegal?: () => void;
+  /** Fired when the small logo badge in the header is tapped 5 times in
+   *  quick succession — the hidden way to reach the admin sign-in on
+   *  mobile, where there's no visible admin entry point. */
+  onAdminSecretTap?: () => void;
 }
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
@@ -89,6 +93,7 @@ export default function HomeScreen({
   searchOpen,
   setSearchOpen,
   onOpenLegal,
+  onAdminSecretTap,
 }: HomeScreenProps) {
   const { lang, setLang } = useLang();
   const t = appText[lang];
@@ -106,6 +111,19 @@ export default function HomeScreen({
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logoTapTimes = useRef<number[]>([]);
+
+  // Hidden admin entry point: 5 taps on the small logo badge within 2.5s
+  // opens admin sign-in. Nothing else on mobile can reach it, since the
+  // admin gate is desktop-only by design.
+  const handleLogoTap = () => {
+    const now = Date.now();
+    logoTapTimes.current = [...logoTapTimes.current.filter((ts) => now - ts < 2500), now];
+    if (logoTapTimes.current.length >= 5) {
+      logoTapTimes.current = [];
+      onAdminSecretTap?.();
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -306,11 +324,17 @@ export default function HomeScreen({
               setActiveTab('home');
               setQuery('');
               setViewAll(null);
+              handleLogoTap();
             }}
             aria-label={t.navHome}
-            className="flex h-8 w-8 shrink-0 items-center justify-center"
+            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-[#E31E24]/40"
           >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
+            <img
+              src="/assets/images/icon-192.png"
+              alt=""
+              draggable={false}
+              className="h-full w-full object-cover"
+            />
           </button>
 
           {/* Live "watching now" count — a real Realtime Presence tally
@@ -975,7 +999,9 @@ interface RailRowProps {
   onViewAll?: () => void;
   viewAllLabel?: string;
   /** When true, stamps each card with its 1-based position as a big
-   *  stroked numeral — the "Top 10" treatment. */
+   *  shadow numeral behind the card — the "Top 10" treatment. Card size
+   *  stays the same compact size as every other row; only the numeral is
+   *  oversized. */
   ranked?: boolean;
 }
 
@@ -1008,7 +1034,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         className={`no-scrollbar flex gap-3 overflow-x-auto pb-2 ${ranked ? 'pt-1' : ''}`}
       >
         {shows.map((s, i) => (
-          <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} large={ranked} />
+          <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
         ))}
       </div>
     </section>

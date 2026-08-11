@@ -720,7 +720,7 @@ export default function VideoPlayerScreen({
               )}
               <button
                 onClick={toggleFullscreen}
-                className="text-white/80 transition hover:text-[#E31E24]"
+                className="-m-2 p-2 text-white/80 transition hover:text-[#E31E24]"
                 aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
               >
                 {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
