@@ -16,6 +16,8 @@ import {
   Link2,
   Play,
   Megaphone,
+  Wallet,
+  QrCode,
   ShieldBan,
   Eye,
   AlertTriangle,
@@ -26,6 +28,8 @@ import AnnouncementsPanel from '@/components/AnnouncementsPanel';
 import BanLogPanel from '@/components/BanLogPanel';
 import WatchLogPanel from '@/components/WatchLogPanel';
 import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
+import PaymentsPanel from '@/components/PaymentsPanel';
+import QrCodesPanel from '@/components/QrCodesPanel';
 import { usePresenceCount } from '@/lib/presence';
 
 interface AdminScreenProps {
@@ -92,6 +96,16 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [banLogOpen, setBanLogOpen] = useState(false);
   const [watchLogOpen, setWatchLogOpen] = useState(false);
   const [suspiciousOpen, setSuspiciousOpen] = useState(false);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
+  const [qrCodesOpen, setQrCodesOpen] = useState(false);
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  useEffect(() => {
+    supabase
+      .from('payment_submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .then(({ count }) => setPendingPaymentsCount(count ?? 0));
+  }, [paymentsOpen]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -539,6 +553,23 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             className="flex items-center gap-1.5 rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 px-4 py-2 text-sm font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20"
           >
             <AlertTriangle className="h-4 w-4" /> Suspicious
+          </button>
+          <button
+            onClick={() => setPaymentsOpen(true)}
+            className="relative flex items-center gap-1.5 rounded-full border border-[#22C55E]/30 bg-[#22C55E]/10 px-4 py-2 text-sm font-bold text-[#22C55E] transition hover:bg-[#22C55E]/20"
+          >
+            <Wallet className="h-4 w-4" /> Payments
+            {pendingPaymentsCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#E31E24] px-1 text-[10px] font-extrabold text-white">
+                {pendingPaymentsCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setQrCodesOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-bold text-white/70 transition hover:bg-white/10"
+          >
+            <QrCode className="h-4 w-4" /> QR Codes
           </button>
           <div className="ml-auto relative hidden sm:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -1281,6 +1312,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {announcementsOpen && <AnnouncementsPanel onClose={() => setAnnouncementsOpen(false)} />}
       {banLogOpen && <BanLogPanel onClose={() => setBanLogOpen(false)} />}
       {watchLogOpen && <WatchLogPanel onClose={() => setWatchLogOpen(false)} />}
+      {paymentsOpen && <PaymentsPanel onClose={() => setPaymentsOpen(false)} />}
+      {qrCodesOpen && <QrCodesPanel onClose={() => setQrCodesOpen(false)} />}
       {suspiciousOpen && <SuspiciousActivityPanel onClose={() => setSuspiciousOpen(false)} />}
     </div>
   );

@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
-import { Gift, PartyPopper, Sparkles, X } from 'lucide-react';
-import { claimSpin, SPIN_TIERS } from '@/lib/spin';
+import { useEffect, useRef, useState } from 'react';
+import { Gift, Loader2, PartyPopper, Sparkles, X } from 'lucide-react';
+import { claimSpin, claimBonusSpin, getAvailableBonusSpin, SPIN_TIERS, BONUS_POOLS, type RewardTier, type BonusSpinInfo } from '@/lib/spin';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 
@@ -9,43 +9,51 @@ interface Props {
   onClaimed: (rewardLabel: string, days: number) => void;
 }
 
-// Alternating brand wedges (violet/pink); the top 1-month tier gets the
-// gold treatment so it reads as the "big win" slice even before landing.
 // Diverse wedge palette pulled from the NINT ANIME brand: blood red,
-// near-black, ember orange, chrome silver (echoing the logo's metallic
-// text), with the gold jackpot slice standing apart at the end.
-const WEDGE_COLORS = [
-  '#3A1414', '#E31E24', '#241413', '#FF6A3D',
-  '#3A1414', '#E31E24', '#241413', '#C9C9CF',
-  '#FFC94A',
-];
-
-const SEGMENT_DEG = 360 / SPIN_TIERS.length;
+// near-black, ember orange, chrome silver, with gold reserved for
+// whichever slice is the top prize in a given pool.
+const WEDGE_PALETTE = ['#3A1414', '#E31E24', '#241413', '#FF6A3D', '#3A1414', '#E31E24', '#241413', '#C9C9CF', '#FFC94A'];
 
 export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
   const { lang } = useLang();
   const t = appText[lang];
+  const [checking, setChecking] = useState(true);
+  const [bonusInfo, setBonusInfo] = useState<BonusSpinInfo | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<{ label: string; days: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const wheelRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    getAvailableBonusSpin().then((info) => {
+      setBonusInfo(info);
+      setChecking(false);
+    });
+  }, []);
+
+  const pool: RewardTier[] = bonusInfo ? BONUS_POOLS[bonusInfo.tier] ?? SPIN_TIERS : SPIN_TIERS;
+  const segmentDeg = 360 / pool.length;
+  const wedgeColors = pool.map((_, i) => WEDGE_PALETTE[i % WEDGE_PALETTE.length]);
+
   const spin = async () => {
-    if (spinning || result) return;
+    if (spinning || result || checking) return;
     setError(null);
     setSpinning(true);
 
-    const { data, error: err } = await claimSpin();
+    const { data, error: err } = bonusInfo
+      ? await claimBonusSpin(bonusInfo)
+      : await claimSpin();
+
     if (err || !data) {
       setSpinning(false);
       setError(err === 'already_used' ? t.spinAlreadyUsed : t.spinError);
       return;
     }
 
-    const tierIndex = SPIN_TIERS.findIndex((tier) => tier.label === data.reward_label);
+    const tierIndex = pool.findIndex((tier) => tier.label === data.reward_label);
     const idx = tierIndex >= 0 ? tierIndex : 0;
-    const segmentCenter = idx * SEGMENT_DEG + SEGMENT_DEG / 2;
+    const segmentCenter = idx * segmentDeg + segmentDeg / 2;
     const extraSpins = 6; // full turns for a satisfying spin
     const target = extraSpins * 360 + (360 - segmentCenter);
 
@@ -86,7 +94,9 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
 
           <div className="mb-1 flex items-center justify-center gap-1.5 text-[#FFC94A]">
             <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-[0.2em]">{t.spinEyebrow}</span>
+            <span className="text-xs font-bold uppercase tracking-[0.2em]">
+              {bonusInfo ? 'VIP BONUS SPIN' : t.spinEyebrow}
+            </span>
             <Sparkles className="h-4 w-4" />
           </div>
           <h2
@@ -96,55 +106,56 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
             {t.spinTitle}
           </h2>
 
-          {/* Wheel */}
-          <div className="relative mx-auto mb-5 h-64 w-64">
-            {/* Ambient glow behind the wheel */}
-            <div className="pointer-events-none absolute inset-[-14px] rounded-full bg-[#FFC94A]/15 blur-2xl" />
+          {checking ? (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-white/40" />
+            </div>
+          ) : (
+            <div className="relative mx-auto mb-5 h-64 w-64">
+              <div className="pointer-events-none absolute inset-[-14px] rounded-full bg-[#FFC94A]/15 blur-2xl" />
 
-            {/* Pointer */}
-            <div className="absolute left-1/2 top-[-8px] z-10 h-7 w-7 -translate-x-1/2 rotate-180 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+              <div className="absolute left-1/2 top-[-8px] z-10 h-7 w-7 -translate-x-1/2 rotate-180 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
+                <div
+                  className="h-0 w-0 border-x-[11px] border-t-[18px] border-x-transparent border-t-[#FFC94A]"
+                  style={{ transform: 'rotate(180deg)' }}
+                />
+              </div>
+
               <div
-                className="h-0 w-0 border-x-[11px] border-t-[18px] border-x-transparent border-t-[#FFC94A]"
-                style={{ transform: 'rotate(180deg)' }}
-              />
-            </div>
-
-            <div
-              ref={wheelRef}
-              className="relative h-full w-full rounded-full border-4 border-[#FFC94A]/60 shadow-[0_0_50px_rgba(255,201,74,0.25),0_0_40px_rgba(0,0,0,0.5)]"
-              style={{
-                transform: `rotate(${rotation}deg)`,
-                transition: spinning ? 'transform 4.2s cubic-bezier(0.17,0.67,0.16,0.99)' : 'none',
-                background: `conic-gradient(${SPIN_TIERS.map(
-                  (_, i) =>
-                    `${WEDGE_COLORS[i]} ${i * SEGMENT_DEG}deg ${(i + 1) * SEGMENT_DEG}deg`,
-                ).join(', ')})`,
-              }}
-            >
-              {SPIN_TIERS.map((tier, i) => {
-                const angle = i * SEGMENT_DEG + SEGMENT_DEG / 2;
-                return (
-                  <div
-                    key={tier.key}
-                    className="absolute left-1/2 top-1/2 h-0 w-0 origin-top-left"
-                    style={{ transform: `rotate(${angle}deg)` }}
-                  >
-                    <span
-                      className="absolute -translate-x-1/2 text-[11px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
-                      style={{ top: '-108px' }}
+                ref={wheelRef}
+                className="relative h-full w-full rounded-full border-4 border-[#FFC94A]/60 shadow-[0_0_50px_rgba(255,201,74,0.25),0_0_40px_rgba(0,0,0,0.5)]"
+                style={{
+                  transform: `rotate(${rotation}deg)`,
+                  transition: spinning ? 'transform 4.2s cubic-bezier(0.17,0.67,0.16,0.99)' : 'none',
+                  background: `conic-gradient(${pool.map(
+                    (_, i) => `${wedgeColors[i]} ${i * segmentDeg}deg ${(i + 1) * segmentDeg}deg`,
+                  ).join(', ')})`,
+                }}
+              >
+                {pool.map((tier, i) => {
+                  const angle = i * segmentDeg + segmentDeg / 2;
+                  return (
+                    <div
+                      key={tier.key}
+                      className="absolute left-1/2 top-1/2 h-0 w-0 origin-top-left"
+                      style={{ transform: `rotate(${angle}deg)` }}
                     >
-                      {tier.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                      <span
+                        className="absolute -translate-x-1/2 text-[11px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                        style={{ top: '-108px' }}
+                      >
+                        {tier.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
 
-            {/* Hub */}
-            <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#0A0605] bg-gradient-to-br from-[#FFC94A] to-[#B8862E] shadow-lg">
-              <Gift className={`h-6 w-6 text-[#0A0605] ${spinning ? '' : 'gift-float'}`} />
+              <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#0A0605] bg-gradient-to-br from-[#FFC94A] to-[#B8862E] shadow-lg">
+                <Gift className={`h-6 w-6 text-[#0A0605] ${spinning ? '' : 'gift-float'}`} />
+              </div>
             </div>
-          </div>
+          )}
 
           {error && (
             <p className="mb-4 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
@@ -168,7 +179,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
           ) : (
             <button
               onClick={spin}
-              disabled={spinning || !!error}
+              disabled={spinning || checking || !!error}
               className="w-full rounded-full bg-gradient-to-r from-[#FFC94A] to-[#B8862E] py-3.5 text-sm font-bold text-[#0A0605] shadow-[0_8px_24px_rgba(255,201,74,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(255,201,74,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
             >
               {spinning ? t.spinSpinning : t.spinButton}
