@@ -16,7 +16,7 @@ import { fetchShowById, fetchEpisodesByShow, fetchAllShows } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
-import { inviteFriend } from '@/lib/telegram';
+import { inviteFriend, isInTelegram } from '@/lib/telegram';
 import { fmtViews } from '@/lib/format';
 
 interface ShowDetailScreenProps {
@@ -98,13 +98,19 @@ export default function ShowDetailScreen({
 
   return (
     <div className="min-h-screen bg-[#0A0605] text-white">
-      {/* Back bar */}
-      <button
-        onClick={onBack}
-        className="fixed left-4 top-4 z-50 flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition hover:bg-black/70 hover:text-white"
-      >
-        <ArrowLeft className="h-4 w-4" /> {t.back}
-      </button>
+      {/* Back bar — Telegram's own native BackButton (registered in
+          App.tsx) already handles this when actually inside Telegram, so
+          this on-screen fallback only renders outside it (plain browser
+          testing), avoiding the visual overlap with Telegram's own back
+          pill that showing both caused. */}
+      {!isInTelegram() && (
+        <button
+          onClick={onBack}
+          className="fixed left-4 top-4 z-50 flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition hover:bg-black/70 hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" /> {t.back}
+        </button>
+      )}
 
       {/* Banner */}
       <div className="relative h-[56vh] min-h-[380px] w-full">
@@ -288,11 +294,6 @@ export default function ShowDetailScreen({
                         {ep.duration && (
                           <span className="flex items-center gap-1 text-xs text-white/40">
                             <Clock className="h-3 w-3" /> {fmtDuration(ep.duration)}
-                          </span>
-                        )}
-                        {ep.is_free_preview && (
-                          <span className="rounded-full bg-[#FFC94A]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FFC94A]">
-                            Free
                           </span>
                         )}
                         {locked && (
