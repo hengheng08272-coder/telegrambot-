@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react';
-import { Star, Play } from 'lucide-react';
+import { Eye, Play } from 'lucide-react';
 import type { Show } from '@/lib/types';
-import { useLang } from '@/lib/useLang';
-import { appText } from '@/lib/appTranslations';
+import { fmtViews } from '@/lib/format';
 
 interface ShowCardProps {
   show: Show;
@@ -16,8 +15,6 @@ interface ShowCardProps {
 }
 
 export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) {
-  const { lang } = useLang();
-  const t = appText[lang];
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
 
@@ -41,19 +38,22 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
   return (
     <button
       onClick={() => onClick(show)}
-      className={`group relative shrink-0 text-left ${large ? 'w-[168px] sm:w-[210px]' : 'w-[124px] sm:w-[150px]'} ${rank ? 'pl-6 sm:pl-9' : ''}`}
+      className={`group relative shrink-0 text-left ${
+        large ? 'w-[168px] sm:w-[210px]' : rank ? 'w-[134px] sm:w-[162px]' : 'w-[100px] sm:w-[124px]'
+      } ${rank ? 'pl-7 sm:pl-10' : ''}`}
     >
       {rank && (
         <span
           aria-hidden
-          className="pointer-events-none absolute -left-2 bottom-0 z-0 select-none text-transparent sm:-left-3"
+          className="pointer-events-none absolute -left-3 bottom-0 z-0 select-none sm:-left-4"
           style={{
-            fontSize: large ? 'clamp(84px, 24vw, 138px)' : 'clamp(68px, 20vw, 112px)',
+            fontSize: 'clamp(92px, 30vw, 152px)',
             fontWeight: 900,
             lineHeight: 1,
-            WebkitTextStroke: '2.5px rgba(255,201,74,0.95)',
+            color: 'rgba(0,0,0,0.55)',
+            WebkitTextStroke: '1.5px rgba(255,201,74,0.55)',
             fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
-            filter: 'drop-shadow(0 8px 18px rgba(0,0,0,0.9)) drop-shadow(0 0 16px rgba(255,201,74,0.25))',
+            filter: 'blur(0.3px) drop-shadow(0 12px 20px rgba(0,0,0,0.85))',
           }}
         >
           {rank}
@@ -85,18 +85,32 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
               loaded ? 'img-fade loaded' : 'img-fade'
             }`}
           />
-          {/* Bottom gradient */}
+          {/* Bottom gradient — taller for ranked cards since it also has
+              to carry the title text now sitting on the poster itself. */}
           <div
             className="absolute inset-0"
             style={{
-              background:
-                'linear-gradient(180deg, rgba(10,6,5,0) 50%, rgba(10,6,5,0.9) 100%)',
+              background: rank
+                ? 'linear-gradient(180deg, rgba(10,6,5,0) 35%, rgba(10,6,5,0.95) 100%)'
+                : 'linear-gradient(180deg, rgba(10,6,5,0) 50%, rgba(10,6,5,0.9) 100%)',
             }}
           />
-          {/* Rating badge */}
+          {/* Title — overlaid directly on the poster for ranked (Top 10)
+              cards so the row reads as pure artwork instead of poster +
+              caption; other rows keep the plain caption below the card. */}
+          {rank && (
+            <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
+              <h3 className="line-clamp-2 text-[12.5px] font-bold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] transition group-hover:text-[#FFC94A] sm:text-[13.5px]">
+                {show.title}
+              </h3>
+            </div>
+          )}
+          {/* View-count badge — real play counts (see increment_show_view_count),
+              not an admin-typed rating, so this is what actually drives
+              Top 10 and shows the owner which titles viewers watch most. */}
           <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-[#FFC94A] backdrop-blur-sm">
-            <Star className="h-2.5 w-2.5 fill-[#FFC94A] text-[#FFC94A]" />
-            {Number(show.rating).toFixed(1)}
+            <Eye className="h-2.5 w-2.5" />
+            {fmtViews(show.view_count)}
           </div>
           {/* Hover play overlay */}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
@@ -106,15 +120,13 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           </div>
         </div>
       </div>
-      <div className="mt-2 px-0.5">
-        <h3 className={`truncate font-semibold text-white transition group-hover:text-[#E31E24] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
-          {show.title}
-        </h3>
-        <p className="mt-0.5 truncate text-[11px] text-white/50">
-          {show.type === 'movie' ? '🎬' : '📺'} {show.release_year ?? '—'} · {show.type === 'movie' ? t.movie : t.series}
-          {show.genres?.[0] && <span className="text-white/30"> · {show.genres[0].name}</span>}
-        </p>
-      </div>
+      {!rank && (
+        <div className="mt-2 px-0.5">
+          <h3 className={`truncate font-semibold text-white transition group-hover:text-[#E31E24] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
+            {show.title}
+          </h3>
+        </div>
+      )}
     </button>
   );
 }
