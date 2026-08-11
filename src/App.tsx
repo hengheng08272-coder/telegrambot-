@@ -15,15 +15,20 @@ import AdminScreen from '@/components/AdminScreen';
 import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
 import NotMemberScreen from '@/components/NotMemberScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
+import SubscriptionModal from '@/components/SubscriptionModal';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { getSubscriptionStatus } from '@/lib/subscription';
 import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess, getCurrentTelegramUser } from '@/lib/telegram';
 
-// This build is the Telegram VIP Mini App: access is already gated by
-// Telegram group membership (a separate admin bot bans/kicks non-members),
-// so there is no viewer sign-in/sign-up and no subscription lock — every
-// episode plays freely for anyone who opens the app. The only login left
-// is the existing admin sign-in, desktop-only, for content management.
+// This build is the Telegram VIP Mini App: access is gated two ways —
+// Telegram group membership (a separate admin bot bans/kicks non-members)
+// controls whether the app opens at all, and a VIP subscription (paid via
+// KHQR screenshot, reviewed by the admin) controls which episodes can be
+// watched inside it. There's still no viewer sign-in/sign-up — everyone
+// is identified by their Telegram id, and subscriptions are keyed to
+// that. The only login left is the existing admin sign-in, desktop-only,
+// for content management and payment review.
 type Screen =
   | { name: 'auth'; mode: 'signin' | 'signup' }
   | { name: 'home' }
@@ -41,6 +46,14 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [searchOpen, setSearchOpen] = useState(false);
   const [showSpin, setShowSpin] = useState(false);
+  const [showSubscribe, setShowSubscribe] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const refreshSubscription = () => {
+    getSubscriptionStatus().then((s) => setSubscribed(s.subscribed));
+  };
+  useEffect(() => {
+    refreshSubscription();
+  }, []);
   const isMobile = useIsMobile();
   const isAdmin = !!profile?.is_admin;
   // 'checking' briefly blanks the screen (loading spinner) while we ask
@@ -159,9 +172,15 @@ function App() {
     setScreen({ name: 'admin' });
   };
 
-  // Every episode is free to play — access is gated at the Telegram group
-  // level, not inside the app.
+  // Episodes marked is_free_preview, or shows marked is_free, play for
+  // everyone. Everything else needs an active subscription — otherwise
+  // this opens the subscribe sheet instead of playing.
   const handlePlayEpisode = (episode: Episode, show: ShowWithGenres) => {
+    const free = show.is_free || episode.is_free_preview;
+    if (!free && !subscribed) {
+      setShowSubscribe(true);
+      return;
+    }
     hapticTap();
     addToContinueWatching(show, episode, episode.episode_number - 1);
     setScreen({ name: 'player', episode, show });
@@ -272,13 +291,32 @@ function App() {
 
   if (screen.name === 'detail') {
     return (
-      <ShowDetailScreen
-        show={screen.show}
-        onBack={() => setScreen({ name: 'home' })}
-        onPlayEpisode={handlePlayEpisode}
-        onSelectShow={(s) => setScreen({ name: 'detail', show: s })}
-        subscribed
-      />
+      <>
+        <ShowDetailScreen
+          show={screen.show}
+          onBack={() => setScreen({ name: 'home' })}
+          onPlayEpisode={handlePlayEpisode}
+          onSelectShow={(s) => setScreen({ name: 'detail', show: s })}
+          subscribed={subscribed}
+        />
+        {showSubscribe && (
+          <SubscriptionModal
+            onClose={() => setShowSubscribe(false)}
+            onSubmitted={() => {
+              hapticSuccess();
+              refreshSubscription();
+            }}
+            onApproved={() => {
+              hapticSuccess();
+              refreshSubscription();
+            }}
+            onGoSpin={() => {
+              setShowSubscribe(false);
+              setShowSpin(true);
+            }}
+          />
+        )}
+      </>
     );
   }
 
@@ -306,11 +344,11 @@ function App() {
       <HomeScreen
         onSelectShow={(show) => setScreen({ name: 'detail', show })}
         onOpenProfile={() => {}}
-        onOpenSubscription={() => {}}
+        onOpenSubscription={() => setShowSubscribe(true)}
         onOpenWatchlist={() => setScreen({ name: 'watchlist' })}
         onOpenRewards={() => setShowSpin(true)}
         avatarUrl={null}
-        subscribed
+        subscribed={subscribed}
         rewardsAvailable="spin-ready"
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -323,6 +361,23 @@ function App() {
         <LuckyDrawModal
           onClose={() => setShowSpin(false)}
           onClaimed={() => hapticSuccess()}
+        />
+      )}
+      {showSubscribe && (
+        <SubscriptionModal
+          onClose={() => setShowSubscribe(false)}
+          onSubmitted={() => {
+            hapticSuccess();
+            refreshSubscription();
+          }}
+          onApproved={() => {
+            hapticSuccess();
+            refreshSubscription();
+          }}
+          onGoSpin={() => {
+            setShowSubscribe(false);
+            setShowSpin(true);
+          }}
         />
       )}
     </>
