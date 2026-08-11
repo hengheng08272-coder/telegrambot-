@@ -39,21 +39,22 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
     <button
       onClick={() => onClick(show)}
       className={`group relative shrink-0 text-left ${
-        large ? 'w-[168px] sm:w-[210px]' : rank ? 'w-[112px] sm:w-[145px]' : 'w-[100px] sm:w-[124px]'
-      } ${rank ? 'pl-7 sm:pl-9' : ''}`}
+        large ? 'w-[168px] sm:w-[210px]' : rank ? 'w-[126px] sm:w-[160px]' : 'w-[100px] sm:w-[124px]'
+      } ${rank ? 'pl-8 sm:pl-10' : ''}`}
     >
       {rank && (
         <span
           aria-hidden
           className="pointer-events-none absolute -left-3 bottom-0 z-0 select-none sm:-left-4"
           style={{
-            fontSize: 'clamp(92px, 30vw, 152px)',
+            fontSize: 'clamp(100px, 32vw, 168px)',
             fontWeight: 900,
             lineHeight: 1,
-            color: 'rgba(0,0,0,0.55)',
-            WebkitTextStroke: '1.5px rgba(255,201,74,0.55)',
+            color: 'rgba(20,10,8,0.65)',
+            WebkitTextStroke: '2px rgba(255,201,74,0.7)',
             fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
-            filter: 'blur(0.3px) drop-shadow(0 12px 20px rgba(0,0,0,0.85))',
+            filter:
+              'drop-shadow(0 2px 0 rgba(255,201,74,0.35)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(255,201,74,0.2))',
           }}
         >
           {rank}

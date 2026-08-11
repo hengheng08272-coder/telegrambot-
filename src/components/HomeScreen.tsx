@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Search,
   Flame,
-  TrendingUp,
   User,
   Crown,
   Sparkles,
@@ -499,8 +498,8 @@ export default function HomeScreen({
         ) : (
           <div className="pt-3">
             <RailRow
-              title="Top 10"
-              icon={<TrendingUp className="h-5 w-5 text-[#E31E24]" />}
+              title={t.top10Label ?? 'TOP 10 VIEWER'}
+              icon={<Flame className="h-5 w-5 text-[#FFC94A]" />}
               shows={trending}
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle ?? 'Top 10', shows })}
@@ -1040,23 +1039,43 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
           <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/40 via-[#0A0605]/70 to-[#0A0605]" />
         </div>
       )}
-      <div className={`flex items-center justify-between gap-2 ${ranked ? 'px-3 pt-4' : 'mb-3'}`}>
-        <div className="mb-3 flex items-center gap-2">
-          {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-          <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+      {ranked ? (
+        // Centered, Netflix-style row header — the "View All" link moves
+        // to its own row underneath instead of crowding the centered
+        // title on the same line.
+        <div className="px-3 pt-5 text-center">
+          <div className="mb-1 flex items-center justify-center gap-2">
+            {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
+            <h2 className="text-xl font-black tracking-wide text-[#FFC94A]">{title}</h2>
+          </div>
+          {onViewAll && (
+            <button
+              onClick={onViewAll}
+              className="text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
+            >
+              {viewAllLabel}
+            </button>
+          )}
         </div>
-        {onViewAll && (
-          <button
-            onClick={onViewAll}
-            className="mb-3 shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
-          >
-            {viewAllLabel}
-          </button>
-        )}
-      </div>
+      ) : (
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
+            <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+          </div>
+          {onViewAll && (
+            <button
+              onClick={onViewAll}
+              className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
+            >
+              {viewAllLabel}
+            </button>
+          )}
+        </div>
+      )}
       <div
         ref={scrollerRef}
-        className={`no-scrollbar flex gap-2.5 overflow-x-auto pb-3 ${ranked ? 'px-3 pt-1' : ''}`}
+        className={`no-scrollbar flex overflow-x-auto pb-3 ${ranked ? 'gap-5 px-3 pt-4' : 'gap-2.5'}`}
       >
         {shows.map((s, i) => (
           <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
