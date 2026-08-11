@@ -35,6 +35,12 @@ interface TelegramWebApp {
   requestFullscreen?: () => void;
   exitFullscreen?: () => void;
   isFullscreen?: boolean;
+  // Bot API 7.7+. Without this, Telegram's WebView treats certain
+  // vertical scroll/swipe gestures (e.g. rubber-banding at the top of a
+  // scrollable screen) as a "swipe down to close" and dismisses the
+  // whole Mini App — a common source of "the app just closes while I'm
+  // scrolling" reports. Guarded with `?.` for older clients.
+  disableVerticalSwipes?: () => void;
   // Opens Telegram's own "forward to a chat" picker for a t.me link —
   // the native way to share something from inside a Mini App, distinct
   // from openLink (which just opens a URL in-app/externally).
@@ -52,13 +58,17 @@ export function getTelegramWebApp(): TelegramWebApp | null {
   return window.Telegram?.WebApp ?? null;
 }
 
-// Call once on app boot: tells Telegram the app is ready to be shown and
-// expands it to full height (otherwise it opens as a half-height sheet).
+// Call once on app boot: tells Telegram the app is ready to be shown,
+// expands it to full height (otherwise it opens as a half-height sheet),
+// and turns off Telegram's own vertical-swipe-to-close gesture so
+// scrolling near the top/bottom of a screen never accidentally closes
+// the whole Mini App.
 export function initTelegramApp() {
   const tg = getTelegramWebApp();
   if (!tg) return;
   tg.ready();
   tg.expand();
+  tg.disableVerticalSwipes?.();
 }
 
 // Returns whether we're actually running inside Telegram (vs a plain
