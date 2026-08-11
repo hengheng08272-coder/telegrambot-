@@ -122,6 +122,7 @@ export const appText = {
     legalLink: 'Terms & Privacy',
     watchingNow: 'watching now',
     autoLabel: 'Auto',
+    top10Label: 'TOP 10 VIEWER',
     inviteFriend: 'Invite a friend',
     linkCopied: 'Sent!',
 
@@ -422,6 +423,7 @@ export const appText = {
     legalLink: 'លក្ខខណ្ឌ & ឯកជនភាព',
     watchingNow: 'កំពុងមើលឥឡូវ',
     autoLabel: 'ស្វ័យប្រវត្តិ',
+    top10Label: 'TOP 10 VIEWER',
     inviteFriend: 'អញ្ជើញមិត្តភ័ក្តិ',
     linkCopied: 'ផ្ញើរួច!',
 
