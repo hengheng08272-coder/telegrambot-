@@ -1075,7 +1075,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
       )}
       <div
         ref={scrollerRef}
-        className={`no-scrollbar flex overflow-x-auto ${ranked ? 'gap-5 px-3 py-10' : 'gap-2.5 pb-3'}`}
+        className={`no-scrollbar flex overflow-x-auto pb-3 ${ranked ? 'gap-5 px-3 pt-4' : 'gap-2.5'}`}
       >
         {shows.map((s, i) => (
           <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
