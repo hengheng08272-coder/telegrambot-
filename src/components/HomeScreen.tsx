@@ -8,6 +8,8 @@ import {
   TrendingUp,
   User,
   Crown,
+  Home as HomeIcon,
+  Bookmark,
   Sparkles,
   Gift,
   X,
@@ -38,10 +40,6 @@ interface HomeScreenProps {
   searchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
   onOpenLegal?: () => void;
-  /** Fired when the small logo badge in the header is tapped 5 times in
-   *  quick succession — the hidden way to reach the admin sign-in on
-   *  mobile, where there's no visible admin entry point. */
-  onAdminSecretTap?: () => void;
 }
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
@@ -93,7 +91,6 @@ export default function HomeScreen({
   searchOpen,
   setSearchOpen,
   onOpenLegal,
-  onAdminSecretTap,
 }: HomeScreenProps) {
   const { lang, setLang } = useLang();
   const t = appText[lang];
@@ -111,19 +108,6 @@ export default function HomeScreen({
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const logoTapTimes = useRef<number[]>([]);
-
-  // Hidden admin entry point: 5 taps on the small logo badge within 2.5s
-  // opens admin sign-in. Nothing else on mobile can reach it, since the
-  // admin gate is desktop-only by design.
-  const handleLogoTap = () => {
-    const now = Date.now();
-    logoTapTimes.current = [...logoTapTimes.current.filter((ts) => now - ts < 2500), now];
-    if (logoTapTimes.current.length >= 5) {
-      logoTapTimes.current = [];
-      onAdminSecretTap?.();
-    }
-  };
 
   useEffect(() => {
     let active = true;
@@ -193,10 +177,7 @@ export default function HomeScreen({
     ? shows.filter((s) => s.title.toLowerCase().includes(query.toLowerCase()))
     : shows;
 
-  // Top 10 now reflects real audience behavior — actual play counts
-  // (see increment_show_view_count) — instead of an admin-typed rating
-  // number, so it genuinely shows which shows viewers watch the most.
-  const trending = [...shows].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).slice(0, 10);
+  const trending = [...shows].sort((a, b) => b.rating - a.rating).slice(0, 10);
   const newReleases = [...shows]
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
     .slice(0, 10);
@@ -278,10 +259,20 @@ export default function HomeScreen({
         <img
           src="/assets/nint-keyart.jpg"
           alt=""
-          className="h-full w-full object-cover opacity-[0.22]"
+          className="h-full w-full object-cover opacity-[0.32]"
           style={{ objectPosition: '68% 30%', transform: 'scale(1.1)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/40 via-[#0A0605]/70 to-[#0A0605]/94" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/25 via-[#0A0605]/55 to-[#0A0605]/88" />
+        {/* Logo + wordmark watermark — sealed directly into the fixed
+            background layer (not the header), so it never scrolls, never
+            competes with header controls, and quietly carries the brand
+            everywhere the way the old "LIVE" label used to. */}
+        <img
+          src="/assets/images/logo-transparent.png"
+          alt=""
+          className="absolute left-1/2 top-[64px] w-[58vw] max-w-[260px] -translate-x-1/2 opacity-[0.22] sm:top-[76px] sm:max-w-[300px]"
+          draggable={false}
+        />
       </div>
 
       {/* Whole-page ambient glow — two faint warm radials fixed to the
@@ -293,46 +284,38 @@ export default function HomeScreen({
         className="pointer-events-none fixed inset-0 z-0"
         style={{
           background:
-            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(140,15,18,0.13) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(255,201,74,0.06) 0%, rgba(10,6,5,0) 60%)',
+            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(140,15,18,0.20) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(255,201,74,0.10) 0%, rgba(10,6,5,0) 60%)',
         }}
         aria-hidden
       />
 
-      {/* Header v4 — one responsive top nav bar for every screen size, per
-          request: no more separate desktop-only nav row vs. a mobile-only
-          bottom tab bar. Home / Series / Movies stay a browse filter right
-          here (Series & Movies reuse the same "View All" grid the rail
-          rows already use); My List actually leaves this screen, so it's
-          styled the same but never shows an active state. Search is an
-          inline expanding box from `sm:` up and a plain icon button that
-          opens the full-screen search overlay below that. */}
+      {/* Header v3 — the wordmark now lives sealed into the fixed
+          background layer, not up here, so the bar itself only needs to
+          hold navigation: a small tap-to-home brand dot, desktop nav
+          links, and search. Rewards / language / subscribe have all moved
+          down into the UtilityBar just under the hero, freeing this strip
+          up entirely — there's no account system to guard in this Mini
+          App build, so nothing needs to live in the top corner anymore. */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
           heroVisible ? 'bg-transparent' : 'bg-[#0A0605]/85 backdrop-blur-md'
         }`}
       >
-        <div className="mx-auto flex max-w-[1400px] items-center gap-1.5 px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-8">
           <button
             onClick={() => {
               setActiveTab('home');
               setQuery('');
-              setViewAll(null);
-              handleLogoTap();
             }}
             aria-label={t.navHome}
-            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-[#E31E24]/40"
+            className="flex h-8 w-8 items-center justify-center"
           >
-            <img
-              src="/assets/images/icon-192.png"
-              alt=""
-              draggable={false}
-              className="h-full w-full object-cover"
-            />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#E31E24]" />
           </button>
 
           {/* Live "watching now" count — a real Realtime Presence tally
               (see src/lib/presence.ts), not a randomized/fake number. */}
-          <div className="flex shrink-0 items-center gap-1 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
+          <div className="flex items-center gap-1.5 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-2.5 py-1">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
@@ -341,48 +324,16 @@ export default function HomeScreen({
             <span className="hidden text-xs text-white/50 sm:inline">{t.watchingNow ?? 'watching now'}</span>
           </div>
 
-          {/* Nav links — scrolls horizontally instead of wrapping/breaking
-              on the narrowest phones, but fits on one line on anything
-              typical. */}
-          <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto sm:gap-5">
-            <NavLink
-              label={t.navHome}
-              active={!viewAll && !query.trim()}
-              onClick={() => {
-                setActiveTab('home');
-                setQuery('');
-                setViewAll(null);
-              }}
-            />
-            <NavLink
-              label={t.navSeries}
-              active={viewAll?.title === t.navSeries}
-              onClick={() => {
-                setQuery('');
-                setViewAll({ title: t.navSeries, shows: shows.filter((s) => s.type === 'series') });
-              }}
-            />
-            <NavLink
-              label={t.navMovies}
-              active={viewAll?.title === t.navMovies}
-              onClick={() => {
-                setQuery('');
-                setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie') });
-              }}
-            />
-            <NavLink label={t.navMyList} active={false} onClick={onOpenWatchlist} />
+          {/* Desktop nav links */}
+          <nav className="hidden items-center gap-5 text-sm font-medium text-white/70 md:flex">
+            <span className="cursor-pointer text-white transition hover:text-[#E31E24]">{t.navHome}</span>
+            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navSeries}</span>
+            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navMovies}</span>
+            <span className="cursor-pointer transition hover:text-[#E31E24]">{t.navMyList}</span>
           </nav>
 
-          {/* Search — icon button opens the full-screen overlay below
-              `sm:`; an inline expanding box from `sm:` up. */}
-          <button
-            onClick={() => setSearchOpen(true)}
-            aria-label={t.navSearch}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/5 hover:text-white sm:hidden"
-          >
-            <Search className="h-4 w-4" />
-          </button>
-          <div className="relative hidden shrink-0 sm:block">
+          {/* Desktop search box */}
+          <div className="relative ml-auto hidden sm:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
             <input
               value={query}
@@ -400,18 +351,6 @@ export default function HomeScreen({
           what made it visually collide with the header controls; being
           in-flow here means it can never land on top of them. */}
       <div className="relative z-10 pt-[52px] sm:pt-[60px]">
-        {/* Logo + wordmark watermark — lives in the normal scrolling flow
-            now (not the fixed background), so it scrolls away with the
-            hero instead of staying pinned over the rows below it once the
-            viewer scrolls down. */}
-        <img
-          src="/assets/images/logo-transparent.png"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-2 z-0 w-[58vw] max-w-[260px] -translate-x-1/2 opacity-[0.22] sm:top-4 sm:max-w-[300px]"
-          draggable={false}
-        />
-
         <SupporterTicker />
 
         {/* Coverflow hero carousel */}
@@ -444,7 +383,7 @@ export default function HomeScreen({
           see everything. Search results and "View All" stay as normal
           scrollable grids since those are explicit drill-down views, not
           the main browse screen. */}
-      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-10 sm:px-8 sm:pb-14">
+      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-24 sm:px-8 sm:pb-20">
         {viewAll ? (
           <section className="pt-4">
             <div className="mb-5 flex items-center gap-3">
@@ -457,7 +396,7 @@ export default function HomeScreen({
               </button>
               <h2 className="text-xl font-bold">{viewAll.title}</h2>
             </div>
-            <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
               {viewAll.shows.map((s) => (
                 <ShowCard key={s.id} show={s} onClick={onSelectShow} />
               ))}
@@ -472,7 +411,7 @@ export default function HomeScreen({
             {filteredShows.length === 0 ? (
               <p className="py-20 text-center text-white/40">{t.noResults}</p>
             ) : (
-              <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 {filteredShows.map((s) => (
                   <ShowCard key={s.id} show={s} onClick={onSelectShow} />
                 ))}
@@ -565,6 +504,30 @@ export default function HomeScreen({
         )}
         <CreatorCredit />
       </footer>
+
+      {/* Bottom navigation bar — mobile only */}
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0A0605]/95 backdrop-blur-md md:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
+          <BottomTab
+            icon={<HomeIcon className="h-5 w-5" />}
+            label={t.navHome}
+            active={activeTab === 'home'}
+            onClick={() => setActiveTab('home')}
+          />
+          <BottomTab
+            icon={<Search className="h-5 w-5" />}
+            label={t.navSearch}
+            active={searchOpen}
+            onClick={() => setSearchOpen(true)}
+          />
+          <BottomTab
+            icon={<Bookmark className="h-5 w-5" />}
+            label={t.navWatchlist}
+            active={activeTab === 'watchlist'}
+            onClick={onOpenWatchlist}
+          />
+        </div>
+      </nav>
 
       {/* Full-screen search overlay (mobile) */}
       {searchOpen && (
@@ -967,26 +930,25 @@ function SideCard({ show, offset, onClick }: SideCardProps) {
   );
 }
 
-/* ---------- Header nav link ---------- */
+/* ---------- Bottom tab ---------- */
 
-interface NavLinkProps {
+interface BottomTabProps {
+  icon: React.ReactNode;
   label: string;
   active: boolean;
   onClick: () => void;
 }
 
-function NavLink({ label, active, onClick }: NavLinkProps) {
+function BottomTab({ icon, label, active, onClick }: BottomTabProps) {
   return (
     <button
       onClick={onClick}
-      className={`relative shrink-0 whitespace-nowrap pb-0.5 text-[11px] font-semibold transition sm:text-sm ${
-        active ? 'text-white' : 'text-white/55 hover:text-white/80'
+      className={`flex flex-1 flex-col items-center gap-1 rounded-lg py-1.5 transition ${
+        active ? 'text-[#E31E24]' : 'text-white/50'
       }`}
     >
-      {label}
-      {active && (
-        <span className="absolute -bottom-1.5 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-[#E31E24]" />
-      )}
+      {icon}
+      <span className="text-[10px] font-medium">{label}</span>
     </button>
   );
 }
@@ -1004,9 +966,7 @@ interface RailRowProps {
   onViewAll?: () => void;
   viewAllLabel?: string;
   /** When true, stamps each card with its 1-based position as a big
-   *  shadow numeral behind the card — the "Top 10" treatment. Card size
-   *  stays the same compact size as every other row; only the numeral is
-   *  oversized. */
+   *  stroked numeral — the "Top 10" treatment. */
   ranked?: boolean;
 }
 
@@ -1021,6 +981,9 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         <div className="flex items-center gap-2">
           {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
           <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+          <span className="rounded-full border border-[#FFC94A]/15 bg-[#FFC94A]/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-[#FFC94A]/60">
+            {shows.length}
+          </span>
         </div>
         {onViewAll && (
           <button
@@ -1036,7 +999,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         className={`no-scrollbar flex gap-3 overflow-x-auto pb-2 ${ranked ? 'pt-1' : ''}`}
       >
         {shows.map((s, i) => (
-          <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
+          <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} large={ranked} />
         ))}
       </div>
     </section>

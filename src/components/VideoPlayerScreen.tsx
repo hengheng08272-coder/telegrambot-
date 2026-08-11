@@ -6,8 +6,7 @@ import {
   Pause,
   Volume2,
   VolumeX,
-  Lock,
-  Unlock,
+  Maximize,
   SkipBack,
   SkipForward,
   Loader2,
@@ -22,7 +21,7 @@ import type { Episode, ShowWithGenres } from '@/lib/types';
 import { fetchEpisodesByShow } from '@/lib/api';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
-import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI, getTelegramWebApp } from '@/lib/telegram';
+import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase/supabaseClient';
 
 interface VideoPlayerScreenProps {
@@ -80,71 +79,16 @@ export default function VideoPlayerScreen({
   const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
   const [autoAdvanceIn, setAutoAdvanceIn] = useState<number | null>(null);
   const [episodeListOpen, setEpisodeListOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const currentIdx = allEpisodes.findIndex((e) => e.id === episode.id);
   const nextEpisode = currentIdx >= 0 && currentIdx < allEpisodes.length - 1 ? allEpisodes[currentIdx + 1] : null;
 
-  // Keep isFullscreen (really "locked") in sync with reality — Telegram
-  // can exit its own expanded fullscreen on its own (Android back button,
-  // a swipe gesture), and without this the Lock/Unlock icon would drift
-  // out of sync with what's actually happening.
-  useEffect(() => {
-    const syncFullscreen = () => {
-      const nativeFs = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-      setIsFullscreen(nativeFs || isTelegramFullscreen());
-    };
-    document.addEventListener('fullscreenchange', syncFullscreen);
-    document.addEventListener('webkitfullscreenchange', syncFullscreen);
-    const tg = getTelegramWebApp();
-    tg?.onEvent('fullscreenChanged', syncFullscreen);
-    return () => {
-      document.removeEventListener('fullscreenchange', syncFullscreen);
-      document.removeEventListener('webkitfullscreenchange', syncFullscreen);
-      tg?.offEvent('fullscreenChanged', syncFullscreen);
-    };
-  }, []);
-
-  // Auto-expand over Telegram's own header the moment the player opens.
-  // Without this, Telegram's own back pill/menu stays on screen and
-  // visually overlaps our own back button in the top-left corner — the
-  // viewer had to notice and tap the lock button first just to clear it.
-  // The `fullscreenChanged` listener above picks up the resulting state
-  // change and updates the Lock icon, so no extra state juggling here.
-  useEffect(() => {
-    if (isInTelegram() && hasTelegramFullscreenAPI()) {
-      try {
-        enterTelegramFullscreen();
-      } catch {
-        /* no-op — falls back to the plain in-page layout, still usable */
-      }
-    }
-  }, []);
-
-  // If the viewer entered fullscreen (either Telegram's Mini-App-level
-  // fullscreen or the browser's own) from the toggle button, leaving this
-  // screen shouldn't leave the whole app stuck expanded over Telegram's
-  // header, or the browser stuck in fullscreen behind whatever screen
-  // comes next — collapse it all back on unmount. Each call is wrapped
-  // separately so one failing (e.g. exitFullscreen() rejecting because we
-  // were never actually in native fullscreen) never skips the others.
+  // If the viewer entered Telegram's Mini-App-level fullscreen from the
+  // toggle button, leaving this screen shouldn't leave the whole app
+  // stuck expanded over Telegram's header — collapse it back on unmount.
   useEffect(() => {
     return () => {
-      try {
-        exitTelegramFullscreen();
-      } catch {
-        /* no-op */
-      }
-      try {
-        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      } catch {
-        /* no-op */
-      }
-      try {
-        (screen as any).orientation?.unlock?.();
-      } catch {
-        /* no-op */
-      }
+      exitTelegramFullscreen();
     };
   }, []);
 
@@ -199,16 +143,6 @@ export default function VideoPlayerScreen({
       })
       .then(() => {});
   }, [episode.id, show.id, show.title]);
-
-  // Bumps the show's real view_count (see increment_show_view_count) once
-  // per episode open — same trigger as the watch-log entry above, just a
-  // separate call since it writes to a different table. This is what
-  // actually drives the Top 10 rail and the view-count badge on cards now,
-  // instead of the admin-typed rating number. Fire-and-forget: a failed
-  // or slow count bump should never hold up or break playback.
-  useEffect(() => {
-    supabase.rpc('increment_show_view_count', { p_show_id: show.id }).then(() => {});
-  }, [episode.id, show.id]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -320,87 +254,44 @@ export default function VideoPlayerScreen({
     };
   }, [autoAdvanceIn, nextEpisode, onSwitchEpisode]);
 
-  // Best-effort landscape lock — only works while genuinely in fullscreen
-  // on browsers that support the Screen Orientation API (mainly Android
-  // Chrome). iOS Safari and Telegram's own WebView don't support it at
-  // all, so every call is wrapped and failures are silently ignored —
-  // this is a nice-to-have, never something worth crashing the player over.
-  const lockLandscape = () => {
-    try {
-      (screen as any).orientation?.lock?.('landscape')?.catch?.(() => {});
-    } catch {
-      /* not supported here — fine, playback still works in portrait */
+  // Three layers, tried in order, because "fullscreen" means something
+  // different depending on where this is actually running:
+  //   1. Inside Telegram, WITH the newer requestFullscreen API — the
+  //      browser's own Fullscreen API is blocked by Telegram's WebView
+  //      entirely, so this is the only thing that works there. Expands
+  //      the whole app over Telegram's header (Bot API 8.0+ clients only).
+  //   2. Inside Telegram, WITHOUT that API (older client) — this used to
+  //      just silently do nothing. Falls through to try the browser path
+  //      below anyway, since Android's Telegram WebView is Chromium-based
+  //      and sometimes honors it even though iOS's generally won't.
+  //   3. A normal browser outside Telegram entirely — standard Fullscreen
+  //      API on the container (Android Chrome, desktop), then iOS
+  //      Safari's WebKit-only video fullscreen as the last resort.
+  const toggleFullscreen = () => {
+    if (isInTelegram() && hasTelegramFullscreenAPI()) {
+      if (isTelegramFullscreen()) exitTelegramFullscreen();
+      else enterTelegramFullscreen();
+      return;
     }
-  };
-  const unlockOrientation = () => {
-    try {
-      (screen as any).orientation?.unlock?.();
-    } catch {
-      /* no-op */
-    }
-  };
 
-  // The screen-rotation lock button. Real cross-browser "fullscreen" (the
-  // Fullscreen API on iOS Safari especially) turned out unreliable — it
-  // would silently half-apply and leave the video rendering smaller than
-  // before instead of bigger. The player is already `fixed inset-0`, so
-  // it already fills the whole viewport (everything JS can control; a
-  // mobile browser's own address bar isn't something a page can hide).
-  // What's actually useful and reliable is locking the screen orientation
-  // to landscape so it doesn't flip back on its own — that's what this
-  // button does now. Inside a real Telegram Mini App we additionally ask
-  // Telegram to expand over its own header (Bot API 8.0+), which is a
-  // separate, reliable mechanism — harmless no-op everywhere else.
-  const toggleLock = () => {
-    try {
-      if (!isFullscreen) {
-        if (isInTelegram() && hasTelegramFullscreenAPI()) {
-          enterTelegramFullscreen();
-        }
-        lockLandscape();
-        setIsFullscreen(true);
-      } else {
-        if (isInTelegram() && isTelegramFullscreen()) {
-          exitTelegramFullscreen();
-        }
-        unlockOrientation();
-        setIsFullscreen(false);
-      }
-    } catch {
-      // Never let an orientation-lock quirk crash the player screen.
-    }
-  };
+    const el = containerRef.current;
+    const v = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
 
-  // Unified handler for every "back" affordance in this screen (the
-  // top-left arrow, and the error-state buttons). If we're in fullscreen,
-  // the first press only backs out of fullscreen — matching what phones
-  // already do with their own hardware/gesture back — so a second press
-  // is what actually leaves the player. This also guarantees we never
-  // tear the video element out of the DOM while it's still the
-  // fullscreen element, which is what left the player in a broken state.
-  const handleBackPress = () => {
-    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
-      (document.exitFullscreen?.() ?? Promise.resolve()).catch(() => {});
-      unlockOrientation();
-      setIsFullscreen(false);
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
       return;
     }
-    if (isInTelegram() && isTelegramFullscreen()) {
-      exitTelegramFullscreen();
-      unlockOrientation();
-      setIsFullscreen(false);
-      return;
+
+    if (el?.requestFullscreen) {
+      el.requestFullscreen().catch(() => {
+        // Standard API rejected (common on iOS, and possible inside
+        // Telegram's WebView too) — fall back to the video's own native
+        // fullscreen if this WebKit-only method exists.
+        v?.webkitEnterFullscreen?.();
+      });
+    } else if (v?.webkitEnterFullscreen) {
+      v.webkitEnterFullscreen();
     }
-    if (!isInTelegram()) {
-      // Consume the history entry pushed when the player opened (below) —
-      // that's what fires the popstate handler which actually calls
-      // onBack(), keeping the on-screen button and the phone's own back
-      // gesture going through one consistent path instead of the button
-      // leaving a stray entry in the back-stack.
-      window.history.back();
-      return;
-    }
-    onBack();
   };
 
   const revealControls = () => {
@@ -414,32 +305,6 @@ export default function VideoPlayerScreen({
     return () => {
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
     };
-  }, []);
-
-  // Outside Telegram (a plain mobile browser tab), there's no app-level
-  // BackButton — so without this, a phone's swipe-back gesture or its
-  // hardware back button doesn't back out of the player at all, it just
-  // leaves the site entirely. Pushing one history entry when the player
-  // opens means that gesture instead pops back to this screen first,
-  // which we treat exactly like tapping the on-screen back arrow. (Inside
-  // Telegram this is skipped — registerBackButtonHandler in App.tsx
-  // already owns back navigation there.)
-  useEffect(() => {
-    if (isInTelegram()) return;
-    window.history.pushState({ nintPlayer: true }, '');
-    // By the time this fires — from either the phone's own back gesture
-    // or our handleBackPress() consuming the pushed entry above — any
-    // fullscreen the OS/browser was going to intercept has already been
-    // exited on its own, so this just needs to perform the real
-    // navigation, not re-check fullscreen or touch history again.
-    const handlePopState = () => {
-      onBack();
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const progress = duration > 0 ? (current / duration) * 100 : 0;
@@ -549,7 +414,7 @@ export default function VideoPlayerScreen({
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black text-center">
             <p className="max-w-xs text-sm font-semibold text-white">{accessError}</p>
             <button
-              onClick={handleBackPress}
+              onClick={onBack}
               className="mt-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               {t.goBack}
@@ -573,7 +438,7 @@ export default function VideoPlayerScreen({
               {t.videoMissingHint}
             </p>
             <button
-              onClick={handleBackPress}
+              onClick={onBack}
               className="mt-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               {t.goBack}
@@ -588,7 +453,7 @@ export default function VideoPlayerScreen({
           }`}
         >
           <button
-            onClick={handleBackPress}
+            onClick={onBack}
             className="flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition hover:bg-black/60"
           >
             <ArrowLeft className="h-4 w-4" /> {t.back}
@@ -706,11 +571,11 @@ export default function VideoPlayerScreen({
                 </button>
               )}
               <button
-                onClick={toggleLock}
-                className="-m-2 p-2 text-white/80 transition hover:text-[#E31E24]"
-                aria-label={isFullscreen ? 'Unlock screen rotation' : 'Lock screen rotation'}
+                onClick={toggleFullscreen}
+                className="text-white/80 transition hover:text-[#E31E24]"
+                aria-label="Fullscreen"
               >
-                {isFullscreen ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
+                <Maximize className="h-5 w-5" />
               </button>
             </div>
           </div>
