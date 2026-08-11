@@ -200,6 +200,16 @@ export default function VideoPlayerScreen({
       .then(() => {});
   }, [episode.id, show.id, show.title]);
 
+  // Bumps the show's real view_count (see increment_show_view_count) once
+  // per episode open — same trigger as the watch-log entry above, just a
+  // separate call since it writes to a different table. This is what
+  // actually drives the Top 10 rail and the view-count badge on cards now,
+  // instead of the admin-typed rating number. Fire-and-forget: a failed
+  // or slow count bump should never hold up or break playback.
+  useEffect(() => {
+    supabase.rpc('increment_show_view_count', { p_show_id: show.id }).then(() => {});
+  }, [episode.id, show.id]);
+
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !playUrl) return;

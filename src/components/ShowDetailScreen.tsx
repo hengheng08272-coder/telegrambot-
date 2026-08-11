@@ -17,6 +17,7 @@ import ShowCard from '@/components/ShowCard';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { inviteFriend } from '@/lib/telegram';
+import { fmtViews } from '@/lib/format';
 
 interface ShowDetailScreenProps {
   show: Show;
@@ -94,12 +95,6 @@ export default function ShowDetailScreen({
 
   const fmtDuration = (mins: number | null) =>
     mins ? `${Math.floor(mins / 60) > 0 ? Math.floor(mins / 60) + 'h ' : ''}${mins % 60}m` : '';
-
-  const fmtViews = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-    return String(n);
-  };
 
   return (
     <div className="min-h-screen bg-[#0A0605] text-white">

@@ -193,7 +193,10 @@ export default function HomeScreen({
     ? shows.filter((s) => s.title.toLowerCase().includes(query.toLowerCase()))
     : shows;
 
-  const trending = [...shows].sort((a, b) => b.rating - a.rating).slice(0, 10);
+  // Top 10 now reflects real audience behavior — actual play counts
+  // (see increment_show_view_count) — instead of an admin-typed rating
+  // number, so it genuinely shows which shows viewers watch the most.
+  const trending = [...shows].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).slice(0, 10);
   const newReleases = [...shows]
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
     .slice(0, 10);
@@ -275,20 +278,10 @@ export default function HomeScreen({
         <img
           src="/assets/nint-keyart.jpg"
           alt=""
-          className="h-full w-full object-cover opacity-[0.32]"
+          className="h-full w-full object-cover opacity-[0.22]"
           style={{ objectPosition: '68% 30%', transform: 'scale(1.1)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/25 via-[#0A0605]/55 to-[#0A0605]/88" />
-        {/* Logo + wordmark watermark — sealed directly into the fixed
-            background layer (not the header), so it never scrolls, never
-            competes with header controls, and quietly carries the brand
-            everywhere the way the old "LIVE" label used to. */}
-        <img
-          src="/assets/images/logo-transparent.png"
-          alt=""
-          className="absolute left-1/2 top-[64px] w-[58vw] max-w-[260px] -translate-x-1/2 opacity-[0.22] sm:top-[76px] sm:max-w-[300px]"
-          draggable={false}
-        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/40 via-[#0A0605]/70 to-[#0A0605]/94" />
       </div>
 
       {/* Whole-page ambient glow — two faint warm radials fixed to the
@@ -300,7 +293,7 @@ export default function HomeScreen({
         className="pointer-events-none fixed inset-0 z-0"
         style={{
           background:
-            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(140,15,18,0.20) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(255,201,74,0.10) 0%, rgba(10,6,5,0) 60%)',
+            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(140,15,18,0.13) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(255,201,74,0.06) 0%, rgba(10,6,5,0) 60%)',
         }}
         aria-hidden
       />
@@ -318,7 +311,7 @@ export default function HomeScreen({
           heroVisible ? 'bg-transparent' : 'bg-[#0A0605]/85 backdrop-blur-md'
         }`}
       >
-        <div className="mx-auto flex max-w-[1400px] items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-1.5 px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
           <button
             onClick={() => {
               setActiveTab('home');
@@ -339,7 +332,7 @@ export default function HomeScreen({
 
           {/* Live "watching now" count — a real Realtime Presence tally
               (see src/lib/presence.ts), not a randomized/fake number. */}
-          <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-2 py-1 sm:px-2.5">
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
@@ -351,7 +344,7 @@ export default function HomeScreen({
           {/* Nav links — scrolls horizontally instead of wrapping/breaking
               on the narrowest phones, but fits on one line on anything
               typical. */}
-          <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-4 overflow-x-auto sm:gap-5">
+          <nav className="no-scrollbar flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto sm:gap-5">
             <NavLink
               label={t.navHome}
               active={!viewAll && !query.trim()}
@@ -407,6 +400,18 @@ export default function HomeScreen({
           what made it visually collide with the header controls; being
           in-flow here means it can never land on top of them. */}
       <div className="relative z-10 pt-[52px] sm:pt-[60px]">
+        {/* Logo + wordmark watermark — lives in the normal scrolling flow
+            now (not the fixed background), so it scrolls away with the
+            hero instead of staying pinned over the rows below it once the
+            viewer scrolls down. */}
+        <img
+          src="/assets/images/logo-transparent.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-2 z-0 w-[58vw] max-w-[260px] -translate-x-1/2 opacity-[0.22] sm:top-4 sm:max-w-[300px]"
+          draggable={false}
+        />
+
         <SupporterTicker />
 
         {/* Coverflow hero carousel */}
@@ -452,7 +457,7 @@ export default function HomeScreen({
               </button>
               <h2 className="text-xl font-bold">{viewAll.title}</h2>
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
               {viewAll.shows.map((s) => (
                 <ShowCard key={s.id} show={s} onClick={onSelectShow} />
               ))}
@@ -467,7 +472,7 @@ export default function HomeScreen({
             {filteredShows.length === 0 ? (
               <p className="py-20 text-center text-white/40">{t.noResults}</p>
             ) : (
-              <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
                 {filteredShows.map((s) => (
                   <ShowCard key={s.id} show={s} onClick={onSelectShow} />
                 ))}
@@ -974,7 +979,7 @@ function NavLink({ label, active, onClick }: NavLinkProps) {
   return (
     <button
       onClick={onClick}
-      className={`relative shrink-0 whitespace-nowrap pb-0.5 text-xs font-semibold transition sm:text-sm ${
+      className={`relative shrink-0 whitespace-nowrap pb-0.5 text-[11px] font-semibold transition sm:text-sm ${
         active ? 'text-white' : 'text-white/55 hover:text-white/80'
       }`}
     >

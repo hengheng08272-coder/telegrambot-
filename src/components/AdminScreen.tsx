@@ -1151,7 +1151,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                    View count
+                    View count (auto-tracked — edit only to seed/adjust)
                   </label>
                   <input
                     type="number"
