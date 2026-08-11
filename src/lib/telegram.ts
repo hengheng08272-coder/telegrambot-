@@ -136,6 +136,46 @@ export async function inviteFriend(): Promise<'shared' | 'copied' | 'failed' | '
   }
 }
 
+// Shares a deep link straight into a specific show
+// (t.me/YourBot/app?startapp=show_<id>). This used to be unsafe —
+// anyone who received the link could watch for free without ever
+// joining — but now that verify-membership actually checks Telegram
+// group membership on every app open (see App.tsx), a non-member who
+// taps this link just gets sent to the NotMemberScreen instead of any
+// content, the same as opening the app any other way. So this is safe
+// to offer again. Needs VITE_TELEGRAM_BOT_USERNAME configured (bot
+// username, no @); without it, falls back to sharing the current page
+// URL instead of a proper deep link.
+export async function shareShow(showId: string, title: string): Promise<'shared' | 'copied' | 'failed'> {
+  const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
+  const deepLink = botUsername
+    ? `https://t.me/${botUsername}/app?startapp=show_${showId}`
+    : window.location.href;
+
+  const tg = getTelegramWebApp();
+  if (tg?.openTelegramLink) {
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(deepLink)}&text=${encodeURIComponent(title)}`;
+    tg.openTelegramLink(shareUrl);
+    return 'shared';
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, url: deepLink });
+      return 'shared';
+    } catch {
+      return 'failed';
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(deepLink);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
+}
+
 // The `start_param` from a deep link like
 // https://t.me/YourBot/app?startapp=show_<id> arrives here as "show_<id>".
 export function getStartParam(): string | null {

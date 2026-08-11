@@ -125,6 +125,7 @@ export const appText = {
     top10Label: 'TOP 10 VIEWER',
     inviteFriend: 'Invite a friend',
     linkCopied: 'Sent!',
+    share: 'Share',
 
     // Bottom navigation
     navSearch: 'Search',
@@ -426,6 +427,7 @@ export const appText = {
     top10Label: 'TOP 10 VIEWER',
     inviteFriend: 'អញ្ជើញមិត្តភ័ក្តិ',
     linkCopied: 'ផ្ញើរួច!',
+    share: 'ចែករំលែក',
 
     // Bottom navigation
     navSearch: 'ស្វែងរក',
