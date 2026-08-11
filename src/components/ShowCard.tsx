@@ -39,8 +39,8 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
     <button
       onClick={() => onClick(show)}
       className={`group relative shrink-0 text-left ${
-        large ? 'w-[168px] sm:w-[210px]' : rank ? 'w-[134px] sm:w-[162px]' : 'w-[100px] sm:w-[124px]'
-      } ${rank ? 'pl-7 sm:pl-10' : ''}`}
+        large ? 'w-[168px] sm:w-[210px]' : rank ? 'w-[112px] sm:w-[145px]' : 'w-[100px] sm:w-[124px]'
+      } ${rank ? 'pl-7 sm:pl-9' : ''}`}
     >
       {rank && (
         <span
@@ -97,10 +97,13 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           />
           {/* Title — overlaid directly on the poster for ranked (Top 10)
               cards so the row reads as pure artwork instead of poster +
-              caption; other rows keep the plain caption below the card. */}
+              caption; other rows keep the plain caption below the card.
+              Single-line with an ellipsis when it's too long to fit, gold
+              by default (not just on hover) to match the numeral behind
+              it. */}
           {rank && (
             <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
-              <h3 className="line-clamp-2 text-[12.5px] font-bold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] transition group-hover:text-[#FFC94A] sm:text-[13.5px]">
+              <h3 className="truncate text-[12.5px] font-bold leading-tight text-[#FFC94A] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13.5px]">
                 {show.title}
               </h3>
             </div>

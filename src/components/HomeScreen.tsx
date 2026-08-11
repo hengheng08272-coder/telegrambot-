@@ -223,7 +223,7 @@ export default function HomeScreen({
         </div>
 
         {/* Hero skeleton */}
-        <div className="relative w-full overflow-hidden" style={{ height: 'min(32vh, 280px)' }}>
+        <div className="relative w-full overflow-hidden" style={{ height: 'min(28vh, 250px)' }}>
           <div className="skeleton-shimmer absolute inset-0 bg-white/[0.03]" />
           <div className="relative flex h-full items-center justify-center gap-3">
             <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-2xl bg-white/5" />
@@ -331,15 +331,32 @@ export default function HomeScreen({
           </button>
 
           {/* Live "watching now" count — a real Realtime Presence tally
-              (see src/lib/presence.ts), not a randomized/fake number. */}
+              (see src/lib/presence.ts), not a randomized/fake number. Text
+              label shown on every size now (used to hide below `sm:`,
+              which cut the number off from its meaning on mobile). */}
           <div className="flex shrink-0 items-center gap-1 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
             </span>
             <span className="text-xs font-bold text-white">{watchingNow.toLocaleString()}</span>
-            <span className="hidden text-xs text-white/50 sm:inline">{t.watchingNow ?? 'watching now'}</span>
+            <span className="text-[10px] text-white/50 sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
           </div>
+
+          {/* "Auto" cue — moved here from the hero banner so it lives in
+              the one part of the screen that never scrolls away, instead
+              of disappearing the moment the hero scrolls past. */}
+          {heroVisible && (
+            <div className="hidden shrink-0 items-center gap-1 rounded-full bg-white/[0.06] px-2 py-1 sm:flex">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FFC94A]/70" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FFC94A]" />
+              </span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/50">
+                {t.autoLabel ?? 'Auto'}
+              </span>
+            </div>
+          )}
 
           {/* Nav links — scrolls horizontally instead of wrapping/breaking
               on the narrowest phones, but fits on one line on anything
@@ -686,14 +703,14 @@ function CoverflowHero({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.32, 280) : 340;
+  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.28, 250) : 340;
   const parallaxOffset = Math.min(scrollY * 0.35, 120);
   const parallaxOpacity = Math.max(1 - scrollY / heroHeightPx, 0);
 
   return (
     <section
       className="relative w-full overflow-hidden"
-      style={{ height: 'min(32vh, 280px)' }}
+      style={{ height: 'min(28vh, 250px)' }}
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
@@ -839,7 +856,9 @@ function CoverflowHero({
           already shows where you are), so the separate row of dots
           underneath it was redundant and has been removed. Keyed on the
           index so it restarts cleanly every time the centered card
-          changes, whether from the timer or a manual swipe/tap. */}
+          changes, whether from the timer or a manual swipe/tap. The
+          "Auto" text cue itself now lives in the fixed header instead of
+          here, so it never scrolls away with the hero. */}
       {shows.length > 1 && (
         <div className="absolute inset-x-0 bottom-0 z-30 h-[3px] w-full overflow-hidden bg-white/10">
           <div
@@ -850,19 +869,6 @@ function CoverflowHero({
               background: 'linear-gradient(90deg, #FFC94A, #E31E24)',
             }}
           />
-        </div>
-      )}
-
-      {/* Tiny "auto-playing" cue — tucked in the corner, low-contrast on
-          purpose so it reads as a quiet detail rather than competing with
-          the poster art or the dots. */}
-      {shows.length > 1 && (
-        <div className="pointer-events-none absolute bottom-3 right-3 z-30 flex items-center gap-1 rounded-full bg-black/30 px-2 py-1 backdrop-blur-sm">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FFC94A]/70" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FFC94A]" />
-          </span>
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-white/50">Auto</span>
         </div>
       )}
     </section>
@@ -1015,17 +1021,34 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
     if (node) node.scrollLeft = 0;
   }, []);
 
+  // Top 10 gets its own quiet backdrop — a blurred still of the #1 show,
+  // echoing the hero's "cover" treatment — but it's a fixed image, not an
+  // autoplaying/crossfading one: it only ever reflects whoever is
+  // currently ranked #1, changing exactly when the ranking itself changes,
+  // never on a timer.
+  const backdropSrc = ranked ? shows[0]?.banner_url ?? shows[0]?.poster_url : null;
+
   return (
-    <section className="mt-9">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <section className={ranked ? 'relative mt-6 overflow-hidden rounded-2xl' : 'mt-9'}>
+      {ranked && backdropSrc && (
+        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
+          <img
+            src={backdropSrc}
+            alt=""
+            className="h-full w-full scale-110 object-cover opacity-[0.16] blur-2xl"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/40 via-[#0A0605]/70 to-[#0A0605]" />
+        </div>
+      )}
+      <div className={`flex items-center justify-between gap-2 ${ranked ? 'px-3 pt-4' : 'mb-3'}`}>
+        <div className="mb-3 flex items-center gap-2">
           {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
           <h2 className="text-lg font-bold tracking-tight">{title}</h2>
         </div>
         {onViewAll && (
           <button
             onClick={onViewAll}
-            className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
+            className="mb-3 shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
           >
             {viewAllLabel}
           </button>
@@ -1033,7 +1056,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
       </div>
       <div
         ref={scrollerRef}
-        className={`no-scrollbar flex gap-3 overflow-x-auto pb-2 ${ranked ? 'pt-1' : ''}`}
+        className={`no-scrollbar flex gap-2.5 overflow-x-auto pb-3 ${ranked ? 'px-3 pt-1' : ''}`}
       >
         {shows.map((s, i) => (
           <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
