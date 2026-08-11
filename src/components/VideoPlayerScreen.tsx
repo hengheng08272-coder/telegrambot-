@@ -8,6 +8,8 @@ import {
   VolumeX,
   Lock,
   Unlock,
+  Share2,
+  Check,
   SkipBack,
   SkipForward,
   Loader2,
@@ -22,7 +24,7 @@ import type { Episode, ShowWithGenres } from '@/lib/types';
 import { fetchEpisodesByShow } from '@/lib/api';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
-import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI, getTelegramWebApp } from '@/lib/telegram';
+import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI, getTelegramWebApp, shareShow } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase/supabaseClient';
 
 interface VideoPlayerScreenProps {
@@ -81,6 +83,15 @@ export default function VideoPlayerScreen({
   const [autoAdvanceIn, setAutoAdvanceIn] = useState<number | null>(null);
   const [episodeListOpen, setEpisodeListOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [shareState, setShareState] = useState<'idle' | 'sent'>('idle');
+
+  const handleShare = async () => {
+    const result = await shareShow(show.id, show.title);
+    if (result === 'shared' || result === 'copied') {
+      setShareState('sent');
+      window.setTimeout(() => setShareState('idle'), 2000);
+    }
+  };
 
   const currentIdx = allEpisodes.findIndex((e) => e.id === episode.id);
   const nextEpisode = currentIdx >= 0 && currentIdx < allEpisodes.length - 1 ? allEpisodes[currentIdx + 1] : null;
@@ -581,11 +592,17 @@ export default function VideoPlayerScreen({
           </div>
         )}
 
-        {/* Top gradient + back */}
+        {/* Top gradient + back — extra top padding kicks in whenever
+            we're inside Telegram but NOT in Telegram's own fullscreen
+            (older client without the API, or the auto-request above
+            simply hasn't resolved yet) so our back pill lands below
+            Telegram's own back/menu row instead of stacking on top of
+            it, regardless of whether fullscreen ever succeeds. */}
         <div
           className={`absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4 transition-opacity duration-300 sm:p-6 ${
             showControls ? 'opacity-100' : 'opacity-0'
           }`}
+          style={isInTelegram() && !isFullscreen ? { paddingTop: 'calc(1rem + 52px)' } : undefined}
         >
           <button
             onClick={handleBackPress}
@@ -705,6 +722,17 @@ export default function VideoPlayerScreen({
                   {t.episodeLabel} {nextEpisode.episode_number} <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               )}
+              <button
+                onClick={handleShare}
+                className="-m-2 p-2 text-white/80 transition hover:text-[#FFC94A]"
+                aria-label={t.share ?? 'Share'}
+              >
+                {shareState === 'sent' ? (
+                  <Check className="h-5 w-5 text-[#4ADE80]" />
+                ) : (
+                  <Share2 className="h-5 w-5" />
+                )}
+              </button>
               <button
                 onClick={toggleLock}
                 className="-m-2 p-2 text-white/80 transition hover:text-[#E31E24]"
