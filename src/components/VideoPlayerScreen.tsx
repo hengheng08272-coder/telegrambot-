@@ -105,6 +105,22 @@ export default function VideoPlayerScreen({
     };
   }, []);
 
+  // Auto-expand over Telegram's own header the moment the player opens.
+  // Without this, Telegram's own back pill/menu stays on screen and
+  // visually overlaps our own back button in the top-left corner — the
+  // viewer had to notice and tap the lock button first just to clear it.
+  // The `fullscreenChanged` listener above picks up the resulting state
+  // change and updates the Lock icon, so no extra state juggling here.
+  useEffect(() => {
+    if (isInTelegram() && hasTelegramFullscreenAPI()) {
+      try {
+        enterTelegramFullscreen();
+      } catch {
+        /* no-op — falls back to the plain in-page layout, still usable */
+      }
+    }
+  }, []);
+
   // If the viewer entered fullscreen (either Telegram's Mini-App-level
   // fullscreen or the browser's own) from the toggle button, leaving this
   // screen shouldn't leave the whole app stuck expanded over Telegram's
@@ -684,7 +700,7 @@ export default function VideoPlayerScreen({
                 className="-m-2 p-2 text-white/80 transition hover:text-[#E31E24]"
                 aria-label={isFullscreen ? 'Unlock screen rotation' : 'Lock screen rotation'}
               >
-                {isFullscreen ? <Unlock className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
+                {isFullscreen ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
               </button>
             </div>
           </div>
