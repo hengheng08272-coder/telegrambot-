@@ -7,20 +7,48 @@ export interface PricingTier {
   price: number;
   labelKm: string;
   labelEn: string;
+  pitchKm?: string;
   badge?: 'popular' | 'best';
+  bonusEnabled: boolean;
 }
 
-// Real prices, matching the actual ABA KHQR in use — kept in sync by
-// hand whenever pricing changes (see QR_PAYMENT_SETUP_NOTE.md). The $5
-// tier grants the same 1-month duration as the $3 tier, but a much
-// bigger bonus-spin range (see BONUS_POOLS in lib/spin.ts) — it's the
-// "pay a bit more, spin for a lot more" option, not a longer plan.
+// Real prices, matching the actual ABA KHQR in use — this is the
+// fallback/seed shape (and the source of truth for `months`, which the
+// admin-editable table below doesn't cover). Price, labels, pitch text,
+// and whether the bonus spin is offered can be overridden per-tier from
+// Admin Panel -> Subscriptions — see getEffectivePricingTiers().
 export const PRICING_TIERS: PricingTier[] = [
-  { key: '1m', months: 1, price: 3, labelKm: '១ ខែ', labelEn: '1 Month' },
-  { key: '2m', months: 1, price: 5, labelKm: '១ ខែ (Bonus ធំ)', labelEn: '1 Month (Big Bonus)', badge: 'popular' },
-  { key: '6m', months: 6, price: 16, labelKm: '៦ ខែ', labelEn: '6 Months' },
-  { key: '12m', months: 12, price: 27, labelKm: '១២ ខែ', labelEn: '12 Months', badge: 'best' },
+  { key: '1m', months: 1, price: 3, labelKm: '១ ខែ', labelEn: '1 Month', pitchKm: 'ចាប់ផ្តើមមើលភ្លាមៗ — មួយខែពេញ', bonusEnabled: true },
+  { key: '2m', months: 1, price: 5, labelKm: '១ ខែ (Bonus ធំ)', labelEn: '1 Month (Big Bonus)', badge: 'popular', pitchKm: 'ដូចគ្នា ១ខែ ប៉ុន្តែរង្វាន់ធំជាងច្រើន!', bonusEnabled: true },
+  { key: '6m', months: 6, price: 16, labelKm: '៦ ខែ', labelEn: '6 Months', pitchKm: 'សន្សំសំចៃជាង — សម្រាប់អ្នកមើលទៀងទាត់', bonusEnabled: true },
+  { key: '12m', months: 12, price: 27, labelKm: '១២ ខែ', labelEn: '12 Months', badge: 'best', pitchKm: 'តម្លៃល្អបំផុត — សន្សំសំចៃច្រើនបំផុត', bonusEnabled: true },
 ];
+
+// Merges any admin edits (Admin Panel -> Subscriptions -> price/
+// description/bonus-toggle fields) onto the hardcoded defaults above.
+// `months` and `badge` always come from the code — only price/labels/
+// pitch/bonusEnabled are admin-editable, since months drives real
+// subscription-length math and shouldn't be freeform-editable without
+// also touching the code that reasons about it.
+export async function getEffectivePricingTiers(): Promise<PricingTier[]> {
+  const { data } = await supabase
+    .from('pricing_tiers')
+    .select('key, price, label_km, label_en, pitch_km, bonus_enabled');
+  const overrides = new Map((data ?? []).map((row) => [row.key, row]));
+
+  return PRICING_TIERS.map((tier) => {
+    const o = overrides.get(tier.key);
+    if (!o) return tier;
+    return {
+      ...tier,
+      price: o.price ?? tier.price,
+      labelKm: o.label_km ?? tier.labelKm,
+      labelEn: o.label_en ?? tier.labelEn,
+      pitchKm: o.pitch_km ?? tier.pitchKm,
+      bonusEnabled: o.bonus_enabled ?? tier.bonusEnabled,
+    };
+  });
+}
 
 export interface SubscriptionStatus {
   subscribed: boolean;

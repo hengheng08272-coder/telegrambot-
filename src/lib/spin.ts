@@ -130,7 +130,19 @@ export async function getAvailableBonusSpin(): Promise<BonusSpinInfo | null> {
     .eq('bonus_spin_claimed', false)
     .order('submitted_at', { ascending: false });
 
-  const eligible = (data ?? []).find((row) => BONUS_POOLS[row.tier]);
+  const candidates = (data ?? []).filter((row) => BONUS_POOLS[row.tier]);
+  if (candidates.length === 0) return null;
+
+  // The admin can turn a tier's bonus off from Admin Panel -> Subscriptions
+  // without touching code — check that toggle before offering a spin for
+  // any of the tiers this account has an unclaimed purchase for.
+  const { data: tierRows } = await supabase
+    .from('pricing_tiers')
+    .select('key, bonus_enabled')
+    .in('key', candidates.map((c) => c.tier));
+  const enabledKeys = new Set((tierRows ?? []).filter((t) => t.bonus_enabled).map((t) => t.key));
+
+  const eligible = candidates.find((row) => enabledKeys.has(row.tier) || tierRows === null);
   return eligible ? { submissionId: eligible.id, tier: eligible.tier } : null;
 }
 
