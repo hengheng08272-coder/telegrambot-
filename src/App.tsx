@@ -9,6 +9,7 @@ import AuthScreen from '@/components/AuthScreen';
 import HomeScreen, { type Tab } from '@/components/HomeScreen';
 import ShowDetailScreen from '@/components/ShowDetailScreen';
 import LegalScreen from '@/components/LegalScreen';
+import AccountScreen from '@/components/AccountScreen';
 import VideoPlayerScreen from '@/components/VideoPlayerScreen';
 import WatchlistScreen from '@/components/WatchlistScreen';
 import AdminScreen from '@/components/AdminScreen';
@@ -19,6 +20,7 @@ import SubscriptionModal from '@/components/SubscriptionModal';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { getSubscriptionStatus } from '@/lib/subscription';
+import { getAvailableBonusSpin } from '@/lib/spin';
 import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess, getCurrentTelegramUser } from '@/lib/telegram';
 
 // This build is the Telegram VIP Mini App: access is gated two ways —
@@ -36,6 +38,7 @@ type Screen =
   | { name: 'player'; episode: Episode; show: ShowWithGenres }
   | { name: 'watchlist' }
   | { name: 'legal' }
+  | { name: 'account' }
   | { name: 'admin' };
 
 function App() {
@@ -48,8 +51,10 @@ function App() {
   const [showSpin, setShowSpin] = useState(false);
   const [showSubscribe, setShowSubscribe] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  const [bonusSpinReady, setBonusSpinReady] = useState(false);
   const refreshSubscription = () => {
     getSubscriptionStatus().then((s) => setSubscribed(s.subscribed));
+    getAvailableBonusSpin().then((info) => setBonusSpinReady(!!info));
   };
   useEffect(() => {
     refreshSubscription();
@@ -289,6 +294,42 @@ function App() {
     return <LegalScreen onBack={() => setScreen({ name: 'home' })} />;
   }
 
+  if (screen.name === 'account') {
+    return (
+      <>
+        <AccountScreen
+          onBack={() => setScreen({ name: 'home' })}
+          onOpenWatchlist={() => setScreen({ name: 'watchlist' })}
+          onOpenSubscription={() => setShowSubscribe(true)}
+          onOpenSpin={() => setShowSpin(true)}
+        />
+        {showSpin && (
+          <LuckyDrawModal
+            onClose={() => setShowSpin(false)}
+            onClaimed={() => hapticSuccess()}
+          />
+        )}
+        {showSubscribe && (
+          <SubscriptionModal
+            onClose={() => setShowSubscribe(false)}
+            onSubmitted={() => {
+              hapticSuccess();
+              refreshSubscription();
+            }}
+            onApproved={() => {
+              hapticSuccess();
+              refreshSubscription();
+            }}
+            onGoSpin={() => {
+              setShowSubscribe(false);
+              setShowSpin(true);
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
   if (screen.name === 'detail') {
     return (
       <>
@@ -343,13 +384,13 @@ function App() {
       <AnnouncementBanner />
       <HomeScreen
         onSelectShow={(show) => setScreen({ name: 'detail', show })}
-        onOpenProfile={() => {}}
+        onOpenProfile={() => setScreen({ name: 'account' })}
         onOpenSubscription={() => setShowSubscribe(true)}
         onOpenWatchlist={() => setScreen({ name: 'watchlist' })}
         onOpenRewards={() => setShowSpin(true)}
         avatarUrl={null}
         subscribed={subscribed}
-        rewardsAvailable="spin-ready"
+        rewardsAvailable={bonusSpinReady ? 'spin-ready' : null}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         searchOpen={searchOpen}
