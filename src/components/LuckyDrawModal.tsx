@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Gift, Loader2, PartyPopper, Sparkles, X } from 'lucide-react';
-import { claimSpin, claimBonusSpin, getAvailableBonusSpin, SPIN_TIERS, BONUS_POOLS, type RewardTier, type BonusSpinInfo } from '@/lib/spin';
+import { claimBonusSpin, getAvailableBonusSpin, BONUS_POOLS, type RewardTier, type BonusSpinInfo } from '@/lib/spin';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 
@@ -32,18 +32,16 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
     });
   }, []);
 
-  const pool: RewardTier[] = bonusInfo ? BONUS_POOLS[bonusInfo.tier] ?? SPIN_TIERS : SPIN_TIERS;
-  const segmentDeg = 360 / pool.length;
+  const pool: RewardTier[] = bonusInfo ? BONUS_POOLS[bonusInfo.tier] ?? [] : [];
+  const segmentDeg = pool.length ? 360 / pool.length : 0;
   const wedgeColors = pool.map((_, i) => WEDGE_PALETTE[i % WEDGE_PALETTE.length]);
 
   const spin = async () => {
-    if (spinning || result || checking) return;
+    if (spinning || result || checking || !bonusInfo) return;
     setError(null);
     setSpinning(true);
 
-    const { data, error: err } = bonusInfo
-      ? await claimBonusSpin(bonusInfo)
-      : await claimSpin();
+    const { data, error: err } = await claimBonusSpin(bonusInfo);
 
     if (err || !data) {
       setSpinning(false);
@@ -94,9 +92,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
 
           <div className="mb-1 flex items-center justify-center gap-1.5 text-[#FFC94A]">
             <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-[0.2em]">
-              {bonusInfo ? 'VIP BONUS SPIN' : t.spinEyebrow}
-            </span>
+            <span className="text-xs font-bold uppercase tracking-[0.2em]">VIP BONUS SPIN</span>
             <Sparkles className="h-4 w-4" />
           </div>
           <h2
@@ -109,6 +105,13 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
           {checking ? (
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-white/40" />
+            </div>
+          ) : !bonusInfo ? (
+            <div className="flex h-64 flex-col items-center justify-center gap-3 px-4 text-center">
+              <Gift className="h-10 w-10 text-white/20" />
+              <p className="text-sm text-white/50">
+                គ្មានរង្វាន់រង់ចាំទេឥឡូវនេះ — ទិញ VIP ដើម្បីទទួល bonus spin ថ្ងៃបន្ថែម!
+              </p>
             </div>
           ) : (
             <div className="relative mx-auto mb-5 h-64 w-64">
@@ -176,6 +179,13 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
                 {t.spinCollect}
               </button>
             </div>
+          ) : !checking && !bonusInfo ? (
+            <button
+              onClick={onClose}
+              className="w-full rounded-full border border-white/10 bg-white/5 py-3.5 text-sm font-bold text-white transition hover:bg-white/10"
+            >
+              បិទ
+            </button>
           ) : (
             <button
               onClick={spin}

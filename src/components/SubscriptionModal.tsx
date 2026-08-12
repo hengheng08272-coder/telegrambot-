@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Clock, Loader2, Lock, PartyPopper, Send, Upload, X } from 'lucide-react';
+import { Check, Clock, Crown, Gift, Loader2, PartyPopper, Send, Sparkles, Star, Upload, X, Zap } from 'lucide-react';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
+import { BONUS_POOLS } from '@/lib/spin';
 import {
   PRICING_TIERS,
+  getEffectivePricingTiers,
+  type PricingTier,
   submitPayment,
   getPendingSubmission,
   getQrCodes,
@@ -21,6 +24,26 @@ interface Props {
 
 type Step = 'pick' | 'pay' | 'sent';
 const AUTO_APPROVE_SECONDS = 30;
+
+// Per-tier presentation: icon + a short Khmer pitch. Bonus-day range is
+// computed live from lib/spin.ts BONUS_POOLS below (never hand-typed),
+// so the promise on screen can never drift from what the spin wheel
+// actually pays out.
+const TIER_PRESENTATION: Record<string, { icon: typeof Zap }> = {
+  '1m': { icon: Zap },
+  '2m': { icon: Gift },
+  '6m': { icon: Star },
+  '12m': { icon: Crown },
+};
+
+function bonusRangeLabel(tierKey: string): string | null {
+  const pool = BONUS_POOLS[tierKey];
+  if (!pool || pool.length === 0) return null;
+  const days = pool.map((t) => t.days);
+  const min = Math.min(...days);
+  const max = Math.max(...days);
+  return min === max ? `${min} ថ្ងៃ` : `${min}-${max} ថ្ងៃ`;
+}
 
 // Real KHQR images bundled with the app as the day-one default — the
 // admin can still override any of these later from Admin Panel -> QR
@@ -44,6 +67,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [pending, setPending] = useState<PaymentSubmission | null>(null);
   const [checkingPending, setCheckingPending] = useState(true);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
+  const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_APPROVE_SECONDS);
   const [decision, setDecision] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
   const notifiedApprovedRef = useRef(false);
@@ -55,6 +79,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
       if (p) setStep('sent');
     });
     getQrCodes().then(setQrImages);
+    getEffectivePricingTiers().then(setTiers);
   }, []);
 
   useEffect(() => {
@@ -91,7 +116,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     }
   }, [decision, onApproved]);
 
-  const tier = PRICING_TIERS.find((tr) => tr.key === tierKey) ?? null;
+  const tier = tiers.find((tr) => tr.key === tierKey) ?? null;
 
   const handlePickTier = (key: string) => {
     setTierKey(key);
@@ -129,16 +154,19 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/75 sm:items-center sm:p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-t-3xl border border-white/10 bg-[#120A0A] p-5 sm:rounded-3xl max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-md rounded-t-3xl border border-white/10 bg-[#120A0A] p-5 sm:rounded-3xl max-h-[90vh] overflow-y-auto"
       >
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white">
-            <Lock className="h-4 w-4 text-[#FFC94A]" />
-            <h2 className="text-sm font-bold">{t.subTicketEyebrow}</h2>
-          </div>
-          <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
+        <button
+          onClick={onClose}
+          className="absolute right-6 top-6 z-10 text-white/50 transition hover:text-white"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="mb-5 flex flex-col items-center text-center">
+          <img src="/assets/logo.png" alt="NINT ANIME" className="mb-3 h-16 w-16 rounded-2xl" />
+          <h2 className="text-base font-bold text-white">{t.subTicketEyebrow}</h2>
         </div>
 
         {checkingPending ? (
@@ -146,37 +174,68 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             <Loader2 className="h-6 w-6 animate-spin text-white/40" />
           </div>
         ) : step === 'pick' ? (
-          <div className="space-y-2.5">
-            {PRICING_TIERS.map((tr) => (
-              <button
-                key={tr.key}
-                onClick={() => handlePickTier(tr.key)}
-                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left transition ${
-                  tr.badge === 'best'
-                    ? 'border-[#FFC94A]/40 bg-gradient-to-r from-[#FFC94A]/10 to-transparent hover:border-[#FFC94A]/70'
-                    : tr.badge === 'popular'
-                      ? 'border-[#E31E24]/35 bg-gradient-to-r from-[#E31E24]/10 to-transparent hover:border-[#E31E24]/60'
-                      : 'border-white/10 bg-white/[0.03] hover:border-white/25'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white">{lang === 'km' ? tr.labelKm : tr.labelEn}</span>
-                    {tr.badge === 'popular' && (
-                      <span className="rounded-full bg-[#E31E24]/20 px-2 py-0.5 text-[10px] font-bold text-[#FF6A57]">
-                        {t.subPopular}
-                      </span>
-                    )}
-                    {tr.badge === 'best' && (
-                      <span className="rounded-full bg-[#FFC94A]/20 px-2 py-0.5 text-[10px] font-bold text-[#FFC94A]">
-                        {t.subBestValue}
-                      </span>
-                    )}
+          <div className="space-y-3">
+            {tiers.map((tr) => {
+              const presentation = TIER_PRESENTATION[tr.key];
+              const Icon = presentation?.icon ?? Zap;
+              const bonusLabel = tr.bonusEnabled ? bonusRangeLabel(tr.key) : null;
+              const isHighlight = tr.badge === 'best' || tr.badge === 'popular';
+              return (
+                <button
+                  key={tr.key}
+                  onClick={() => handlePickTier(tr.key)}
+                  className={`relative w-full overflow-hidden rounded-2xl border px-4 py-4 text-left transition ${
+                    tr.badge === 'best'
+                      ? 'border-[#FFC94A]/45 bg-gradient-to-br from-[#FFC94A]/12 via-transparent to-transparent hover:border-[#FFC94A]/75'
+                      : tr.badge === 'popular'
+                        ? 'border-[#E31E24]/40 bg-gradient-to-br from-[#E31E24]/12 via-transparent to-transparent hover:border-[#E31E24]/70'
+                        : 'border-white/10 bg-white/[0.03] hover:border-white/25'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                        isHighlight
+                          ? tr.badge === 'best'
+                            ? 'bg-gradient-to-br from-[#FFC94A] to-[#B8862E]'
+                            : 'bg-gradient-to-br from-[#E31E24] to-[#8C0F12]'
+                          : 'bg-white/10'
+                      }`}
+                    >
+                      <Icon className={`h-5 w-5 ${isHighlight ? 'text-[#0A0605]' : 'text-white/70'}`} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">{lang === 'km' ? tr.labelKm : tr.labelEn}</span>
+                        {tr.badge === 'popular' && (
+                          <span className="rounded-full bg-[#E31E24]/20 px-2 py-0.5 text-[10px] font-bold text-[#FF6A57]">
+                            {t.subPopular}
+                          </span>
+                        )}
+                        {tr.badge === 'best' && (
+                          <span className="rounded-full bg-[#FFC94A]/20 px-2 py-0.5 text-[10px] font-bold text-[#FFC94A]">
+                            {t.subBestValue}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-white/45">{tr.pitchKm}</p>
+                    </div>
+
+                    <span className="shrink-0 text-lg font-extrabold text-white">${tr.price}</span>
                   </div>
-                </div>
-                <span className="text-lg font-extrabold text-white">${tr.price}</span>
-              </button>
-            ))}
+
+                  {bonusLabel && (
+                    <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-black/25 px-2.5 py-1.5">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#FFC94A]" />
+                      <span className="text-[11px] font-semibold text-[#FFC94A]">
+                        ចាប់រង្វាន់ថ្ងៃបន្ថែម {bonusLabel}
+                      </span>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         ) : step === 'pay' && tier ? (
           <div className="space-y-4">

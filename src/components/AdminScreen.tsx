@@ -29,7 +29,7 @@ import BanLogPanel from '@/components/BanLogPanel';
 import WatchLogPanel from '@/components/WatchLogPanel';
 import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
 import PaymentsPanel from '@/components/PaymentsPanel';
-import QrCodesPanel from '@/components/QrCodesPanel';
+import SubscriptionsPanel from '@/components/SubscriptionsPanel';
 import { usePresenceCount } from '@/lib/presence';
 
 interface AdminScreenProps {
@@ -97,7 +97,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [watchLogOpen, setWatchLogOpen] = useState(false);
   const [suspiciousOpen, setSuspiciousOpen] = useState(false);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
-  const [qrCodesOpen, setQrCodesOpen] = useState(false);
+  const [subscriptionsOpen, setSubscriptionsOpen] = useState(false);
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   useEffect(() => {
     supabase
@@ -566,10 +566,10 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             )}
           </button>
           <button
-            onClick={() => setQrCodesOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-bold text-white/70 transition hover:bg-white/10"
+            onClick={() => setSubscriptionsOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-[#22C55E]/30 bg-[#22C55E]/10 px-4 py-2 text-sm font-bold text-[#22C55E] transition hover:bg-[#22C55E]/20"
           >
-            <QrCode className="h-4 w-4" /> QR Codes
+            <QrCode className="h-4 w-4" /> Subscriptions
           </button>
           <div className="ml-auto relative hidden sm:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -1313,7 +1313,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {banLogOpen && <BanLogPanel onClose={() => setBanLogOpen(false)} />}
       {watchLogOpen && <WatchLogPanel onClose={() => setWatchLogOpen(false)} />}
       {paymentsOpen && <PaymentsPanel onClose={() => setPaymentsOpen(false)} />}
-      {qrCodesOpen && <QrCodesPanel onClose={() => setQrCodesOpen(false)} />}
+      {subscriptionsOpen && <SubscriptionsPanel onClose={() => setSubscriptionsOpen(false)} />}
       {suspiciousOpen && <SuspiciousActivityPanel onClose={() => setSuspiciousOpen(false)} />}
     </div>
   );
