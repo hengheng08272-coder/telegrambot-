@@ -18,8 +18,8 @@ export interface PricingTier {
 // and whether the bonus spin is offered can be overridden per-tier from
 // Admin Panel -> Subscriptions — see getEffectivePricingTiers().
 export const PRICING_TIERS: PricingTier[] = [
-  { key: '1m', months: 1, price: 3, labelKm: '១ ខែ', labelEn: '1 Month', pitchKm: 'ចាប់ផ្តើមមើលភ្លាមៗ — មួយខែពេញ', bonusEnabled: true },
-  { key: '2m', months: 1, price: 5, labelKm: '១ ខែ (Bonus ធំ)', labelEn: '1 Month (Big Bonus)', badge: 'popular', pitchKm: 'ដូចគ្នា ១ខែ ប៉ុន្តែរង្វាន់ធំជាងច្រើន!', bonusEnabled: true },
+  { key: '1m', months: 1, price: 3, labelKm: '១ ខែ', labelEn: '1 Month', pitchKm: 'មើលគ្មានដែនកំណត់ពេញ ១ខែ + ចាប់រង្វាន់ថ្ងៃបន្ថែម', bonusEnabled: true },
+  { key: '2m', months: 1, price: 5, labelKm: '១ ខែ (Bonus ធំ)', labelEn: '1 Month (Big Bonus)', badge: 'popular', pitchKm: 'ដូចគ្នា ១ខែ ប៉ុន្តែឱកាសឈ្នះរង្វាន់ធំដល់ 100 ថ្ងៃ!', bonusEnabled: true },
   { key: '6m', months: 6, price: 16, labelKm: '៦ ខែ', labelEn: '6 Months', pitchKm: 'សន្សំសំចៃជាង — សម្រាប់អ្នកមើលទៀងទាត់', bonusEnabled: true },
   { key: '12m', months: 12, price: 27, labelKm: '១២ ខែ', labelEn: '12 Months', badge: 'best', pitchKm: 'តម្លៃល្អបំផុត — សន្សំសំចៃច្រើនបំផុត', bonusEnabled: true },
 ];
