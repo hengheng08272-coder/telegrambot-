@@ -35,6 +35,12 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
   const pool: RewardTier[] = bonusInfo ? BONUS_POOLS[bonusInfo.tier] ?? [] : [];
   const segmentDeg = pool.length ? 360 / pool.length : 0;
   const wedgeColors = pool.map((_, i) => WEDGE_PALETTE[i % WEDGE_PALETTE.length]);
+  // Wheel scales up and labels shrink a touch as the pool grows (7 slices
+  // for the Big Bonus tier vs. 3-6 for the others), so every slice stays
+  // legible instead of the text overlapping at the rim.
+  const wheelSize = pool.length >= 6 ? 288 : 256;
+  const labelRadius = pool.length >= 6 ? 122 : 108;
+  const labelFontPx = pool.length >= 6 ? 10 : 11;
 
   const spin = async () => {
     if (spinning || result || checking || !bonusInfo) return;
@@ -114,7 +120,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
               </p>
             </div>
           ) : (
-            <div className="relative mx-auto mb-5 h-64 w-64">
+            <div className="relative mx-auto mb-5" style={{ height: wheelSize, width: wheelSize }}>
               <div className="pointer-events-none absolute inset-[-14px] rounded-full bg-[#FFC94A]/15 blur-2xl" />
 
               <div className="absolute left-1/2 top-[-8px] z-10 h-7 w-7 -translate-x-1/2 rotate-180 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
@@ -135,6 +141,15 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
                   ).join(', ')})`,
                 }}
               >
+                {/* Thin dividers between slices so dense pools (6-7 wedges) still read as distinct */}
+                {pool.map((tier, i) => (
+                  <div
+                    key={`div-${tier.key}`}
+                    className="absolute left-1/2 top-1/2 h-1/2 w-px origin-top bg-black/25"
+                    style={{ transform: `rotate(${i * segmentDeg}deg)` }}
+                  />
+                ))}
+
                 {pool.map((tier, i) => {
                   const angle = i * segmentDeg + segmentDeg / 2;
                   return (
@@ -144,8 +159,8 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
                       style={{ transform: `rotate(${angle}deg)` }}
                     >
                       <span
-                        className="absolute -translate-x-1/2 text-[11px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
-                        style={{ top: '-108px' }}
+                        className="absolute -translate-x-1/2 whitespace-nowrap font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                        style={{ top: `-${labelRadius}px`, fontSize: `${labelFontPx}px` }}
                       >
                         {tier.label}
                       </span>

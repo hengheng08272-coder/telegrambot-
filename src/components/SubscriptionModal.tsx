@@ -151,22 +151,44 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   };
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/75 sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md rounded-t-3xl border border-white/10 bg-[#120A0A] p-5 sm:rounded-3xl max-h-[90vh] overflow-y-auto"
+        className="hero-card-enter relative w-full max-w-md overflow-hidden rounded-t-3xl border border-white/10 bg-[#120A0A] p-5 sm:rounded-3xl max-h-[90vh] overflow-y-auto"
       >
+        {/* Brand-consistent ember glow, echoing the home screen's hero backdrop */}
+        <div
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            background:
+              'radial-gradient(ellipse 80% 45% at 50% -8%, rgba(255,201,74,0.16) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 65% 45% at 100% 100%, rgba(227,30,36,0.14) 0%, rgba(10,6,5,0) 58%)',
+          }}
+        />
+
         <button
           onClick={onClose}
-          className="absolute right-6 top-6 z-10 text-white/50 transition hover:text-white"
+          className="absolute right-5 top-5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
 
         <div className="mb-5 flex flex-col items-center text-center">
-          <img src="/assets/logo.png" alt="NINT ANIME" className="mb-3 h-16 w-16 rounded-2xl" />
-          <h2 className="text-base font-bold text-white">{t.subTicketEyebrow}</h2>
+          <div className="relative mb-3">
+            <div className="pointer-events-none absolute inset-[-6px] rounded-2xl bg-[#FFC94A]/15 blur-xl" />
+            <img src="/assets/logo.png" alt="NINT ANIME" className="relative h-16 w-16 rounded-2xl ring-1 ring-[#FFC94A]/30" />
+          </div>
+          <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#FF6A57]">
+            <Crown className="h-3 w-3" />
+            {t.subTicketEyebrow}
+          </div>
+          <h2
+            className="text-xl font-black text-white"
+            style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif', letterSpacing: '0.02em' }}
+          >
+            {t.subGoPremium}
+          </h2>
+          <p className="mt-0.5 text-xs text-white/45">{t.subTagline}</p>
         </div>
 
         {checkingPending ? (
@@ -184,7 +206,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 <button
                   key={tr.key}
                   onClick={() => handlePickTier(tr.key)}
-                  className={`relative w-full overflow-hidden rounded-2xl border px-4 py-4 text-left transition ${
+                  className={`relative w-full overflow-hidden rounded-2xl border px-4 py-4 text-left transition active:scale-[0.98] ${
                     tr.badge === 'best'
                       ? 'border-[#FFC94A]/45 bg-gradient-to-br from-[#FFC94A]/12 via-transparent to-transparent hover:border-[#FFC94A]/75'
                       : tr.badge === 'popular'
@@ -192,13 +214,25 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                         : 'border-white/10 bg-white/[0.03] hover:border-white/25'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  {isHighlight && (
+                    <div
+                      className="pointer-events-none absolute -inset-8 opacity-60"
+                      style={{
+                        background:
+                          tr.badge === 'best'
+                            ? 'radial-gradient(ellipse 60% 80% at 100% 0%, rgba(255,201,74,0.16) 0%, rgba(10,6,5,0) 60%)'
+                            : 'radial-gradient(ellipse 60% 80% at 100% 0%, rgba(227,30,36,0.16) 0%, rgba(10,6,5,0) 60%)',
+                      }}
+                    />
+                  )}
+
+                  <div className="relative flex items-center gap-3">
                     <div
                       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
                         isHighlight
                           ? tr.badge === 'best'
-                            ? 'bg-gradient-to-br from-[#FFC94A] to-[#B8862E]'
-                            : 'bg-gradient-to-br from-[#E31E24] to-[#8C0F12]'
+                            ? 'bg-gradient-to-br from-[#FFC94A] to-[#B8862E] shadow-[0_4px_16px_rgba(255,201,74,0.3)]'
+                            : 'bg-gradient-to-br from-[#E31E24] to-[#8C0F12] shadow-[0_4px_16px_rgba(227,30,36,0.3)]'
                           : 'bg-white/10'
                       }`}
                     >
@@ -226,8 +260,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   </div>
 
                   {bonusLabel && (
-                    <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-black/25 px-2.5 py-1.5">
-                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#FFC94A]" />
+                    <div className="relative mt-3 flex items-center gap-1.5 rounded-lg border border-[#FFC94A]/15 bg-black/25 px-2.5 py-1.5">
+                      <Sparkles className="gift-float h-3.5 w-3.5 shrink-0 text-[#FFC94A]" />
                       <span className="text-[11px] font-semibold text-[#FFC94A]">
                         ចាប់រង្វាន់ថ្ងៃបន្ថែម {bonusLabel}
                       </span>
@@ -243,7 +277,11 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
               ← {t.subBackBtn}
             </button>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center">
+            <div className="relative overflow-hidden rounded-2xl border border-[#FFC94A]/20 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-4 text-center">
+              <div
+                className="pointer-events-none absolute -inset-6 -z-10 opacity-70"
+                style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255,201,74,0.12) 0%, rgba(10,6,5,0) 65%)' }}
+              />
               <p className="mb-1 text-xs text-white/50">{t.subTotalDue}</p>
               <p className="mb-3 text-2xl font-extrabold text-white">
                 ${tier.price} <span className="text-sm font-medium text-white/40">/ {lang === 'km' ? tier.labelKm : tier.labelEn}</span>
@@ -252,7 +290,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 <img
                   src={qrImages[tier.key] || FALLBACK_QR_IMAGES[tier.key]}
                   alt="KHQR"
-                  className="mx-auto w-full max-w-[260px] rounded-xl border border-white/10"
+                  className="mx-auto w-full max-w-[260px] rounded-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
                 />
               ) : (
                 <p className="rounded-xl border border-[#FFC94A]/25 bg-[#FFC94A]/5 p-4 text-xs text-[#FFC94A]">
