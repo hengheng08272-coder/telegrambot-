@@ -3,6 +3,9 @@ import { ArrowLeft, Bookmark, Crown, Gift, ShieldCheck, Sparkles, User } from 'l
 import { getCurrentTelegramUser } from '@/lib/telegram';
 import { getSubscriptionStatus, PRICING_TIERS, type SubscriptionStatus } from '@/lib/subscription';
 import { getAvailableBonusSpin, type BonusSpinInfo } from '@/lib/spin';
+import { useLang } from '@/lib/useLang';
+import { appText } from '@/lib/appTranslations';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 interface Props {
   onBack: () => void;
@@ -15,13 +18,19 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [bonusInfo, setBonusInfo] = useState<BonusSpinInfo | null>(null);
   const telegramUser = getCurrentTelegramUser();
+  const { lang, setLang } = useLang();
+  const t = appText[lang];
 
   useEffect(() => {
     getSubscriptionStatus().then(setStatus);
     getAvailableBonusSpin().then(setBonusInfo);
   }, []);
 
-  const tierLabel = status?.tier ? PRICING_TIERS.find((t) => t.key === status.tier)?.labelKm ?? status.tier : null;
+  const tierLabel = status?.tier ? PRICING_TIERS.find((tier) => tier.key === status.tier)?.labelKm ?? status.tier : null;
+
+  const daysLeft = status?.expiresAt
+    ? Math.max(0, Math.ceil((new Date(status.expiresAt).getTime() - Date.now()) / 86_400_000))
+    : null;
 
   return (
     <div className="min-h-screen bg-[#0A0605] pb-10 text-white">
@@ -35,12 +44,10 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
       <div className="px-4 py-6">
         {/* Identity */}
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#FFC94A]/40 bg-gradient-to-br from-[#3A1414] to-[#241413]">
+          <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#2DD4C4]/40 bg-gradient-to-br from-[#12302D] to-[#151A1A]">
             <User className="h-9 w-9 text-white/60" />
           </div>
-          <p className="text-base font-bold text-white">
-            {telegramUser?.label ?? 'ភ្ញៀវ'}
-          </p>
+          <p className="text-base font-bold text-white">{telegramUser?.label ?? 'ភ្ញៀវ'}</p>
           {status?.subscribed ? (
             <span className="mt-2 flex items-center gap-1.5 rounded-full bg-[#FFC94A]/15 px-3 py-1 text-xs font-bold text-[#FFC94A]">
               <Crown className="h-3.5 w-3.5" /> សមាជិក VIP
@@ -52,32 +59,41 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           )}
         </div>
 
-        {/* VIP status card */}
+        {/* VIP status card — expiry is now the headline number (large,
+            top of the card) instead of a small row buried in a list, since
+            "when does my VIP run out" is the #1 thing people open this
+            screen to check. */}
         {status?.subscribed ? (
-          <div className="mb-4 rounded-2xl border border-[#FFC94A]/25 bg-gradient-to-br from-[#FFC94A]/10 to-transparent p-4">
-            <div className="mb-2 flex items-center gap-2">
+          <div className="mb-4 overflow-hidden rounded-2xl border border-[#FFC94A]/25 bg-gradient-to-br from-[#FFC94A]/10 via-transparent to-[#2DD4C4]/5 p-4">
+            <div className="mb-3 flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-[#FFC94A]" />
               <p className="text-sm font-bold text-white">VIP កំពុងសកម្ម</p>
-            </div>
-            <div className="space-y-1 text-xs text-white/60">
               {tierLabel && (
-                <div className="flex justify-between">
-                  <span>គម្រោង</span>
-                  <span className="font-semibold text-white">{tierLabel}</span>
-                </div>
-              )}
-              {status.expiresAt && (
-                <div className="flex justify-between">
-                  <span>ផុតកំណត់</span>
-                  <span className="font-semibold text-white">
-                    {new Date(status.expiresAt).toLocaleDateString('km-KH')}
-                  </span>
-                </div>
+                <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60">
+                  {tierLabel}
+                </span>
               )}
             </div>
+
+            {status.expiresAt && (
+              <div className="mb-3 rounded-xl border border-white/10 bg-black/25 p-3 text-center">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">ផុតកំណត់</p>
+                <p className="mt-0.5 text-xl font-black text-white">
+                  {new Date(status.expiresAt).toLocaleDateString('km-KH', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </p>
+                {daysLeft !== null && (
+                  <p className="mt-0.5 text-xs font-semibold text-[#2DD4C4]">នៅសល់ {daysLeft} ថ្ងៃ</p>
+                )}
+              </div>
+            )}
+
             <button
               onClick={onOpenSubscription}
-              className="mt-3 w-full rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 py-2 text-xs font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20"
+              className="w-full rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 py-2 text-xs font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20"
             >
               បន្តគម្រោង / ប្តូរគម្រោង
             </button>
@@ -94,18 +110,21 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           </div>
         )}
 
-        {/* Bonus spin available */}
+        {/* Bonus spin available — the actual mechanism: buying certain VIP
+            plans unlocks one spin for bonus days on top of the plan
+            (see BONUS_POOLS), it's a spin the person plays, not days
+            added silently, so the copy says exactly that. */}
         {bonusInfo && (
           <button
             onClick={onOpenSpin}
-            className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#E31E24]/30 bg-gradient-to-r from-[#E31E24]/10 to-transparent p-4 text-left transition hover:border-[#E31E24]/60"
+            className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#2DD4C4]/30 bg-gradient-to-r from-[#2DD4C4]/10 to-transparent p-4 text-left transition hover:border-[#2DD4C4]/60"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FFC94A] to-[#B8862E]">
               <Gift className="h-5 w-5 text-[#0A0605]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white">មាន Bonus Spin រង់ចាំ!</p>
-              <p className="text-xs text-white/50">ចុចដើម្បីចាប់រង្វាន់ថ្ងៃបន្ថែម</p>
+              <p className="text-xs text-white/50">ការទិញ VIP លើកនេះឲ្យអ្នកនូវការចាប់រង្វាន់ថ្ងៃបន្ថែម ១ដង — ចុចដើម្បីចាប់</p>
             </div>
             <Sparkles className="h-4 w-4 text-[#FFC94A]" />
           </button>
@@ -114,11 +133,17 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
         {/* Quick links */}
         <button
           onClick={onOpenWatchlist}
-          className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.06]"
+          className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.06]"
         >
           <Bookmark className="h-5 w-5 text-white/50" />
           <span className="text-sm font-semibold text-white">បញ្ជីរបស់ខ្ញុំ</span>
         </button>
+
+        {/* Language — moved here from the Home screen's bottom bar. */}
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <span className="text-sm font-semibold text-white">{t.language}</span>
+          <LanguageSwitcher lang={lang} onChange={setLang} />
+        </div>
       </div>
     </div>
   );

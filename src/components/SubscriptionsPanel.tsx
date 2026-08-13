@@ -19,6 +19,7 @@ const FALLBACK_QR_IMAGES: Record<string, string> = {
 
 interface TierEdits {
   price: string;
+  months: string;
   pitch_km: string;
   bonus_enabled: boolean;
 }
@@ -73,7 +74,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     setLoading(true);
     const [qrRes, priceRes] = await Promise.all([
       supabase.from('payment_qr_codes').select('tier, image_url'),
-      supabase.from('pricing_tiers').select('key, price, pitch_km, bonus_enabled'),
+      supabase.from('pricing_tiers').select('key, price, months, pitch_km, bonus_enabled'),
     ]);
     if (qrRes.error) setError(qrRes.error.message);
 
@@ -89,6 +90,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       const override = priceMap.get(tier.key);
       nextEdits[tier.key] = {
         price: String(override?.price ?? tier.price),
+        months: String(override?.months ?? tier.months),
         pitch_km: override?.pitch_km ?? tier.pitchKm ?? '',
         bonus_enabled: override?.bonus_enabled ?? tier.bonusEnabled,
       };
@@ -140,7 +142,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     load();
   };
 
-  const updateEdit = (tierKey: string, field: 'price' | 'pitch_km', value: string) => {
+  const updateEdit = (tierKey: string, field: 'price' | 'months' | 'pitch_km', value: string) => {
     setEdits((prev) => ({ ...prev, [tierKey]: { ...prev[tierKey], [field]: value } }));
   };
 
@@ -158,11 +160,17 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setError('Enter a valid price.');
       return;
     }
+    const months = parseInt(edit.months, 10);
+    if (!months || months <= 0) {
+      setError('Enter a valid duration (months).');
+      return;
+    }
     setSavingTier(tier.key);
     setError('');
     const { error: err } = await supabase.from('pricing_tiers').upsert({
       key: tier.key,
       price,
+      months,
       label_km: tier.labelKm,
       label_en: tier.labelEn,
       pitch_km: edit.pitch_km,
@@ -241,7 +249,12 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             </div>
           ) : (
             PRICING_TIERS.map((tier) => {
-              const edit = edits[tier.key] ?? { price: String(tier.price), pitch_km: tier.pitchKm ?? '', bonus_enabled: tier.bonusEnabled };
+              const edit = edits[tier.key] ?? {
+                price: String(tier.price),
+                months: String(tier.months),
+                pitch_km: tier.pitchKm ?? '',
+                bonus_enabled: tier.bonusEnabled,
+              };
               const qr = images[tier.key] || FALLBACK_QR_IMAGES[tier.key];
               return (
                 <div key={tier.key} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -273,7 +286,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-[80px_1fr] gap-2">
+                  <div className="grid grid-cols-[80px_80px_1fr] gap-2">
                     <div>
                       <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
                         Price ($)
@@ -282,6 +295,16 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         value={edit.price}
                         onChange={(e) => updateEdit(tier.key, 'price', e.target.value.replace(/[^0-9.]/g, ''))}
                         className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#FFC94A]/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                        Duration (mo)
+                      </label>
+                      <input
+                        value={edit.months}
+                        onChange={(e) => updateEdit(tier.key, 'months', e.target.value.replace(/[^0-9]/g, ''))}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#2DD4C4]/50"
                       />
                     </div>
                     <div>

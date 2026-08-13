@@ -23,7 +23,6 @@ import {
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
 import NotificationBell from '@/components/NotificationBell';
@@ -605,15 +604,11 @@ export default function HomeScreen({
               );
             })}
 
-            {/* Utility bar — language, rewards, and the premium/subscribe
-                entry, pushed all the way down to the bottom of the browse
-                content per the person's request, instead of living right
-                under the hero. */}
-            <div className="mx-auto mt-10 flex max-w-[1400px] items-center justify-center gap-2.5 pb-1 pt-3">
-              <div className="flex items-center rounded-full border border-white/10 bg-white/[0.05] p-1 backdrop-blur-md">
-                <LanguageSwitcher lang={lang} onChange={setLang} bare />
-              </div>
-              {rewardsAvailable && (
+            {/* Rewards entry — language + VIP subscribe moved to Account
+                screen per the person's request; this bar now only surfaces
+                the bonus-spin badge when one is actually available. */}
+            {rewardsAvailable && (
+              <div className="mx-auto mt-10 flex max-w-[1400px] items-center justify-center pb-1 pt-3">
                 <button
                   onClick={onOpenRewards}
                   aria-label={t.rewardsBadge}
@@ -624,16 +619,8 @@ export default function HomeScreen({
                   <Gift className="h-4 w-4" />
                   <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF5D5D] ring-2 ring-[#0A0605]" aria-hidden />
                 </button>
-              )}
-              <button
-                onClick={onOpenSubscription}
-                className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold text-black shadow-[0_4px_18px_rgba(255,201,74,0.35)] transition active:scale-95"
-                style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
-              >
-                <Crown className="h-3.5 w-3.5" />
-                {subscribed ? t.premium : t.subscribe}
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         )}
       </main>

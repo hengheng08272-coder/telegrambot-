@@ -24,6 +24,7 @@ import {
   Lock,
   Unlock,
   Crown,
+  Users as UsersIcon,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import type { Show, Episode } from '@/lib/types';
@@ -33,6 +34,7 @@ import WatchLogPanel from '@/components/WatchLogPanel';
 import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
 import PaymentsPanel from '@/components/PaymentsPanel';
 import SubscriptionsPanel from '@/components/SubscriptionsPanel';
+import UsersPanel from '@/components/UsersPanel';
 import { usePresenceCount } from '@/lib/presence';
 
 interface AdminScreenProps {
@@ -101,6 +103,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [suspiciousOpen, setSuspiciousOpen] = useState(false);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
   const [subscriptionsOpen, setSubscriptionsOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   useEffect(() => {
     supabase
@@ -622,6 +625,12 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             className="flex items-center gap-1.5 rounded-full border border-[#22C55E]/30 bg-[#22C55E]/10 px-4 py-2 text-sm font-bold text-[#22C55E] transition hover:bg-[#22C55E]/20"
           >
             <QrCode className="h-4 w-4" /> Subscriptions
+          </button>
+          <button
+            onClick={() => setUsersOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-[#2DD4C4]/30 bg-[#2DD4C4]/10 px-4 py-2 text-sm font-bold text-[#2DD4C4] transition hover:bg-[#2DD4C4]/20"
+          >
+            <UsersIcon className="h-4 w-4" /> Users
           </button>
           <div className="ml-auto relative hidden sm:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -1471,6 +1480,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {watchLogOpen && <WatchLogPanel onClose={() => setWatchLogOpen(false)} />}
       {paymentsOpen && <PaymentsPanel onClose={() => setPaymentsOpen(false)} />}
       {subscriptionsOpen && <SubscriptionsPanel onClose={() => setSubscriptionsOpen(false)} />}
+      {usersOpen && <UsersPanel onClose={() => setUsersOpen(false)} />}
       {suspiciousOpen && <SuspiciousActivityPanel onClose={() => setSuspiciousOpen(false)} />}
     </div>
   );
