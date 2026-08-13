@@ -24,16 +24,16 @@ export const PRICING_TIERS: PricingTier[] = [
   { key: '12m', months: 12, price: 27, labelKm: '១២ ខែ', labelEn: '12 Months', badge: 'best', pitchKm: 'តម្លៃល្អបំផុត — សន្សំសំចៃច្រើនបំផុត', bonusEnabled: true },
 ];
 
-// Merges any admin edits (Admin Panel -> Subscriptions -> price/
+// Merges any admin edits (Admin Panel -> Subscriptions -> price/duration/
 // description/bonus-toggle fields) onto the hardcoded defaults above.
-// `months` and `badge` always come from the code — only price/labels/
-// pitch/bonusEnabled are admin-editable, since months drives real
-// subscription-length math and shouldn't be freeform-editable without
-// also touching the code that reasons about it.
+// `months` is admin-editable too — the three server-side places that grant
+// VIP time (telegram-admin-bot, auto-approve-payment, aba-payment-webhook)
+// all read pricing_tiers.months live, so a change here takes effect
+// immediately with no code deploy needed.
 export async function getEffectivePricingTiers(): Promise<PricingTier[]> {
   const { data } = await supabase
     .from('pricing_tiers')
-    .select('key, price, label_km, label_en, pitch_km, bonus_enabled');
+    .select('key, price, months, label_km, label_en, pitch_km, bonus_enabled');
   const overrides = new Map((data ?? []).map((row) => [row.key, row]));
 
   return PRICING_TIERS.map((tier) => {
@@ -42,6 +42,7 @@ export async function getEffectivePricingTiers(): Promise<PricingTier[]> {
     return {
       ...tier,
       price: o.price ?? tier.price,
+      months: o.months ?? tier.months,
       labelKm: o.label_km ?? tier.labelKm,
       labelEn: o.label_en ?? tier.labelEn,
       pitchKm: o.pitch_km ?? tier.pitchKm,
