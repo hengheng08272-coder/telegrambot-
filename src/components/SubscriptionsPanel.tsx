@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Check, Loader2, QrCode, Save, Upload, X } from 'lucide-react';
+import { Check, Loader2, QrCode, Save, Upload, X, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { PRICING_TIERS } from '@/lib/subscription';
+import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
 
 interface Props {
   onClose: () => void;
@@ -32,6 +33,41 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingTierRef = useRef<string | null>(null);
+
+  // ABA auto-confirm matching — the name printed on every real ABA
+  // notification for this account, used by the aba-payment-webhook
+  // function to make sure a stray/unrelated group message can never be
+  // mistaken for a real payment. Everything else about auto-confirm
+  // (which amounts are valid, which tier they map to) already comes from
+  // the pricing_tiers table above — this is the one extra piece of admin
+  // config auto-confirm needs.
+  const [abaMerchantName, setAbaMerchantName] = useState('');
+  const [abaMerchantNameLoaded, setAbaMerchantNameLoaded] = useState(false);
+  const [abaSaving, setAbaSaving] = useState(false);
+  const [abaSaved, setAbaSaved] = useState(false);
+
+  useEffect(() => {
+    fetchAbaMerchantName().then((name) => {
+      if (name) setAbaMerchantName(name);
+      setAbaMerchantNameLoaded(true);
+    });
+  }, []);
+
+  const handleSaveAbaMerchantName = async () => {
+    const value = abaMerchantName.trim();
+    if (!value) return;
+    setAbaSaving(true);
+    setError('');
+    try {
+      await saveAbaMerchantName(value);
+      setAbaSaved(true);
+      setTimeout(() => setAbaSaved(false), 2000);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to save ABA merchant name');
+    } finally {
+      setAbaSaving(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -164,6 +200,39 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         </p>
 
         {error && <p className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
+
+        <div className="mb-4 rounded-xl border border-[#2DD4C4]/20 bg-[#2DD4C4]/[0.04] p-3">
+          <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#2DD4C4]">
+            <Zap className="h-3.5 w-3.5" /> ABA Auto-confirm
+          </p>
+          <p className="mb-2 text-[11px] leading-relaxed text-white/50">
+            ឈ្មោះម្ចាស់គណនី ABA ដូចដែលបង្ហាញលើសារជូនដំណឹងរបស់ ABA ពិតៗ (ឧ. "PANG SOK HENG")។ ប្រើដើម្បីធានាថា
+            មានតែសារបង់ប្រាក់ពិតប្រាកដទៅគណនីនេះទេ ដែលអាច unlock VIP ដោយស្វ័យប្រវត្តិ — សារផ្សេងទៀតក្នុង Group
+            មិនប៉ះពាល់ទេ។ តម្លៃនិមួយៗ (Price ខាងក្រោម) ត្រូវបានប្រើដើម្បីផ្គូផ្គងដោយស្វ័យប្រវត្តិរួចហើយ។
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={abaMerchantName}
+              onChange={(e) => setAbaMerchantName(e.target.value)}
+              placeholder={abaMerchantNameLoaded ? 'ឧ. PANG SOK HENG' : 'Loading…'}
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2DD4C4]/50"
+            />
+            <button
+              onClick={handleSaveAbaMerchantName}
+              disabled={abaSaving || !abaMerchantName.trim()}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+            >
+              {abaSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : abaSaved ? (
+                <Check className="h-3.5 w-3.5 text-[#4CC950]" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              {abaSaved ? 'Saved' : 'Save'}
+            </button>
+          </div>
+        </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
           {loading ? (
