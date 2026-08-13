@@ -32,3 +32,11 @@ on conflict (key) do nothing;
 
 comment on table public.app_settings is
   'Small admin-editable site text, one row per key. Currently just ticker_message (the scrolling line under the header) — add more keys here as needed instead of a new table per string.';
+
+-- ABA account holder name used by aba-payment-webhook to safely match
+-- forwarded ABA payment notifications (admin-editable, Admin Panel ->
+-- Subscriptions -> "ABA Auto-confirm" — no code change needed to swap
+-- ABA accounts).
+insert into public.app_settings (key, value)
+values ('aba_merchant_name', 'YOUR NAME HERE')
+on conflict (key) do nothing;
