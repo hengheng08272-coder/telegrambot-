@@ -48,6 +48,23 @@ export async function saveTickerMessage(value: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function fetchAbaMerchantName(): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'aba_merchant_name')
+    .maybeSingle();
+  if (error) return null;
+  return data?.value ?? null;
+}
+
+export async function saveAbaMerchantName(value: string): Promise<void> {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({ key: 'aba_merchant_name', value, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}
+
 export async function fetchAllShows(): Promise<ShowWithGenres[]> {
   const { data, error } = await supabase
     .from('shows')
