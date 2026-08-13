@@ -547,6 +547,23 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-3">
+            {/* Top 10 rail — the ranked/numeral treatment (RailRow's
+                `ranked` prop + ShowCard's `rank` prop) was fully built but
+                never actually mounted anywhere; the hero above only shows
+                whichever single show is centered. Wiring it back in here
+                with the same `trending` list that feeds the hero's rank
+                badge, so the numeral row people expect under a Top 10
+                hero actually exists. */}
+            {trending.length > 0 && (
+              <RailRow
+                ranked
+                title={t.top10Label ?? 'ពេញនិយមខ្លាំងសម្រាប់ខែនេះ'}
+                shows={trending}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.top10Label ?? 'ពេញនិយមខ្លាំងសម្រាប់ខែនេះ', shows: trending })}
+                viewAllLabel={t.viewAll}
+              />
+            )}
             {comingSoon.length > 0 && (
               <RailRow
                 icon={<Clock className="h-5 w-5 text-[#FF6A3D]" />}
@@ -574,7 +591,7 @@ export default function HomeScreen({
               title={t.newRelease}
               shows={newReleases}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
               viewAllLabel={t.viewAll}
               tag={{ label: t.newTag ?? 'NEW', color: '#3B82F6' }}
             />
@@ -583,7 +600,7 @@ export default function HomeScreen({
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.popularSeason, shows })}
               viewAllLabel={t.viewAll}
               tag={{ label: t.hotTag ?? 'HOT', color: '#E31E24' }}
             />
@@ -598,7 +615,7 @@ export default function HomeScreen({
                   title={g.name}
                   shows={list}
                   onSelectShow={onSelectShow}
-                  onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
+                  onViewAll={() => setViewAll({ title: t.allShowsTitle ?? g.name, shows })}
                   viewAllLabel={t.viewAll}
                 />
               );

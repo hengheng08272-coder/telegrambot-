@@ -191,6 +191,29 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           <p className="mt-0.5 text-xs text-white/45">{t.subTagline}</p>
         </div>
 
+        {/* Step indicator — ties pick/pay/sent together as one flow. Only
+            shown once we know there's no pending submission already
+            (checkingPending) and while the outcome hasn't resolved yet
+            (approved/rejected get their own full-bleed result state). */}
+        {!checkingPending && (decision === 'waiting' || step !== 'sent') && (
+          <div className="mb-5 flex items-center justify-center gap-1.5">
+            {(['pick', 'pay', 'sent'] as Step[]).map((s, i) => {
+              const order: Step[] = ['pick', 'pay', 'sent'];
+              const currentIdx = order.indexOf(step);
+              const done = i < currentIdx;
+              const active = i === currentIdx;
+              return (
+                <div
+                  key={s}
+                  className={`h-1 rounded-full transition-all ${
+                    active ? 'w-6 bg-[#FFC94A]' : done ? 'w-3 bg-[#FFC94A]/50' : 'w-3 bg-white/15'
+                  }`}
+                />
+              );
+            })}
+          </div>
+        )}
+
         {checkingPending ? (
           <div className="flex justify-center py-10">
             <Loader2 className="h-6 w-6 animate-spin text-white/40" />
@@ -208,7 +231,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   onClick={() => handlePickTier(tr.key)}
                   className={`relative w-full overflow-hidden rounded-2xl border px-4 py-4 text-left transition active:scale-[0.98] ${
                     tr.badge === 'best'
-                      ? 'border-[#FFC94A]/45 bg-gradient-to-br from-[#FFC94A]/12 via-transparent to-transparent hover:border-[#FFC94A]/75'
+                      ? 'border-[#FFC94A]/45 bg-gradient-to-br from-[#FFC94A]/12 via-transparent to-transparent shadow-[0_8px_28px_rgba(255,201,74,0.16)] hover:border-[#FFC94A]/75'
                       : tr.badge === 'popular'
                         ? 'border-[#E31E24]/40 bg-gradient-to-br from-[#E31E24]/12 via-transparent to-transparent hover:border-[#E31E24]/70'
                         : 'border-white/10 bg-white/[0.03] hover:border-white/25'

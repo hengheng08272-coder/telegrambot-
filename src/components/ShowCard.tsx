@@ -74,7 +74,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
         style={{ transition: 'transform 0.35s ease-out', transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }}
       >
         <div
-          className={`aspect-[2/3] overflow-hidden rounded-lg bg-[#241413] ring-1 ring-white/5 transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-[#E31E24]/40 ${
+          className={`aspect-[2/3] overflow-hidden rounded-xl bg-[#241413] ring-1 ring-white/5 transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-[#E31E24]/40 ${
             large
               ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)] group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.8)]'
               : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)]'

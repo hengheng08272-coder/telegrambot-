@@ -42,14 +42,33 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
       </div>
 
       <div className="px-4 py-6">
-        {/* Identity */}
+        {/* Identity — the avatar ring now reflects VIP status directly
+            (gold glow for active subscribers, quiet teal for guests)
+            instead of always being the same teal ring regardless of
+            status, so the premium feel starts here, not just below. */}
         <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#2DD4C4]/40 bg-gradient-to-br from-[#12302D] to-[#151A1A]">
-            <User className="h-9 w-9 text-white/60" />
+          <div
+            className="mb-3 flex h-20 w-20 items-center justify-center rounded-full"
+            style={
+              status?.subscribed
+                ? {
+                    background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)',
+                    padding: 2,
+                    boxShadow: '0 0 24px rgba(255,201,74,0.35)',
+                  }
+                : { background: 'rgba(45,212,196,0.35)', padding: 2 }
+            }
+          >
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#12302D] to-[#151A1A]">
+              <User className="h-9 w-9 text-white/60" />
+            </div>
           </div>
           <p className="text-base font-bold text-white">{telegramUser?.label ?? 'ភ្ញៀវ'}</p>
           {status?.subscribed ? (
-            <span className="mt-2 flex items-center gap-1.5 rounded-full bg-[#FFC94A]/15 px-3 py-1 text-xs font-bold text-[#FFC94A]">
+            <span
+              className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-[#0A0605]"
+              style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+            >
               <Crown className="h-3.5 w-3.5" /> សមាជិក VIP
             </span>
           ) : (
@@ -130,19 +149,25 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           </button>
         )}
 
-        {/* Quick links */}
-        <button
-          onClick={onOpenWatchlist}
-          className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:bg-white/[0.06]"
-        >
-          <Bookmark className="h-5 w-5 text-white/50" />
-          <span className="text-sm font-semibold text-white">បញ្ជីរបស់ខ្ញុំ</span>
-        </button>
+        {/* Quick links — grouped into a single card with an internal
+            divider (matches the identity/status card's radius + border
+            treatment above) instead of two separate floating blocks, so
+            the bottom of the screen reads as one settings list. */}
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <button
+            onClick={onOpenWatchlist}
+            className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-white/[0.06]"
+          >
+            <Bookmark className="h-5 w-5 text-white/50" />
+            <span className="text-sm font-semibold text-white">បញ្ជីរបស់ខ្ញុំ</span>
+          </button>
 
-        {/* Language — moved here from the Home screen's bottom bar. */}
-        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <span className="text-sm font-semibold text-white">{t.language}</span>
-          <LanguageSwitcher lang={lang} onChange={setLang} />
+          <div className="h-px bg-white/10" />
+
+          <div className="flex items-center justify-between p-4">
+            <span className="text-sm font-semibold text-white">{t.language}</span>
+            <LanguageSwitcher lang={lang} onChange={setLang} />
+          </div>
         </div>
       </div>
     </div>
