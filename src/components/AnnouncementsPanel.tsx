@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Megaphone, Send, Trash2, X, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Megaphone, Send, Trash2, X, Eye, EyeOff, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
+import { fetchTickerMessage, saveTickerMessage } from '@/lib/api';
 
 interface Props {
   onClose: () => void;
@@ -19,6 +20,37 @@ export default function AnnouncementsPanel({ onClose }: Props) {
   const [draft, setDraft] = useState('');
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState('');
+
+  // Ticker text (the scrolling line under the header) — separate from the
+  // announcement list below, but lives in the same panel since both are
+  // "what viewers see near the top of the home screen".
+  const [tickerDraft, setTickerDraft] = useState('');
+  const [tickerLoaded, setTickerLoaded] = useState(false);
+  const [tickerSaving, setTickerSaving] = useState(false);
+  const [tickerSaved, setTickerSaved] = useState(false);
+
+  useEffect(() => {
+    fetchTickerMessage().then((msg) => {
+      if (msg) setTickerDraft(msg);
+      setTickerLoaded(true);
+    });
+  }, []);
+
+  const handleSaveTicker = async () => {
+    const value = tickerDraft.trim();
+    if (!value) return;
+    setTickerSaving(true);
+    setError('');
+    try {
+      await saveTickerMessage(value);
+      setTickerSaved(true);
+      setTimeout(() => setTickerSaved(false), 2000);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to save ticker text');
+    } finally {
+      setTickerSaving(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -74,6 +106,33 @@ export default function AnnouncementsPanel({ onClose }: Props) {
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
             <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-white/50">
+            Ticker text (scrolls under the header)
+          </p>
+          <textarea
+            value={tickerDraft}
+            onChange={(e) => setTickerDraft(e.target.value)}
+            placeholder={tickerLoaded ? '' : 'Loading current ticker text…'}
+            rows={2}
+            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#E31E24]/50"
+          />
+          <button
+            onClick={handleSaveTicker}
+            disabled={tickerSaving || !tickerDraft.trim()}
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/10 py-2 text-sm font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+          >
+            {tickerSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : tickerSaved ? (
+              <Save className="h-4 w-4 text-[#4CC950]" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {tickerSaved ? 'Saved' : 'Save ticker text'}
           </button>
         </div>
 

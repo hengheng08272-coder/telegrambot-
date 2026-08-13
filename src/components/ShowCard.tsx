@@ -58,7 +58,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
             WebkitTextStroke: '2.5px rgba(255,255,255,0.9)',
             fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
             filter:
-              'drop-shadow(0 2px 0 rgba(255,201,74,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(255,201,74,0.2))',
+              'drop-shadow(0 2px 0 rgba(45,212,196,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(45,212,196,0.2))',
           }}
         >
           {rank}
@@ -108,7 +108,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
               it. */}
           {rank && (
             <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
-              <h3 className="truncate text-[12.5px] font-bold leading-tight text-[#FFC94A] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13.5px]">
+              <h3 className="truncate text-[12.5px] font-bold leading-tight text-[#2DD4C4] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13.5px]">
                 {show.title}
               </h3>
             </div>
@@ -116,7 +116,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           {/* View-count badge — real play counts (see increment_show_view_count),
               not an admin-typed rating, so this is what actually drives
               Top 10 and shows the owner which titles viewers watch most. */}
-          <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-[#FFC94A] backdrop-blur-sm">
+          <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-[#2DD4C4] backdrop-blur-sm">
             <Eye className="h-2.5 w-2.5" />
             {fmtViews(show.view_count)}
           </div>

@@ -21,7 +21,7 @@ import {
   Clock,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
-import { fetchFeaturedShows, fetchAllShows, fetchGenres } from '@/lib/api';
+import { fetchAllShows, fetchGenres, fetchTickerMessage } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import SupporterTicker from '@/components/SupporterTicker';
@@ -56,7 +56,7 @@ interface HomeScreenProps {
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
 
-const HERO_AUTO_MS = 2200;
+const HERO_AUTO_MS = 6000;
 
 // Small, purely-cosmetic emoji lookup for genre rail headers — gives each
 // row a bit of personality at a glance without needing extra icon assets.
@@ -124,6 +124,7 @@ export default function HomeScreen({
   const [query, setQuery] = useState('');
   const [interacting, setInteracting] = useState(false);
   const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
+  const [tickerMessage, setTickerMessage] = useState<string | undefined>(undefined);
 
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -146,19 +147,13 @@ export default function HomeScreen({
     let active = true;
     (async () => {
       try {
-        const [f, s, g] = await Promise.all([
-          fetchFeaturedShows(),
-          fetchAllShows(),
-          fetchGenres(),
-        ]);
+        const [s, g] = await Promise.all([fetchAllShows(), fetchGenres()]);
         if (!active) return;
-        let banner = f;
-        if (f.length < 4) {
-          const fallback = [...s].sort((a, b) => b.rating - a.rating);
-          const seen = new Set(f.map((x) => x.id));
-          banner = [...f, ...fallback.filter((x) => !seen.has(x.id))].slice(0, 10);
-        }
-        setBannerShows(banner.slice(0, 10));
+        // Hero is now literally the Top 10 (by real view count) carousel —
+        // no separate "featured" pool, so what's promoted at the top is
+        // always exactly what the Top 10 Viewer row/rank shows elsewhere.
+        const top10 = [...s].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).slice(0, 10);
+        setBannerShows(top10);
         setShows(s);
         setGenres(g);
       } catch (e: unknown) {
@@ -168,6 +163,16 @@ export default function HomeScreen({
         if (active) setLoading(false);
       }
     })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetchTickerMessage().then((msg) => {
+      if (active && msg) setTickerMessage(msg);
+    });
     return () => {
       active = false;
     };
@@ -374,8 +379,8 @@ export default function HomeScreen({
           {heroVisible && (
             <div className="hidden shrink-0 items-center gap-1 rounded-full bg-white/[0.06] px-2 py-1 sm:flex">
               <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FFC94A]/70" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FFC94A]" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#2DD4C4]/70" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#2DD4C4]" />
               </span>
               <span className="text-[9px] font-semibold uppercase tracking-wider text-white/50">
                 {t.autoLabel ?? 'Auto'}
@@ -467,7 +472,11 @@ export default function HomeScreen({
           draggable={false}
         />
 
-        <SupporterTicker trendingTitle={trending[0]?.title} trendingPrefix={t.trendingNowPrefix} />
+        <SupporterTicker
+          trendingTitle={trending[0]?.title}
+          trendingPrefix={t.trendingNowPrefix}
+          staticMessage={tickerMessage}
+        />
 
         {/* Coverflow hero carousel */}
         {heroVisible && (
@@ -539,15 +548,6 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-3">
-            <RailRow
-              title={t.top10Label ?? 'TOP 10 VIEWER'}
-              icon={<Flame className="h-5 w-5 text-[#FFC94A]" />}
-              shows={trending}
-              onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? 'Top 10', shows })}
-              viewAllLabel={t.viewAll}
-              ranked
-            />
             {comingSoon.length > 0 && (
               <RailRow
                 icon={<Clock className="h-5 w-5 text-[#FF6A3D]" />}
@@ -580,7 +580,7 @@ export default function HomeScreen({
               tag={{ label: t.newTag ?? 'NEW', color: '#3B82F6' }}
             />
             <RailRow
-              icon={<Flame className="h-5 w-5 text-[#FFC94A]" />}
+              icon={<Flame className="h-5 w-5 text-[#E31E24]" />}
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
@@ -849,15 +849,18 @@ function CoverflowHero({
             draggable={false}
           />
         )}
-        {/* Warm gold/orange ambient glow blending with the app palette */}
+        {/* A single clean vignette instead of the previous multi-layer
+            warm/gold glow stack — flatter, closer to how real streaming
+            apps (Netflix/Viu) keep the backdrop quiet so the poster and
+            title stay the focal point. */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 85% 65% at 50% 18%, rgba(255,201,74,0.24) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 70% 55% at 78% 85%, rgba(227,30,36,0.24) 0%, rgba(10,6,5,0) 58%), radial-gradient(ellipse 60% 50% at 20% 85%, rgba(201,122,46,0.14) 0%, rgba(10,6,5,0) 55%)',
+              'radial-gradient(ellipse 90% 70% at 50% 15%, rgba(45,212,196,0.10) 0%, rgba(11,14,19,0) 55%)',
           }}
         />
-        <div className="absolute inset-0 bg-[#0A0605]/35" />
+        <div className="absolute inset-0 bg-[#0A0605]/45" />
         {/* Fade the top into the header and the bottom into the page */}
         <div
           className="absolute inset-0"
@@ -866,10 +869,6 @@ function CoverflowHero({
               'linear-gradient(180deg, rgba(10,6,5,0.9) 0%, rgba(10,6,5,0.55) 14%, rgba(10,6,5,0.1) 28%, rgba(10,6,5,0) 40%, rgba(10,6,5,0) 78%, rgba(10,6,5,1) 100%)',
           }}
         />
-        {/* Rising ember particles — small warm sparks drifting up from the
-            base of the hero, echoing the keyart's ember/lightning motif
-            without needing any extra image assets. */}
-        <EmberParticles />
       </div>
 
       {/* Horizontal cover — poster + big Top 10 numeral on the left,
@@ -900,7 +899,7 @@ function CoverflowHero({
                 WebkitTextStroke: '3px rgba(255,255,255,0.92)',
                 fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
                 filter:
-                  'drop-shadow(0 2px 0 rgba(255,201,74,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 20px rgba(255,201,74,0.25))',
+                  'drop-shadow(0 2px 0 rgba(45,212,196,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 20px rgba(45,212,196,0.25))',
               }}
             >
               {heroRank}
@@ -946,7 +945,7 @@ function CoverflowHero({
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
           {heroRank && (
-            <span className="mb-1.5 inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-[3px] text-[10px] font-bold text-[#FFC94A] backdrop-blur-sm sm:text-xs">
+            <span className="mb-1.5 inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-[3px] text-[10px] font-bold text-[#2DD4C4] backdrop-blur-sm sm:text-xs">
               🔥 {t.top10Label ?? 'TOP 10'} · #{heroRank}
             </span>
           )}
@@ -982,19 +981,15 @@ function CoverflowHero({
                 <span>{hero.release_year}</span>
               </>
             )}
-            <span className="h-3 w-px bg-white/20" aria-hidden />
-            <span className="flex items-center gap-1 text-white/55">
-              <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {formatCount(hero.view_count ?? 0)}
-            </span>
           </div>
 
           <div className="mt-3.5 flex items-center gap-2 sm:mt-5 sm:gap-3">
             <button
               onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-black shadow-[0_4px_16px_rgba(255,201,74,0.3)] transition active:scale-95 sm:px-6 sm:py-2.5 sm:text-sm"
-              style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+              className="flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white shadow-[0_4px_16px_rgba(227,30,36,0.4)] transition active:scale-95 sm:px-6 sm:py-2.5 sm:text-sm"
+              style={{ background: 'linear-gradient(135deg, #FF4B52, #E31E24 55%, #8C0F12)' }}
             >
-              <Play className="h-3.5 w-3.5 fill-black sm:h-4 sm:w-4" /> {t.play}
+              <Play className="h-3.5 w-3.5 fill-white sm:h-4 sm:w-4" /> {t.play}
             </button>
             <button
               onClick={() => {
@@ -1003,7 +998,7 @@ function CoverflowHero({
               }}
               className={`flex items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-xs font-bold transition active:scale-95 sm:px-6 sm:py-2.5 sm:text-sm ${
                 inList
-                  ? 'border-[#FFC94A]/40 bg-[#FFC94A]/10 text-[#FFC94A]'
+                  ? 'border-[#2DD4C4]/40 bg-[#2DD4C4]/10 text-[#2DD4C4]'
                   : 'border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10'
               }`}
             >
@@ -1043,7 +1038,7 @@ function CoverflowHero({
             className="hero-progress-fill h-full"
             style={{
               animationDuration: `${HERO_AUTO_MS}ms`,
-              background: 'linear-gradient(90deg, #FFC94A, #E31E24)',
+              background: 'linear-gradient(90deg, #2DD4C4, #E31E24)',
             }}
           />
         </div>
@@ -1133,7 +1128,7 @@ function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
     <button
       onClick={onClick}
       className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition ${
-        active ? 'text-[#FFC94A]' : 'text-white/50 active:text-white/80'
+        active ? 'text-[#2DD4C4]' : 'text-white/50 active:text-white/80'
       }`}
     >
       {icon}
@@ -1220,7 +1215,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         <div className="px-3 pt-5 text-center">
           <div className="mb-1 flex items-center justify-center gap-2">
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-            <h2 className="text-xl font-black tracking-wide text-[#FFC94A]">{title}</h2>
+            <h2 className="text-xl font-black tracking-wide text-[#2DD4C4]">{title}</h2>
             {tag && (
               <span
                 className="rounded-full px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
