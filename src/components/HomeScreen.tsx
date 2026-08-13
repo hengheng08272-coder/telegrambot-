@@ -574,7 +574,7 @@ export default function HomeScreen({
               title={t.newRelease}
               shows={newReleases}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
               tag={{ label: t.newTag ?? 'NEW', color: '#3B82F6' }}
             />
@@ -583,7 +583,7 @@ export default function HomeScreen({
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.popularSeason, shows })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
               tag={{ label: t.hotTag ?? 'HOT', color: '#E31E24' }}
             />
@@ -598,7 +598,7 @@ export default function HomeScreen({
                   title={g.name}
                   shows={list}
                   onSelectShow={onSelectShow}
-                  onViewAll={() => setViewAll({ title: t.allShowsTitle ?? g.name, shows })}
+                  onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
                   viewAllLabel={t.viewAll}
                 />
               );
