@@ -807,13 +807,13 @@ function CoverflowHero({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.42, 380) : 380;
+  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.32, 280) : 280;
   const parallaxOffset = Math.min(scrollY * 0.35, 120);
   const parallaxOpacity = Math.max(1 - scrollY / heroHeightPx, 0);
 
   return (
     <section
-      className="relative w-full overflow-hidden px-4 pb-6 pt-4 sm:px-8 sm:pb-8"
+      className="relative w-full overflow-hidden px-4 pb-4 pt-3 sm:px-8 sm:pb-5 sm:pt-4"
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
@@ -836,38 +836,31 @@ function CoverflowHero({
             draggable={false}
           />
         )}
-        {/* A single clean vignette instead of the previous multi-layer
-            warm/gold glow stack — flatter, closer to how real streaming
-            apps (Netflix/Viu) keep the backdrop quiet so the poster and
-            title stay the focal point. */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 90% 70% at 50% 15%, rgba(45,212,196,0.10) 0%, rgba(11,14,19,0) 55%)',
-          }}
-        />
-        <div className="absolute inset-0 bg-[#0A0605]/45" />
+        {/* Flat black background — closer to Netflix's own Top 10 rows
+            (solid dark, no colored glow) than the previous teal-tinted
+            vignette, per the "make it cleaner, more like Netflix" ask. */}
+        <div className="absolute inset-0 bg-[#050403]/60" />
         {/* Fade the top into the header and the bottom into the page */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,6,5,0.9) 0%, rgba(10,6,5,0.55) 14%, rgba(10,6,5,0.1) 28%, rgba(10,6,5,0) 40%, rgba(10,6,5,0) 78%, rgba(10,6,5,1) 100%)',
+              'linear-gradient(180deg, rgba(5,4,3,0.92) 0%, rgba(5,4,3,0.6) 14%, rgba(5,4,3,0.15) 28%, rgba(5,4,3,0) 40%, rgba(5,4,3,0) 78%, rgba(5,4,3,1) 100%)',
           }}
         />
       </div>
 
-      {/* Horizontal cover — poster + big Top 10 numeral on the left,
-          title/meta/actions on the right. Replaces the old coverflow deck
-          (side-card peek carousel) with the single-cover layout requested,
-          the same shape most big streaming apps use for a "Top 10" hero. */}
-      <div className="relative z-10 mx-auto flex max-w-[1400px] items-center gap-3.5 pt-2 sm:gap-8 sm:pt-3">
+      {/* Horizontal cover — poster + Top 10 numeral on the left, title/
+          meta/actions on the right. Sized down to read as a compact card
+          (closer to Netflix's own Top 10 numeral treatment) rather than a
+          large cinematic banner — smaller poster, smaller numeral,
+          tighter text. */}
+      <div className="relative z-10 mx-auto flex max-w-[1400px] items-center gap-3 pt-1.5 sm:gap-6 sm:pt-2">
         <button
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
           className="hero-card-enter relative z-10 shrink-0"
-          style={{ width: '36%', maxWidth: 190 }}
+          style={{ width: '28%', maxWidth: 138 }}
         >
           {/* Netflix-style Top 10 numeral, bleeding out past the poster's
               left edge — same treatment as the ranked rail row below, so
@@ -877,16 +870,16 @@ function CoverflowHero({
           {heroRank && (
             <span
               aria-hidden
-              className="pointer-events-none absolute -left-5 bottom-[-6px] z-0 select-none sm:-left-8"
+              className="pointer-events-none absolute -left-4 bottom-[-4px] z-0 select-none sm:-left-6"
               style={{
-                fontSize: 'clamp(90px, 28vw, 150px)',
+                fontSize: 'clamp(58px, 18vw, 96px)',
                 fontWeight: 900,
                 lineHeight: 1,
-                color: 'rgba(10,6,5,0.5)',
-                WebkitTextStroke: '3px rgba(255,255,255,0.92)',
+                color: 'rgba(5,4,3,0.5)',
+                WebkitTextStroke: '2.5px rgba(255,255,255,0.92)',
                 fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
                 filter:
-                  'drop-shadow(0 2px 0 rgba(45,212,196,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 20px rgba(45,212,196,0.25))',
+                  'drop-shadow(0 2px 0 rgba(45,212,196,0.3)) drop-shadow(0 10px 16px rgba(0,0,0,0.9))',
               }}
             >
               {heroRank}
@@ -932,14 +925,14 @@ function CoverflowHero({
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
           {heroRank && (
-            <span className="mb-1.5 inline-flex items-center gap-1 rounded-md bg-black/40 px-2 py-[3px] text-[10px] font-bold text-[#2DD4C4] backdrop-blur-sm sm:text-xs">
+            <span className="mb-1 inline-flex items-center gap-1 rounded-md bg-black/40 px-1.5 py-[2px] text-[9px] font-bold text-[#2DD4C4] backdrop-blur-sm sm:text-[11px]">
               🔥 {t.top10Label ?? 'TOP 10'} · #{heroRank}
             </span>
           )}
           <h2
             key={hero.id}
             onClick={() => onSelectShow(hero)}
-            className="title-shine cursor-pointer text-2xl font-black leading-[1.05] text-white sm:text-4xl"
+            className="title-shine cursor-pointer text-lg font-black leading-[1.1] text-white sm:text-2xl"
             style={{
               fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
               letterSpacing: '0.01em',
@@ -953,12 +946,12 @@ function CoverflowHero({
           </h2>
 
           {heroGenre && (
-            <p className="mt-1 truncate text-xs font-semibold text-white/50 sm:text-sm">{heroGenre}</p>
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-white/50 sm:text-xs">{heroGenre}</p>
           )}
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] font-semibold text-white/70 sm:text-sm">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-white/70 sm:text-xs">
             <span className="flex items-center gap-1 text-[#FFC94A]">
-              <Star className="h-3 w-3 fill-[#FFC94A] sm:h-3.5 sm:w-3.5" /> {Number(hero.rating).toFixed(1)}
+              <Star className="h-2.5 w-2.5 fill-[#FFC94A] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
             </span>
             <span className="h-3 w-px bg-white/20" aria-hidden />
             <span>{hero.type === 'movie' ? t.movie : t.series}</span>
@@ -970,26 +963,26 @@ function CoverflowHero({
             )}
           </div>
 
-          <div className="mt-3.5 flex items-center gap-2 sm:mt-5 sm:gap-3">
+          <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
             <button
               onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold text-white shadow-[0_4px_16px_rgba(227,30,36,0.4)] transition active:scale-95 sm:px-6 sm:py-2.5 sm:text-sm"
+              className="flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(227,30,36,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
               style={{ background: 'linear-gradient(135deg, #FF4B52, #E31E24 55%, #8C0F12)' }}
             >
-              <Play className="h-3.5 w-3.5 fill-white sm:h-4 sm:w-4" /> {t.play}
+              <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
             </button>
             <button
               onClick={() => {
                 const now = toggleWatchlist(hero);
                 setInList(now);
               }}
-              className={`flex items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-xs font-bold transition active:scale-95 sm:px-6 sm:py-2.5 sm:text-sm ${
+              className={`flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11px] font-bold transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs ${
                 inList
                   ? 'border-[#2DD4C4]/40 bg-[#2DD4C4]/10 text-[#2DD4C4]'
                   : 'border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10'
               }`}
             >
-              {inList ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+              {inList ? <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
               {t.myList}
             </button>
           </div>

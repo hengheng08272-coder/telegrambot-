@@ -31,8 +31,8 @@ export default function SupporterTicker({ trendingTitle, trendingPrefix, staticM
         }
       `}</style>
       <div
-        className="ticker-fade flex w-max whitespace-nowrap text-[13px] font-semibold tracking-wide text-[#FFC94A]/75"
-        style={{ animation: 'nint-ticker-scroll 32s linear infinite' }}
+        className="ticker-fade flex w-max whitespace-nowrap text-[13px] font-semibold tracking-wide text-white/70"
+        style={{ animation: 'nint-ticker-scroll 55s linear infinite' }}
       >
         <span>{repeated}</span>
         <span>{repeated}</span>
