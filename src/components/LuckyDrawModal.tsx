@@ -12,7 +12,11 @@ interface Props {
 // Diverse wedge palette pulled from the NINT ANIME brand: blood red,
 // near-black, ember orange, chrome silver, with gold reserved for
 // whichever slice is the top prize in a given pool.
-const WEDGE_PALETTE = ['#3A1414', '#E31E24', '#241413', '#FF6A3D', '#3A1414', '#E31E24', '#241413', '#C9C9CF', '#FFC94A'];
+const WEDGE_PALETTE = [
+  '#E31E24', '#FFC94A', '#FF6A3D', '#8C0F12', '#C9822E',
+  '#7B2D8B', '#1F8A70', '#2C5F8A', '#D64550', '#F2A65A',
+  '#B8862E', '#E8B84B',
+];
 
 export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
   const { lang } = useLang();
@@ -38,9 +42,9 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
   // Wheel scales up and labels shrink a touch as the pool grows (7 slices
   // for the Big Bonus tier vs. 3-6 for the others), so every slice stays
   // legible instead of the text overlapping at the rim.
-  const wheelSize = pool.length >= 6 ? 288 : 256;
-  const labelRadius = pool.length >= 6 ? 122 : 108;
-  const labelFontPx = pool.length >= 6 ? 10 : 11;
+  const wheelSize = pool.length >= 8 ? 312 : pool.length >= 6 ? 288 : 256;
+  const labelRadius = pool.length >= 8 ? 132 : pool.length >= 6 ? 122 : 108;
+  const labelFontPx = pool.length >= 8 ? 9 : pool.length >= 6 ? 10 : 11;
 
   const spin = async () => {
     if (spinning || result || checking || !bonusInfo) return;

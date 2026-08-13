@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Eye, Play } from 'lucide-react';
+import { Eye, Play, Clock } from 'lucide-react';
 import type { Show } from '@/lib/types';
 import { fmtViews } from '@/lib/format';
 
@@ -116,12 +116,23 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
             <Eye className="h-2.5 w-2.5" />
             {fmtViews(show.view_count)}
           </div>
-          {/* Hover play overlay */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E31E24] shadow-[0_0_24px_rgba(227,30,36,0.6)]">
-              <Play className="h-4 w-4 fill-white text-white" />
+          {/* Coming Soon marker — announced/promoted but no episodes yet
+              (admin toggle). Icon-only since the row header above already
+              says "Coming Soon" in words. */}
+          {show.coming_soon && (
+            <div className="absolute left-1.5 top-1.5 flex items-center justify-center rounded-md bg-[#FF6A3D]/90 p-1 text-white backdrop-blur-sm">
+              <Clock className="h-2.5 w-2.5" />
             </div>
-          </div>
+          )}
+          {/* Hover play overlay — omitted for Coming Soon cards, since
+              tapping them can't actually play anything yet. */}
+          {!show.coming_soon && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E31E24] shadow-[0_0_24px_rgba(227,30,36,0.6)]">
+                <Play className="h-4 w-4 fill-white text-white" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {!rank && (

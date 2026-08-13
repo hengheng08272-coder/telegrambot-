@@ -207,12 +207,17 @@ export default function ShowDetailScreen({
             <div className="mt-6 flex items-center gap-3">
               <button
                 onClick={() => {
-                  if (episodes.length > 0 && detail) onPlayEpisode(episodes[0], detail);
+                  if (!show.coming_soon && episodes.length > 0 && detail) onPlayEpisode(episodes[0], detail);
                 }}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#E31E24] to-[#8C0F12] px-7 py-3 text-sm font-bold text-white shadow-[0_10px_30px_rgba(227,30,36,0.35)] transition hover:shadow-[0_14px_40px_rgba(227,30,36,0.5)] active:scale-95"
+                disabled={show.coming_soon}
+                className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition active:scale-95 ${
+                  show.coming_soon
+                    ? 'cursor-not-allowed bg-white/10 text-white/50'
+                    : 'bg-gradient-to-r from-[#E31E24] to-[#8C0F12] text-white shadow-[0_10px_30px_rgba(227,30,36,0.35)] hover:shadow-[0_14px_40px_rgba(227,30,36,0.5)]'
+                }`}
               >
-                <Play className="h-5 w-5 fill-white" />
-                {show.type === 'movie' ? t.playMovie : t.playFirstEpisode}
+                <Play className="h-5 w-5 fill-current" />
+                {show.coming_soon ? t.comingSoonLabel : show.type === 'movie' ? t.playMovie : t.playFirstEpisode}
               </button>
               <button
                 onClick={handleInvite}
@@ -239,7 +244,9 @@ export default function ShowDetailScreen({
             ) : error ? (
               <p className="text-sm text-[#EF4444]">{error}</p>
             ) : episodes.length === 0 ? (
-              <p className="text-sm text-white/40">{t.noEpisodes}</p>
+              <p className="text-sm text-white/40">
+                {show.coming_soon ? `🎬 ${t.comingSoonLabel}` : t.noEpisodes}
+              </p>
             ) : (
               <div className="space-y-3">
                 {episodes.map((ep) => {

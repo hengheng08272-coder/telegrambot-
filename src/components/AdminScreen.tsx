@@ -145,6 +145,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     release_year: '',
     studio: '',
     featured: false,
+    coming_soon: false,
   });
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -156,6 +157,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [editSynopsis, setEditSynopsis] = useState('');
   const [editRating, setEditRating] = useState('');
   const [editViewCount, setEditViewCount] = useState('');
+  const [editComingSoon, setEditComingSoon] = useState(false);
   const [editPosterFile, setEditPosterFile] = useState<File | null>(null);
   const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -425,6 +427,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       release_year: newShow.release_year ? parseInt(newShow.release_year) : null,
       studio: newShow.studio.trim() || null,
       featured: newShow.featured,
+      coming_soon: newShow.coming_soon,
       poster_url,
       banner_url,
     });
@@ -442,6 +445,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       release_year: '',
       studio: '',
       featured: false,
+      coming_soon: false,
     });
     setPosterFile(null);
     setBannerFile(null);
@@ -455,6 +459,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setEditSynopsis(show.synopsis ?? '');
     setEditRating(show.rating != null ? String(show.rating) : '');
     setEditViewCount(show.view_count != null ? String(show.view_count) : '0');
+    setEditComingSoon(show.coming_soon ?? false);
     setEditPosterFile(null);
     setEditBannerFile(null);
     setEditSuccess(false);
@@ -469,11 +474,12 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setSavingEdit(true);
     setError('');
 
-    const updates: Record<string, string | number | null> = {
+    const updates: Record<string, string | number | boolean | null> = {
       title: editTitle.trim(),
       synopsis: editSynopsis.trim() || null,
       rating: editRating.trim() ? parseFloat(editRating) : 0,
       view_count: editViewCount.trim() ? parseInt(editViewCount, 10) || 0 : 0,
+      coming_soon: editComingSoon,
     };
 
     if (editPosterFile) {
@@ -1104,6 +1110,15 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 Feature on home hero carousel
               </label>
 
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={newShow.coming_soon}
+                  onChange={(e) => setNewShow({ ...newShow, coming_soon: e.target.checked })}
+                />
+                Coming Soon (has a poster/banner but no episodes yet — shows in its own row, not the normal rails)
+              </label>
+
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={handleCreateShow}
@@ -1195,6 +1210,15 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   />
                 </div>
               </div>
+
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editComingSoon}
+                  onChange={(e) => setEditComingSoon(e.target.checked)}
+                />
+                Coming Soon (has a poster/banner but no episodes yet — shows in its own row, not the normal rails)
+              </label>
 
               {/* Current images preview */}
               <div className="flex gap-3">
