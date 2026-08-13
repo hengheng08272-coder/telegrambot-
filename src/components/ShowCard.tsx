@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { Eye, Play, Clock } from 'lucide-react';
 import type { Show } from '@/lib/types';
 import { fmtViews } from '@/lib/format';
+import { useLang } from '@/lib/useLang';
+import { appText } from '@/lib/appTranslations';
 
 interface ShowCardProps {
   show: Show;
@@ -17,6 +19,8 @@ interface ShowCardProps {
 export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
+  const { lang } = useLang();
+  const t = appText[lang];
 
   // Subtle pointer-driven 3D tilt — works for mouse hover and for a
   // finger resting/dragging on the card (Pointer Events unify both).
@@ -50,11 +54,11 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
             fontSize: 'clamp(100px, 32vw, 168px)',
             fontWeight: 900,
             lineHeight: 1,
-            color: 'rgba(20,10,8,0.65)',
-            WebkitTextStroke: '2px rgba(255,201,74,0.7)',
+            color: 'rgba(10,6,5,0.5)',
+            WebkitTextStroke: '2.5px rgba(255,255,255,0.9)',
             fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
             filter:
-              'drop-shadow(0 2px 0 rgba(255,201,74,0.35)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(255,201,74,0.2))',
+              'drop-shadow(0 2px 0 rgba(255,201,74,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(255,201,74,0.2))',
           }}
         >
           {rank}
@@ -122,6 +126,26 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           {show.coming_soon && (
             <div className="absolute left-1.5 top-1.5 flex items-center justify-center rounded-md bg-[#FF6A3D]/90 p-1 text-white backdrop-blur-sm">
               <Clock className="h-2.5 w-2.5" />
+            </div>
+          )}
+          {/* FREE / VIP badge — same subscription status the detail screen
+              and hero cover enforce, so browsing never over-promises what's
+              actually playable. Skipped on Coming Soon cards since neither
+              label means anything until episodes exist. */}
+          {!show.coming_soon && (
+            <div className="absolute left-1.5 top-1.5">
+              {show.is_free ? (
+                <span className="rounded-md bg-emerald-500/85 px-1.5 py-[2px] text-[9px] font-bold text-white backdrop-blur-sm">
+                  {t.freeBadge}
+                </span>
+              ) : (
+                <span
+                  className="flex items-center gap-0.5 rounded-md px-1.5 py-[2px] text-[9px] font-black text-black backdrop-blur-sm"
+                  style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+                >
+                  👑 {t.vipBadge}
+                </span>
+              )}
             </div>
           )}
           {/* Hover play overlay — omitted for Coming Soon cards, since

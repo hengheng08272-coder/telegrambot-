@@ -21,6 +21,9 @@ import {
   ShieldBan,
   Eye,
   AlertTriangle,
+  Lock,
+  Unlock,
+  Crown,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import type { Show, Episode } from '@/lib/types';
@@ -146,6 +149,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     studio: '',
     featured: false,
     coming_soon: false,
+    is_free: false,
   });
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -158,6 +162,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [editRating, setEditRating] = useState('');
   const [editViewCount, setEditViewCount] = useState('');
   const [editComingSoon, setEditComingSoon] = useState(false);
+  const [editIsFree, setEditIsFree] = useState(false);
+  const [episodeLockBusyId, setEpisodeLockBusyId] = useState<string | null>(null);
+  const [bulkLockBusyShowId, setBulkLockBusyShowId] = useState<string | null>(null);
   const [editPosterFile, setEditPosterFile] = useState<File | null>(null);
   const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -329,6 +336,41 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     await loadShows();
   };
 
+  // Per-episode free-preview toggle — this is the "unlock one episode"
+  // control. Episodes are locked (is_free_preview = false) by default from
+  // the moment they're created (see free-content-addition.sql), so this is
+  // purely opt-in unlocking, not a separate lock step.
+  const handleToggleEpisodeFree = async (ep: Episode) => {
+    setEpisodeLockBusyId(ep.id);
+    const { error: toggleErr } = await supabase
+      .from('episodes')
+      .update({ is_free_preview: !ep.is_free_preview })
+      .eq('id', ep.id);
+    setEpisodeLockBusyId(null);
+    if (toggleErr) {
+      setError(toggleErr.message);
+      return;
+    }
+    await loadShows();
+  };
+
+  // Bulk unlock/lock every episode of one show at once — "unlock all" and
+  // "lock all" from the same button, depending on current state.
+  const handleBulkSetEpisodesFree = async (showId: string, episodeIds: string[], value: boolean) => {
+    if (episodeIds.length === 0) return;
+    setBulkLockBusyShowId(showId);
+    const { error: bulkErr } = await supabase
+      .from('episodes')
+      .update({ is_free_preview: value })
+      .in('id', episodeIds);
+    setBulkLockBusyShowId(null);
+    if (bulkErr) {
+      setError(bulkErr.message);
+      return;
+    }
+    await loadShows();
+  };
+
   const handleAddEpisode = async (showId: string, movieTitle?: string) => {
     setBusy(true);
     setError('');
@@ -428,6 +470,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       studio: newShow.studio.trim() || null,
       featured: newShow.featured,
       coming_soon: newShow.coming_soon,
+      is_free: newShow.is_free,
       poster_url,
       banner_url,
     });
@@ -446,6 +489,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       studio: '',
       featured: false,
       coming_soon: false,
+      is_free: false,
     });
     setPosterFile(null);
     setBannerFile(null);
@@ -460,6 +504,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setEditRating(show.rating != null ? String(show.rating) : '');
     setEditViewCount(show.view_count != null ? String(show.view_count) : '0');
     setEditComingSoon(show.coming_soon ?? false);
+    setEditIsFree(show.is_free ?? false);
     setEditPosterFile(null);
     setEditBannerFile(null);
     setEditSuccess(false);
@@ -480,6 +525,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       rating: editRating.trim() ? parseFloat(editRating) : 0,
       view_count: editViewCount.trim() ? parseInt(editViewCount, 10) || 0 : 0,
       coming_soon: editComingSoon,
+      is_free: editIsFree,
     };
 
     if (editPosterFile) {
@@ -686,6 +732,49 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   {/* Episodes */}
                   {isExpanded && (
                     <div className="border-t border-white/10 px-4 py-4">
+                      {/* Bulk unlock/lock — every episode is VIP-locked by default,
+                          this is the fast path for "unlock this whole show" instead
+                          of tapping Unlock on each episode one at a time. */}
+                      {show.episodes.length > 0 && (
+                        <div className="mb-3 flex items-center gap-2">
+                          <span className="flex items-center gap-1.5 text-xs font-semibold text-white/50">
+                            <Crown className="h-3.5 w-3.5 text-[#FFC94A]" />
+                            {show.episodes.filter((ep) => ep.is_free_preview).length}/{show.episodes.length} unlocked
+                          </span>
+                          <button
+                            onClick={() =>
+                              handleBulkSetEpisodesFree(
+                                show.id,
+                                show.episodes.map((ep) => ep.id),
+                                true,
+                              )
+                            }
+                            disabled={bulkLockBusyShowId === show.id}
+                            className="ml-auto flex items-center gap-1.5 rounded-lg border border-[#4CC950]/30 bg-[#4CC950]/10 px-3 py-1.5 text-xs font-semibold text-[#4CC950] transition hover:bg-[#4CC950]/20 disabled:opacity-50"
+                          >
+                            {bulkLockBusyShowId === show.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Unlock className="h-3.5 w-3.5" />
+                            )}
+                            Unlock all
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleBulkSetEpisodesFree(
+                                show.id,
+                                show.episodes.map((ep) => ep.id),
+                                false,
+                              )
+                            }
+                            disabled={bulkLockBusyShowId === show.id}
+                            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 disabled:opacity-50"
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                            Lock all
+                          </button>
+                        </div>
+                      )}
                       <div className="space-y-3">
                         {show.episodes.map((ep) => {
                           const hasVideo = !!ep.video_url;
@@ -737,6 +826,28 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                     Preview
                                   </button>
                                 )}
+                                {/* Per-episode free-preview toggle — episodes are locked
+                                    (VIP-only) by default, this is the one-tap way to make
+                                    a single episode playable without a subscription. */}
+                                <button
+                                  onClick={() => handleToggleEpisodeFree(ep)}
+                                  disabled={episodeLockBusyId === ep.id}
+                                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:opacity-50 ${
+                                    ep.is_free_preview
+                                      ? 'border-[#4CC950]/40 bg-[#4CC950]/10 text-[#4CC950] hover:bg-[#4CC950]/20'
+                                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                                  }`}
+                                  title={ep.is_free_preview ? 'Unlocked — tap to lock again' : 'Locked — tap to unlock (playable without VIP)'}
+                                >
+                                  {episodeLockBusyId === ep.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : ep.is_free_preview ? (
+                                    <Unlock className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Lock className="h-3.5 w-3.5" />
+                                  )}
+                                  {ep.is_free_preview ? 'Unlocked' : 'Locked'}
+                                </button>
                                 <button
                                   onClick={() => triggerFileUpload(ep.id)}
                                   disabled={isUploading}
@@ -1119,6 +1230,19 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 Coming Soon (has a poster/banner but no episodes yet — shows in its own row, not the normal rails)
               </label>
 
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={newShow.is_free}
+                  onChange={(e) => setNewShow({ ...newShow, is_free: e.target.checked })}
+                />
+                Free to watch (no VIP required — shows a FREE badge instead of the VIP crown)
+              </label>
+              <p className="-mt-2 pl-6 text-[11px] text-white/40">
+                Every episode is still VIP-locked by default even on a free show — unlock the
+                episodes you want playable from the episode list below (or use "Unlock all").
+              </p>
+
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={handleCreateShow}
@@ -1218,6 +1342,15 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   onChange={(e) => setEditComingSoon(e.target.checked)}
                 />
                 Coming Soon (has a poster/banner but no episodes yet — shows in its own row, not the normal rails)
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editIsFree}
+                  onChange={(e) => setEditIsFree(e.target.checked)}
+                />
+                Free to watch (no VIP required — shows a FREE badge instead of the VIP crown)
               </label>
 
               {/* Current images preview */}

@@ -26,6 +26,7 @@ import ShowCard from '@/components/ShowCard';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
+import NotificationBell from '@/components/NotificationBell';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { usePresenceCount } from '@/lib/presence';
@@ -217,6 +218,7 @@ export default function HomeScreen({
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
     .slice(0, 10);
   const comingSoon = shows.filter((s) => s.coming_soon);
+  const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
 
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
   // joined) — this looks the hero's genre + Top 10 rank up against the
@@ -431,6 +433,19 @@ export default function HomeScreen({
               className="w-48 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-64 focus:border-[#E31E24]/50 focus:bg-white/[0.07]"
             />
           </div>
+
+          {/* Bell + VIP — per the requested header layout (logo · bell ·
+              VIP), kept visible on every screen size and every scroll
+              position, not just the bottom utility bar. */}
+          <NotificationBell title={t.notifications ?? 'Notifications'} emptyLabel={t.noNotifications ?? ''} />
+          <button
+            onClick={onOpenSubscription}
+            className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(255,201,74,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs"
+            style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+          >
+            <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            {subscribed ? t.premium : (t.vipBadge ?? 'VIP')}
+          </button>
         </div>
       </header>
 
@@ -452,7 +467,7 @@ export default function HomeScreen({
           draggable={false}
         />
 
-        <SupporterTicker />
+        <SupporterTicker trendingTitle={trending[0]?.title} trendingPrefix={t.trendingNowPrefix} />
 
         {/* Coverflow hero carousel */}
         {heroVisible && (
@@ -541,6 +556,18 @@ export default function HomeScreen({
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.comingSoonLabel, shows: comingSoon })}
                 viewAllLabel={t.viewAll}
+                tag={{ label: t.freshTag ?? 'SOON', color: '#FF6A3D' }}
+              />
+            )}
+            {freeShows.length > 0 && (
+              <RailRow
+                icon={<Gift className="h-5 w-5 text-[#4CC950]" />}
+                title={t.freeRowLabel ?? 'Free to Watch'}
+                shows={freeShows}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
+                viewAllLabel={t.viewAll}
+                tag={{ label: t.freeBadge, color: '#4CC950' }}
               />
             )}
             <RailRow
@@ -550,6 +577,7 @@ export default function HomeScreen({
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
               viewAllLabel={t.viewAll}
+              tag={{ label: t.newTag ?? 'NEW', color: '#3B82F6' }}
             />
             <RailRow
               icon={<Flame className="h-5 w-5 text-[#FFC94A]" />}
@@ -558,6 +586,7 @@ export default function HomeScreen({
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.popularSeason, shows })}
               viewAllLabel={t.viewAll}
+              tag={{ label: t.hotTag ?? 'HOT', color: '#E31E24' }}
             />
 
             {genres.map((g) => {
@@ -864,14 +893,14 @@ function CoverflowHero({
               aria-hidden
               className="pointer-events-none absolute -left-5 bottom-[-6px] z-0 select-none sm:-left-8"
               style={{
-                fontSize: 'clamp(84px, 26vw, 140px)',
+                fontSize: 'clamp(90px, 28vw, 150px)',
                 fontWeight: 900,
                 lineHeight: 1,
-                color: 'rgba(20,10,8,0.7)',
-                WebkitTextStroke: '2.5px rgba(255,201,74,0.8)',
+                color: 'rgba(10,6,5,0.5)',
+                WebkitTextStroke: '3px rgba(255,255,255,0.92)',
                 fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
                 filter:
-                  'drop-shadow(0 2px 0 rgba(255,201,74,0.35)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(255,201,74,0.2))',
+                  'drop-shadow(0 2px 0 rgba(255,201,74,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 20px rgba(255,201,74,0.25))',
               }}
             >
               {heroRank}
@@ -1153,9 +1182,14 @@ interface RailRowProps {
    *  stays the same compact size as every other row; only the numeral is
    *  oversized. */
   ranked?: boolean;
+  /** Small colored tag chip shown next to the row title (e.g. NEW / HOT /
+   *  FREE) — echoes the "Row: <colored label>" treatment from the mockup,
+   *  giving every row its own at-a-glance identity instead of a uniform
+   *  plain heading. { label, color } — color is any CSS color value. */
+  tag?: { label: string; color: string };
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLabel, ranked }: RailRowProps) {
+function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLabel, ranked, tag }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
@@ -1187,6 +1221,14 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
           <div className="mb-1 flex items-center justify-center gap-2">
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
             <h2 className="text-xl font-black tracking-wide text-[#FFC94A]">{title}</h2>
+            {tag && (
+              <span
+                className="rounded-full px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
+                style={{ backgroundColor: tag.color }}
+              >
+                {tag.label}
+              </span>
+            )}
           </div>
           {onViewAll && (
             <button
@@ -1202,6 +1244,14 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
           <div className="flex items-center gap-2">
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
             <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+            {tag && (
+              <span
+                className="rounded-full px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
+                style={{ backgroundColor: tag.color }}
+              >
+                {tag.label}
+              </span>
+            )}
           </div>
           {onViewAll && (
             <button
