@@ -37,23 +37,28 @@ const JACKPOT_MAX_WINNERS = 5;
 // Only tiers listed here grant a bonus spin; a tier with no entry here
 // (e.g. 6m/12m, until a pool is defined for them) just doesn't offer one.
 export const BONUS_POOLS: Record<string, RewardTier[]> = {
-  // 1 Month / $3 — 5 to 30 bonus days.
+  // 1 Month / $3 — 1 to 30 bonus days, finer steps at the low end so the
+  // wheel feels lively even on the cheaper tier.
   '1m': [
-    { key: '5d', label: '5 days', days: 5, weight: 35 },
-    { key: '10d', label: '10 days', days: 10, weight: 25 },
-    { key: '15d', label: '15 days', days: 15, weight: 18 },
-    { key: '20d', label: '20 days', days: 20, weight: 12 },
-    { key: '25d', label: '25 days', days: 25, weight: 7 },
-    { key: '30d', label: '30 days', days: 30, weight: 3 },
+    { key: '1d', label: '1 day', days: 1, weight: 30 },
+    { key: '3d', label: '3 days', days: 3, weight: 22 },
+    { key: '5d', label: '5 days', days: 5, weight: 16 },
+    { key: '7d', label: '7 days', days: 7, weight: 12 },
+    { key: '10d', label: '10 days', days: 10, weight: 8 },
+    { key: '15d', label: '15 days', days: 15, weight: 5 },
+    { key: '20d', label: '20 days', days: 20, weight: 3 },
+    { key: '25d', label: '25 days', days: 25, weight: 2 },
+    { key: '30d', label: '30 days', days: 30, weight: 2 },
   ],
   // 1 Month Big Bonus / $5 — 30 to 100 bonus days.
   '2m': [
-    { key: '30d', label: '30 days', days: 30, weight: 30 },
-    { key: '40d', label: '40 days', days: 40, weight: 22 },
-    { key: '60d', label: '60 days', days: 60, weight: 18 },
-    { key: '70d', label: '70 days', days: 70, weight: 12 },
-    { key: '80d', label: '80 days', days: 80, weight: 9 },
-    { key: '90d', label: '90 days', days: 90, weight: 6 },
+    { key: '30d', label: '30 days', days: 30, weight: 28 },
+    { key: '40d', label: '40 days', days: 40, weight: 20 },
+    { key: '50d', label: '50 days', days: 50, weight: 16 },
+    { key: '60d', label: '60 days', days: 60, weight: 12 },
+    { key: '70d', label: '70 days', days: 70, weight: 9 },
+    { key: '80d', label: '80 days', days: 80, weight: 7 },
+    { key: '90d', label: '90 days', days: 90, weight: 5 },
     { key: '100d', label: '100 days', days: 100, weight: 3 },
   ],
 };

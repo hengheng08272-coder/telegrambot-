@@ -20,6 +20,7 @@ export interface Show {
   featured: boolean;
   view_count?: number;
   is_free?: boolean;
+  coming_soon?: boolean;
   created_at?: string;
   genres?: Genre[];
 }
