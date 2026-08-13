@@ -31,6 +31,23 @@ export async function fetchFeaturedShows(): Promise<Show[]> {
   return data ?? [];
 }
 
+export async function fetchTickerMessage(): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'ticker_message')
+    .maybeSingle();
+  if (error) return null; // table/row may not exist on older deploys — ticker just falls back
+  return data?.value ?? null;
+}
+
+export async function saveTickerMessage(value: string): Promise<void> {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({ key: 'ticker_message', value, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}
+
 export async function fetchAllShows(): Promise<ShowWithGenres[]> {
   const { data, error } = await supabase
     .from('shows')
