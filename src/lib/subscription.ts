@@ -205,11 +205,15 @@ export async function notifyPendingSubmission(opts: {
   }).catch(() => {});
 }
 
-// Fallback path — offered only once the automatic ABA-match window has
-// run out. Attaches a screenshot to the SAME pending row (rather than
-// creating a second one) and re-notifies the admin with the actual
-// photo this time, so a manual check is as fast as the original
-// screenshot flow used to be.
+// Fallback path — always available alongside the QR (not gated behind
+// a timeout): if the automatic ABA match hasn't confirmed yet, the
+// viewer can attach a screenshot instead. This grants VIP immediately
+// via the confirm-payment-proof edge function (service-role only — the
+// client can't write to subscriptions directly), which also sends the
+// admin the actual photo (not just a text ping) with Confirm/Revoke
+// buttons for a fast retroactive check. See confirm-payment-proof's own
+// comments for why an instant grant here was a deliberate choice, not
+// a default I picked.
 export async function attachScreenshotToSubmission(
   submissionId: string,
   screenshot: File,
@@ -224,11 +228,10 @@ export async function attachScreenshotToSubmission(
 
   const { data: pub } = supabase.storage.from('payment-proofs').getPublicUrl(path);
 
-  const { error: updateErr } = await supabase
-    .from('payment_submissions')
-    .update({ screenshot_url: pub.publicUrl })
-    .eq('id', submissionId);
-  if (updateErr) return { error: updateErr.message, screenshotUrl: null };
+  const { error: fnError } = await supabase.functions.invoke('confirm-payment-proof', {
+    body: { submission_id: submissionId, screenshot_url: pub.publicUrl },
+  });
+  if (fnError) return { error: fnError.message, screenshotUrl: null };
 
   return { error: null, screenshotUrl: pub.publicUrl };
 }
