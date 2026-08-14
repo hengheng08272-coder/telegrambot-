@@ -216,7 +216,7 @@ function App() {
   }, [screen.name]);
 
   if (!authReady) {
-    return <div className="min-h-screen bg-[#0A0605]" />;
+    return <div className="min-h-screen bg-[#0A0A0D]" />;
   }
 
   // Desktop is admin-only. On mobile (the real Telegram Mini App surface)
@@ -273,7 +273,7 @@ function App() {
   // they are via the sign-in screen above.
   if (!isAdmin) {
     if (membership === 'checking') {
-      return <div className="min-h-screen bg-[#0A0605]" />;
+      return <div className="min-h-screen bg-[#0A0A0D]" />;
     }
     if (membership === 'blocked') {
       return <NotMemberScreen groupLink={import.meta.env.VITE_TELEGRAM_GROUP_LINK as string | undefined} />;
