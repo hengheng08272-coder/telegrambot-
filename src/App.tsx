@@ -302,6 +302,7 @@ function App() {
           onOpenWatchlist={() => setScreen({ name: 'watchlist' })}
           onOpenSubscription={() => setShowSubscribe(true)}
           onOpenSpin={() => setShowSpin(true)}
+          onOpenLegal={() => setScreen({ name: 'legal' })}
         />
         {showSpin && (
           <LuckyDrawModal
