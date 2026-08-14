@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Bookmark, Crown, Gift, ShieldCheck, Sparkles, User } from 'lucide-react';
-import { getCurrentTelegramUser } from '@/lib/telegram';
+import { ArrowLeft, Bookmark, Crown, Gift, ShieldCheck, Sparkles, User, FileText, Copy, Check } from 'lucide-react';
+import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { getSubscriptionStatus, PRICING_TIERS, type SubscriptionStatus } from '@/lib/subscription';
 import { getAvailableBonusSpin, type BonusSpinInfo } from '@/lib/spin';
 import { useLang } from '@/lib/useLang';
@@ -12,12 +12,14 @@ interface Props {
   onOpenWatchlist: () => void;
   onOpenSubscription: () => void;
   onOpenSpin: () => void;
+  onOpenLegal: () => void;
 }
 
-export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscription, onOpenSpin }: Props) {
+export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscription, onOpenSpin, onOpenLegal }: Props) {
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [bonusInfo, setBonusInfo] = useState<BonusSpinInfo | null>(null);
-  const telegramUser = getCurrentTelegramUser();
+  const [idCopied, setIdCopied] = useState(false);
+  const profile = getCurrentTelegramProfile();
   const { lang, setLang } = useLang();
   const t = appText[lang];
 
@@ -59,11 +61,40 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                 : { background: 'rgba(43,92,173,0.35)', padding: 2 }
             }
           >
-            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#12302D] to-[#151A1A]">
-              <User className="h-9 w-9 text-white/60" />
+            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#12302D] to-[#151A1A]">
+              {profile?.photoUrl ? (
+                <img src={profile.photoUrl} alt={profile.fullName ?? 'Profile'} className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-9 w-9 text-white/60" />
+              )}
             </div>
           </div>
-          <p className="text-base font-bold text-white">{telegramUser?.label ?? 'ភ្ញៀវ'}</p>
+          {/* Real Telegram identity (name + @username), not a generic
+              placeholder — this is what makes "no separate account
+              needed, you're already signed in as you" credible at a
+              glance instead of just a claim in copy somewhere. */}
+          <p className="text-base font-bold text-white">{profile?.fullName ?? 'ភ្ញៀវ'}</p>
+          {profile?.username && (
+            <p className="text-xs font-medium text-white/45">@{profile.username}</p>
+          )}
+          {profile?.id && (
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(String(profile.id));
+                  setIdCopied(true);
+                  setTimeout(() => setIdCopied(false), 1500);
+                } catch {
+                  /* clipboard unavailable — the ID is still visible to read/copy manually */
+                }
+              }}
+              className="mt-1 flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-medium text-white/40 transition hover:bg-white/10 hover:text-white/70"
+              title="ចម្លង Telegram ID"
+            >
+              ID: {profile.id}
+              {idCopied ? <Check className="h-2.5 w-2.5 text-[#34B37A]" /> : <Copy className="h-2.5 w-2.5" />}
+            </button>
+          )}
           {status?.subscribed ? (
             <span
               className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-[#0A0A0D]"
@@ -160,6 +191,16 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           >
             <Bookmark className="h-5 w-5 text-white/50" />
             <span className="text-sm font-semibold text-white">បញ្ជីរបស់ខ្ញុំ</span>
+          </button>
+
+          <div className="h-px bg-white/10" />
+
+          <button
+            onClick={onOpenLegal}
+            className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-white/[0.06]"
+          >
+            <FileText className="h-5 w-5 text-white/50" />
+            <span className="text-sm font-semibold text-white">លក្ខខណ្ឌប្រើប្រាស់ & ឯកជនភាព</span>
           </button>
 
           <div className="h-px bg-white/10" />

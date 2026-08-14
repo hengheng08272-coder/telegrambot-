@@ -7,11 +7,12 @@ import {
   PRICING_TIERS,
   getEffectivePricingTiers,
   type PricingTier,
-  submitPayment,
+  submitPaymentIntent,
+  notifyPendingSubmission,
+  attachScreenshotToSubmission,
   getPendingSubmission,
   getQrCodes,
   checkSubmissionStatus,
-  autoApprovePayment,
   type PaymentSubmission,
 } from '@/lib/subscription';
 
@@ -23,7 +24,15 @@ interface Props {
 }
 
 type Step = 'pick' | 'pay' | 'sent';
-const AUTO_APPROVE_SECONDS = 30;
+// How long the modal actively counts down while listening for the ABA
+// auto-confirm webhook to match this payment. This is NOT a grace
+// window that unconditionally grants VIP at zero — without a screenshot
+// to fall back on, an unconditional grant here would mean anyone could
+// tap "I've paid" and get free VIP after 3 minutes without paying at
+// all. At zero, the submission just keeps waiting in the background for
+// either the ABA match or the admin's manual Approve/Reject from
+// Telegram — see the 'waiting' render branch below.
+const WAIT_WINDOW_SECONDS = 180;
 
 // Per-tier presentation: icon + a short Khmer pitch. Bonus-day range is
 // computed live from lib/spin.ts BONUS_POOLS below (never hand-typed),
@@ -60,28 +69,41 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const t = appText[lang];
   const [step, setStep] = useState<Step>('pick');
   const [tierKey, setTierKey] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [pending, setPending] = useState<PaymentSubmission | null>(null);
   const [checkingPending, setCheckingPending] = useState(true);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
-  const [secondsLeft, setSecondsLeft] = useState(AUTO_APPROVE_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
   const [decision, setDecision] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
+  const [attachingProof, setAttachingProof] = useState(false);
+  const [proofSent, setProofSent] = useState(false);
   const notifiedApprovedRef = useRef(false);
+  const timedOutNotifiedRef = useRef(false);
 
   useEffect(() => {
     getPendingSubmission().then((p) => {
       setPending(p);
       setCheckingPending(false);
-      if (p) setStep('sent');
+      if (p) {
+        setTierKey(p.tier);
+        // Resume the countdown from where it actually should be, based
+        // on when the row was created — not a fresh 3 minutes just
+        // because the modal was reopened.
+        const elapsedSec = Math.floor((Date.now() - new Date(p.submitted_at).getTime()) / 1000);
+        setSecondsLeft(Math.max(0, WAIT_WINDOW_SECONDS - elapsedSec));
+        setStep('sent');
+      }
     });
     getQrCodes().then(setQrImages);
     getEffectivePricingTiers().then(setTiers);
   }, []);
 
+  // Polls for a decision indefinitely once a submission is pending — not
+  // just for the WAIT_WINDOW_SECONDS countdown — since the ABA
+  // auto-confirm webhook or the admin's manual Approve/Reject can both
+  // still land well after the on-screen timer reaches zero.
   useEffect(() => {
     if (step !== 'sent' || !pending || decision !== 'waiting') return;
 
@@ -101,13 +123,20 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     };
   }, [step, pending, decision]);
 
+  // The listening window ran out with no ABA auto-match — THIS is when
+  // the admin actually gets pinged (not at tier-selection time), asking
+  // them to check their own bank statement. Fires once per submission.
   useEffect(() => {
-    if (secondsLeft > 0 || decision !== 'waiting' || !pending) return;
-    autoApprovePayment(pending.id).then(async () => {
-      const status = await checkSubmissionStatus(pending.id);
-      setDecision(status === 'rejected' ? 'rejected' : 'approved');
+    if (secondsLeft > 0 || !pending || decision !== 'waiting' || timedOutNotifiedRef.current) return;
+    timedOutNotifiedRef.current = true;
+    notifyPendingSubmission({
+      submissionId: pending.id,
+      telegramUserId: pending.telegram_user_id ?? '',
+      telegramUsername: pending.telegram_username ?? null,
+      tierKey: pending.tier,
+      amount: pending.amount,
     });
-  }, [secondsLeft, decision, pending]);
+  }, [secondsLeft, pending, decision]);
 
   useEffect(() => {
     if (decision === 'approved' && !notifiedApprovedRef.current) {
@@ -118,36 +147,52 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
 
   const tier = tiers.find((tr) => tr.key === tierKey) ?? null;
 
-  const handlePickTier = (key: string) => {
+  // Tapping a tier IS the "pay" action now — QR + the 3-minute listening
+  // countdown appear immediately, no separate confirm tap first. The DB
+  // row is created right away so the ABA webhook has something to match
+  // against the instant a real bank notification comes through; the
+  // admin's Telegram stays quiet until the window in notifyPendingSubmission above.
+  const handlePickTier = async (key: string) => {
+    const tr = tiers.find((x) => x.key === key);
+    if (!tr) return;
     setTierKey(key);
-    setStep('pay');
-  };
-
-  const handleFile = (f: File | null) => {
-    setFile(f);
     setError('');
-    if (preview) URL.revokeObjectURL(preview);
-    setPreview(f ? URL.createObjectURL(f) : null);
-  };
-
-  const handleSubmit = async () => {
-    if (!tier || !file) {
-      setError(t.subMissingProof);
+    setSubmitting(true);
+    const { error: err, id } = await submitPaymentIntent({ tierKey: tr.key, amount: tr.price });
+    setSubmitting(false);
+    if (err || !id) {
+      setError(err ?? 'មានបញ្ហាកើតឡើង។ សូមព្យាយាមម្ដងទៀត។');
+      setStep('pay');
       return;
     }
-    setSubmitting(true);
+    onSubmitted();
+    setSecondsLeft(WAIT_WINDOW_SECONDS);
+    setDecision('waiting');
+    timedOutNotifiedRef.current = false;
+    setProofSent(false);
+    getPendingSubmission().then((p) => p && setPending(p));
+    setStep('sent');
+  };
+
+  const handleAttachProof = async (file: File) => {
+    if (!pending) return;
+    setAttachingProof(true);
     setError('');
-    const { error: err } = await submitPayment({ tierKey: tier.key, amount: tier.price, screenshot: file });
-    setSubmitting(false);
+    const { error: err, screenshotUrl } = await attachScreenshotToSubmission(pending.id, file);
+    setAttachingProof(false);
     if (err) {
       setError(err);
       return;
     }
-    onSubmitted();
-    setSecondsLeft(AUTO_APPROVE_SECONDS);
-    setDecision('waiting');
-    getPendingSubmission().then((p) => p && setPending(p));
-    setStep('sent');
+    setProofSent(true);
+    notifyPendingSubmission({
+      submissionId: pending.id,
+      telegramUserId: pending.telegram_user_id ?? '',
+      telegramUsername: pending.telegram_username ?? null,
+      tierKey: pending.tier,
+      amount: pending.amount,
+      screenshotUrl,
+    });
   };
 
   return (
@@ -229,7 +274,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 <button
                   key={tr.key}
                   onClick={() => handlePickTier(tr.key)}
-                  className={`relative w-full overflow-hidden rounded-2xl border px-4 py-4 text-left transition active:scale-[0.98] ${
+                  disabled={submitting}
+                  className={`relative w-full overflow-hidden rounded-2xl border px-4 py-4 text-left transition active:scale-[0.98] disabled:opacity-50 ${
                     tr.badge === 'best'
                       ? 'border-[#E3B341]/45 bg-gradient-to-br from-[#E3B341]/12 via-transparent to-transparent shadow-[0_8px_28px_rgba(227,179,65,0.16)] hover:border-[#E3B341]/75'
                       : tr.badge === 'popular'
@@ -295,61 +341,21 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             })}
           </div>
         ) : step === 'pay' && tier ? (
+          // Error-retry screen only — reached if submitPaymentIntent
+          // failed right after tapping a tier (e.g. network hiccup).
+          // The normal path skips straight from 'pick' to 'sent'.
           <div className="space-y-4">
             <button onClick={() => setStep('pick')} className="text-xs text-white/50 hover:text-white">
               ← {t.subBackBtn}
             </button>
-
-            <div className="relative overflow-hidden rounded-2xl border border-[#E3B341]/20 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-4 text-center">
-              <div
-                className="pointer-events-none absolute -inset-6 -z-10 opacity-70"
-                style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(227,179,65,0.12) 0%, rgba(10,10,13,0) 65%)' }}
-              />
-              <p className="mb-1 text-xs text-white/50">{t.subTotalDue}</p>
-              <p className="mb-3 text-2xl font-extrabold text-white">
-                ${tier.price} <span className="text-sm font-medium text-white/40">/ {lang === 'km' ? tier.labelKm : tier.labelEn}</span>
-              </p>
-              {qrImages[tier.key] || FALLBACK_QR_IMAGES[tier.key] ? (
-                <img
-                  src={qrImages[tier.key] || FALLBACK_QR_IMAGES[tier.key]}
-                  alt="KHQR"
-                  className="mx-auto w-full max-w-[260px] rounded-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
-                />
-              ) : (
-                <p className="rounded-xl border border-[#E3B341]/25 bg-[#E3B341]/5 p-4 text-xs text-[#E3B341]">
-                  QR មិនទាន់ត្រៀមសម្រាប់ជម្រើសនេះ — សូមទាក់ទង admin ដោយផ្ទាល់ក្នុង group។
-                </p>
-              )}
-              <p className="mt-2 text-xs text-white/40">{t.subScanHint}</p>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-semibold text-white/70">{t.subUploadReceiptTitle}</p>
-              <p className="mb-3 text-xs text-white/40">{t.subUploadReceiptDesc}</p>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] py-6 transition hover:border-[#E6231F]/40">
-                <Upload className="h-5 w-5 text-white/40" />
-                <span className="text-xs text-white/50">{file ? file.name : t.subChooseScreenshot}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              {preview && (
-                <img src={preview} alt="preview" className="mt-3 max-h-48 w-full rounded-xl object-contain" />
-              )}
-            </div>
-
             {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
-
             <button
-              onClick={handleSubmit}
-              disabled={submitting || !file}
+              onClick={() => handlePickTier(tier.key)}
+              disabled={submitting}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_rgba(230,35,31,0.35)] transition disabled:opacity-50"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {submitting ? t.subSending : t.subConfirmPaid}
+              {submitting ? t.subSending : t.subTryAgain}
             </button>
           </div>
         ) : decision === 'approved' ? (
@@ -394,32 +400,90 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             </button>
           </div>
         ) : (
-          <div className="space-y-4 py-4 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#E3B341]/10">
-              <Clock className="h-7 w-7 text-[#E3B341]" />
-            </div>
-            <div>
-              <p className="text-base font-bold text-white">{t.subPendingTitle}</p>
-              <p className="mt-1.5 text-sm leading-relaxed text-white/55">{t.subPendingBody}</p>
-            </div>
-            {pending && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left text-xs text-white/60">
-                <div className="flex justify-between py-0.5">
-                  <span>{t.subAmountPaid}</span>
-                  <span className="font-semibold text-white">${pending.amount}</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span>{t.subPaymentDate}</span>
-                  <span className="font-semibold text-white">
-                    {new Date(pending.submitted_at).toLocaleDateString()}
-                  </span>
-                </div>
+          <div className="space-y-4 py-4">
+            {/* QR stays visible the whole time — the person may not have
+                paid yet when this screen first appears, and needs it in
+                view to actually scan and pay during the countdown. */}
+            {tier && (
+              <div className="relative overflow-hidden rounded-2xl border border-[#E3B341]/20 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-4 text-center">
+                <div
+                  className="pointer-events-none absolute -inset-6 -z-10 opacity-70"
+                  style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(227,179,65,0.12) 0%, rgba(10,10,13,0) 65%)' }}
+                />
+                <p className="mb-1 text-xs text-white/50">{t.subTotalDue}</p>
+                <p className="mb-3 text-2xl font-extrabold text-white">
+                  ${tier.price} <span className="text-sm font-medium text-white/40">/ {lang === 'km' ? tier.labelKm : tier.labelEn}</span>
+                </p>
+                {qrImages[tier.key] || FALLBACK_QR_IMAGES[tier.key] ? (
+                  <img
+                    src={qrImages[tier.key] || FALLBACK_QR_IMAGES[tier.key]}
+                    alt="KHQR"
+                    className="mx-auto w-full max-w-[220px] rounded-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
+                  />
+                ) : (
+                  <p className="rounded-xl border border-[#E3B341]/25 bg-[#E3B341]/5 p-4 text-xs text-[#E3B341]">
+                    QR មិនទាន់ត្រៀមសម្រាប់ជម្រើសនេះ — សូមទាក់ទង admin ដោយផ្ទាល់ក្នុង group។
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-white/40">{t.subScanHint}</p>
               </div>
             )}
-            <div className="mx-auto flex w-fit items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs text-white/40">
-              <Clock className="h-3 w-3" />
-              {secondsLeft}s
+
+            <div className="space-y-3 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#E3B341]/10">
+                <Clock className="h-6 w-6 animate-pulse text-[#E3B341]" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-white">
+                  {secondsLeft > 0 ? t.subListeningTitle : t.subPendingTitle}
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/55">
+                  {secondsLeft > 0 ? t.subListeningDesc : t.subPendingBody}
+                </p>
+              </div>
+              {secondsLeft > 0 && (
+                <div className="mx-auto flex w-fit items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-white/60">
+                  <Clock className="h-3 w-3" />
+                  {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
+                </div>
+              )}
             </div>
+
+            {/* Screenshot fallback — only revealed once the automatic
+                ABA-match window has run out, exactly like the mockup: an
+                escape hatch for "I really did pay, please look faster",
+                not the default path. Attaches to the SAME pending row so
+                there's no duplicate submission. */}
+            {secondsLeft === 0 && pending && (
+              <div className="space-y-2 border-t border-white/10 pt-4">
+                {proofSent ? (
+                  <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#34B37A]">
+                    <Check className="h-3.5 w-3.5" /> {t.subVerified} — {t.subPendingWaiting}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-center text-xs text-white/50">{t.subAlreadyPaidHint}</p>
+                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-dashed border-white/20 bg-white/[0.02] py-3 text-xs font-semibold text-white/60 transition hover:border-[#E6231F]/40">
+                      {attachingProof ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {attachingProof ? t.subUploadingProof : t.subChooseScreenshot}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={attachingProof}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleAttachProof(f);
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
+
+            {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
+
             <button
               onClick={onClose}
               className="w-full rounded-full border border-white/10 bg-white/5 py-3 text-sm font-bold text-white transition hover:bg-white/10"

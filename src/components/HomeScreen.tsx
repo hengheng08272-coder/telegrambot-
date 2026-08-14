@@ -21,7 +21,7 @@ import {
   Clock,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
-import { fetchAllShows, fetchGenres, fetchTickerMessage } from '@/lib/api';
+import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchLatestEpisodeDates } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
@@ -124,6 +124,7 @@ export default function HomeScreen({
   const [interacting, setInteracting] = useState(false);
   const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
   const [tickerMessage, setTickerMessage] = useState<string | undefined>(undefined);
+  const [latestEpisodeDates, setLatestEpisodeDates] = useState<Record<string, string>>({});
 
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -155,6 +156,9 @@ export default function HomeScreen({
         setBannerShows(top10);
         setShows(s);
         setGenres(g);
+        fetchLatestEpisodeDates().then((dates) => {
+          if (active) setLatestEpisodeDates(dates);
+        });
       } catch (e: unknown) {
         if (!active) return;
         setError(e instanceof Error ? e.message : 'Failed to load content');
@@ -223,6 +227,20 @@ export default function HomeScreen({
     .slice(0, 10);
   const comingSoon = shows.filter((s) => s.coming_soon);
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
+
+  // "Now Airing" — series that genuinely posted a new episode within the
+  // last 14 days, ranked by how recent. This is a real activity signal
+  // (episodes actually going up), not just "show entry exists" like
+  // newReleases below, so it's the honest answer to "what's airing right
+  // now" instead of doubling up on the same list under a new name.
+  const AIRING_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+  const nowAiring = shows
+    .filter((s) => s.type === 'series' && !s.coming_soon && latestEpisodeDates[s.id])
+    .filter((s) => Date.now() - new Date(latestEpisodeDates[s.id]).getTime() < AIRING_WINDOW_MS)
+    .sort(
+      (a, b) =>
+        new Date(latestEpisodeDates[b.id]).getTime() - new Date(latestEpisodeDates[a.id]).getTime(),
+    );
 
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
   // joined) — this looks the hero's genre + Top 10 rank up against the
@@ -550,6 +568,17 @@ export default function HomeScreen({
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
                 without repeating it as a second ranked row underneath. */}
+            {nowAiring.length > 0 && (
+              <RailRow
+                icon={<span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6231F] opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E6231F]" /></span>}
+                title={t.nowAiringLabel ?? 'កំពុងចាក់ផ្សាយ'}
+                shows={nowAiring}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.nowAiringLabel ?? 'កំពុងចាក់ផ្សាយ', shows: nowAiring })}
+                viewAllLabel={t.viewAll}
+                tag={{ label: t.liveTag ?? 'LIVE', color: '#E6231F' }}
+              />
+            )}
             {comingSoon.length > 0 && (
               <RailRow
                 icon={<Clock className="h-5 w-5 text-[#F0453A]" />}
@@ -891,8 +920,8 @@ function CoverflowHero({
             {/* Trending tag — a small corner flag instead of a numeral,
                 only shown when the show is genuinely trending. */}
             {heroRank && (
-              <span className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-black/50 px-1.5 py-[2px] text-[9px] font-bold text-[#E6231F] backdrop-blur-sm">
-                🔥 #{heroRank}
+              <span className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-black/60 px-2 py-1 text-[10px] font-black text-white backdrop-blur-sm">
+                <span className="animate-pulse">🔥</span> TOP #{heroRank}
               </span>
             )}
             {/* VIP / Free badge — same subscription status the detail
@@ -917,10 +946,10 @@ function CoverflowHero({
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
           <span
-            className="mb-1 inline-flex items-center gap-1 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-2 py-[2px] text-[9px] font-bold uppercase tracking-wide text-[#E3B341] sm:text-[10px]"
+            className="mb-1 inline-flex items-center gap-1 rounded-full border border-[#E6231F]/40 bg-[#E6231F]/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#F0453A] sm:text-[11px]"
             style={{ fontFamily: '"Anton", Battambang, sans-serif', letterSpacing: '0.06em' }}
           >
-            {t.featuredLabel ?? 'កំពុងពេញនិយម'}
+            <span className="animate-pulse">🔥</span> {t.featuredLabel ?? 'កំពុងពេញនិយម'}
           </span>
           <h2
             key={hero.id}
