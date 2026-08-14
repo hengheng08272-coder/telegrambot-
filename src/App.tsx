@@ -247,10 +247,11 @@ function App() {
     );
   }
 
-  // Reachable from mobile via the hidden 5-tap logo gesture on the home
-  // header (see HomeScreen's onAdminSecretTap) — the desktop gate above
-  // never fires on mobile/Telegram, so without this branch there'd be no
-  // way to land on the sign-in screen at all outside of desktop.
+  // Reachable from mobile via the hidden 5-tap logo gesture on the
+  // Account screen (see AccountScreen's onAdminSecretTap) — the desktop
+  // gate above never fires on mobile/Telegram, so without this branch
+  // there'd be no way to land on the sign-in screen at all outside of
+  // desktop.
   if (screen.name === 'auth') {
     return (
       <AuthScreen
@@ -303,6 +304,7 @@ function App() {
           onOpenSubscription={() => setShowSubscribe(true)}
           onOpenSpin={() => setShowSpin(true)}
           onOpenLegal={() => setScreen({ name: 'legal' })}
+          onAdminSecretTap={() => setScreen({ name: 'auth', mode: 'signin' })}
         />
         {showSpin && (
           <LuckyDrawModal
@@ -397,7 +399,7 @@ function App() {
         searchOpen={searchOpen}
         setSearchOpen={setSearchOpen}
         onOpenLegal={() => setScreen({ name: 'legal' })}
-        onAdminSecretTap={() => setScreen({ name: 'auth', mode: 'signin' })}
+        onResumeEpisode={handleResumeEpisode}
       />
       {showSpin && (
         <LuckyDrawModal
