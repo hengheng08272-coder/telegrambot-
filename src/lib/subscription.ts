@@ -89,6 +89,8 @@ export interface PaymentSubmission {
   tier: string;
   amount: number;
   submitted_at: string;
+  telegram_user_id?: string;
+  telegram_username?: string | null;
 }
 
 // Admin-editable QR images, one per tier — read by SubscriptionModal,
@@ -110,7 +112,7 @@ export async function getPendingSubmission(): Promise<PaymentSubmission | null> 
   const { id } = getIdentity();
   const { data } = await supabase
     .from('payment_submissions')
-    .select('id, status, tier, amount, submitted_at')
+    .select('id, status, tier, amount, submitted_at, telegram_user_id, telegram_username')
     .eq('telegram_user_id', id)
     .eq('status', 'pending')
     .order('submitted_at', { ascending: false })
@@ -138,6 +140,97 @@ export async function autoApprovePayment(submissionId: string): Promise<{ error:
     body: { submission_id: submissionId },
   });
   return { error: error?.message ?? null };
+}
+
+// New "tap pay, no screenshot" flow — creates the pending submission the
+// moment the viewer confirms they've paid, so the ABA auto-confirm
+// webhook (aba-payment-webhook) has something to match against the
+// instant their bank notification comes through the forwarder group.
+// Admin still gets a Telegram message with Approve/Reject either way
+// (now via sendMessage since there's no photo to attach), so a manual
+// check against their own bank statement is always the fallback if the
+// ABA match doesn't land.
+export async function submitPaymentIntent(opts: {
+  tierKey: string;
+  amount: number;
+}): Promise<{ error: string | null; id: string | null }> {
+  const { id, username } = getIdentity();
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from('payment_submissions')
+    .insert({
+      telegram_user_id: id,
+      telegram_username: username,
+      tier: opts.tierKey,
+      amount: opts.amount,
+      screenshot_url: null,
+      status: 'pending',
+    })
+    .select('id')
+    .single();
+  if (insertErr) return { error: insertErr.message, id: null };
+
+  // Deliberately NOT notifying the admin's Telegram here — this fires
+  // the instant someone taps a tier, before they've necessarily paid
+  // anything yet. Pinging the admin for every browse would be noisy.
+  // The row still exists immediately so the ABA auto-confirm webhook can
+  // match it the moment a real bank notification comes through; the
+  // admin only gets pinged via notifyPendingSubmission below, once the
+  // listening window times out or the viewer attaches a screenshot.
+
+  return { error: null, id: inserted.id };
+}
+
+// Pings the admin's Telegram for a submission that's already sitting in
+// the DB — called once the in-app listening window runs out (no
+// screenshot yet, asking the admin to check their own bank statement)
+// or right after attachScreenshotToSubmission (with a photo this time).
+export async function notifyPendingSubmission(opts: {
+  submissionId: string;
+  telegramUserId: string;
+  telegramUsername: string | null;
+  tierKey: string;
+  amount: number;
+  screenshotUrl?: string | null;
+}): Promise<void> {
+  await supabase.functions.invoke('notify-payment-submission', {
+    body: {
+      submission_id: opts.submissionId,
+      telegram_user_id: opts.telegramUserId,
+      telegram_username: opts.telegramUsername,
+      tier: opts.tierKey,
+      amount: opts.amount,
+      screenshot_url: opts.screenshotUrl ?? null,
+    },
+  }).catch(() => {});
+}
+
+// Fallback path — offered only once the automatic ABA-match window has
+// run out. Attaches a screenshot to the SAME pending row (rather than
+// creating a second one) and re-notifies the admin with the actual
+// photo this time, so a manual check is as fast as the original
+// screenshot flow used to be.
+export async function attachScreenshotToSubmission(
+  submissionId: string,
+  screenshot: File,
+): Promise<{ error: string | null; screenshotUrl: string | null }> {
+  const { id } = getIdentity();
+  const ext = screenshot.name.split('.').pop() || 'jpg';
+  const path = `${id}/${Date.now()}.${ext}`;
+  const { error: uploadErr } = await supabase.storage
+    .from('payment-proofs')
+    .upload(path, screenshot, { contentType: screenshot.type });
+  if (uploadErr) return { error: uploadErr.message, screenshotUrl: null };
+
+  const { data: pub } = supabase.storage.from('payment-proofs').getPublicUrl(path);
+
+  const { error: updateErr } = await supabase
+    .from('payment_submissions')
+    .update({ screenshot_url: pub.publicUrl })
+    .eq('id', submissionId);
+  if (updateErr) return { error: updateErr.message, screenshotUrl: null };
+
+  return { error: null, screenshotUrl: pub.publicUrl };
 }
 
 export async function submitPayment(opts: {

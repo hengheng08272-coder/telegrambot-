@@ -90,6 +90,23 @@ export async function fetchGenres(): Promise<Genre[]> {
   return data ?? [];
 }
 
+// Latest episode timestamp per show — used to power the "Now Airing"
+// rail (shows that have genuinely posted a new episode recently) rather
+// than reusing the show's own created_at, which only reflects when the
+// show entry itself was added, not whether it's still actively updating.
+export async function fetchLatestEpisodeDates(): Promise<Record<string, string>> {
+  const { data, error } = await supabase
+    .from('episodes')
+    .select('show_id, created_at')
+    .order('created_at', { ascending: false });
+  if (error) return {};
+  const latest: Record<string, string> = {};
+  for (const ep of data ?? []) {
+    if (!latest[ep.show_id]) latest[ep.show_id] = ep.created_at;
+  }
+  return latest;
+}
+
 export async function fetchShowById(id: string): Promise<ShowWithGenres | null> {
   const { data, error } = await supabase
     .from('shows')

@@ -10,7 +10,13 @@ interface TelegramWebApp {
   themeParams: Record<string, string>;
   initDataUnsafe?: {
     start_param?: string;
-    user?: { id: number; username?: string; first_name?: string };
+    user?: {
+      id: number;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+      photo_url?: string;
+    };
   };
   BackButton: {
     show: () => void;
@@ -193,6 +199,29 @@ export function getCurrentTelegramUser(): { id: number; label: string } | null {
   return {
     id: user.id,
     label: user.username ? `@${user.username}` : user.first_name ?? String(user.id),
+  };
+}
+
+// Full Telegram identity for display purposes (Account screen) — name,
+// @username, numeric ID, and profile photo when Telegram provides one.
+// This is the "you're really signed in as you, no separate account
+// needed" proof: showing the same photo/name/ID the person already sees
+// on their own Telegram profile is what makes that credible at a glance,
+// rather than a generic placeholder avatar that could belong to anyone.
+export function getCurrentTelegramProfile(): {
+  id: number;
+  username: string | null;
+  fullName: string | null;
+  photoUrl: string | null;
+} | null {
+  const user = getTelegramWebApp()?.initDataUnsafe?.user;
+  if (!user) return null;
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || null;
+  return {
+    id: user.id,
+    username: user.username ?? null,
+    fullName,
+    photoUrl: user.photo_url ?? null,
   };
 }
 

@@ -133,6 +133,8 @@ export const appText = {
     freeRowLabel: 'Free to Watch',
     newTag: 'NEW',
     hotTag: 'HOT',
+    nowAiringLabel: 'Now Airing',
+    liveTag: 'LIVE',
     freshTag: 'FRESH',
     inviteFriend: 'Invite a friend',
     linkCopied: 'Sent!',
@@ -446,6 +448,8 @@ export const appText = {
     freeRowLabel: 'មើលឥតគិតថ្លៃ',
     newTag: 'ថ្មី',
     hotTag: 'ពេញនិយម',
+    nowAiringLabel: 'កំពុងចាក់ផ្សាយ',
+    liveTag: 'ផ្សាយផ្ទាល់',
     freshTag: 'ថ្មីៗ',
     inviteFriend: 'អញ្ជើញមិត្តភ័ក្តិ',
     linkCopied: 'ផ្ញើរួច!',
@@ -579,7 +583,7 @@ export const appText = {
     subScanHint: 'ស្កេនជាមួយកម្មវិធី KHQR ណាមួយ',
     subListeningTitle: 'កំពុងរង់ចាំការទូទាត់',
     subListeningDesc:
-      'ទុក​画面​នេះ​ឱ្យ​បើក​ចំហ។ VIP របស់​អ្នក​នឹង​ដោះសោ​ដោយ​ស្វ័យប្រវត្តិ​នៅ​ពេល ABA ផ្ញើ​ការ​បញ្ជាក់ — ជា​ធម្មតា​លឿន​ណាស់។',
+      'ទុកអេក្រង់នេះឱ្យបើកចំហ។ VIP របស់អ្នកនឹងដោះសោដោយស្វ័យប្រវត្តិនៅពេល ABA ផ្ញើការបញ្ជាក់ — ជាធម្មតាលឿនណាស់។',
     subTimeoutTitle: 'ពេលវេលាបានផុត',
     subTimeoutDesc:
       'យើងមិនទទួលបានការបញ្ជាក់ក្នុង ៦០ វិនាទីទេ។ បើអ្នកបានទូទាត់ហើយ សូមចុចខាងក្រោមដើម្បីចាប់ផ្ដើមសម័យថ្មី — ការទូទាត់មុននៅតែត្រូវបានតាមដាន។',
