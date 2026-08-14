@@ -287,6 +287,29 @@ export const appText = {
     subCopyBtn: 'Copy',
     subCopiedBtn: 'Copied!',
 
+    // Subscription — full-screen redesign
+    subChoosePlan: 'Choose your plan',
+    subJoinVip: 'Join VIP',
+    subJoinVipNote: 'Our team is notified the moment you tap this',
+    subSelected: 'Selected',
+    subFullAccess: 'Full access, every episode',
+    subDrawAfterPay: 'Lucky draw after payment',
+    subQrMissing: 'No QR for this plan yet — message the admin in the group.',
+    subQrCaption:
+      'Screenshot or save this QR to pay. Your VIP unlocks automatically once the payment lands. To make it faster, just add your receipt photo below.',
+    subUploadReceiptCta: 'Add receipt photo',
+    subUploadReceiptHint: 'Fastest way to unlock — optional',
+    subAutoWaitTitle: 'Waiting for your payment',
+    subAutoWaitDesc: 'We are checking with the bank automatically. Keep this screen open.',
+    subCooldownNote: '3 min window',
+    subTicketRenewed: 'Window ended — a new one started automatically',
+    subPaidBtn: 'Payment received',
+    subUnlockedTitle: 'VIP unlocked!',
+    subUnlockedDesc: 'Every episode is open now — and your lucky draw is ready.',
+    subGoDraw: 'Spin the draw & watch',
+    subRejectedTitle: 'Payment not confirmed',
+    subRejectedDesc: 'Message the admin in the group to find out why, or try again with your receipt photo.',
+
     // Locked episode row
     lockedVip: 'VIP',
     lockedUnlockHint: 'Subscribe to unlock',
@@ -602,6 +625,29 @@ export const appText = {
     subStepCodeDesc: 'វាយកូដនេះក្នុងប្រអប់ Message / Note របស់កម្មវិធីធនាគារ មុននឹងបញ្ជាក់ការផ្ទេរប្រាក់',
     subCopyBtn: 'ចម្លង',
     subCopiedBtn: 'បានចម្លង!',
+
+    // Subscription — full-screen redesign
+    subChoosePlan: 'ជ្រើសរើសគម្រោងរបស់អ្នក',
+    subJoinVip: 'ចូលសមាជិត VIP',
+    subJoinVipNote: 'ក្រុមការងារនឹងទទួលបានសារភ្លាមៗ ពេលអ្នកចុច',
+    subSelected: 'បានជ្រើសរើស',
+    subFullAccess: 'មើលបានគ្រប់ភាគ',
+    subDrawAfterPay: 'ចាប់រង្វាន់ក្រោយទូទាត់',
+    subQrMissing: 'មិនទាន់មាន QR សម្រាប់គម្រោងនេះទេ — សូមទាក់ទង admin ក្នុង group។',
+    subQrCaption:
+      'សូមថតអេក្រង់ (screenshot) ឬរក្សាទុក QR នេះ ដើម្បីទូទាត់បង់ប្រាក់ចូលជាសមាជិត VIP ដោយស្វ័យប្រវត្តិ។ ដើម្បីកាន់តែឆាប់រហ័ស លោកអ្នកគ្រាន់តែបញ្ចូលរូបភាពវិក្កយបត្របន្ថែម។',
+    subUploadReceiptCta: 'បញ្ចូលរូបភាពវិក្កយបត្រ',
+    subUploadReceiptHint: 'វិធីលឿនបំផុត — មិនចាំបាច់ក៏បាន',
+    subAutoWaitTitle: 'កំពុងរង់ចាំទូទាត់ដោយស្វ័យប្រវត្តិ',
+    subAutoWaitDesc: 'ប្រព័ន្ធកំពុងផ្ទៀងផ្ទាត់ជាមួយធនាគារដោយស្វ័យប្រវត្តិ។ សូមកុំបិទផ្ទាំងនេះ។',
+    subCooldownNote: 'រយៈពេល ៣ នាទី',
+    subTicketRenewed: 'អស់ពេលរង់ចាំ — បានបង្កើតសំបុត្រថ្មីដោយស្វ័យប្រវត្តិ',
+    subPaidBtn: 'បានទូទាត់រួចរាល់',
+    subUnlockedTitle: 'VIP ត្រូវបានដោះសោហើយ!',
+    subUnlockedDesc: 'ឥឡូវអ្នកមើលបានគ្រប់ភាគហើយ — ហើយការចាប់រង្វាន់របស់អ្នកក៏រួចរាល់ដែរ។',
+    subGoDraw: 'ចាប់រង្វាន់ & មើលរឿង',
+    subRejectedTitle: 'ការទូទាត់មិនត្រូវបានបញ្ជាក់',
+    subRejectedDesc: 'សូមទាក់ទង admin ក្នុង group ដើម្បីដឹងមូលហេតុ ឬសាកល្បងម្ដងទៀតជាមួយរូបភាពវិក្កយបត្រ។',
 
     // Locked episode row
     lockedVip: 'VIP',

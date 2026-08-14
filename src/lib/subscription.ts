@@ -153,6 +153,7 @@ export async function autoApprovePayment(submissionId: string): Promise<{ error:
 export async function submitPaymentIntent(opts: {
   tierKey: string;
   amount: number;
+  notifyAdmin?: boolean;
 }): Promise<{ error: string | null; id: string | null }> {
   const { id, username } = getIdentity();
 
@@ -170,15 +171,40 @@ export async function submitPaymentIntent(opts: {
     .single();
   if (insertErr) return { error: insertErr.message, id: null };
 
-  // Deliberately NOT notifying the admin's Telegram here — this fires
-  // the instant someone taps a tier, before they've necessarily paid
-  // anything yet. Pinging the admin for every browse would be noisy.
-  // The row still exists immediately so the ABA auto-confirm webhook can
-  // match it the moment a real bank notification comes through; the
-  // admin only gets pinged via notifyPendingSubmission below, once the
-  // listening window times out or the viewer attaches a screenshot.
+  // Notify only when this row came from the viewer actually tapping
+  // "Join VIP" (notifyAdmin), not from the background ticket recycle —
+  // otherwise the admin would get a fresh DM every 3 minutes for the
+  // same person sitting on the QR screen.
+  if (opts.notifyAdmin) {
+    notifyPendingSubmission({
+      submissionId: inserted.id,
+      telegramUserId: id,
+      telegramUsername: username,
+      tierKey: opts.tierKey,
+      amount: opts.amount,
+      reason: 'joined',
+    });
+  }
 
   return { error: null, id: inserted.id };
+}
+
+// Closes a payment ticket whose 3-minute listening window ran out with
+// no ABA match and no receipt attached, so SubscriptionModal can open a
+// clean one in its place. Runs through a SECURITY DEFINER SQL function
+// (see database/auto-expire-submission-addition.sql) because viewers
+// can't UPDATE payment_submissions directly — and that function can
+// only ever reject, never approve, and only rows that are still
+// pending, screenshot-free, and genuinely stale. Returns false if the
+// helper isn't installed yet or the row no longer qualifies, in which
+// case the caller keeps listening on the existing ticket rather than
+// opening a duplicate.
+export async function expireStaleSubmission(submissionId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('expire_stale_payment_submission', {
+    p_submission_id: submissionId,
+  });
+  if (error) return false;
+  return data === true;
 }
 
 // Pings the admin's Telegram for a submission that's already sitting in
@@ -192,6 +218,7 @@ export async function notifyPendingSubmission(opts: {
   tierKey: string;
   amount: number;
   screenshotUrl?: string | null;
+  reason?: 'joined' | 'timeout' | 'proof';
 }): Promise<void> {
   await supabase.functions.invoke('notify-payment-submission', {
     body: {
@@ -201,6 +228,7 @@ export async function notifyPendingSubmission(opts: {
       tier: opts.tierKey,
       amount: opts.amount,
       screenshot_url: opts.screenshotUrl ?? null,
+      reason: opts.reason ?? 'timeout',
     },
   }).catch(() => {});
 }
