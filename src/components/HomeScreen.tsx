@@ -19,6 +19,8 @@ import {
   Eye,
   Play,
   Clock,
+  Calendar,
+  Building2,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchLatestEpisodeDates } from '@/lib/api';
@@ -29,6 +31,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { usePresenceCount } from '@/lib/presence';
+import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { toggleWatchlist, isInWatchlist } from '@/lib/watchlist';
 
 interface HomeScreenProps {
@@ -114,6 +117,7 @@ export default function HomeScreen({
   const { lang, setLang } = useLang();
   const t = appText[lang];
   const watchingNow = usePresenceCount();
+  const telegramProfile = getCurrentTelegramProfile();
   const [bannerShows, setBannerShows] = useState<Show[]>([]);
   const [shows, setShows] = useState<ShowWithGenres[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -377,17 +381,51 @@ export default function HomeScreen({
             />
           </button>
 
+          {/* Profile avatar + Telegram username — replaces the old plain
+              logo badge here so the header greets the person by their
+              own identity right away (the same real Telegram photo/name
+              AccountScreen shows), instead of a generic app icon. Tapping
+              it opens the same Account screen the bottom-nav icon does. */}
+          <button
+            onClick={onOpenProfile}
+            aria-label={t.navAccount}
+            className="flex shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition hover:bg-white/5 sm:gap-2 sm:pr-2.5"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-[#E6231F]/40">
+              {telegramProfile?.photoUrl ? (
+                <img
+                  src={telegramProfile.photoUrl}
+                  alt=""
+                  draggable={false}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <img
+                  src="/assets/images/icon-192.png"
+                  alt=""
+                  draggable={false}
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
+            {(telegramProfile?.username || telegramProfile?.fullName) && (
+              <span className="hidden max-w-[110px] truncate text-xs font-bold text-white sm:inline">
+                {telegramProfile.username ? `@${telegramProfile.username}` : telegramProfile.fullName}
+              </span>
+            )}
+          </button>
+
           {/* Live "watching now" count — a real Realtime Presence tally
-              (see src/lib/presence.ts), not a randomized/fake number. Text
-              label shown on every size now (used to hide below `sm:`,
-              which cut the number off from its meaning on mobile). */}
+              (see src/lib/presence.ts), not a randomized/fake number.
+              Kept next to the profile chip, just tighter now that the
+              chip above takes some of the header's width. */}
           <div className="flex shrink-0 items-center gap-1 rounded-full border border-[#E6231F]/25 bg-[#E6231F]/10 px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6231F]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E6231F]" />
             </span>
             <span className="text-xs font-bold text-white">{watchingNow.toLocaleString()}</span>
-            <span className="text-[10px] text-white/50 sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
+            <span className="hidden text-[10px] text-white/50 sm:inline sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
           </div>
 
           {/* "Auto" cue — moved here from the hero banner so it lives in
@@ -570,13 +608,13 @@ export default function HomeScreen({
                 without repeating it as a second ranked row underneath. */}
             {nowAiring.length > 0 && (
               <RailRow
-                icon={<span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6231F] opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E6231F]" /></span>}
+                icon={<span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E3B341] opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E3B341]" /></span>}
                 title={t.nowAiringLabel ?? 'កំពុងចាក់ផ្សាយ'}
                 shows={nowAiring}
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.nowAiringLabel ?? 'កំពុងចាក់ផ្សាយ', shows: nowAiring })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.liveTag ?? 'LIVE', color: '#E6231F' }}
+                tag={{ label: t.ongoing, color: '#E3B341' }}
               />
             )}
             {comingSoon.length > 0 && (
@@ -846,7 +884,7 @@ function CoverflowHero({
 
   return (
     <section
-      className="relative w-full overflow-hidden px-4 pb-4 pt-3 sm:px-8 sm:pb-5 sm:pt-4"
+      className="relative w-full overflow-hidden px-4 pb-4 pt-1 sm:px-8 sm:pb-5 sm:pt-2"
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
@@ -888,7 +926,7 @@ function CoverflowHero({
           (closer to Netflix's own Top 10 numeral treatment) rather than a
           large cinematic banner — smaller poster, smaller numeral,
           tighter text. */}
-      <div className="relative z-10 mx-auto flex max-w-[1400px] items-center gap-3 pt-1.5 sm:gap-6 sm:pt-2">
+      <div className="relative z-10 mx-auto flex max-w-[1400px] items-center gap-3 pt-0 sm:gap-6 sm:pt-0">
         <button
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
@@ -920,7 +958,7 @@ function CoverflowHero({
             {/* Trending tag — a small corner flag instead of a numeral,
                 only shown when the show is genuinely trending. */}
             {heroRank && (
-              <span className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-black/60 px-2 py-1 text-[10px] font-black text-white backdrop-blur-sm">
+              <span className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-black text-white backdrop-blur-sm">
                 <span className="animate-pulse">🔥</span> TOP #{heroRank}
               </span>
             )}
@@ -928,12 +966,12 @@ function CoverflowHero({
                 screen enforces, so the cover never over-promises. */}
             <div className="absolute right-1.5 top-1.5">
               {heroIsFree ? (
-                <span className="rounded-md bg-emerald-500/85 px-1.5 py-[2px] text-[9px] font-bold text-white backdrop-blur-sm">
+                <span className="rounded-md bg-emerald-500/85 px-1.5 py-0.5 text-[8px] font-bold text-white backdrop-blur-sm">
                   {t.freeBadge}
                 </span>
               ) : (
                 <span
-                  className="flex items-center gap-0.5 rounded-md px-1.5 py-[2px] text-[9px] font-black text-black backdrop-blur-sm"
+                  className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8px] font-black text-black backdrop-blur-sm"
                   style={{ background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)' }}
                 >
                   👑 {t.vipBadge ?? 'VIP'}
@@ -946,7 +984,7 @@ function CoverflowHero({
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
           <span
-            className="mb-1 inline-flex items-center gap-1 rounded-full border border-[#E6231F]/40 bg-[#E6231F]/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#F0453A] sm:text-[11px]"
+            className="relative -top-1 mb-1 inline-flex items-center gap-1 rounded-full border border-[#E6231F]/40 bg-[#E6231F]/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#F0453A] sm:text-[11px]"
             style={{ fontFamily: '"Anton", Battambang, sans-serif', letterSpacing: '0.06em' }}
           >
             <span className="animate-pulse">🔥</span> {t.featuredLabel ?? 'កំពុងពេញនិយម'}
@@ -975,15 +1013,46 @@ function CoverflowHero({
             <span className="flex items-center gap-1 text-[#E3B341]">
               <Star className="h-2.5 w-2.5 fill-[#E3B341] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
             </span>
-            <span className="h-3 w-px bg-white/20" aria-hidden />
-            <span>{hero.type === 'movie' ? t.movie : t.series}</span>
+            {typeof hero.view_count === 'number' && (
+              <>
+                <span className="h-3 w-px bg-white/20" aria-hidden />
+                <span className="flex items-center gap-1 text-white/60">
+                  <Eye className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {hero.view_count.toLocaleString()}
+                </span>
+              </>
+            )}
             {hero.release_year && (
               <>
                 <span className="h-3 w-px bg-white/20" aria-hidden />
-                <span>{hero.release_year}</span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {hero.release_year}
+                </span>
+              </>
+            )}
+            <span className="h-3 w-px bg-white/20" aria-hidden />
+            <span className="rounded border border-white/20 px-1.5 py-0.5 text-[9px] font-medium uppercase text-white/70 sm:text-[10px]">
+              {hero.type === 'movie' ? t.movie : t.series}
+            </span>
+            {/* "Ongoing" — same gold-pill treatment as the Show Detail
+                screen (bg-[#E3B341]/15 text-[#E3B341]), so the cue reads
+                consistently across the app instead of inventing a
+                separate style just for the hero. Means the show is still
+                getting new episodes — not a livestream, the app has none. */}
+            {hero.type === 'series' && hero.status !== 'completed' && (
+              <>
+                <span className="h-3 w-px bg-white/20" aria-hidden />
+                <span className="rounded bg-[#E3B341]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#E3B341] sm:text-[10px]">
+                  {t.ongoing}
+                </span>
               </>
             )}
           </div>
+
+          {hero.studio && (
+            <p className="mt-1 flex items-center gap-1 truncate text-[10px] text-white/45 sm:text-xs">
+              <Building2 className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" /> {t.studio} {hero.studio}
+            </p>
+          )}
 
           <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
             <button
