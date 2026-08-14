@@ -93,6 +93,29 @@ export interface PaymentSubmission {
   telegram_username?: string | null;
 }
 
+// Real ABA PayWay checkout for one payment — calls the aba-create-
+// transaction edge function, which talks to ABA's actual Create
+// Transaction API (server-side, credentials never touch the client).
+// If the gateway secrets aren't set up yet, `configured` comes back
+// false and the caller should fall back to the static QR / payment
+// link flow — nothing breaks, it just isn't "real-time verified" yet.
+export interface AbaCheckoutResult {
+  configured: boolean;
+  error?: string;
+  tranId?: string;
+  qrString?: string | null;
+  deeplink?: string | null;
+  checkoutUrl?: string | null;
+}
+
+export async function createAbaCheckout(submissionId: string): Promise<AbaCheckoutResult> {
+  const { data, error } = await supabase.functions.invoke('aba-create-transaction', {
+    body: { submission_id: submissionId },
+  });
+  if (error) return { configured: false, error: error.message };
+  return data as AbaCheckoutResult;
+}
+
 // Admin-editable QR images, one per tier — read by SubscriptionModal,
 // written by the Admin Panel's QR Codes panel. Falls back to null (the
 // modal shows a "contact admin" message) if a tier has no image yet.
@@ -101,6 +124,19 @@ export async function getQrCodes(): Promise<Record<string, string>> {
   const map: Record<string, string> = {};
   for (const row of data ?? []) {
     if (row.image_url) map[row.tier] = row.image_url;
+  }
+  return map;
+}
+
+// Admin-editable ABA PayWay links, one per tier (same table as the QR
+// images — see database/pay-link-addition.sql). When a tier has one,
+// SubscriptionModal shows a "Pay Now" button that opens it directly
+// instead of requiring the viewer to save + scan the QR image.
+export async function getPayLinks(): Promise<Record<string, string>> {
+  const { data } = await supabase.from('payment_qr_codes').select('tier, pay_link');
+  const map: Record<string, string> = {};
+  for (const row of data ?? []) {
+    if (row.pay_link) map[row.tier] = row.pay_link;
   }
   return map;
 }
