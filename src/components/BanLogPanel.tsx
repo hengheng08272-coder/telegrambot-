@@ -26,7 +26,7 @@ const ACTION_LABEL: Record<BanLogRow['action'], string> = {
 const ACTION_COLOR: Record<BanLogRow['action'], string> = {
   banned: 'border-red-500/25 bg-red-500/5 text-red-300',
   unbanned: 'border-emerald-500/25 bg-emerald-500/5 text-emerald-300',
-  kicked_auto: 'border-[#FFC94A]/25 bg-[#FFC94A]/5 text-[#FFC94A]',
+  kicked_auto: 'border-[#E3B341]/25 bg-[#E3B341]/5 text-[#E3B341]',
 };
 
 // Read-only — every row here is written server-side by the
@@ -56,11 +56,11 @@ export default function BanLogPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#170D0C] p-5"
+        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#0F1116] p-5"
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
-            <ShieldBan className="h-4 w-4 text-[#FFC94A]" />
+            <ShieldBan className="h-4 w-4 text-[#E3B341]" />
             <h2 className="text-sm font-bold">Ban log (group)</h2>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">

@@ -223,6 +223,44 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     ? shows.filter((s) => s.title.toLowerCase().includes(search.toLowerCase()))
     : shows;
 
+  // "Continue posting" queue — ongoing series (not movies, not coming-soon
+  // announcements with nothing to post yet) ranked by how long it's been
+  // since the last episode went up, oldest first. This is the fast path
+  // for "what needs a new episode today" instead of scrolling/searching
+  // the full show list to find it.
+  const continuePostingShows = shows
+    .filter((s) => s.type !== 'movie' && !s.coming_soon)
+    .map((s) => {
+      const last = s.episodes[s.episodes.length - 1];
+      return { show: s, lastAt: last ? new Date(last.created_at).getTime() : 0 };
+    })
+    .sort((a, b) => a.lastAt - b.lastAt)
+    .slice(0, 6)
+    .map((x) => x.show);
+
+  const showRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Shared "jump to this show and open a pre-filled Add Episode form"
+  // action — used by both the per-show Add Episode button and the
+  // Continue Posting quick-picker above the list, so the two paths never
+  // drift out of sync on how the next episode number/season is computed.
+  const openAddEpisodeFor = (show: ShowWithEpisodes) => {
+    const nextNumber = show.episodes.reduce((max, ep) => Math.max(max, ep.episode_number), 0) + 1;
+    setNewEp({
+      episode_number: String(nextNumber),
+      season: String(show.episodes[show.episodes.length - 1]?.season ?? 1),
+      title: show.type === 'movie' ? '' : `Episode ${nextNumber}`,
+      description: '',
+      duration: '',
+      video_url: '',
+    });
+    setSelectedShowId(show.id);
+    setAddEpOpen(show.id);
+    requestAnimationFrame(() => {
+      showRefs.current[show.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   const triggerFileUpload = (episodeId: string) => {
     setPendingUploadId(episodeId);
     fileInputRef.current?.click();
@@ -568,80 +606,85 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0605] text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A0605]/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1200px] items-center gap-4 px-4 py-4 sm:px-8">
+    <div className="min-h-screen bg-[#0A0A0D] text-white">
+      {/* Header — split into a primary row (back / title / new show / search)
+          and a horizontally-scrollable pill nav for the other admin
+          sections below, instead of one long wrapping row of buttons. */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A0A0D]/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 pt-4 sm:px-8">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
+            className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
-          <h1 className="text-lg font-bold">Admin: Video Management</h1>
+          <h1 className="hidden text-lg font-bold sm:block">Admin</h1>
           <button
             onClick={() => setAddShowOpen(true)}
-            className="flex items-center gap-1.5 rounded-full bg-[#4CC950] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#2E9E38]"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#34B37A] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#2B5CAD]"
           >
             <Plus className="h-4 w-4" /> New Show
           </button>
+          <div className="relative ml-auto min-w-0 flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search shows…"
+              className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#34B37A]/50"
+            />
+          </div>
+        </div>
+        <nav className="no-scrollbar mx-auto flex max-w-[1200px] items-center gap-2 overflow-x-auto px-4 py-3 sm:px-8">
           <button
             onClick={() => setAnnouncementsOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 px-4 py-2 text-sm font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-3.5 py-1.5 text-xs font-bold text-[#E3B341] transition hover:bg-[#E3B341]/20"
           >
-            <Megaphone className="h-4 w-4" /> Announcements
-          </button>
-          <button
-            onClick={() => setBanLogOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/20"
-          >
-            <ShieldBan className="h-4 w-4" /> Ban log
-          </button>
-          <button
-            onClick={() => setWatchLogOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-bold text-white/70 transition hover:bg-white/10"
-          >
-            <Eye className="h-4 w-4" /> Watch log
-          </button>
-          <button
-            onClick={() => setSuspiciousOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 px-4 py-2 text-sm font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20"
-          >
-            <AlertTriangle className="h-4 w-4" /> Suspicious
+            <Megaphone className="h-3.5 w-3.5" /> Announcements
           </button>
           <button
             onClick={() => setPaymentsOpen(true)}
-            className="relative flex items-center gap-1.5 rounded-full border border-[#22C55E]/30 bg-[#22C55E]/10 px-4 py-2 text-sm font-bold text-[#22C55E] transition hover:bg-[#22C55E]/20"
+            className="relative flex shrink-0 items-center gap-1.5 rounded-full border border-[#34B37A]/30 bg-[#34B37A]/10 px-3.5 py-1.5 text-xs font-bold text-[#34B37A] transition hover:bg-[#34B37A]/20"
           >
-            <Wallet className="h-4 w-4" /> Payments
+            <Wallet className="h-3.5 w-3.5" /> Payments
             {pendingPaymentsCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#E31E24] px-1 text-[10px] font-extrabold text-white">
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#E6231F] px-1 text-[10px] font-extrabold text-white">
                 {pendingPaymentsCount}
               </span>
             )}
           </button>
           <button
             onClick={() => setSubscriptionsOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-[#22C55E]/30 bg-[#22C55E]/10 px-4 py-2 text-sm font-bold text-[#22C55E] transition hover:bg-[#22C55E]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#34B37A]/30 bg-[#34B37A]/10 px-3.5 py-1.5 text-xs font-bold text-[#34B37A] transition hover:bg-[#34B37A]/20"
           >
-            <QrCode className="h-4 w-4" /> Subscriptions
+            <QrCode className="h-3.5 w-3.5" /> Subscriptions
           </button>
           <button
             onClick={() => setUsersOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-[#2DD4C4]/30 bg-[#2DD4C4]/10 px-4 py-2 text-sm font-bold text-[#2DD4C4] transition hover:bg-[#2DD4C4]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#2B5CAD]/30 bg-[#2B5CAD]/10 px-3.5 py-1.5 text-xs font-bold text-[#2B5CAD] transition hover:bg-[#2B5CAD]/20"
           >
-            <UsersIcon className="h-4 w-4" /> Users
+            <UsersIcon className="h-3.5 w-3.5" /> Users
           </button>
-          <div className="ml-auto relative hidden sm:block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search shows…"
-              className="w-56 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#4CC950]/50"
-            />
-          </div>
-        </div>
+          <span className="mx-1 h-4 w-px shrink-0 bg-white/10" aria-hidden />
+          <button
+            onClick={() => setWatchLogOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-xs font-bold text-white/70 transition hover:bg-white/10"
+          >
+            <Eye className="h-3.5 w-3.5" /> Watch log
+          </button>
+          <button
+            onClick={() => setSuspiciousOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-3.5 py-1.5 text-xs font-bold text-[#E3B341] transition hover:bg-[#E3B341]/20"
+          >
+            <AlertTriangle className="h-3.5 w-3.5" /> Suspicious
+          </button>
+          <button
+            onClick={() => setBanLogOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-3.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/20"
+          >
+            <ShieldBan className="h-3.5 w-3.5" /> Ban log
+          </button>
+        </nav>
       </header>
 
       {/* Quick overview — a glance at how the app is doing, not a full
@@ -674,11 +717,53 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
         </div>
       )}
 
+      {/* Continue Posting — the fast path for "what needs a new episode
+          today". Ranked oldest-last-episode-first so the series that's
+          gone quietest floats to the top. Tapping a card jumps straight
+          to that show, expanded, with the Add Episode form already open
+          and pre-filled with the next episode number/season. */}
+      {!loading && !search.trim() && continuePostingShows.length > 0 && (
+        <div className="mx-auto max-w-[1200px] px-4 pt-6 sm:px-8">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-white/70">
+            <Video className="h-4 w-4 text-[#E6231F]" /> Continue posting
+          </h2>
+          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2">
+            {continuePostingShows.map((show) => {
+              const nextNumber =
+                show.episodes.reduce((max, ep) => Math.max(max, ep.episode_number), 0) + 1;
+              return (
+                <button
+                  key={show.id}
+                  onClick={() => openAddEpisodeFor(show)}
+                  className="flex shrink-0 items-center gap-3 rounded-xl border border-white/10 bg-[#0F1116] p-2.5 text-left transition hover:border-[#E6231F]/40 hover:bg-white/[0.03]"
+                  style={{ width: 220 }}
+                >
+                  <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-[#151822]">
+                    {show.poster_url && (
+                      <img src={show.poster_url} alt={show.title} className="h-full w-full object-cover" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-white">{show.title}</p>
+                    <p className="mt-0.5 text-[11px] text-white/40">
+                      {show.episodes.length} ep{show.episodes.length === 1 ? '' : 's'} so far
+                    </p>
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#E6231F]/15 px-2 py-[2px] text-[10px] font-bold text-[#F0453A]">
+                      <Plus className="h-2.5 w-2.5" /> Ep {nextNumber}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <main className="mx-auto max-w-[1200px] px-4 py-8 sm:px-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-[#4CC950]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#34B37A]" />
           </div>
         ) : (
           <div className="space-y-6">
@@ -687,7 +772,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               return (
                 <div
                   key={show.id}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#170D0C]"
+                  ref={(el) => { showRefs.current[show.id] = el; }}
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#0F1116] scroll-mt-40"
                 >
                   {/* Show header */}
                   <button
@@ -696,7 +782,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     }
                     className="flex w-full items-center gap-4 p-4 text-left transition hover:bg-white/[0.02]"
                   >
-                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-[#241413]">
+                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-[#151822]">
                       {show.poster_url && (
                         <img
                           src={show.poster_url}
@@ -747,7 +833,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                       {show.episodes.length > 0 && (
                         <div className="mb-3 flex items-center gap-2">
                           <span className="flex items-center gap-1.5 text-xs font-semibold text-white/50">
-                            <Crown className="h-3.5 w-3.5 text-[#FFC94A]" />
+                            <Crown className="h-3.5 w-3.5 text-[#E3B341]" />
                             {show.episodes.filter((ep) => ep.is_free_preview).length}/{show.episodes.length} unlocked
                           </span>
                           <button
@@ -759,7 +845,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                               )
                             }
                             disabled={bulkLockBusyShowId === show.id}
-                            className="ml-auto flex items-center gap-1.5 rounded-lg border border-[#4CC950]/30 bg-[#4CC950]/10 px-3 py-1.5 text-xs font-semibold text-[#4CC950] transition hover:bg-[#4CC950]/20 disabled:opacity-50"
+                            className="ml-auto flex items-center gap-1.5 rounded-lg border border-[#34B37A]/30 bg-[#34B37A]/10 px-3 py-1.5 text-xs font-semibold text-[#34B37A] transition hover:bg-[#34B37A]/20 disabled:opacity-50"
                           >
                             {bulkLockBusyShowId === show.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -791,7 +877,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                           return (
                             <div
                               key={ep.id}
-                              className="rounded-xl border border-white/5 bg-[#241413] p-3"
+                              className="rounded-xl border border-white/5 bg-[#151822] p-3"
                             >
                               <div className="flex items-center gap-3">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-white/60">
@@ -803,11 +889,11 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                   </p>
                                   <div className="mt-0.5 flex items-center gap-2 text-xs">
                                     {hasVideo ? (
-                                      <span className="flex items-center gap-1 text-[#22C55E]">
+                                      <span className="flex items-center gap-1 text-[#34B37A]">
                                         <CheckCircle2 className="h-3 w-3" /> Video ready
                                       </span>
                                     ) : (
-                                      <span className="flex items-center gap-1 text-[#FFC94A]">
+                                      <span className="flex items-center gap-1 text-[#E3B341]">
                                         <Clock className="h-3 w-3" /> No video uploaded
                                       </span>
                                     )}
@@ -820,7 +906,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                   {isUploading && (
                                     <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/10">
                                       <div
-                                        className="h-full rounded-full bg-[#4CC950] transition-all"
+                                        className="h-full rounded-full bg-[#34B37A] transition-all"
                                         style={{ width: `${uploadProgress}%` }}
                                       />
                                     </div>
@@ -843,7 +929,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                   disabled={episodeLockBusyId === ep.id}
                                   className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:opacity-50 ${
                                     ep.is_free_preview
-                                      ? 'border-[#4CC950]/40 bg-[#4CC950]/10 text-[#4CC950] hover:bg-[#4CC950]/20'
+                                      ? 'border-[#34B37A]/40 bg-[#34B37A]/10 text-[#34B37A] hover:bg-[#34B37A]/20'
                                       : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                                   }`}
                                   title={ep.is_free_preview ? 'Unlocked — tap to lock again' : 'Locked — tap to unlock (playable without VIP)'}
@@ -903,7 +989,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                   <button
                                     onClick={() => handleSaveVideoUrl(ep.id)}
                                     disabled={savingUrlFor === ep.id || !pasteUrlValue.trim()}
-                                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#4CC950] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#2E9E38] disabled:opacity-50"
+                                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#34B37A] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
                                   >
                                     {savingUrlFor === ep.id ? (
                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -932,7 +1018,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                       {(show.type !== 'movie' || show.episodes.length === 0) && (
                         <div className="mt-4">
                           {addEpOpen === show.id ? (
-                            <div className="space-y-3 rounded-xl border border-white/10 bg-[#241413] p-4">
+                            <div className="space-y-3 rounded-xl border border-white/10 bg-[#151822] p-4">
                               {show.type !== 'movie' && (
                               <div className="grid grid-cols-3 gap-2">
                                 <div>
@@ -1043,7 +1129,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                     }
                                   }}
                                   placeholder="https://…  (paste link, press Enter or Add to save + jump to next ep)"
-                                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none focus:border-[#4CC950]/50"
+                                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none focus:border-[#34B37A]/50"
                                   autoFocus
                                 />
                               </div>
@@ -1056,7 +1142,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                     )
                                   }
                                   disabled={busy}
-                                  className="flex items-center gap-1.5 rounded-lg bg-[#4CC950] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#2E9E38] disabled:opacity-50"
+                                  className="flex items-center gap-1.5 rounded-lg bg-[#34B37A] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
                                 >
                                   {busy ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1080,25 +1166,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                             </div>
                           ) : (
                             <button
-                              onClick={() => {
-                                const nextNumber =
-                                  show.episodes.reduce(
-                                    (max, ep) => Math.max(max, ep.episode_number),
-                                    0,
-                                  ) + 1;
-                                setNewEp({
-                                  episode_number: String(nextNumber),
-                                  season: String(
-                                    show.episodes[show.episodes.length - 1]?.season ?? 1,
-                                  ),
-                                  title: show.type === 'movie' ? '' : `Episode ${nextNumber}`,
-                                  description: '',
-                                  duration: '',
-                                  video_url: '',
-                                });
-                                setAddEpOpen(show.id);
-                              }}
-                              className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-4 py-2.5 text-xs font-semibold text-white/60 transition hover:border-[#4CC950]/40 hover:text-white"
+                              onClick={() => openAddEpisodeFor(show)}
+                              className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-4 py-2.5 text-xs font-semibold text-white/60 transition hover:border-[#34B37A]/40 hover:text-white"
                             >
                               <Plus className="h-3.5 w-3.5" />
                               {show.type === 'movie' ? 'Add Movie Video Slot' : 'Add Episode'}
@@ -1118,7 +1187,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {/* Add Show modal */}
       {addShowOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#170D0C] p-5">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0F1116] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">New Show / Movie</h2>
               <button
@@ -1137,7 +1206,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     onClick={() => setNewShow({ ...newShow, type: 'series' })}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
                       newShow.type === 'series'
-                        ? 'border-[#4CC950]/50 bg-[#4CC950]/10 text-white'
+                        ? 'border-[#34B37A]/50 bg-[#34B37A]/10 text-white'
                         : 'border-white/10 bg-white/5 text-white/60'
                     }`}
                   >
@@ -1147,7 +1216,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     onClick={() => setNewShow({ ...newShow, type: 'movie' })}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
                       newShow.type === 'movie'
-                        ? 'border-[#4CC950]/50 bg-[#4CC950]/10 text-white'
+                        ? 'border-[#34B37A]/50 bg-[#34B37A]/10 text-white'
                         : 'border-white/10 bg-white/5 text-white/60'
                     }`}
                   >
@@ -1256,7 +1325,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 <button
                   onClick={handleCreateShow}
                   disabled={creatingShow}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#4CC950] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#2E9E38] disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#34B37A] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
                 >
                   {creatingShow ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Create
@@ -1279,7 +1348,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {/* Edit Show modal */}
       {editShow && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#170D0C] p-5">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0F1116] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">Edit Show</h2>
               <button
@@ -1414,7 +1483,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 <button
                   onClick={handleSaveEdit}
                   disabled={savingEdit}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#4CC950] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#2E9E38] disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#34B37A] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
                 >
                   {editSuccess ? (
                     <CheckCircle2 className="h-4 w-4" />

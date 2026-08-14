@@ -154,14 +154,14 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="hero-card-enter relative w-full max-w-md overflow-hidden rounded-t-3xl border border-white/10 bg-[#120A0A] p-5 sm:rounded-3xl max-h-[90vh] overflow-y-auto"
+        className="hero-card-enter relative w-full max-w-md overflow-hidden rounded-t-3xl border border-white/10 bg-[#0A0A0D] p-5 sm:rounded-3xl max-h-[90vh] overflow-y-auto"
       >
         {/* Brand-consistent ember glow, echoing the home screen's hero backdrop */}
         <div
           className="pointer-events-none absolute inset-0 -z-10"
           style={{
             background:
-              'radial-gradient(ellipse 80% 45% at 50% -8%, rgba(255,201,74,0.16) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 65% 45% at 100% 100%, rgba(227,30,36,0.14) 0%, rgba(10,6,5,0) 58%)',
+              'radial-gradient(ellipse 80% 45% at 50% -8%, rgba(227,179,65,0.16) 0%, rgba(10,10,13,0) 60%), radial-gradient(ellipse 65% 45% at 100% 100%, rgba(230,35,31,0.14) 0%, rgba(10,10,13,0) 58%)',
           }}
         />
 
@@ -175,16 +175,16 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
 
         <div className="mb-5 flex flex-col items-center text-center">
           <div className="relative mb-3">
-            <div className="pointer-events-none absolute inset-[-6px] rounded-2xl bg-[#FFC94A]/15 blur-xl" />
-            <img src="/assets/logo.png" alt="NINT ANIME" className="relative h-16 w-16 rounded-2xl ring-1 ring-[#FFC94A]/30" />
+            <div className="pointer-events-none absolute inset-[-6px] rounded-2xl bg-[#E3B341]/15 blur-xl" />
+            <img src="/assets/logo.png" alt="NINT ANIME" className="relative h-16 w-16 rounded-2xl ring-1 ring-[#E3B341]/30" />
           </div>
-          <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#FF6A57]">
+          <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-[#E6231F]/25 bg-[#E6231F]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#F0453A]">
             <Crown className="h-3 w-3" />
             {t.subTicketEyebrow}
           </div>
           <h2
             className="text-xl font-black text-white"
-            style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif', letterSpacing: '0.02em' }}
+            style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.02em' }}
           >
             {t.subGoPremium}
           </h2>
@@ -206,7 +206,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 <div
                   key={s}
                   className={`h-1 rounded-full transition-all ${
-                    active ? 'w-6 bg-[#FFC94A]' : done ? 'w-3 bg-[#FFC94A]/50' : 'w-3 bg-white/15'
+                    active ? 'w-6 bg-[#E3B341]' : done ? 'w-3 bg-[#E3B341]/50' : 'w-3 bg-white/15'
                   }`}
                 />
               );
@@ -231,9 +231,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   onClick={() => handlePickTier(tr.key)}
                   className={`relative w-full overflow-hidden rounded-2xl border px-4 py-4 text-left transition active:scale-[0.98] ${
                     tr.badge === 'best'
-                      ? 'border-[#FFC94A]/45 bg-gradient-to-br from-[#FFC94A]/12 via-transparent to-transparent shadow-[0_8px_28px_rgba(255,201,74,0.16)] hover:border-[#FFC94A]/75'
+                      ? 'border-[#E3B341]/45 bg-gradient-to-br from-[#E3B341]/12 via-transparent to-transparent shadow-[0_8px_28px_rgba(227,179,65,0.16)] hover:border-[#E3B341]/75'
                       : tr.badge === 'popular'
-                        ? 'border-[#E31E24]/40 bg-gradient-to-br from-[#E31E24]/12 via-transparent to-transparent hover:border-[#E31E24]/70'
+                        ? 'border-[#E6231F]/40 bg-gradient-to-br from-[#E6231F]/12 via-transparent to-transparent hover:border-[#E6231F]/70'
                         : 'border-white/10 bg-white/[0.03] hover:border-white/25'
                   }`}
                 >
@@ -243,8 +243,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       style={{
                         background:
                           tr.badge === 'best'
-                            ? 'radial-gradient(ellipse 60% 80% at 100% 0%, rgba(255,201,74,0.16) 0%, rgba(10,6,5,0) 60%)'
-                            : 'radial-gradient(ellipse 60% 80% at 100% 0%, rgba(227,30,36,0.16) 0%, rgba(10,6,5,0) 60%)',
+                            ? 'radial-gradient(ellipse 60% 80% at 100% 0%, rgba(227,179,65,0.16) 0%, rgba(10,10,13,0) 60%)'
+                            : 'radial-gradient(ellipse 60% 80% at 100% 0%, rgba(230,35,31,0.16) 0%, rgba(10,10,13,0) 60%)',
                       }}
                     />
                   )}
@@ -254,24 +254,24 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
                         isHighlight
                           ? tr.badge === 'best'
-                            ? 'bg-gradient-to-br from-[#FFC94A] to-[#B8862E] shadow-[0_4px_16px_rgba(255,201,74,0.3)]'
-                            : 'bg-gradient-to-br from-[#E31E24] to-[#8C0F12] shadow-[0_4px_16px_rgba(227,30,36,0.3)]'
+                            ? 'bg-gradient-to-br from-[#E3B341] to-[#A9782E] shadow-[0_4px_16px_rgba(227,179,65,0.3)]'
+                            : 'bg-gradient-to-br from-[#E6231F] to-[#7A0F0D] shadow-[0_4px_16px_rgba(230,35,31,0.3)]'
                           : 'bg-white/10'
                       }`}
                     >
-                      <Icon className={`h-5 w-5 ${isHighlight ? 'text-[#0A0605]' : 'text-white/70'}`} />
+                      <Icon className={`h-5 w-5 ${isHighlight ? 'text-[#0A0A0D]' : 'text-white/70'}`} />
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white">{lang === 'km' ? tr.labelKm : tr.labelEn}</span>
                         {tr.badge === 'popular' && (
-                          <span className="rounded-full bg-[#E31E24]/20 px-2 py-0.5 text-[10px] font-bold text-[#FF6A57]">
+                          <span className="rounded-full bg-[#E6231F]/20 px-2 py-0.5 text-[10px] font-bold text-[#F0453A]">
                             {t.subPopular}
                           </span>
                         )}
                         {tr.badge === 'best' && (
-                          <span className="rounded-full bg-[#FFC94A]/20 px-2 py-0.5 text-[10px] font-bold text-[#FFC94A]">
+                          <span className="rounded-full bg-[#E3B341]/20 px-2 py-0.5 text-[10px] font-bold text-[#E3B341]">
                             {t.subBestValue}
                           </span>
                         )}
@@ -283,9 +283,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   </div>
 
                   {bonusLabel && (
-                    <div className="relative mt-3 flex items-center gap-1.5 rounded-lg border border-[#FFC94A]/15 bg-black/25 px-2.5 py-1.5">
-                      <Sparkles className="gift-float h-3.5 w-3.5 shrink-0 text-[#FFC94A]" />
-                      <span className="text-[11px] font-semibold text-[#FFC94A]">
+                    <div className="relative mt-3 flex items-center gap-1.5 rounded-lg border border-[#E3B341]/15 bg-black/25 px-2.5 py-1.5">
+                      <Sparkles className="gift-float h-3.5 w-3.5 shrink-0 text-[#E3B341]" />
+                      <span className="text-[11px] font-semibold text-[#E3B341]">
                         ចាប់រង្វាន់ថ្ងៃបន្ថែម {bonusLabel}
                       </span>
                     </div>
@@ -300,10 +300,10 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
               ← {t.subBackBtn}
             </button>
 
-            <div className="relative overflow-hidden rounded-2xl border border-[#FFC94A]/20 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-4 text-center">
+            <div className="relative overflow-hidden rounded-2xl border border-[#E3B341]/20 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-4 text-center">
               <div
                 className="pointer-events-none absolute -inset-6 -z-10 opacity-70"
-                style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255,201,74,0.12) 0%, rgba(10,6,5,0) 65%)' }}
+                style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(227,179,65,0.12) 0%, rgba(10,10,13,0) 65%)' }}
               />
               <p className="mb-1 text-xs text-white/50">{t.subTotalDue}</p>
               <p className="mb-3 text-2xl font-extrabold text-white">
@@ -316,7 +316,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   className="mx-auto w-full max-w-[260px] rounded-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
                 />
               ) : (
-                <p className="rounded-xl border border-[#FFC94A]/25 bg-[#FFC94A]/5 p-4 text-xs text-[#FFC94A]">
+                <p className="rounded-xl border border-[#E3B341]/25 bg-[#E3B341]/5 p-4 text-xs text-[#E3B341]">
                   QR មិនទាន់ត្រៀមសម្រាប់ជម្រើសនេះ — សូមទាក់ទង admin ដោយផ្ទាល់ក្នុង group។
                 </p>
               )}
@@ -326,7 +326,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             <div>
               <p className="mb-2 text-xs font-semibold text-white/70">{t.subUploadReceiptTitle}</p>
               <p className="mb-3 text-xs text-white/40">{t.subUploadReceiptDesc}</p>
-              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] py-6 transition hover:border-[#E31E24]/40">
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] py-6 transition hover:border-[#E6231F]/40">
                 <Upload className="h-5 w-5 text-white/40" />
                 <span className="text-xs text-white/50">{file ? file.name : t.subChooseScreenshot}</span>
                 <input
@@ -346,7 +346,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             <button
               onClick={handleSubmit}
               disabled={submitting || !file}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#E31E24] to-[#8C0F12] py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_rgba(227,30,36,0.35)] transition disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_rgba(230,35,31,0.35)] transition disabled:opacity-50"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {submitting ? t.subSending : t.subConfirmPaid}
@@ -354,8 +354,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           </div>
         ) : decision === 'approved' ? (
           <div className="space-y-4 py-4 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#22C55E]/10">
-              <PartyPopper className="h-7 w-7 text-[#22C55E]" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#34B37A]/10">
+              <PartyPopper className="h-7 w-7 text-[#34B37A]" />
             </div>
             <div>
               <p className="text-base font-bold text-white">VIP ត្រូវបានដោះសោហើយ! 🎉</p>
@@ -365,7 +365,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             </div>
             <button
               onClick={onGoSpin}
-              className="w-full rounded-full bg-gradient-to-r from-[#FFC94A] to-[#B8862E] py-3 text-sm font-bold text-[#0A0605] transition"
+              className="w-full rounded-full bg-gradient-to-r from-[#E3B341] to-[#A9782E] py-3 text-sm font-bold text-[#0A0A0D] transition"
             >
               <Check className="mr-1.5 inline h-4 w-4" />
               ចាប់រង្វាន់ & មើលរឿង
@@ -395,8 +395,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           </div>
         ) : (
           <div className="space-y-4 py-4 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#FFC94A]/10">
-              <Clock className="h-7 w-7 text-[#FFC94A]" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#E3B341]/10">
+              <Clock className="h-7 w-7 text-[#E3B341]" />
             </div>
             <div>
               <p className="text-base font-bold text-white">{t.subPendingTitle}</p>

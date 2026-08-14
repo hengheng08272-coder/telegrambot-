@@ -189,11 +189,11 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-white/10 bg-[#170D0C] p-5"
+        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-white/10 bg-[#0F1116] p-5"
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
-            <QrCode className="h-4 w-4 text-[#FFC94A]" />
+            <QrCode className="h-4 w-4 text-[#E3B341]" />
             <h2 className="text-sm font-bold">Subscriptions — QR, price & description</h2>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
@@ -209,8 +209,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
 
         {error && <p className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
 
-        <div className="mb-4 rounded-xl border border-[#2DD4C4]/20 bg-[#2DD4C4]/[0.04] p-3">
-          <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#2DD4C4]">
+        <div className="mb-4 rounded-xl border border-[#2B5CAD]/20 bg-[#2B5CAD]/[0.04] p-3">
+          <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#2B5CAD]">
             <Zap className="h-3.5 w-3.5" /> ABA Auto-confirm
           </p>
           <p className="mb-2 text-[11px] leading-relaxed text-white/50">
@@ -223,7 +223,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               value={abaMerchantName}
               onChange={(e) => setAbaMerchantName(e.target.value)}
               placeholder={abaMerchantNameLoaded ? 'ឧ. PANG SOK HENG' : 'Loading…'}
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2DD4C4]/50"
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2B5CAD]/50"
             />
             <button
               onClick={handleSaveAbaMerchantName}
@@ -233,7 +233,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               {abaSaving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : abaSaved ? (
-                <Check className="h-3.5 w-3.5 text-[#4CC950]" />
+                <Check className="h-3.5 w-3.5 text-[#34B37A]" />
               ) : (
                 <Save className="h-3.5 w-3.5" />
               )}
@@ -275,7 +275,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     <button
                       onClick={() => triggerUpload(tier.key)}
                       disabled={uploadingTier === tier.key}
-                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 px-3 py-1.5 text-xs font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20 disabled:opacity-50"
+                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-3 py-1.5 text-xs font-bold text-[#E3B341] transition hover:bg-[#E3B341]/20 disabled:opacity-50"
                     >
                       {uploadingTier === tier.key ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -294,7 +294,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       <input
                         value={edit.price}
                         onChange={(e) => updateEdit(tier.key, 'price', e.target.value.replace(/[^0-9.]/g, ''))}
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#FFC94A]/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#E3B341]/50"
                       />
                     </div>
                     <div>
@@ -304,7 +304,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       <input
                         value={edit.months}
                         onChange={(e) => updateEdit(tier.key, 'months', e.target.value.replace(/[^0-9]/g, ''))}
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#2DD4C4]/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#2B5CAD]/50"
                       />
                     </div>
                     <div>
@@ -315,7 +315,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         value={edit.pitch_km}
                         onChange={(e) => updateEdit(tier.key, 'pitch_km', e.target.value)}
                         placeholder="ឧ. ចាប់ផ្តើមមើលភ្លាមៗ — មួយខែពេញ"
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#FFC94A]/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#E3B341]/50"
                       />
                     </div>
                   </div>
@@ -327,7 +327,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     <span className="text-xs font-medium text-white/70">Bonus spin ចាប់រង្វាន់</span>
                     <span
                       className={`relative h-5 w-9 rounded-full transition ${
-                        edit.bonus_enabled ? 'bg-[#22C55E]' : 'bg-white/15'
+                        edit.bonus_enabled ? 'bg-[#34B37A]' : 'bg-white/15'
                       }`}
                     >
                       <span
@@ -346,7 +346,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     {savingTier === tier.key ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : savedAt[tier.key] && Date.now() - savedAt[tier.key] < 2000 ? (
-                      <Check className="h-3.5 w-3.5 text-[#22C55E]" />
+                      <Check className="h-3.5 w-3.5 text-[#34B37A]" />
                     ) : (
                       <Save className="h-3.5 w-3.5" />
                     )}

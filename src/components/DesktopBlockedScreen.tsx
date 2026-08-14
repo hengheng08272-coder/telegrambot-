@@ -28,20 +28,20 @@ export default function DesktopBlockedScreen({
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0605] px-6 text-white">
-      <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#E31E24]/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-[#FFC94A]/10 blur-3xl" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0A0D] px-6 text-white">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-[#E6231F]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-[#E3B341]/10 blur-3xl" />
 
-      <div className="relative w-full max-w-sm rounded-[28px] border border-white/10 bg-[#111117]/90 p-8 text-center backdrop-blur-xl">
+      <div className="relative w-full max-w-sm rounded-[28px] border border-white/10 bg-[#0F1116]/90 p-8 text-center backdrop-blur-xl">
         <img src={LOGO_URL} alt="NINT ANIME" className="mx-auto mb-5 h-16 w-16 object-contain" />
 
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#FFC94A]/10">
-          <Smartphone className="h-7 w-7 text-[#FFC94A]" />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#E3B341]/10">
+          <Smartphone className="h-7 w-7 text-[#E3B341]" />
         </div>
 
         <h1
           className="mb-2 text-xl font-extrabold tracking-wide"
-          style={{ fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif', letterSpacing: '0.03em' }}
+          style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.03em' }}
         >
           Mobile Only
         </h1>
@@ -71,7 +71,7 @@ export default function DesktopBlockedScreen({
 
         <button
           onClick={onOpenAdminSignIn}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-3 text-xs font-semibold text-white/60 transition hover:border-[#FFC94A]/30 hover:text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-3 text-xs font-semibold text-white/60 transition hover:border-[#E3B341]/30 hover:text-white"
         >
           <ShieldCheck className="h-3.5 w-3.5" />
           Admin Sign In (Desktop)

@@ -54,11 +54,11 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
             fontSize: 'clamp(100px, 32vw, 168px)',
             fontWeight: 900,
             lineHeight: 1,
-            color: 'rgba(10,6,5,0.5)',
+            color: 'rgba(10,10,13,0.5)',
             WebkitTextStroke: '2.5px rgba(255,255,255,0.9)',
-            fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
+            fontFamily: '"Anton", Battambang, Inter, sans-serif',
             filter:
-              'drop-shadow(0 2px 0 rgba(45,212,196,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(45,212,196,0.2))',
+              'drop-shadow(0 2px 0 rgba(43,92,173,0.3)) drop-shadow(0 14px 22px rgba(0,0,0,0.9)) drop-shadow(0 0 18px rgba(43,92,173,0.2))',
           }}
         >
           {rank}
@@ -74,13 +74,13 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
         style={{ transition: 'transform 0.35s ease-out', transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }}
       >
         <div
-          className={`aspect-[2/3] overflow-hidden rounded-xl bg-[#241413] ring-1 ring-white/5 transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-[#E31E24]/40 ${
+          className={`aspect-[2/3] overflow-hidden rounded-xl bg-[#151822] ring-1 ring-white/5 transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-[#E6231F]/40 ${
             large
               ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)] group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.8)]'
               : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)]'
           }`}
         >
-          {!loaded && <div className="absolute inset-0 animate-pulse bg-[#241413]" />}
+          {!loaded && <div className="absolute inset-0 animate-pulse bg-[#151822]" />}
           <img
             src={show.poster_url ?? ''}
             alt={show.title}
@@ -96,8 +96,8 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
             className="absolute inset-0"
             style={{
               background: rank
-                ? 'linear-gradient(180deg, rgba(10,6,5,0) 35%, rgba(10,6,5,0.95) 100%)'
-                : 'linear-gradient(180deg, rgba(10,6,5,0) 50%, rgba(10,6,5,0.9) 100%)',
+                ? 'linear-gradient(180deg, rgba(10,10,13,0) 35%, rgba(10,10,13,0.95) 100%)'
+                : 'linear-gradient(180deg, rgba(10,10,13,0) 50%, rgba(10,10,13,0.9) 100%)',
             }}
           />
           {/* Title — overlaid directly on the poster for ranked (Top 10)
@@ -108,7 +108,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
               it. */}
           {rank && (
             <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
-              <h3 className="truncate text-[12.5px] font-bold leading-tight text-[#2DD4C4] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13.5px]">
+              <h3 className="truncate text-[12.5px] font-bold leading-tight text-[#2B5CAD] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13.5px]">
                 {show.title}
               </h3>
             </div>
@@ -116,7 +116,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           {/* View-count badge — real play counts (see increment_show_view_count),
               not an admin-typed rating, so this is what actually drives
               Top 10 and shows the owner which titles viewers watch most. */}
-          <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-[#2DD4C4] backdrop-blur-sm">
+          <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-[#2B5CAD] backdrop-blur-sm">
             <Eye className="h-2.5 w-2.5" />
             {fmtViews(show.view_count)}
           </div>
@@ -124,7 +124,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
               (admin toggle). Icon-only since the row header above already
               says "Coming Soon" in words. */}
           {show.coming_soon && (
-            <div className="absolute left-1.5 top-1.5 flex items-center justify-center rounded-md bg-[#FF6A3D]/90 p-1 text-white backdrop-blur-sm">
+            <div className="absolute left-1.5 top-1.5 flex items-center justify-center rounded-md bg-[#F0453A]/90 p-1 text-white backdrop-blur-sm">
               <Clock className="h-2.5 w-2.5" />
             </div>
           )}
@@ -141,7 +141,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
               ) : (
                 <span
                   className="flex items-center gap-0.5 rounded-md px-1.5 py-[2px] text-[9px] font-black text-black backdrop-blur-sm"
-                  style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+                  style={{ background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)' }}
                 >
                   👑 {t.vipBadge}
                 </span>
@@ -152,7 +152,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
               tapping them can't actually play anything yet. */}
           {!show.coming_soon && (
             <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E31E24] shadow-[0_0_24px_rgba(227,30,36,0.6)]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E6231F] shadow-[0_0_24px_rgba(230,35,31,0.6)]">
                 <Play className="h-4 w-4 fill-white text-white" />
               </div>
             </div>
@@ -161,7 +161,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
       </div>
       {!rank && (
         <div className="mt-2 px-0.5">
-          <h3 className={`truncate font-semibold text-white transition group-hover:text-[#E31E24] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
+          <h3 className={`truncate font-semibold text-white transition group-hover:text-[#E6231F] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
             {show.title}
           </h3>
         </div>

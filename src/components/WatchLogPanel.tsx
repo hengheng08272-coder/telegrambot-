@@ -41,11 +41,11 @@ export default function WatchLogPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#170D0C] p-5"
+        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#0F1116] p-5"
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
-            <EyeIcon className="h-4 w-4 text-[#FFC94A]" />
+            <EyeIcon className="h-4 w-4 text-[#E3B341]" />
             <h2 className="text-sm font-bold">Watch log</h2>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">

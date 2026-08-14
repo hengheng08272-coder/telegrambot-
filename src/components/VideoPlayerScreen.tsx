@@ -539,7 +539,7 @@ export default function VideoPlayerScreen({
         {/* Resolving playback URL */}
         {resolving && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black">
-            <Loader2 className="h-8 w-8 animate-spin text-[#E31E24]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#E6231F]" />
           </div>
         )}
 
@@ -559,14 +559,14 @@ export default function VideoPlayerScreen({
         {/* Buffering spinner */}
         {buffering && !loadError && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/20 border-t-[#E31E24]" />
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/20 border-t-[#E6231F]" />
           </div>
         )}
 
         {/* Load error */}
         {loadError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-            <Loader2 className="h-8 w-8 text-[#E31E24]" />
+            <Loader2 className="h-8 w-8 text-[#E6231F]" />
             <p className="text-sm font-semibold text-white">{t.unableToLoadVideo}</p>
             <p className="max-w-xs text-xs text-white/50">
               {t.videoMissingHint}
@@ -606,7 +606,7 @@ export default function VideoPlayerScreen({
             showControls ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          <p className="text-xs font-medium uppercase tracking-wider text-[#E31E24]">
+          <p className="text-xs font-medium uppercase tracking-wider text-[#E6231F]">
             {show.title}
           </p>
           <h2 className="mt-1 text-xl font-bold text-white">
@@ -621,7 +621,7 @@ export default function VideoPlayerScreen({
             className="absolute inset-0 z-10 flex items-center justify-center"
             aria-label="Play"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#E31E24]/90 shadow-[0_0_40px_rgba(227,30,36,0.5)] transition hover:scale-110">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#E6231F]/90 shadow-[0_0_40px_rgba(230,35,31,0.5)] transition hover:scale-110">
               <Play className="h-9 w-9 fill-white text-white" />
             </div>
           </button>
@@ -641,7 +641,7 @@ export default function VideoPlayerScreen({
             <div className="group relative flex-1">
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                 <div
-                  className="h-full rounded-full bg-[#E31E24] transition-all"
+                  className="h-full rounded-full bg-[#E6231F] transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -665,28 +665,28 @@ export default function VideoPlayerScreen({
           <div className="flex items-center gap-4">
             <button
               onClick={togglePlay}
-              className="text-white transition hover:text-[#E31E24]"
+              className="text-white transition hover:text-[#E6231F]"
               aria-label={playing ? 'Pause' : 'Play'}
             >
               {playing ? <Pause className="h-6 w-6 fill-white" /> : <Play className="h-6 w-6 fill-white" />}
             </button>
             <button
               onClick={() => skip(-10)}
-              className="text-white/80 transition hover:text-[#E31E24]"
+              className="text-white/80 transition hover:text-[#E6231F]"
               aria-label="Back 10s"
             >
               <SkipBack className="h-5 w-5" />
             </button>
             <button
               onClick={() => skip(10)}
-              className="text-white/80 transition hover:text-[#E31E24]"
+              className="text-white/80 transition hover:text-[#E6231F]"
               aria-label="Forward 10s"
             >
               <SkipForward className="h-5 w-5" />
             </button>
             <button
               onClick={toggleMute}
-              className="text-white/80 transition hover:text-[#E31E24]"
+              className="text-white/80 transition hover:text-[#E6231F]"
               aria-label={muted ? 'Unmute' : 'Mute'}
             >
               {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -695,7 +695,7 @@ export default function VideoPlayerScreen({
               {allEpisodes.length > 0 && onSwitchEpisode && (
                 <button
                   onClick={() => setEpisodeListOpen(true)}
-                  className="text-white/80 transition hover:text-[#E31E24]"
+                  className="text-white/80 transition hover:text-[#E6231F]"
                   aria-label="Episode list"
                 >
                   <ListVideo className="h-5 w-5" />
@@ -712,7 +712,7 @@ export default function VideoPlayerScreen({
               )}
               <button
                 onClick={toggleLock}
-                className="-m-2 p-2 text-white/80 transition hover:text-[#E31E24]"
+                className="-m-2 p-2 text-white/80 transition hover:text-[#E6231F]"
                 aria-label={isFullscreen ? 'Unlock screen rotation' : 'Lock screen rotation'}
               >
                 {isFullscreen ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
@@ -723,7 +723,7 @@ export default function VideoPlayerScreen({
 
         {/* End-of-episode auto-advance prompt */}
         {autoAdvanceIn !== null && nextEpisode && (
-          <div className="absolute bottom-24 right-4 z-20 flex w-64 items-center gap-3 rounded-2xl border border-white/10 bg-[#170D0C]/95 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.6)] backdrop-blur-md sm:right-6">
+          <div className="absolute bottom-24 right-4 z-20 flex w-64 items-center gap-3 rounded-2xl border border-white/10 bg-[#0F1116]/95 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.6)] backdrop-blur-md sm:right-6">
             <img
               src={nextEpisode.thumbnail_url ?? show.poster_url ?? ''}
               alt=""
@@ -756,7 +756,7 @@ export default function VideoPlayerScreen({
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[70%] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#120A09] p-4 pb-6"
+              className="relative max-h-[70%] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#0A0A0D] p-4 pb-6"
             >
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white">{show.title}</h3>
@@ -780,7 +780,7 @@ export default function VideoPlayerScreen({
                       }}
                       className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition ${
                         isCurrent
-                          ? 'border-[#E31E24]/40 bg-[#E31E24]/10'
+                          ? 'border-[#E6231F]/40 bg-[#E6231F]/10'
                           : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]'
                       }`}
                     >
@@ -797,7 +797,7 @@ export default function VideoPlayerScreen({
                           <p className="text-[10px] text-white/40">{ep.duration} min</p>
                         )}
                       </div>
-                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#E31E24]" />}
+                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#E6231F]" />}
                     </button>
                   );
                 })}

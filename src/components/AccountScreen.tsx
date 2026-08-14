@@ -33,7 +33,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
     : null;
 
   return (
-    <div className="min-h-screen bg-[#0A0605] pb-10 text-white">
+    <div className="min-h-screen bg-[#0A0A0D] pb-10 text-white">
       <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
         <button onClick={onBack} className="text-white/70 transition hover:text-white" aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
@@ -52,11 +52,11 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             style={
               status?.subscribed
                 ? {
-                    background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)',
+                    background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)',
                     padding: 2,
-                    boxShadow: '0 0 24px rgba(255,201,74,0.35)',
+                    boxShadow: '0 0 24px rgba(227,179,65,0.35)',
                   }
-                : { background: 'rgba(45,212,196,0.35)', padding: 2 }
+                : { background: 'rgba(43,92,173,0.35)', padding: 2 }
             }
           >
             <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-[#12302D] to-[#151A1A]">
@@ -66,8 +66,8 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           <p className="text-base font-bold text-white">{telegramUser?.label ?? 'ភ្ញៀវ'}</p>
           {status?.subscribed ? (
             <span
-              className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-[#0A0605]"
-              style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+              className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-[#0A0A0D]"
+              style={{ background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)' }}
             >
               <Crown className="h-3.5 w-3.5" /> សមាជិក VIP
             </span>
@@ -83,9 +83,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             "when does my VIP run out" is the #1 thing people open this
             screen to check. */}
         {status?.subscribed ? (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-[#FFC94A]/25 bg-gradient-to-br from-[#FFC94A]/10 via-transparent to-[#2DD4C4]/5 p-4">
+          <div className="mb-4 overflow-hidden rounded-2xl border border-[#E3B341]/25 bg-gradient-to-br from-[#E3B341]/10 via-transparent to-[#2B5CAD]/5 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-[#FFC94A]" />
+              <ShieldCheck className="h-4 w-4 text-[#E3B341]" />
               <p className="text-sm font-bold text-white">VIP កំពុងសកម្ម</p>
               {tierLabel && (
                 <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60">
@@ -105,14 +105,14 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                   })}
                 </p>
                 {daysLeft !== null && (
-                  <p className="mt-0.5 text-xs font-semibold text-[#2DD4C4]">នៅសល់ {daysLeft} ថ្ងៃ</p>
+                  <p className="mt-0.5 text-xs font-semibold text-[#2B5CAD]">នៅសល់ {daysLeft} ថ្ងៃ</p>
                 )}
               </div>
             )}
 
             <button
               onClick={onOpenSubscription}
-              className="w-full rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 py-2 text-xs font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20"
+              className="w-full rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 py-2 text-xs font-bold text-[#E3B341] transition hover:bg-[#E3B341]/20"
             >
               បន្តគម្រោង / ប្តូរគម្រោង
             </button>
@@ -122,7 +122,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             <p className="mb-3 text-sm text-white/60">ចុះឈ្មោះជា VIP ដើម្បីមើលគ្រប់វគ្គ + ចាប់រង្វាន់ bonus</p>
             <button
               onClick={onOpenSubscription}
-              className="w-full rounded-full bg-gradient-to-r from-[#E31E24] to-[#8C0F12] py-2.5 text-sm font-bold text-white transition"
+              className="w-full rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] py-2.5 text-sm font-bold text-white transition"
             >
               ក្លាយជា VIP ឥឡូវនេះ
             </button>
@@ -136,16 +136,16 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
         {bonusInfo && (
           <button
             onClick={onOpenSpin}
-            className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#2DD4C4]/30 bg-gradient-to-r from-[#2DD4C4]/10 to-transparent p-4 text-left transition hover:border-[#2DD4C4]/60"
+            className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#2B5CAD]/30 bg-gradient-to-r from-[#2B5CAD]/10 to-transparent p-4 text-left transition hover:border-[#2B5CAD]/60"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FFC94A] to-[#B8862E]">
-              <Gift className="h-5 w-5 text-[#0A0605]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E3B341] to-[#A9782E]">
+              <Gift className="h-5 w-5 text-[#0A0A0D]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white">មាន Bonus Spin រង់ចាំ!</p>
               <p className="text-xs text-white/50">ការទិញ VIP លើកនេះឲ្យអ្នកនូវការចាប់រង្វាន់ថ្ងៃបន្ថែម ១ដង — ចុចដើម្បីចាប់</p>
             </div>
-            <Sparkles className="h-4 w-4 text-[#FFC94A]" />
+            <Sparkles className="h-4 w-4 text-[#E3B341]" />
           </button>
         )}
 

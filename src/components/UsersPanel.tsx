@@ -85,11 +85,11 @@ export default function UsersPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-white/10 bg-[#170D0C] p-5"
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-white/10 bg-[#0F1116] p-5"
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
-            <User className="h-4 w-4 text-[#2DD4C4]" />
+            <User className="h-4 w-4 text-[#2B5CAD]" />
             <h2 className="text-sm font-bold">Users — search & manage VIP</h2>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
@@ -103,7 +103,7 @@ export default function UsersPanel({ onClose }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by Telegram ID or @username…"
-            className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#2DD4C4]/50"
+            className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#2B5CAD]/50"
           />
         </div>
 
@@ -135,7 +135,7 @@ export default function UsersPanel({ onClose }: Props) {
                   </div>
                   <span
                     className={`flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${
-                      active ? 'bg-[#2DD4C4]/15 text-[#2DD4C4]' : 'bg-white/10 text-white/40'
+                      active ? 'bg-[#2B5CAD]/15 text-[#2B5CAD]' : 'bg-white/10 text-white/40'
                     }`}
                   >
                     {active ? <ShieldCheck className="h-3 w-3" /> : <ShieldX className="h-3 w-3" />}

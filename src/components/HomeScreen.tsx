@@ -237,7 +237,7 @@ export default function HomeScreen({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0605] text-white">
+      <div className="min-h-screen bg-[#0A0A0D] text-white">
         {/* Header skeleton */}
         <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-8 sm:py-3.5">
           <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
@@ -284,9 +284,9 @@ export default function HomeScreen({
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0605] px-6">
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0D] px-6">
         <div className="max-w-md text-center">
-          <p className="text-lg font-semibold text-[#E31E24]">{t.somethingWrong}</p>
+          <p className="text-lg font-semibold text-[#E6231F]">{t.somethingWrong}</p>
           <p className="mt-2 text-sm text-white/60">{error}</p>
         </div>
       </div>
@@ -296,7 +296,7 @@ export default function HomeScreen({
   const heroVisible = hero && !query.trim();
 
   return (
-    <div className="relative min-h-screen bg-[#0A0605] text-white">
+    <div className="relative min-h-screen bg-[#0A0A0D] text-white">
       {/* Brand key art — sits behind absolutely everything, now shown
           clearly (no blur, higher opacity) per request. Cropped toward the
           character on the right so it doesn't fight with the separate
@@ -310,7 +310,7 @@ export default function HomeScreen({
           className="h-full w-full object-cover opacity-[0.22]"
           style={{ objectPosition: '68% 30%', transform: 'scale(1.1)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/40 via-[#0A0605]/70 to-[#0A0605]/94" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0D]/40 via-[#0A0A0D]/70 to-[#0A0A0D]/94" />
       </div>
 
       {/* Whole-page ambient glow — two faint warm radials fixed to the
@@ -322,7 +322,7 @@ export default function HomeScreen({
         className="pointer-events-none fixed inset-0 z-0"
         style={{
           background:
-            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(140,15,18,0.13) 0%, rgba(10,6,5,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(255,201,74,0.06) 0%, rgba(10,6,5,0) 60%)',
+            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(122,15,13,0.13) 0%, rgba(10,10,13,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(227,179,65,0.06) 0%, rgba(10,10,13,0) 60%)',
         }}
         aria-hidden
       />
@@ -337,7 +337,7 @@ export default function HomeScreen({
           opens the full-screen search overlay below that. */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-          heroVisible ? 'bg-transparent' : 'bg-[#0A0605]/85 backdrop-blur-md'
+          heroVisible ? 'bg-transparent' : 'bg-[#0A0A0D]/85 backdrop-blur-md'
         }`}
       >
         <div className="mx-auto flex max-w-[1400px] items-center gap-1.5 px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
@@ -349,7 +349,7 @@ export default function HomeScreen({
               handleLogoTap();
             }}
             aria-label={t.navHome}
-            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-[#E31E24]/40"
+            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-[#E6231F]/40"
           >
             <img
               src="/assets/images/icon-192.png"
@@ -363,10 +363,10 @@ export default function HomeScreen({
               (see src/lib/presence.ts), not a randomized/fake number. Text
               label shown on every size now (used to hide below `sm:`,
               which cut the number off from its meaning on mobile). */}
-          <div className="flex shrink-0 items-center gap-1 rounded-full border border-[#E31E24]/25 bg-[#E31E24]/10 px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-[#E6231F]/25 bg-[#E6231F]/10 px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E31E24]/70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E31E24]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6231F]/70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E6231F]" />
             </span>
             <span className="text-xs font-bold text-white">{watchingNow.toLocaleString()}</span>
             <span className="text-[10px] text-white/50 sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
@@ -378,8 +378,8 @@ export default function HomeScreen({
           {heroVisible && (
             <div className="hidden shrink-0 items-center gap-1 rounded-full bg-white/[0.06] px-2 py-1 sm:flex">
               <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#2DD4C4]/70" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#2DD4C4]" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#2B5CAD]/70" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#2B5CAD]" />
               </span>
               <span className="text-[9px] font-semibold uppercase tracking-wider text-white/50">
                 {t.autoLabel ?? 'Auto'}
@@ -434,7 +434,7 @@ export default function HomeScreen({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.searchPlaceholder}
-              className="w-48 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-64 focus:border-[#E31E24]/50 focus:bg-white/[0.07]"
+              className="w-48 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-64 focus:border-[#E6231F]/50 focus:bg-white/[0.07]"
             />
           </div>
 
@@ -444,8 +444,8 @@ export default function HomeScreen({
           <NotificationBell title={t.notifications ?? 'Notifications'} emptyLabel={t.noNotifications ?? ''} />
           <button
             onClick={onOpenSubscription}
-            className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(255,201,74,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs"
-            style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+            className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(227,179,65,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs"
+            style={{ background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)' }}
           >
             <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             {subscribed ? t.premium : (t.vipBadge ?? 'VIP')}
@@ -547,62 +547,48 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-3">
-            {/* Top 10 rail — the ranked/numeral treatment (RailRow's
-                `ranked` prop + ShowCard's `rank` prop) was fully built but
-                never actually mounted anywhere; the hero above only shows
-                whichever single show is centered. Wiring it back in here
-                with the same `trending` list that feeds the hero's rank
-                badge, so the numeral row people expect under a Top 10
-                hero actually exists. */}
-            {trending.length > 0 && (
-              <RailRow
-                ranked
-                title={t.top10Label ?? 'ពេញនិយមខ្លាំងសម្រាប់ខែនេះ'}
-                shows={trending}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.top10Label ?? 'ពេញនិយមខ្លាំងសម្រាប់ខែនេះ', shows: trending })}
-                viewAllLabel={t.viewAll}
-              />
-            )}
+            {/* The ranked/numeral "Top 10" rail was removed per request —
+                the featured carousel above already surfaces what's trending
+                without repeating it as a second ranked row underneath. */}
             {comingSoon.length > 0 && (
               <RailRow
-                icon={<Clock className="h-5 w-5 text-[#FF6A3D]" />}
+                icon={<Clock className="h-5 w-5 text-[#F0453A]" />}
                 title={t.comingSoonLabel}
                 shows={comingSoon}
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.comingSoonLabel, shows: comingSoon })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.freshTag ?? 'SOON', color: '#FF6A3D' }}
+                tag={{ label: t.freshTag ?? 'SOON', color: '#F0453A' }}
               />
             )}
             {freeShows.length > 0 && (
               <RailRow
-                icon={<Gift className="h-5 w-5 text-[#4CC950]" />}
+                icon={<Gift className="h-5 w-5 text-[#34B37A]" />}
                 title={t.freeRowLabel ?? 'Free to Watch'}
                 shows={freeShows}
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.freeBadge, color: '#4CC950' }}
+                tag={{ label: t.freeBadge, color: '#34B37A' }}
               />
             )}
             <RailRow
-              icon={<Sparkles className="h-5 w-5 text-[#E31E24]" />}
+              icon={<Sparkles className="h-5 w-5 text-[#E6231F]" />}
               title={t.newRelease}
               shows={newReleases}
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
               viewAllLabel={t.viewAll}
-              tag={{ label: t.newTag ?? 'NEW', color: '#3B82F6' }}
+              tag={{ label: t.newTag ?? 'NEW', color: '#2B5CAD' }}
             />
             <RailRow
-              icon={<Flame className="h-5 w-5 text-[#E31E24]" />}
+              icon={<Flame className="h-5 w-5 text-[#E6231F]" />}
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.popularSeason, shows })}
               viewAllLabel={t.viewAll}
-              tag={{ label: t.hotTag ?? 'HOT', color: '#E31E24' }}
+              tag={{ label: t.hotTag ?? 'HOT', color: '#E6231F' }}
             />
 
             {genres.map((g) => {
@@ -630,11 +616,11 @@ export default function HomeScreen({
                   onClick={onOpenRewards}
                   aria-label={t.rewardsBadge}
                   title={t.rewardsBadge}
-                  className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#FFC94A]/30 bg-gradient-to-br from-[#FFC94A]/20 to-[#B8862E]/10 text-[#FFC94A] backdrop-blur-md transition hover:scale-105 hover:bg-[#FFC94A]/25 animate-badge-pop"
+                  className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E3B341]/30 bg-gradient-to-br from-[#E3B341]/20 to-[#A9782E]/10 text-[#E3B341] backdrop-blur-md transition hover:scale-105 hover:bg-[#E3B341]/25 animate-badge-pop"
                 >
                   <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
                   <Gift className="h-4 w-4" />
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF5D5D] ring-2 ring-[#0A0605]" aria-hidden />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#F0453A] ring-2 ring-[#0A0A0D]" aria-hidden />
                 </button>
               </div>
             )}
@@ -654,7 +640,7 @@ export default function HomeScreen({
 
       {/* Full-screen search overlay (mobile) */}
       {searchOpen && (
-        <div className="fixed inset-0 z-[60] bg-[#0A0605] md:hidden">
+        <div className="fixed inset-0 z-[60] bg-[#0A0A0D] md:hidden">
           <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
             <Search className="h-5 w-5 text-white/40" />
             <input
@@ -691,7 +677,7 @@ export default function HomeScreen({
                       }}
                       className="text-left"
                     >
-                      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-[#241413] ring-1 ring-white/5">
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-[#151822] ring-1 ring-white/5">
                         <img
                           src={s.poster_url ?? ''}
                           alt={s.title}
@@ -764,6 +750,7 @@ type TranslationText = {
   series: string;
   freeBadge: string;
   top10Label?: string;
+  featuredLabel?: string;
   vipBadge?: string;
   myList: string;
 };
@@ -799,7 +786,7 @@ function CoverflowHero({
   onSelectShow,
   onPrev,
   onNext,
-  onGoTo: _onGoTo,
+  onGoTo,
   onTouchStart,
   onTouchEnd,
   t,
@@ -856,13 +843,13 @@ function CoverflowHero({
         {/* Flat black background — closer to Netflix's own Top 10 rows
             (solid dark, no colored glow) than the previous teal-tinted
             vignette, per the "make it cleaner, more like Netflix" ask. */}
-        <div className="absolute inset-0 bg-[#050403]/60" />
+        <div className="absolute inset-0 bg-[#06070A]/60" />
         {/* Fade the top into the header and the bottom into the page */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(5,4,3,0.92) 0%, rgba(5,4,3,0.6) 14%, rgba(5,4,3,0.15) 28%, rgba(5,4,3,0) 40%, rgba(5,4,3,0) 78%, rgba(5,4,3,1) 100%)',
+              'linear-gradient(180deg, rgba(6,7,10,0.92) 0%, rgba(6,7,10,0.6) 14%, rgba(6,7,10,0.15) 28%, rgba(6,7,10,0) 40%, rgba(6,7,10,0) 78%, rgba(6,7,10,1) 100%)',
           }}
         />
       </div>
@@ -879,37 +866,18 @@ function CoverflowHero({
           className="hero-card-enter relative z-10 shrink-0"
           style={{ width: '28%', maxWidth: 138 }}
         >
-          {/* Netflix-style Top 10 numeral, bleeding out past the poster's
-              left edge — same treatment as the ranked rail row below, so
-              the cover and the row read as one system. Only appears when
-              this show is genuinely in the real (view count based) top
-              10; otherwise the card stays clean. */}
-          {heroRank && (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute -left-4 bottom-[-4px] z-0 select-none sm:-left-6"
-              style={{
-                fontSize: 'clamp(58px, 18vw, 96px)',
-                fontWeight: 900,
-                lineHeight: 1,
-                color: 'rgba(5,4,3,0.5)',
-                WebkitTextStroke: '2.5px rgba(255,255,255,0.92)',
-                fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
-                filter:
-                  'drop-shadow(0 2px 0 rgba(45,212,196,0.3)) drop-shadow(0 10px 16px rgba(0,0,0,0.9))',
-              }}
-            >
-              {heroRank}
-            </span>
-          )}
+          {/* Lantern-glow poster card — a warm double-ring frame (jade
+              inner line, antique-gold outer glow) stands in for the old
+              rank numeral. It reads as "the one worth lighting up" without
+              pinning the hero's identity to a view-count rank. */}
           <div
-            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-2xl transition-transform duration-500"
+            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-[20px] transition-transform duration-500 animate-glow-pulse"
             style={{
               boxShadow:
-                '0 30px 70px rgba(0,0,0,0.75), 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,210,120,0.25), 0 0 32px rgba(201,122,46,0.18)',
+                '0 30px 70px rgba(0,0,0,0.75), 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1.5px rgba(43,92,173,0.45), 0 0 36px rgba(217,164,65,0.28)',
             }}
           >
-            <div className="pointer-events-none absolute inset-0 z-10 rounded-2xl ring-1 ring-inset ring-white/20" />
+            <div className="pointer-events-none absolute inset-0 z-10 rounded-[20px] ring-1 ring-inset ring-white/15" />
             <img
               src={hero.poster_url ?? hero.banner_url ?? ''}
               alt={hero.title}
@@ -918,8 +886,15 @@ function CoverflowHero({
             />
             <div
               className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, rgba(10,6,5,0) 62%, rgba(10,6,5,0.55) 100%)' }}
+              style={{ background: 'linear-gradient(180deg, rgba(10,10,13,0) 60%, rgba(10,10,13,0.6) 100%)' }}
             />
+            {/* Trending tag — a small corner flag instead of a numeral,
+                only shown when the show is genuinely trending. */}
+            {heroRank && (
+              <span className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-black/50 px-1.5 py-[2px] text-[9px] font-bold text-[#E6231F] backdrop-blur-sm">
+                🔥 #{heroRank}
+              </span>
+            )}
             {/* VIP / Free badge — same subscription status the detail
                 screen enforces, so the cover never over-promises. */}
             <div className="absolute right-1.5 top-1.5">
@@ -930,7 +905,7 @@ function CoverflowHero({
               ) : (
                 <span
                   className="flex items-center gap-0.5 rounded-md px-1.5 py-[2px] text-[9px] font-black text-black backdrop-blur-sm"
-                  style={{ background: 'linear-gradient(135deg, #FFE29A, #FFC94A 45%, #C9822E)' }}
+                  style={{ background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)' }}
                 >
                   👑 {t.vipBadge ?? 'VIP'}
                 </span>
@@ -941,17 +916,18 @@ function CoverflowHero({
 
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
-          {heroRank && (
-            <span className="mb-1 inline-flex items-center gap-1 rounded-md bg-black/40 px-1.5 py-[2px] text-[9px] font-bold text-[#2DD4C4] backdrop-blur-sm sm:text-[11px]">
-              🔥 {t.top10Label ?? 'TOP 10'} · #{heroRank}
-            </span>
-          )}
+          <span
+            className="mb-1 inline-flex items-center gap-1 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-2 py-[2px] text-[9px] font-bold uppercase tracking-wide text-[#E3B341] sm:text-[10px]"
+            style={{ fontFamily: '"Anton", Battambang, sans-serif', letterSpacing: '0.06em' }}
+          >
+            {t.featuredLabel ?? 'កំពុងពេញនិយម'}
+          </span>
           <h2
             key={hero.id}
             onClick={() => onSelectShow(hero)}
             className="title-shine cursor-pointer text-lg font-black leading-[1.1] text-white sm:text-2xl"
             style={{
-              fontFamily: '"Bebas Neue", Battambang, Inter, sans-serif',
+              fontFamily: '"Anton", Battambang, Inter, sans-serif',
               letterSpacing: '0.01em',
               display: '-webkit-box',
               WebkitLineClamp: 2,
@@ -967,8 +943,8 @@ function CoverflowHero({
           )}
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-white/70 sm:text-xs">
-            <span className="flex items-center gap-1 text-[#FFC94A]">
-              <Star className="h-2.5 w-2.5 fill-[#FFC94A] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
+            <span className="flex items-center gap-1 text-[#E3B341]">
+              <Star className="h-2.5 w-2.5 fill-[#E3B341] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
             </span>
             <span className="h-3 w-px bg-white/20" aria-hidden />
             <span>{hero.type === 'movie' ? t.movie : t.series}</span>
@@ -983,8 +959,8 @@ function CoverflowHero({
           <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
             <button
               onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(227,30,36,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
-              style={{ background: 'linear-gradient(135deg, #FF4B52, #E31E24 55%, #8C0F12)' }}
+              className="flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(230,35,31,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
+              style={{ background: 'linear-gradient(135deg, #E6231F, #E6231F 55%, #7A0F0D)' }}
             >
               <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
             </button>
@@ -995,7 +971,7 @@ function CoverflowHero({
               }}
               className={`flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11px] font-bold transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs ${
                 inList
-                  ? 'border-[#2DD4C4]/40 bg-[#2DD4C4]/10 text-[#2DD4C4]'
+                  ? 'border-[#2B5CAD]/40 bg-[#2B5CAD]/10 text-[#2B5CAD]'
                   : 'border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10'
               }`}
             >
@@ -1005,6 +981,38 @@ function CoverflowHero({
           </div>
         </div>
       </div>
+
+      {/* Mini-poster strip — the other trending shows as small tappable
+          thumbnails right under the featured card, so the hero reads as
+          a real browsable carousel instead of a single static banner.
+          The centered show gets a lit ring; everything else sits at
+          reduced opacity until tapped. */}
+      {shows.length > 1 && (
+        <div className="relative z-10 mx-auto mt-3 flex max-w-[1400px] gap-2 overflow-x-auto px-0.5 pb-1 sm:mt-4 sm:gap-2.5" style={{ scrollbarWidth: 'none' }}>
+          {shows.map((s, i) => (
+            <button
+              key={s.id}
+              onClick={() => onGoTo(i)}
+              aria-label={s.title}
+              className="shrink-0 overflow-hidden rounded-lg transition-all duration-300"
+              style={{
+                width: 44,
+                aspectRatio: '2 / 3',
+                opacity: i === index ? 1 : 0.45,
+                boxShadow: i === index ? '0 0 0 2px #E6231F, 0 4px 14px rgba(230,35,31,0.35)' : 'none',
+                transform: i === index ? 'translateY(-3px)' : 'none',
+              }}
+            >
+              <img
+                src={s.poster_url ?? s.banner_url ?? ''}
+                alt={s.title}
+                className="h-full w-full object-cover"
+                draggable={false}
+              />
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Chevron arrows — desktop only, swipe handles mobile. Anchored to
           the section edges now that there's no side-card deck to sit
@@ -1035,7 +1043,7 @@ function CoverflowHero({
             className="hero-progress-fill h-full"
             style={{
               animationDuration: `${HERO_AUTO_MS}ms`,
-              background: 'linear-gradient(90deg, #2DD4C4, #E31E24)',
+              background: 'linear-gradient(90deg, #2B5CAD, #E6231F)',
             }}
           />
         </div>
@@ -1098,7 +1106,7 @@ interface BottomNavProps {
 function BottomNav({ t, active, onHome, onSearch, onSeries, onMovies, onMyList, onAccount }: BottomNavProps) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0A0605]/95 backdrop-blur-md sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0A0A0D]/95 backdrop-blur-md sm:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <div className="mx-auto flex max-w-[560px] items-stretch justify-between px-1">
@@ -1125,12 +1133,12 @@ function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
     <button
       onClick={onClick}
       className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition ${
-        active ? 'text-[#2DD4C4]' : 'text-white/50 active:text-white/80'
+        active ? 'text-[#2B5CAD]' : 'text-white/50 active:text-white/80'
       }`}
     >
       {icon}
       <span className="max-w-full truncate px-0.5 text-[9px] font-semibold leading-none">{label}</span>
-      {active && <span className="mt-0.5 h-[3px] w-4 rounded-full bg-[#E31E24]" aria-hidden />}
+      {active && <span className="mt-0.5 h-[3px] w-4 rounded-full bg-[#E6231F]" aria-hidden />}
     </button>
   );
 }
@@ -1151,7 +1159,7 @@ function NavLink({ label, active, onClick }: NavLinkProps) {
     >
       {label}
       {active && (
-        <span className="absolute -bottom-1.5 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-[#E31E24]" />
+        <span className="absolute -bottom-1.5 left-1/2 h-[3px] w-4 -translate-x-1/2 rounded-full bg-[#E6231F]" />
       )}
     </button>
   );
@@ -1202,7 +1210,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
             alt=""
             className="h-full w-full scale-110 object-cover opacity-[0.16] blur-2xl"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0A0605]/40 via-[#0A0605]/70 to-[#0A0605]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0D]/40 via-[#0A0A0D]/70 to-[#0A0A0D]" />
         </div>
       )}
       {ranked ? (
@@ -1212,7 +1220,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         <div className="px-3 pt-5 text-center">
           <div className="mb-1 flex items-center justify-center gap-2">
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-            <h2 className="text-xl font-black tracking-wide text-[#2DD4C4]">{title}</h2>
+            <h2 className="text-xl font-black tracking-wide text-[#2B5CAD]">{title}</h2>
             {tag && (
               <span
                 className="rounded-full px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
@@ -1225,7 +1233,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
+              className="text-xs font-semibold text-white/50 transition hover:text-[#E6231F]"
             >
               {viewAllLabel}
             </button>
@@ -1248,7 +1256,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E31E24]"
+              className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#E6231F]"
             >
               {viewAllLabel}
             </button>

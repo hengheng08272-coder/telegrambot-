@@ -133,14 +133,14 @@ export default function PaymentsPanel({ onClose }: Props) {
   };
 
   const renderCard = (sub: Submission, actions: ReactNode) => (
-    <div key={sub.id} className="rounded-xl border border-[#FFC94A]/20 bg-[#FFC94A]/5 p-3">
+    <div key={sub.id} className="rounded-xl border border-[#E3B341]/20 bg-[#E3B341]/5 p-3">
       <div className="mb-2 flex items-center justify-between text-xs">
         <span className="font-semibold text-white">{sub.telegram_username ?? sub.telegram_user_id}</span>
         <span className="text-white/40">{new Date(sub.submitted_at).toLocaleString()}</span>
       </div>
       <div className="mb-2 flex items-center justify-between text-xs text-white/60">
         <span>Tier: {sub.tier}</span>
-        <span className="font-bold text-[#FFC94A]">${sub.amount}</span>
+        <span className="font-bold text-[#E3B341]">${sub.amount}</span>
       </div>
       <a href={sub.screenshot_url} target="_blank" rel="noreferrer">
         <img src={sub.screenshot_url} alt="Payment proof" className="mb-3 max-h-56 w-full rounded-lg object-contain" />
@@ -153,11 +153,11 @@ export default function PaymentsPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#170D0C] p-5"
+        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#0F1116] p-5"
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
-            <Wallet className="h-4 w-4 text-[#FFC94A]" />
+            <Wallet className="h-4 w-4 text-[#E3B341]" />
             <h2 className="text-sm font-bold">Payments</h2>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
@@ -188,7 +188,7 @@ export default function PaymentsPanel({ onClose }: Props) {
                           <button
                             onClick={() => confirmAuto(sub)}
                             disabled={busyId === sub.id}
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#22C55E] py-2 text-xs font-bold text-black transition disabled:opacity-50"
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#34B37A] py-2 text-xs font-bold text-black transition disabled:opacity-50"
                           >
                             {busyId === sub.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                             Confirm
@@ -221,7 +221,7 @@ export default function PaymentsPanel({ onClose }: Props) {
                           <button
                             onClick={() => approve(sub)}
                             disabled={busyId === sub.id}
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#22C55E] py-2 text-xs font-bold text-black transition disabled:opacity-50"
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#34B37A] py-2 text-xs font-bold text-black transition disabled:opacity-50"
                           >
                             {busyId === sub.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                             Approve
