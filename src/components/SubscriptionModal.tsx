@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Clock, Crown, Gift, Loader2, PartyPopper, Send, Sparkles, Star, Upload, X, Zap } from 'lucide-react';
+import { Check, Clock, Crown, Download, Gift, Loader2, Lock, PartyPopper, Send, Sparkles, Star, Upload, X, Zap } from 'lucide-react';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { BONUS_POOLS } from '@/lib/spin';
@@ -77,6 +77,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
   const [decision, setDecision] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
+  const [claimed, setClaimed] = useState(false);
   const [attachingProof, setAttachingProof] = useState(false);
   const [proofSent, setProofSent] = useState(false);
   const notifiedApprovedRef = useRef(false);
@@ -168,6 +169,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     onSubmitted();
     setSecondsLeft(WAIT_WINDOW_SECONDS);
     setDecision('waiting');
+    setClaimed(false);
     timedOutNotifiedRef.current = false;
     setProofSent(false);
     getPendingSubmission().then((p) => p && setPending(p));
@@ -178,25 +180,21 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     if (!pending) return;
     setAttachingProof(true);
     setError('');
-    const { error: err, screenshotUrl } = await attachScreenshotToSubmission(pending.id, file);
+    const { error: err } = await attachScreenshotToSubmission(pending.id, file);
     setAttachingProof(false);
     if (err) {
       setError(err);
       return;
     }
     setProofSent(true);
-    notifyPendingSubmission({
-      submissionId: pending.id,
-      telegramUserId: pending.telegram_user_id ?? '',
-      telegramUsername: pending.telegram_username ?? null,
-      tierKey: pending.tier,
-      amount: pending.amount,
-      screenshotUrl,
-    });
+    // No separate notify call here — attachScreenshotToSubmission's
+    // confirm-payment-proof edge function already grants VIP and sends
+    // the admin a photo message itself; polling below picks up the
+    // resulting 'approved' status and unlocks the claim button.
   };
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[95] flex items-stretch justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
         className="hero-card-enter relative w-full max-w-md overflow-hidden rounded-t-3xl border border-white/10 bg-[#0A0A0D] p-5 sm:rounded-3xl max-h-[90vh] overflow-y-auto"
@@ -358,7 +356,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
               {submitting ? t.subSending : t.subTryAgain}
             </button>
           </div>
-        ) : decision === 'approved' ? (
+        ) : decision === 'approved' && claimed ? (
           <div className="space-y-4 py-4 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#34B37A]/10">
               <PartyPopper className="h-7 w-7 text-[#34B37A]" />
@@ -425,7 +423,18 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                     QR មិនទាន់ត្រៀមសម្រាប់ជម្រើសនេះ — សូមទាក់ទង admin ដោយផ្ទាល់ក្នុង group។
                   </p>
                 )}
-                <p className="mt-2 text-xs text-white/40">{t.subScanHint}</p>
+                <div className="mt-2.5 flex items-center justify-center gap-3">
+                  <p className="text-xs text-white/40">{t.subScanHint}</p>
+                  {(qrImages[tier.key] || FALLBACK_QR_IMAGES[tier.key]) && (
+                    <a
+                      href={qrImages[tier.key] || FALLBACK_QR_IMAGES[tier.key]}
+                      download={`nintanime-vip-${tier.key}.png`}
+                      className="flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-semibold text-white/60 transition hover:border-white/30 hover:text-white"
+                    >
+                      <Download className="h-2.5 w-2.5" /> {t.subSaveQr}
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 
@@ -435,13 +444,13 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
               </div>
               <div>
                 <p className="text-base font-bold text-white">
-                  {secondsLeft > 0 ? t.subListeningTitle : t.subPendingTitle}
+                  {decision === 'approved' ? t.subReadyToClaimTitle : secondsLeft > 0 ? t.subListeningTitle : t.subPendingTitle}
                 </p>
                 <p className="mt-1.5 text-sm leading-relaxed text-white/55">
-                  {secondsLeft > 0 ? t.subListeningDesc : t.subPendingBody}
+                  {decision === 'approved' ? t.subReadyToClaimDesc : secondsLeft > 0 ? t.subListeningDesc : t.subPendingBody}
                 </p>
               </div>
-              {secondsLeft > 0 && (
+              {secondsLeft > 0 && decision !== 'approved' && (
                 <div className="mx-auto flex w-fit items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold text-white/60">
                   <Clock className="h-3 w-3" />
                   {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
@@ -449,16 +458,35 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
               )}
             </div>
 
-            {/* Screenshot fallback — only revealed once the automatic
-                ABA-match window has run out, exactly like the mockup: an
-                escape hatch for "I really did pay, please look faster",
-                not the default path. Attaches to the SAME pending row so
-                there's no duplicate submission. */}
-            {secondsLeft === 0 && pending && (
+            {/* The "I've paid" button — locked/disabled until the system
+                actually confirms the payment (ABA auto-match, or a
+                screenshot attached below), matching their spec exactly:
+                this is a claim button, not a promise button. Tapping it
+                while unlocked is what reveals the success + bonus screen. */}
+            <button
+              onClick={() => decision === 'approved' && setClaimed(true)}
+              disabled={decision !== 'approved'}
+              className={`flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-bold transition ${
+                decision === 'approved'
+                  ? 'animate-glow-pulse bg-gradient-to-r from-[#34B37A] to-[#1F8A5A] text-white shadow-[0_10px_30px_rgba(52,179,122,0.35)]'
+                  : 'cursor-not-allowed bg-white/5 text-white/35'
+              }`}
+            >
+              {decision === 'approved' ? <Check className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+              {decision === 'approved' ? t.subConfirmPaid : t.subPaidLocked}
+            </button>
+
+            {/* Screenshot fallback — available from the start, right
+                alongside the QR (not gated behind a timeout): the
+                viewer shouldn't have to wait around if they'd rather
+                just prove it now. Attaches to the SAME pending row so
+                there's no duplicate submission, and grants VIP right
+                away (flagged for the admin to double-check afterward). */}
+            {decision === 'waiting' && pending && (
               <div className="space-y-2 border-t border-white/10 pt-4">
                 {proofSent ? (
                   <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-[#34B37A]">
-                    <Check className="h-3.5 w-3.5" /> {t.subVerified} — {t.subPendingWaiting}
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.subCheckingPayment}
                   </p>
                 ) : (
                   <>
