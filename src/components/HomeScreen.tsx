@@ -32,7 +32,7 @@ import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { usePresenceCount } from '@/lib/presence';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
-import { toggleWatchlist, isInWatchlist } from '@/lib/watchlist';
+import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
 
 interface HomeScreenProps {
   onSelectShow: (show: Show) => void;
@@ -50,10 +50,10 @@ interface HomeScreenProps {
   searchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
   onOpenLegal?: () => void;
-  /** Fired when the small logo badge in the header is tapped 5 times in
-   *  quick succession — the hidden way to reach the admin sign-in on
-   *  mobile, where there's no visible admin entry point. */
-  onAdminSecretTap?: () => void;
+  /** Resume a "continue watching" item straight into the player — same
+   *  handler App.tsx already gives WatchlistScreen, reused here so the
+   *  home-row cards behave identically. */
+  onResumeEpisode: (show: Show, episodeId: string) => void;
 }
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
@@ -112,7 +112,7 @@ export default function HomeScreen({
   searchOpen,
   setSearchOpen,
   onOpenLegal,
-  onAdminSecretTap,
+  onResumeEpisode,
 }: HomeScreenProps) {
   const { lang, setLang } = useLang();
   const t = appText[lang];
@@ -133,19 +133,11 @@ export default function HomeScreen({
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const logoTapTimes = useRef<number[]>([]);
 
-  // Hidden admin entry point: 5 taps on the small logo badge within 2.5s
-  // opens admin sign-in. Nothing else on mobile can reach it, since the
-  // admin gate is desktop-only by design.
-  const handleLogoTap = () => {
-    const now = Date.now();
-    logoTapTimes.current = [...logoTapTimes.current.filter((ts) => now - ts < 2500), now];
-    if (logoTapTimes.current.length >= 5) {
-      logoTapTimes.current = [];
-      onAdminSecretTap?.();
-    }
-  };
+  // "Continue Watching" — read once per mount (this screen fully
+  // unmounts/remounts on navigation, so a fresh read here already stays
+  // current without needing a storage listener).
+  const [continueItems] = useState<ContinueItem[]>(() => getContinueWatching());
 
   useEffect(() => {
     let active = true;
@@ -231,20 +223,6 @@ export default function HomeScreen({
     .slice(0, 10);
   const comingSoon = shows.filter((s) => s.coming_soon);
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
-
-  // "Now Airing" — series that genuinely posted a new episode within the
-  // last 14 days, ranked by how recent. This is a real activity signal
-  // (episodes actually going up), not just "show entry exists" like
-  // newReleases below, so it's the honest answer to "what's airing right
-  // now" instead of doubling up on the same list under a new name.
-  const AIRING_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
-  const nowAiring = shows
-    .filter((s) => s.type === 'series' && !s.coming_soon && latestEpisodeDates[s.id])
-    .filter((s) => Date.now() - new Date(latestEpisodeDates[s.id]).getTime() < AIRING_WINDOW_MS)
-    .sort(
-      (a, b) =>
-        new Date(latestEpisodeDates[b.id]).getTime() - new Date(latestEpisodeDates[a.id]).getTime(),
-    );
 
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
   // joined) — this looks the hero's genre + Top 10 rank up against the
@@ -368,7 +346,6 @@ export default function HomeScreen({
               setActiveTab('home');
               setQuery('');
               setViewAll(null);
-              handleLogoTap();
             }}
             aria-label={t.navHome}
             className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-[#E6231F]/40"
@@ -606,15 +583,16 @@ export default function HomeScreen({
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
                 without repeating it as a second ranked row underneath. */}
-            {nowAiring.length > 0 && (
-              <RailRow
-                icon={<span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E3B341] opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#E3B341]" /></span>}
-                title={t.nowAiringLabel ?? 'កំពុងចាក់ផ្សាយ'}
-                shows={nowAiring}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.nowAiringLabel ?? 'កំពុងចាក់ផ្សាយ', shows: nowAiring })}
-                viewAllLabel={t.viewAll}
-                tag={{ label: t.ongoing, color: '#E3B341' }}
+            {/* "Continue Watching" replaces the old "Now Airing" row here —
+                members who left a show mid-episode get it surfaced right
+                at the top of home, easy to find and resume, instead of
+                having to dig for it in My List. */}
+            {continueItems.length > 0 && (
+              <ContinueWatchingRow
+                items={continueItems}
+                onResume={onResumeEpisode}
+                title={t.continueWatching}
+                epLabel={t.epShort}
               />
             )}
             {comingSoon.length > 0 && (
@@ -1367,6 +1345,56 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
       >
         {shows.map((s, i) => (
           <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ---------- Continue watching row ---------- */
+
+interface ContinueWatchingRowProps {
+  items: ContinueItem[];
+  onResume: (show: Show, episodeId: string) => void;
+  title: string;
+  epLabel: string;
+}
+
+function ContinueWatchingRow({ items, onResume, title, epLabel }: ContinueWatchingRowProps) {
+  return (
+    <section className="mt-9">
+      <div className="mb-3 flex items-center gap-2">
+        <Clock className="h-5 w-5 text-[#E3B341]" />
+        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+      </div>
+      <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-3">
+        {items.map((item) => (
+          <button
+            key={item.show.id}
+            onClick={() => onResume(item.show, item.episode.id)}
+            className="group relative w-[152px] shrink-0 text-left sm:w-[190px]"
+          >
+            <div className="relative aspect-video overflow-hidden rounded-xl bg-[#151822] ring-1 ring-white/5">
+              <img
+                src={item.episode.thumbnail_url ?? item.show.banner_url ?? item.show.poster_url ?? ''}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-transparent" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E6231F]/90 shadow-lg transition group-active:scale-90">
+                  <Play className="h-3.5 w-3.5 fill-white text-white" />
+                </div>
+              </div>
+              <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+                {epLabel} {item.episode.episode_number}
+              </span>
+            </div>
+            <h3 className="mt-1.5 truncate text-xs font-semibold text-white sm:text-sm">
+              {item.show.title}
+            </h3>
+          </button>
         ))}
       </div>
     </section>

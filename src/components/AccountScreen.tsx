@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Bookmark, Crown, Gift, ShieldCheck, Sparkles, User, FileText, Copy, Check } from 'lucide-react';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { getSubscriptionStatus, PRICING_TIERS, type SubscriptionStatus } from '@/lib/subscription';
@@ -13,9 +13,13 @@ interface Props {
   onOpenSubscription: () => void;
   onOpenSpin: () => void;
   onOpenLegal: () => void;
+  /** Fired when the watermark logo above the profile card is tapped 5
+   *  times in quick succession — the hidden admin entry point, moved
+   *  here from the home header so it lives on the account screen. */
+  onAdminSecretTap?: () => void;
 }
 
-export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscription, onOpenSpin, onOpenLegal }: Props) {
+export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscription, onOpenSpin, onOpenLegal, onAdminSecretTap }: Props) {
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [bonusInfo, setBonusInfo] = useState<BonusSpinInfo | null>(null);
   const [idCopied, setIdCopied] = useState(false);
@@ -27,6 +31,20 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
     getSubscriptionStatus().then(setStatus);
     getAvailableBonusSpin().then(setBonusInfo);
   }, []);
+
+  // Hidden admin entry point: 5 taps on the logo watermark within 2.5s
+  // opens admin sign-in. Nothing else on mobile can reach it, since the
+  // admin gate is desktop-only by design — this is the account-screen
+  // home for that gesture (it used to live on the home header logo).
+  const logoTapTimes = useRef<number[]>([]);
+  const handleLogoTap = () => {
+    const now = Date.now();
+    logoTapTimes.current = [...logoTapTimes.current.filter((ts) => now - ts < 2500), now];
+    if (logoTapTimes.current.length >= 5) {
+      logoTapTimes.current = [];
+      onAdminSecretTap?.();
+    }
+  };
 
   const tierLabel = status?.tier ? PRICING_TIERS.find((tier) => tier.key === status.tier)?.labelKm ?? status.tier : null;
 
@@ -44,19 +62,61 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
       </div>
 
       <div className="px-4 py-6">
-        {/* Identity — the avatar ring now reflects VIP status directly
-            (gold glow for active subscribers, quiet teal for guests)
-            instead of always being the same teal ring regardless of
-            status, so the premium feel starts here, not just below. */}
-        <div className="mb-6 flex flex-col items-center text-center">
+        {/* Logo watermark — sits above the profile card and doubles as the
+            hidden admin entry point (5 taps within 2.5s), moved here from
+            the home header so mobile still has a way in without a
+            visible admin button anywhere in the app. */}
+        <button
+          onClick={handleLogoTap}
+          aria-hidden="true"
+          tabIndex={-1}
+          className="mx-auto mb-4 block"
+        >
+          <img
+            src="/assets/images/logo-transparent.png"
+            alt=""
+            draggable={false}
+            className="mx-auto h-14 w-auto opacity-90 sm:h-16"
+          />
+        </button>
+
+        {/* Identity — a wide "VIP card" style block (photo + name/handle
+            side by side) instead of a stacked, centered column, echoing
+            the horizontal hero-card treatment used for featured shows
+            elsewhere in the app. The border/glow reflects VIP status
+            directly (gold for active subscribers, quiet teal for
+            guests), and it's the real Telegram photo + name, not a
+            placeholder — sized and spaced for a phone screen first. */}
+        <div
+          className="relative mb-4 flex items-center gap-3 overflow-hidden rounded-2xl border p-3.5 sm:gap-4 sm:p-4"
+          style={
+            status?.subscribed
+              ? {
+                  borderColor: 'rgba(227,179,65,0.3)',
+                  background:
+                    'linear-gradient(120deg, rgba(227,179,65,0.14), rgba(10,10,13,0.4) 60%)',
+                  boxShadow: '0 0 24px rgba(227,179,65,0.12)',
+                }
+              : { borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }
+          }
+        >
+          {status?.subscribed && (
+            <span
+              className="absolute right-3 top-3 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#0A0A0D]"
+              style={{ background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)' }}
+            >
+              <Crown className="h-2.5 w-2.5" /> VIP
+            </span>
+          )}
+
           <div
-            className="mb-3 flex h-20 w-20 items-center justify-center rounded-full"
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full sm:h-[72px] sm:w-[72px]"
             style={
               status?.subscribed
                 ? {
                     background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)',
                     padding: 2,
-                    boxShadow: '0 0 24px rgba(227,179,65,0.35)',
+                    boxShadow: '0 0 20px rgba(227,179,65,0.35)',
                   }
                 : { background: 'rgba(43,92,173,0.35)', padding: 2 }
             }
@@ -65,48 +125,52 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               {profile?.photoUrl ? (
                 <img src={profile.photoUrl} alt={profile.fullName ?? 'Profile'} className="h-full w-full object-cover" />
               ) : (
-                <User className="h-9 w-9 text-white/60" />
+                <User className="h-7 w-7 text-white/60" />
               )}
             </div>
           </div>
+
           {/* Real Telegram identity (name + @username), not a generic
               placeholder — this is what makes "no separate account
               needed, you're already signed in as you" credible at a
               glance instead of just a claim in copy somewhere. */}
-          <p className="text-base font-bold text-white">{profile?.fullName ?? 'ភ្ញៀវ'}</p>
-          {profile?.username && (
-            <p className="text-xs font-medium text-white/45">@{profile.username}</p>
-          )}
-          {profile?.id && (
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(String(profile.id));
-                  setIdCopied(true);
-                  setTimeout(() => setIdCopied(false), 1500);
-                } catch {
-                  /* clipboard unavailable — the ID is still visible to read/copy manually */
-                }
-              }}
-              className="mt-1 flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-medium text-white/40 transition hover:bg-white/10 hover:text-white/70"
-              title="ចម្លង Telegram ID"
-            >
-              ID: {profile.id}
-              {idCopied ? <Check className="h-2.5 w-2.5 text-[#34B37A]" /> : <Copy className="h-2.5 w-2.5" />}
-            </button>
-          )}
-          {status?.subscribed ? (
-            <span
-              className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold text-[#0A0A0D]"
-              style={{ background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)' }}
-            >
-              <Crown className="h-3.5 w-3.5" /> សមាជិក VIP
-            </span>
-          ) : (
-            <span className="mt-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/50">
-              មិនទាន់ជា VIP
-            </span>
-          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-bold text-white sm:text-lg">
+              {profile?.fullName ?? 'ភ្ញៀវ'}
+            </p>
+            {profile?.username && (
+              <p className="truncate text-xs font-medium text-white/45">@{profile.username}</p>
+            )}
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {status?.subscribed ? (
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#E3B341]">
+                  សមាជិក VIP
+                </span>
+              ) : (
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/50">
+                  មិនទាន់ជា VIP
+                </span>
+              )}
+              {profile?.id && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(String(profile.id));
+                      setIdCopied(true);
+                      setTimeout(() => setIdCopied(false), 1500);
+                    } catch {
+                      /* clipboard unavailable — the ID is still visible to read/copy manually */
+                    }
+                  }}
+                  className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-white/40 transition hover:bg-white/10 hover:text-white/70"
+                  title="ចម្លង Telegram ID"
+                >
+                  ID: {profile.id}
+                  {idCopied ? <Check className="h-2.5 w-2.5 text-[#34B37A]" /> : <Copy className="h-2.5 w-2.5" />}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* VIP status card — expiry is now the headline number (large,
