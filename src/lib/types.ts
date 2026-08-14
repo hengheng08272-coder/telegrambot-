@@ -36,6 +36,7 @@ export interface Episode {
   video_url: string | null;
   duration: number | null;
   is_free_preview?: boolean;
+  created_at?: string;
 }
 
 export interface ShowWithGenres extends Show {
