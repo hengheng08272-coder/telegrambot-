@@ -8,8 +8,8 @@ export default {
       },
       keyframes: {
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(232,169,74,0.55)' },
-          '50%': { boxShadow: '0 0 0 7px rgba(232,169,74,0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(230,35,31,0.45)' },
+          '50%': { boxShadow: '0 0 0 8px rgba(230,35,31,0)' },
         },
         'badge-pop': {
           '0%': { transform: 'scale(0.6)', opacity: '0' },
