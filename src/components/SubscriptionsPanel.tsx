@@ -26,11 +26,15 @@ interface TierEdits {
 
 export default function SubscriptionsPanel({ onClose }: Props) {
   const [images, setImages] = useState<Record<string, string>>({});
+  const [payLinks, setPayLinks] = useState<Record<string, string>>({});
+  const [payLinkDrafts, setPayLinkDrafts] = useState<Record<string, string>>({});
   const [edits, setEdits] = useState<Record<string, TierEdits>>({});
   const [savedAt, setSavedAt] = useState<Record<string, number>>({});
+  const [payLinkSavedAt, setPayLinkSavedAt] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [uploadingTier, setUploadingTier] = useState<string | null>(null);
   const [savingTier, setSavingTier] = useState<string | null>(null);
+  const [savingPayLinkTier, setSavingPayLinkTier] = useState<string | null>(null);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingTierRef = useRef<string | null>(null);
@@ -73,16 +77,20 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const load = async () => {
     setLoading(true);
     const [qrRes, priceRes] = await Promise.all([
-      supabase.from('payment_qr_codes').select('tier, image_url'),
+      supabase.from('payment_qr_codes').select('tier, image_url, pay_link'),
       supabase.from('pricing_tiers').select('key, price, months, pitch_km, bonus_enabled'),
     ]);
     if (qrRes.error) setError(qrRes.error.message);
 
     const qrMap: Record<string, string> = {};
+    const linkMap: Record<string, string> = {};
     for (const row of qrRes.data ?? []) {
       if (row.image_url) qrMap[row.tier] = row.image_url;
+      if (row.pay_link) linkMap[row.tier] = row.pay_link;
     }
     setImages(qrMap);
+    setPayLinks(linkMap);
+    setPayLinkDrafts(linkMap);
 
     const priceMap = new Map((priceRes.data ?? []).map((r) => [r.key, r]));
     const nextEdits: Record<string, TierEdits> = {};
@@ -140,6 +148,28 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       return;
     }
     load();
+  };
+
+  // Saves the ABA PayWay link for one tier — same payment_qr_codes row
+  // as the QR image, so this is an upsert on just the pay_link column.
+  // Each tier needs its own link generated for that tier's exact price
+  // (ABA Merchant -> Payment Link, fixed amount) — same rule as the QR.
+  const savePayLink = async (tierKey: string) => {
+    const value = (payLinkDrafts[tierKey] ?? '').trim();
+    setSavingPayLinkTier(tierKey);
+    setError('');
+    const { error: err } = await supabase.from('payment_qr_codes').upsert({
+      tier: tierKey,
+      pay_link: value || null,
+      updated_at: new Date().toISOString(),
+    });
+    setSavingPayLinkTier(null);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setPayLinks((prev) => ({ ...prev, [tierKey]: value }));
+    setPayLinkSavedAt((prev) => ({ ...prev, [tierKey]: Date.now() }));
   };
 
   const updateEdit = (tierKey: string, field: 'price' | 'months' | 'pitch_km', value: string) => {
@@ -318,6 +348,40 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#E3B341]/50"
                       />
                     </div>
+                  </div>
+
+                  <div className="mt-2.5">
+                    <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                      ABA PayWay link (ជម្រើស — ចុចទូទាត់ភ្លាមៗ)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        value={payLinkDrafts[tier.key] ?? ''}
+                        onChange={(e) =>
+                          setPayLinkDrafts((prev) => ({ ...prev, [tier.key]: e.target.value }))
+                        }
+                        placeholder="https://link.payway.com.kh/ABAPAY..."
+                        className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-white outline-none focus:border-[#E3B341]/50"
+                      />
+                      <button
+                        onClick={() => savePayLink(tier.key)}
+                        disabled={savingPayLinkTier === tier.key}
+                        className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+                      >
+                        {savingPayLinkTier === tier.key ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : payLinkSavedAt[tier.key] && Date.now() - payLinkSavedAt[tier.key] < 2000 ? (
+                          <Check className="h-3.5 w-3.5 text-[#34B37A]" />
+                        ) : (
+                          <Save className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-[10px] leading-relaxed text-white/35">
+                      ត្រូវជា link ដែលកំណត់ចំនួនទឹកប្រាក់ ${edit.price} ស្រាប់ (Payment Link ចេញពី ABA Merchant
+                      សម្រាប់ជម្រើសនេះម្នាក់ៗ) — ទុកទទេបើមិនទាន់មាន នោះ app នឹងបង្ហាញតែ QR ធម្មតា។
+                      {payLinks[tier.key] ? ' Link uploaded ✓' : ''}
+                    </p>
                   </div>
 
                   <button

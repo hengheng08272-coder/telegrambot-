@@ -16,11 +16,9 @@ import {
   Bookmark,
   Plus,
   Check,
-  Eye,
   Play,
   Clock,
   Calendar,
-  Building2,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchLatestEpisodeDates } from '@/lib/api';
@@ -341,34 +339,22 @@ export default function HomeScreen({
         }`}
       >
         <div className="mx-auto flex max-w-[1400px] items-center gap-1.5 px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
-          <button
-            onClick={() => {
-              setActiveTab('home');
-              setQuery('');
-              setViewAll(null);
-            }}
-            aria-label={t.navHome}
-            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-[#E6231F]/40"
-          >
-            <img
-              src="/assets/images/icon-192.png"
-              alt=""
-              draggable={false}
-              className="h-full w-full object-cover"
-            />
-          </button>
-
-          {/* Profile avatar + Telegram username — replaces the old plain
-              logo badge here so the header greets the person by their
-              own identity right away (the same real Telegram photo/name
-              AccountScreen shows), instead of a generic app icon. Tapping
-              it opens the same Account screen the bottom-nav icon does. */}
+          {/* Profile avatar + Telegram username. The app-icon button that
+              used to sit to the left of this was removed: Telegram already
+              prints "NINTANIME mini app" in its own title bar directly
+              above, so the icon was the third piece of branding in a
+              40px-tall strip and pushed the person's own name off-screen
+              on narrow phones. */}
           <button
             onClick={onOpenProfile}
             aria-label={t.navAccount}
             className="flex shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition hover:bg-white/5 sm:gap-2 sm:pr-2.5"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-[#E6231F]/40">
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ${
+                subscribed ? 'ring-[#E3B341]' : 'ring-white/15'
+              }`}
+            >
               {telegramProfile?.photoUrl ? (
                 <img
                   src={telegramProfile.photoUrl}
@@ -385,8 +371,13 @@ export default function HomeScreen({
                 />
               )}
             </div>
+            {/* Shown on every screen size — this was `hidden sm:inline`,
+                which meant the one place the app addresses the viewer by
+                name was invisible on the phones nearly everyone uses it
+                on. Falls back to the real name when Telegram has no
+                @username set, so the slot is never silently empty. */}
             {(telegramProfile?.username || telegramProfile?.fullName) && (
-              <span className="hidden max-w-[110px] truncate text-xs font-bold text-white sm:inline">
+              <span className="max-w-[92px] truncate text-xs font-bold text-white sm:max-w-[130px]">
                 {telegramProfile.username ? `@${telegramProfile.username}` : telegramProfile.fullName}
               </span>
             )}
@@ -396,7 +387,7 @@ export default function HomeScreen({
               (see src/lib/presence.ts), not a randomized/fake number.
               Kept next to the profile chip, just tighter now that the
               chip above takes some of the header's width. */}
-          <div className="flex shrink-0 items-center gap-1 rounded-full border border-[#E6231F]/25 bg-[#E6231F]/10 px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6231F]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E6231F]" />
@@ -404,21 +395,6 @@ export default function HomeScreen({
             <span className="text-xs font-bold text-white">{watchingNow.toLocaleString()}</span>
             <span className="hidden text-[10px] text-white/50 sm:inline sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
           </div>
-
-          {/* "Auto" cue — moved here from the hero banner so it lives in
-              the one part of the screen that never scrolls away, instead
-              of disappearing the moment the hero scrolls past. */}
-          {heroVisible && (
-            <div className="hidden shrink-0 items-center gap-1 rounded-full bg-white/[0.06] px-2 py-1 sm:flex">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#2B5CAD]/70" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#2B5CAD]" />
-              </span>
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-white/50">
-                {t.autoLabel ?? 'Auto'}
-              </span>
-            </div>
-          )}
 
           {/* Nav links — scrolls horizontally instead of wrapping/breaking
               on the narrowest phones, but fits on one line on anything
@@ -624,7 +600,7 @@ export default function HomeScreen({
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
               viewAllLabel={t.viewAll}
-              tag={{ label: t.newTag ?? 'NEW', color: '#2B5CAD' }}
+              tag={{ label: t.newTag ?? 'NEW', color: '#EDEDF0' }}
             />
             <RailRow
               icon={<Flame className="h-5 w-5 text-[#E6231F]" />}
@@ -885,16 +861,17 @@ function CoverflowHero({
             draggable={false}
           />
         )}
-        {/* Flat black background — closer to Netflix's own Top 10 rows
-            (solid dark, no colored glow) than the previous teal-tinted
-            vignette, per the "make it cleaner, more like Netflix" ask. */}
-        <div className="absolute inset-0 bg-[#06070A]/60" />
+        {/* Scrim over the blurred artwork. Deliberately lighter than a
+            flat black wash: the blurred poster IS the colour source, so
+            the ambience changes with every slide instead of every show
+            looking identical. */}
+        <div className="absolute inset-0 bg-[#06070A]/42" />
         {/* Fade the top into the header and the bottom into the page */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(6,7,10,0.92) 0%, rgba(6,7,10,0.6) 14%, rgba(6,7,10,0.15) 28%, rgba(6,7,10,0) 40%, rgba(6,7,10,0) 78%, rgba(6,7,10,1) 100%)',
+              'linear-gradient(180deg, rgba(6,7,10,0.92) 0%, rgba(6,7,10,0.5) 16%, rgba(6,7,10,0) 34%, rgba(6,7,10,0) 74%, rgba(6,7,10,0.85) 92%, rgba(6,7,10,1) 100%)',
           }}
         />
       </div>
@@ -909,20 +886,17 @@ function CoverflowHero({
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
           className="hero-card-enter relative z-10 shrink-0"
-          style={{ width: '28%', maxWidth: 138 }}
+          style={{ width: '32%', maxWidth: 152 }}
         >
           {/* Lantern-glow poster card — a warm double-ring frame (jade
               inner line, antique-gold outer glow) stands in for the old
               rank numeral. It reads as "the one worth lighting up" without
               pinning the hero's identity to a view-count rank. */}
           <div
-            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-[20px] transition-transform duration-500 animate-glow-pulse"
-            style={{
-              boxShadow:
-                '0 30px 70px rgba(0,0,0,0.75), 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1.5px rgba(43,92,173,0.45), 0 0 36px rgba(217,164,65,0.28)',
-            }}
+            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-2xl transition-transform duration-500"
+            style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.8), 0 6px 18px rgba(0,0,0,0.55)' }}
           >
-            <div className="pointer-events-none absolute inset-0 z-10 rounded-[20px] ring-1 ring-inset ring-white/15" />
+            <div className="pointer-events-none absolute inset-0 z-10 rounded-2xl ring-1 ring-inset ring-white/12" />
             <img
               src={hero.poster_url ?? hero.banner_url ?? ''}
               alt={hero.title}
@@ -970,7 +944,7 @@ function CoverflowHero({
           <h2
             key={hero.id}
             onClick={() => onSelectShow(hero)}
-            className="title-shine cursor-pointer text-lg font-black leading-[1.1] text-white sm:text-2xl"
+            className="cursor-pointer text-xl font-black leading-[1.05] text-white sm:text-3xl"
             style={{
               fontFamily: '"Anton", Battambang, Inter, sans-serif',
               letterSpacing: '0.01em',
@@ -991,14 +965,6 @@ function CoverflowHero({
             <span className="flex items-center gap-1 text-[#E3B341]">
               <Star className="h-2.5 w-2.5 fill-[#E3B341] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
             </span>
-            {typeof hero.view_count === 'number' && (
-              <>
-                <span className="h-3 w-px bg-white/20" aria-hidden />
-                <span className="flex items-center gap-1 text-white/60">
-                  <Eye className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {hero.view_count.toLocaleString()}
-                </span>
-              </>
-            )}
             {hero.release_year && (
               <>
                 <span className="h-3 w-px bg-white/20" aria-hidden />
@@ -1026,12 +992,6 @@ function CoverflowHero({
             )}
           </div>
 
-          {hero.studio && (
-            <p className="mt-1 flex items-center gap-1 truncate text-[10px] text-white/45 sm:text-xs">
-              <Building2 className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" /> {t.studio} {hero.studio}
-            </p>
-          )}
-
           <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
             <button
               onClick={() => onSelectShow(hero)}
@@ -1047,7 +1007,7 @@ function CoverflowHero({
               }}
               className={`flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11px] font-bold transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs ${
                 inList
-                  ? 'border-[#2B5CAD]/40 bg-[#2B5CAD]/10 text-[#2B5CAD]'
+                  ? 'border-white/30 bg-white/[0.12] text-white'
                   : 'border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10'
               }`}
             >
@@ -1072,10 +1032,10 @@ function CoverflowHero({
               aria-label={s.title}
               className="shrink-0 overflow-hidden rounded-lg transition-all duration-300"
               style={{
-                width: 44,
+                width: 52,
                 aspectRatio: '2 / 3',
-                opacity: i === index ? 1 : 0.45,
-                boxShadow: i === index ? '0 0 0 2px #E6231F, 0 4px 14px rgba(230,35,31,0.35)' : 'none',
+                opacity: i === index ? 1 : 0.4,
+                boxShadow: i === index ? '0 0 0 2px rgba(255,255,255,0.9)' : 'none',
                 transform: i === index ? 'translateY(-3px)' : 'none',
               }}
             >
@@ -1119,7 +1079,7 @@ function CoverflowHero({
             className="hero-progress-fill h-full"
             style={{
               animationDuration: `${HERO_AUTO_MS}ms`,
-              background: 'linear-gradient(90deg, #2B5CAD, #E6231F)',
+              background: '#E6231F',
             }}
           />
         </div>
@@ -1209,7 +1169,7 @@ function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
     <button
       onClick={onClick}
       className={`flex flex-1 flex-col items-center gap-0.5 py-2 transition ${
-        active ? 'text-[#2B5CAD]' : 'text-white/50 active:text-white/80'
+        active ? 'text-[#E6231F]' : 'text-white/50 active:text-white/80'
       }`}
     >
       {icon}
@@ -1278,7 +1238,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
   const backdropSrc = ranked ? shows[0]?.banner_url ?? shows[0]?.poster_url : null;
 
   return (
-    <section className={ranked ? 'relative mt-6 overflow-hidden rounded-2xl' : 'mt-9'}>
+    <section className={ranked ? 'relative mt-8 overflow-hidden rounded-2xl' : 'mt-8'}>
       {ranked && backdropSrc && (
         <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
           <img
@@ -1296,7 +1256,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         <div className="px-3 pt-5 text-center">
           <div className="mb-1 flex items-center justify-center gap-2">
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-            <h2 className="text-xl font-black tracking-wide text-[#2B5CAD]">{title}</h2>
+            <h2 className="text-xl font-black tracking-wide text-white">{title}</h2>
             {tag && (
               <span
                 className="rounded-full px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
@@ -1341,7 +1301,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
       )}
       <div
         ref={scrollerRef}
-        className={`no-scrollbar flex overflow-x-auto pb-3 ${ranked ? 'gap-5 px-3 pt-4' : 'gap-2.5'}`}
+        className={`no-scrollbar flex overflow-x-auto pb-3 ${ranked ? 'gap-5 px-3 pt-4' : 'gap-3'}`}
       >
         {shows.map((s, i) => (
           <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
