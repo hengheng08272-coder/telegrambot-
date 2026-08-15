@@ -16,11 +16,22 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // Required secrets (same ones already used by the other functions):
 //   TELEGRAM_BOT_TOKEN
 //   TELEGRAM_GROUP_ID
+//
+// FIX (this deploy): Access-Control-Allow-Headers was missing "apikey"
+// and "x-client-info" — headers the supabase-js client always attaches
+// to functions.invoke() calls. The browser's CORS preflight was failing
+// on every single call as a result, silently blocking the *real* POST
+// from ever leaving the browser (only the OPTIONS preflight ever reached
+// this function — confirmed via the Supabase edge function logs, which
+// showed thousands of OPTIONS 200s and zero POSTs). The call caught the
+// resulting network error and failed open (membership stayed 'ok'), so
+// viewers weren't blocked from the app, but the real membership check
+// never once actually ran.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 // Statuses that count as "still in the group". "left" and "kicked" do not.
