@@ -1,0 +1,40 @@
+# systemd unit for the ABA userbot relay (Linux VPS / Raspberry Pi).
+#
+# Install:
+#   sudo cp aba-relay.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now aba-relay
+# Watch the log:
+#   journalctl -u aba-relay -f
+#
+# Run the script MANUALLY once first, so Telethon can ask for the phone
+# number and login code and write the .session file. systemd cannot answer
+# an interactive prompt, so starting here before that first login just
+# produces a restart loop.
+
+[Unit]
+Description=ABA payment notification relay (Telegram userbot -> Supabase)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR_LINUX_USER
+WorkingDirectory=/home/YOUR_LINUX_USER/aba-relay
+
+Environment=TG_API_ID=REPLACE_ME
+Environment=TG_API_HASH=REPLACE_ME
+Environment=ABA_INGEST_SECRET=REPLACE_ME
+Environment=ABA_INGEST_URL=https://dowjxhkijtlsdvhyuddt.supabase.co/functions/v1/aba-notify-ingest
+Environment=ABA_SOURCE_CHATS=REPLACE_ME
+Environment=ABA_TEXT_FILTER=S2_Nint.Ani
+
+ExecStart=/usr/bin/python3 /home/YOUR_LINUX_USER/aba-relay/aba-userbot-forwarder.py
+
+# The whole point of this service is to be running when a payment lands,
+# so always come back up rather than dying on one bad night.
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target
