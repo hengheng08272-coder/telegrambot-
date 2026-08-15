@@ -20,8 +20,33 @@ const FALLBACK_QR_IMAGES: Record<string, string> = {
 interface TierEdits {
   price: string;
   months: string;
+  label_km: string;
+  label_en: string;
   pitch_km: string;
   bonus_enabled: boolean;
+}
+
+// Khmer numerals so a label like "៦ ខែ" can be compared against the
+// `months` value — see labelMonthsMismatch() below.
+const KHMER_DIGITS = '០១២៣៤៥៦៧៨៩';
+
+function firstNumberIn(text: string): number | null {
+  const normalised = text.replace(/[០-៩]/g, (d) => String(KHMER_DIGITS.indexOf(d)));
+  const m = /\d+/.exec(normalised);
+  return m ? parseInt(m[0], 10) : null;
+}
+
+// The plan label is what the viewer reads; `months` is what actually gets
+// added to their subscription. When those disagree, someone pays for what
+// the label promised and silently receives something else — which is
+// exactly how the '2m' tier ended up labelled "១ ខែ" while granting 2
+// months. Surfacing it in the panel means it gets caught at edit time
+// instead of after a customer complains.
+function labelMonthsMismatch(labelKm: string, months: string): number | null {
+  const labelled = firstNumberIn(labelKm);
+  const actual = parseInt(months, 10);
+  if (labelled === null || !Number.isFinite(actual)) return null;
+  return labelled === actual ? null : labelled;
 }
 
 export default function SubscriptionsPanel({ onClose }: Props) {
@@ -78,7 +103,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     setLoading(true);
     const [qrRes, priceRes] = await Promise.all([
       supabase.from('payment_qr_codes').select('tier, image_url, pay_link'),
-      supabase.from('pricing_tiers').select('key, price, months, pitch_km, bonus_enabled'),
+      supabase.from('pricing_tiers').select('key, price, months, label_km, label_en, pitch_km, bonus_enabled'),
     ]);
     if (qrRes.error) setError(qrRes.error.message);
 
@@ -99,6 +124,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       nextEdits[tier.key] = {
         price: String(override?.price ?? tier.price),
         months: String(override?.months ?? tier.months),
+        label_km: override?.label_km ?? tier.labelKm,
+        label_en: override?.label_en ?? tier.labelEn,
         pitch_km: override?.pitch_km ?? tier.pitchKm ?? '',
         bonus_enabled: override?.bonus_enabled ?? tier.bonusEnabled,
       };
@@ -172,7 +199,11 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     setPayLinkSavedAt((prev) => ({ ...prev, [tierKey]: Date.now() }));
   };
 
-  const updateEdit = (tierKey: string, field: 'price' | 'months' | 'pitch_km', value: string) => {
+  const updateEdit = (
+    tierKey: string,
+    field: 'price' | 'months' | 'label_km' | 'label_en' | 'pitch_km',
+    value: string,
+  ) => {
     setEdits((prev) => ({ ...prev, [tierKey]: { ...prev[tierKey], [field]: value } }));
   };
 
@@ -195,14 +226,18 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setError('Enter a valid duration (months).');
       return;
     }
+    if (!edit.label_km.trim()) {
+      setError('Enter the plan name shown to viewers (Khmer).');
+      return;
+    }
     setSavingTier(tier.key);
     setError('');
     const { error: err } = await supabase.from('pricing_tiers').upsert({
       key: tier.key,
       price,
       months,
-      label_km: tier.labelKm,
-      label_en: tier.labelEn,
+      label_km: edit.label_km.trim(),
+      label_en: edit.label_en.trim() || tier.labelEn,
       pitch_km: edit.pitch_km,
       bonus_enabled: edit.bonus_enabled,
       updated_at: new Date().toISOString(),
@@ -213,6 +248,9 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       return;
     }
     setSavedAt((prev) => ({ ...prev, [tier.key]: Date.now() }));
+    // Re-read so the panel shows what the DB actually holds, not just
+    // what was typed — the viewer-facing app reads the same rows.
+    load();
   };
 
   return (
@@ -224,7 +262,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <QrCode className="h-4 w-4 text-[#E3B341]" />
-            <h2 className="text-sm font-bold">Subscriptions — QR, price & description</h2>
+            <h2 className="text-sm font-bold">Subscriptions — QR, តម្លៃ, រយៈពេល &amp; ការពិពណ៌នា</h2>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
             <X className="h-4 w-4" />
@@ -282,9 +320,12 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               const edit = edits[tier.key] ?? {
                 price: String(tier.price),
                 months: String(tier.months),
+                label_km: tier.labelKm,
+                label_en: tier.labelEn,
                 pitch_km: tier.pitchKm ?? '',
                 bonus_enabled: tier.bonusEnabled,
               };
+              const mismatch = labelMonthsMismatch(edit.label_km, edit.months);
               const qr = images[tier.key] || FALLBACK_QR_IMAGES[tier.key];
               return (
                 <div key={tier.key} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -316,12 +357,13 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-[80px_80px_1fr] gap-2">
+                  <div className="grid grid-cols-[76px_76px_1fr] gap-2">
                     <div>
                       <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
-                        Price ($)
+                        តម្លៃ ($)
                       </label>
                       <input
+                        inputMode="decimal"
                         value={edit.price}
                         onChange={(e) => updateEdit(tier.key, 'price', e.target.value.replace(/[^0-9.]/g, ''))}
                         className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#E3B341]/50"
@@ -329,9 +371,10 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     </div>
                     <div>
                       <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
-                        Duration (mo)
+                        រយៈពេល (ខែ)
                       </label>
                       <input
+                        inputMode="numeric"
                         value={edit.months}
                         onChange={(e) => updateEdit(tier.key, 'months', e.target.value.replace(/[^0-9]/g, ''))}
                         className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#2B5CAD]/50"
@@ -339,7 +382,32 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     </div>
                     <div>
                       <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
-                        Description (Khmer)
+                        ឈ្មោះគម្រោង (ខ្មែរ)
+                      </label>
+                      <input
+                        value={edit.label_km}
+                        onChange={(e) => updateEdit(tier.key, 'label_km', e.target.value)}
+                        placeholder="ឧ. ៣ ខែ"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#E3B341]/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-[130px_1fr] gap-2">
+                    <div>
+                      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                        Plan name (EN)
+                      </label>
+                      <input
+                        value={edit.label_en}
+                        onChange={(e) => updateEdit(tier.key, 'label_en', e.target.value)}
+                        placeholder="e.g. 3 Months"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#E3B341]/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                        ការពិពណ៌នា (ខ្មែរ)
                       </label>
                       <input
                         value={edit.pitch_km}
@@ -348,6 +416,29 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#E3B341]/50"
                       />
                     </div>
+                  </div>
+
+                  {/* Live preview of the exact line the viewer sees, plus a
+                      warning when the name promises a different number of
+                      months from the one actually granted. */}
+                  <div className="mt-2 rounded-lg border border-white/[0.07] bg-black/20 px-2.5 py-2">
+                    <p className="text-[10px] uppercase tracking-wide text-white/30">
+                      អ្នកទស្សនាឃើញ
+                    </p>
+                    <p className="mt-0.5 text-xs text-white">
+                      <span className="font-bold text-[#E3B341]">${edit.price || '—'}</span>
+                      <span className="text-white/40"> · </span>
+                      {edit.label_km || '—'}
+                      <span className="text-white/40">
+                        {' '}— ទទួលបាន {edit.months || '—'} ខែ
+                      </span>
+                    </p>
+                    {mismatch !== null && (
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-[#FFB84D]">
+                        ⚠️ ឈ្មោះសរសេរ {mismatch} ខែ ប៉ុន្តែផ្ដល់ពិត {edit.months} ខែ —
+                        សូមកែឲ្យត្រូវគ្នា មិនដូច្នេះអតិថិជននឹងទទួលខុសពីអ្វីដែលគាត់ឃើញ។
+                      </p>
+                    )}
                   </div>
 
                   <div className="mt-2.5">

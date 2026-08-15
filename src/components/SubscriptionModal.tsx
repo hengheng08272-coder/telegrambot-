@@ -7,8 +7,6 @@ import {
   Download,
   ImagePlus,
   Loader2,
-  Lock,
-  PartyPopper,
   RefreshCw,
   Send,
   ShieldCheck,
@@ -31,6 +29,8 @@ import {
   createAbaCheckout,
   type AbaCheckoutResult,
   checkSubmissionStatus,
+  getPaymentReceipt,
+  type PaymentReceipt,
   expireStaleSubmission,
   cancelPaymentSubmission,
   type PaymentSubmission,
@@ -93,7 +93,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
   const [decision, setDecision] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
-  const [claimed, setClaimed] = useState(false);
+  const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
   const [attachingProof, setAttachingProof] = useState(false);
   const [proofSent, setProofSent] = useState(false);
   const [ticketRenewed, setTicketRenewed] = useState(false);
@@ -198,12 +198,17 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     })();
   }, [secondsLeft, step, pending, decision, proofSent, attachingProof, tiers]);
 
+  // Confirmation is now the ONLY thing that ends the wait — there is no
+  // "I have paid" button to press any more, because a button like that
+  // only ever restated what the poll already knew. The moment the ticket
+  // flips to approved we unlock and show the receipt ourselves, which is
+  // how every real checkout behaves.
   useEffect(() => {
-    if (decision === 'approved' && !notifiedApprovedRef.current) {
-      notifiedApprovedRef.current = true;
-      onApproved();
-    }
-  }, [decision, onApproved]);
+    if (decision !== 'approved' || notifiedApprovedRef.current) return;
+    notifiedApprovedRef.current = true;
+    onApproved();
+    if (pending) getPaymentReceipt(pending.id).then(setReceipt);
+  }, [decision, onApproved, pending]);
 
   const tier = visibleTiers.find((tr) => tr.key === selectedKey) ?? null;
   const payTier = tiers.find((tr) => tr.key === (pending?.tier ?? selectedKey)) ?? null;
@@ -235,7 +240,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     onSubmitted();
     setSecondsLeft(WAIT_WINDOW_SECONDS);
     setDecision('waiting');
-    setClaimed(false);
+    setReceipt(null);
     setProofSent(false);
     setTicketRenewed(false);
     setPayMode('auto');
@@ -277,7 +282,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     setAbaCheckout(null);
     setDecision('waiting');
     setSecondsLeft(WAIT_WINDOW_SECONDS);
-    setClaimed(false);
+    setReceipt(null);
     setProofSent(false);
     setTicketRenewed(false);
     setPayMode('auto');
@@ -435,23 +440,77 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
               </p>
             )}
           </>
-        ) : decision === 'approved' && claimed ? (
-          /* ---------------------------- UNLOCKED ---------------------------- */
-          <div className="flex h-full flex-col items-center justify-center gap-5 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#35D399]/10">
-              <PartyPopper className="h-8 w-8 text-[#35D399]" />
+        ) : decision === 'approved' ? (
+          /* ---------------------------- PAID (RECEIPT) ---------------------------- */
+          <div className="flex h-full flex-col justify-center gap-5 py-4">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#35D399]/12 ring-1 ring-[#35D399]/30">
+                <Check className="h-8 w-8 text-[#35D399]" />
+              </div>
+              <p className="mt-4 text-lg font-bold text-white">{t.subPaySuccessTitle}</p>
+              <p className="mt-1.5 max-w-[19rem] text-xs leading-relaxed text-white/50">
+                {t.subPaySuccessDesc}
+              </p>
             </div>
-            <div>
-              <p className="text-lg font-bold text-white">{t.subUnlockedTitle}</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/55">{t.subUnlockedDesc}</p>
+
+            {/* Receipt — the four things a payer screenshots: what they
+                bought, what it cost, the bank's own reference (ABA's
+                "Trx. ID", so it can be checked against a statement) and
+                when it expires. Falls back to the internal ticket id when
+                the notification carried no reference. */}
+            <div className="rounded-3xl border border-white/[0.08] bg-white/[0.025] px-4 py-1">
+              {(
+                [
+                  [
+                    t.subReceiptPlan,
+                    payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : '—',
+                  ],
+                  [
+                    t.subReceiptAmount,
+                    receipt ? `$${receipt.amount.toFixed(2)}` : payTier ? `$${payTier.price}` : '—',
+                  ],
+                  [
+                    t.subReceiptRef,
+                    receipt?.abaTrxId ?? (receipt ? receipt.id.slice(0, 8).toUpperCase() : '—'),
+                  ],
+                  [
+                    t.subReceiptExpires,
+                    receipt?.expiresAt
+                      ? new Date(receipt.expiresAt).toLocaleDateString(
+                          lang === 'km' ? 'km-KH' : 'en-GB',
+                          { day: '2-digit', month: 'short', year: 'numeric' },
+                        )
+                      : '—',
+                  ],
+                ] as [string, string][]
+              ).map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-3 border-b border-white/[0.05] py-2.5 last:border-b-0"
+                >
+                  <span className="shrink-0 text-[11px] text-white/40">{label}</span>
+                  <span className="truncate text-xs font-semibold tabular-nums text-white">
+                    {value}
+                  </span>
+                </div>
+              ))}
             </div>
-            <button
-              onClick={onGoSpin}
-              className="w-full rounded-full bg-gradient-to-r from-[#4A72C4] to-[#1F3A73] py-3.5 text-sm font-bold text-white shadow-[0_12px_34px_-12px_rgba(74,114,196,0.8)] transition active:scale-[0.98]"
-            >
-              <Sparkles className="mr-1.5 inline h-4 w-4" />
-              {t.subGoDraw}
-            </button>
+
+            <div className="space-y-2.5">
+              <button
+                onClick={onGoSpin}
+                className="w-full rounded-full bg-gradient-to-r from-[#4A72C4] to-[#1F3A73] py-3.5 text-sm font-bold text-white shadow-[0_12px_34px_-12px_rgba(74,114,196,0.8)] transition active:scale-[0.98]"
+              >
+                <Sparkles className="mr-1.5 inline h-4 w-4" />
+                {t.subGoDraw}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full rounded-full border border-white/[0.08] bg-white/[0.03] py-3.5 text-sm font-bold text-white/70 transition active:scale-[0.98] hover:bg-white/[0.07] hover:text-white"
+              >
+                {t.subStartWatching}
+              </button>
+            </div>
           </div>
         ) : decision === 'rejected' ? (
           /* ---------------------------- REJECTED ---------------------------- */
@@ -469,6 +528,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 setPending(null);
                 setAbaCheckout(null);
                 setDecision('waiting');
+                setReceipt(null);
                 setTicketRenewed(false);
               }}
               className="w-full rounded-full border border-white/10 bg-white/5 py-3.5 text-sm font-bold text-white transition active:scale-[0.98] hover:bg-white/10"
@@ -625,55 +685,27 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 both tabs since the underlying ticket (ABA webhook match
                 or an approved receipt) is the same either way. */}
             <div className="rounded-3xl border border-white/[0.08] bg-white/[0.025] px-4 py-5 text-center">
-              <div
-                className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full ${
-                  decision === 'approved' ? 'bg-[#35D399]/15' : 'bg-white/[0.06]'
-                }`}
-              >
-                {decision === 'approved' ? (
-                  <Check className="h-6 w-6 text-[#35D399]" />
-                ) : (
-                  <Clock className="h-6 w-6 animate-pulse text-[#4A72C4]" />
-                )}
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.06]">
+                <Clock className="h-6 w-6 animate-pulse text-[#4A72C4]" />
               </div>
 
-              <p className="mt-3 text-[15px] font-bold text-white">
-                {decision === 'approved' ? t.subReadyToClaimTitle : t.subAutoWaitTitle}
-              </p>
+              <p className="mt-3 text-[15px] font-bold text-white">{t.subAutoWaitTitle}</p>
               <p className="mx-auto mt-1.5 max-w-[19rem] text-xs leading-relaxed text-white/50">
-                {decision === 'approved' ? t.subReadyToClaimDesc : t.subAutoWaitDesc}
+                {t.subAutoWaitDesc}
               </p>
 
-              {decision !== 'approved' && (
-                <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold tabular-nums text-white/65">
-                  <Clock className="h-3 w-3" />
-                  {mmss}
-                  <span className="text-white/30">· {t.subCooldownNote}</span>
-                </div>
-              )}
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold tabular-nums text-white/65">
+                <Clock className="h-3 w-3" />
+                {mmss}
+                <span className="text-white/30">· {t.subCooldownNote}</span>
+              </div>
 
-              {ticketRenewed && decision !== 'approved' && (
+              {ticketRenewed && (
                 <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-white/35">
                   <RefreshCw className="h-3 w-3" /> {t.subTicketRenewed}
                 </p>
               )}
             </div>
-
-            {/* Claim gate — locked until the payment is actually
-                confirmed (ABA match or verified receipt). It reports
-                status, it doesn't take a promise. */}
-            <button
-              onClick={() => decision === 'approved' && setClaimed(true)}
-              disabled={decision !== 'approved'}
-              className={`flex w-full items-center justify-center gap-2 rounded-full py-4 text-sm font-bold transition ${
-                decision === 'approved'
-                  ? 'bg-gradient-to-r from-[#35D399] to-[#1F9E70] text-[#04140E] shadow-[0_12px_34px_-12px_rgba(53,211,153,0.85)] active:scale-[0.98]'
-                  : 'cursor-not-allowed border border-white/[0.08] bg-white/[0.03] text-white/35'
-              }`}
-            >
-              {decision === 'approved' ? <Check className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-              {t.subPaidBtn}
-            </button>
 
             {error && (
               <p className="rounded-xl border border-[#E6231F]/25 bg-[#E6231F]/10 px-3 py-2 text-xs text-[#FF8A85]">
