@@ -105,14 +105,10 @@ export function hasTelegramFullscreenAPI(): boolean {
   return !!getTelegramWebApp()?.requestFullscreen;
 }
 
-// Invites a friend to the VIP group itself — deliberately NOT a deep
-// link into any show. Sharing content directly (even just a "here's a
-// link" message) meant anyone who received it could open the Mini App
-// and watch for free without ever joining or paying, since the app has
-// no other gate at that point besides verify-membership. Sharing the
-// group's own invite link instead only ever leads to the join/paywall
-// flow — nothing plays until they're actually a member. Needs
-// VITE_TELEGRAM_GROUP_LINK configured; without it this is a no-op.
+// Invites a friend to the community group (optional — not required to
+// use the app or watch anything). Free shows play for anyone who opens
+// the Mini App directly; this is just a way to grow the group itself.
+// Needs VITE_TELEGRAM_GROUP_LINK configured; without it this is a no-op.
 export async function inviteFriend(): Promise<'shared' | 'copied' | 'failed' | 'not_configured'> {
   const groupLink = import.meta.env.VITE_TELEGRAM_GROUP_LINK as string | undefined;
   if (!groupLink) return 'not_configured';
@@ -143,15 +139,12 @@ export async function inviteFriend(): Promise<'shared' | 'copied' | 'failed' | '
 }
 
 // Shares a deep link straight into a specific show
-// (t.me/YourBot/app?startapp=show_<id>). This used to be unsafe —
-// anyone who received the link could watch for free without ever
-// joining — but now that verify-membership actually checks Telegram
-// group membership on every app open (see App.tsx), a non-member who
-// taps this link just gets sent to the NotMemberScreen instead of any
-// content, the same as opening the app any other way. So this is safe
-// to offer again. Needs VITE_TELEGRAM_BOT_USERNAME configured (bot
-// username, no @); without it, falls back to sharing the current page
-// URL instead of a proper deep link.
+// (t.me/YourBot/app?startapp=show_<id>). Anyone who opens it can watch
+// straight away if the show/episode is free; VIP-only episodes still
+// open the subscribe sheet instead of playing, same as any other entry
+// point. Needs VITE_TELEGRAM_BOT_USERNAME configured (bot username, no
+// @); without it, falls back to sharing the current page URL instead of
+// a proper deep link.
 export async function shareShow(showId: string, title: string): Promise<'shared' | 'copied' | 'failed'> {
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
   const deepLink = botUsername
@@ -176,6 +169,54 @@ export async function shareShow(showId: string, title: string): Promise<'shared'
 
   try {
     await navigator.clipboard.writeText(deepLink);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
+}
+
+// Builds this viewer's personal referral link
+// (t.me/YourBot/app?startapp=ref_<their_telegram_id>). Whoever opens it
+// gets tagged as referred by them — see src/lib/referral.ts for what
+// happens with that tag. Returns null if we don't actually know who
+// this viewer is (not inside Telegram) or VITE_TELEGRAM_BOT_USERNAME
+// isn't configured, since a referral link is meaningless without both.
+export function getReferralLink(): string | null {
+  const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
+  const user = getCurrentTelegramUser();
+  if (!botUsername || !user) return null;
+  return `https://t.me/${botUsername}/app?startapp=ref_${user.id}`;
+}
+
+// Shares the viewer's referral link with a friend. Unlike inviteFriend
+// (which points at the community group) and shareShow (a specific show),
+// this is the growth loop tied to the reward in src/lib/referral.ts — so
+// unlike those two, it has no clipboard/URL fallback: without a real
+// Telegram identity there's no link to build (getReferralLink returns
+// null), and sharing "nothing" would silently look like success.
+export async function shareReferralLink(): Promise<'shared' | 'copied' | 'failed' | 'not_configured'> {
+  const link = getReferralLink();
+  if (!link) return 'not_configured';
+
+  const text = 'ចូលរួមទស្សនា Anime HD ភាសាខ្មែរ ជាមួយខ្ញុំនៅ NINT ANIME!';
+  const tg = getTelegramWebApp();
+  if (tg?.openTelegramLink) {
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+    tg.openTelegramLink(shareUrl);
+    return 'shared';
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: text, url: link });
+      return 'shared';
+    } catch {
+      return 'failed';
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(link);
     return 'copied';
   } catch {
     return 'failed';

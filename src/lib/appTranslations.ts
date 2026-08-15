@@ -296,13 +296,16 @@ export const appText = {
     // Subscription — full-screen redesign
     subChoosePlan: 'Choose your plan',
     subJoinVip: 'Join VIP',
-    subJoinVipNote: 'Our team is notified the moment you tap this',
+    subJoinVipNote: 'Opens your secure payment ticket instantly',
     subSelected: 'Selected',
     subFullAccess: 'Full access, every episode',
     subDrawAfterPay: 'Lucky draw after payment',
     subQrMissing: 'No QR for this plan yet — message the admin in the group.',
     subQrCaption:
       'Screenshot or save this QR to pay. Your VIP unlocks automatically once the payment lands. To make it faster, just add your receipt photo below.',
+    subManualFlowNote:
+      'Screenshot or save this QR to pay, then upload a clear photo of your receipt below and tap Pay to send it for review.',
+    subChangePhoto: 'Remove photo',
     subUploadReceiptCta: 'Add receipt photo',
     subUploadReceiptHint: 'Fastest way to unlock — optional',
     subAutoWaitTitle: 'Waiting for your payment',
@@ -647,13 +650,16 @@ export const appText = {
     // Subscription — full-screen redesign
     subChoosePlan: 'ជ្រើសរើសគម្រោងរបស់អ្នក',
     subJoinVip: 'ចូលសមាជិត VIP',
-    subJoinVipNote: 'ក្រុមការងារនឹងទទួលបានសារភ្លាមៗ ពេលអ្នកចុច',
+    subJoinVipNote: 'បើកសំបុត្រទូទាត់របស់អ្នកភ្លាមៗ ដោយសុវត្ថិភាព',
     subSelected: 'បានជ្រើសរើស',
     subFullAccess: 'មើលបានគ្រប់ភាគ',
     subDrawAfterPay: 'ចាប់រង្វាន់ក្រោយទូទាត់',
     subQrMissing: 'មិនទាន់មាន QR សម្រាប់គម្រោងនេះទេ — សូមទាក់ទង admin ក្នុង group។',
     subQrCaption:
       'សូមថតអេក្រង់ (screenshot) ឬរក្សាទុក QR នេះ ដើម្បីទូទាត់បង់ប្រាក់ចូលជាសមាជិត VIP ដោយស្វ័យប្រវត្តិ។ ដើម្បីកាន់តែឆាប់រហ័ស លោកអ្នកគ្រាន់តែបញ្ចូលរូបភាពវិក្កយបត្របន្ថែម។',
+    subManualFlowNote:
+      'សូមថតអេក្រង់ (screenshot) ឬរក្សាទុក QR នេះដើម្បីទូទាត់ បន្ទាប់មកបញ្ចូលរូបភាពវិក្កយបត្រអោយបានច្បាស់ រួចចុច "ទូទាត់" ដើម្បីផ្ញើទៅឱ្យអភិបាលពិនិត្យ។',
+    subChangePhoto: 'លុបរូបភាព',
     subUploadReceiptCta: 'បញ្ចូលរូបភាពវិក្កយបត្រ',
     subUploadReceiptHint: 'វិធីលឿនបំផុត — មិនចាំបាច់ក៏បាន',
     subAutoWaitTitle: 'កំពុងរង់ចាំទូទាត់ដោយស្វ័យប្រវត្តិ',

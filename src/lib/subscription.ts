@@ -213,14 +213,19 @@ export async function autoApprovePayment(submissionId: string): Promise<{ error:
   return { error: error?.message ?? null };
 }
 
-// New "tap pay, no screenshot" flow — creates the pending submission the
-// moment the viewer confirms they've paid, so the ABA auto-confirm
-// webhook (aba-payment-webhook) has something to match against the
-// instant their bank notification comes through the forwarder group.
-// Admin still gets a Telegram message with Approve/Reject either way
-// (now via sendMessage since there's no photo to attach), so a manual
-// check against their own bank statement is always the fallback if the
-// ABA match doesn't land.
+// Creates the pending submission the moment the viewer taps "Join VIP" /
+// the ticket gets recycled, so the ABA auto-confirm webhook
+// (aba-payment-webhook) has something to match against the instant their
+// bank notification comes through the forwarder group.
+//
+// `notifyAdmin` is deliberately NOT set from SubscriptionModal any more —
+// pinging the admin the moment someone opens the QR screen (before they've
+// necessarily paid anything) was too noisy. The admin is now only pinged
+// once there's something real to review: an ABA webhook match, or the
+// viewer submitting a receipt photo on the Manual tab (see
+// attachScreenshotToSubmission / confirm-payment-proof). The flag is kept
+// here, unused by the current UI, as an opt-in escape hatch rather than
+// deleted outright.
 export async function submitPaymentIntent(opts: {
   tierKey: string;
   amount: number;
@@ -242,10 +247,6 @@ export async function submitPaymentIntent(opts: {
     .single();
   if (insertErr) return { error: insertErr.message, id: null };
 
-  // Notify only when this row came from the viewer actually tapping
-  // "Join VIP" (notifyAdmin), not from the background ticket recycle —
-  // otherwise the admin would get a fresh DM every 3 minutes for the
-  // same person sitting on the QR screen.
   if (opts.notifyAdmin) {
     notifyPendingSubmission({
       submissionId: inserted.id,
