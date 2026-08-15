@@ -51,6 +51,13 @@ interface TelegramWebApp {
   // the native way to share something from inside a Mini App, distinct
   // from openLink (which just opens a URL in-app/externally).
   openTelegramLink?: (url: string) => void;
+  // Hands a URL to the CLIENT to open, instead of navigating inside the
+  // Mini App's own WebView. This is the only way an https link can reach
+  // another installed app (see openExternalLink below).
+  openLink?: (
+    url: string,
+    options?: { try_instant_view?: boolean; try_browser?: string },
+  ) => void;
 }
 
 declare global {
@@ -295,4 +302,68 @@ export function hapticTap() {
 
 export function hapticSuccess() {
   getTelegramWebApp()?.HapticFeedback.notificationOccurred('success');
+}
+
+// Opens an EXTERNAL url (e.g. the ABA PayWay payment link) the right way
+// from inside a Mini App.
+//
+// WHY THIS EXISTS -- a plain <a target="_blank"> does not work here.
+// Inside Telegram the app runs in Telegram's own WebView. A normal link
+// therefore opens Telegram's *in-app* browser, and that browser is a
+// dead end for a payment link: iOS only hands an https universal link
+// (link.payway.com.kh/...) over to the ABA app when the link is opened
+// by the system, so in Telegram's browser the page just sits there
+// blank/spinning and the ABA app never launches.
+//
+// WebApp.openLink() passes the url back to the Telegram *client*, which
+// opens it outside the Mini App WebView -- that is the hand-off iOS
+// needs. try_instant_view is explicitly false so Telegram never tries to
+// render a reader-mode preview of a checkout page.
+//
+// Falls back to window.open when the app is opened in a normal browser
+// (desktop dev, or a Mini App opened outside Telegram).
+export function openExternalLink(url: string): void {
+  if (!url) return;
+  const tg = getTelegramWebApp();
+  if (tg?.openLink) {
+    try {
+      tg.openLink(url, { try_instant_view: false });
+      return;
+    } catch {
+      // Older clients can throw on the options argument -- retry bare.
+      try {
+        tg.openLink(url);
+        return;
+      } catch {
+        // Fall through to the browser path below.
+      }
+    }
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+// Copy helper for the "the link didn't open" escape hatch: the viewer
+// can paste it into Safari/Chrome themselves, where the ABA app will
+// pick it up. navigator.clipboard is unavailable on some older in-app
+// WebViews, hence the textarea fallback.
+export async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.setAttribute('readonly', '');
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(el);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
 }
