@@ -1,2 +1,49 @@
+# Build output / dependencies
 node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Environment
 .env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------
+# ABA relay — NEVER COMMIT THESE
+#
+# After they are filled in, the launcher scripts contain the real
+# ABA_INGEST_SECRET and Telegram API credentials, and a .session file is a
+# COMPLETE LOGIN to the Telegram account that created it. Pushing any of
+# them to GitHub hands a stranger the ability to grant themselves VIP, or
+# to log in as that Telegram account.
+#
+# The templates are tracked (see tools/*.template if you make one); the
+# filled-in copies live only on the machine that runs the relay.
+# ---------------------------------------------------------------
+tools/run-relay.bat
+tools/run-relay.sh
+tools/aba-relay.service
+*.session
+*.session-journal
+__pycache__/
+*.py[cod]
