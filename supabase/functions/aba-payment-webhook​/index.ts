@@ -3,52 +3,29 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 // =====================================================================
 // Telegram webhook: auto-confirm VIP payments from ABA's own payment
-// notifications, forwarded into a dedicated Telegram group by whatever
-// notification-forwarder app/bot the admin already has running on the
-// phone that holds the ABA account.
+// notifications, forwarded into a dedicated Telegram group.
 //
-// This is a SEPARATE bot + webhook from telegram-admin-bot — it only
-// ever listens, it's never given group-admin rights, and swapping which
-// ABA account/group it watches is just three secrets (see below), no
-// code change. Everything else (which QR shows, the price per tier, the
-// pitch text) is already admin-editable from Admin Panel -> Subscriptions
-// and is read live from the `pricing_tiers` table here too, so a price
-// change there takes effect on auto-confirm immediately.
+// !! HARD TELEGRAM LIMIT — READ THIS IF NOTHING EVER MATCHES !!
+//   Telegram bots NEVER receive messages sent by another bot, in any
+//   chat, regardless of privacy mode or admin rights (core.telegram.org
+//   /bots/faq). So if the thing posting ABA's alerts into the group is
+//   itself a bot, this webhook will never see those messages and no
+//   amount of config will fix it. Working relays, best first:
+//     A. Point the phone's notification-forwarder app at the plain HTTPS
+//        endpoint `aba-notify-ingest` instead of at Telegram. No bots
+//        involved at all — this is the recommended fix.
+//     B. Have the forwarder bot post into a CHANNEL, link that channel
+//        to this group as its discussion group, and let Telegram
+//        auto-forward the post in. The copy that lands in the group is
+//        attributed to the channel (not to a bot), so this webhook does
+//        receive it (is_automatic_forward = true).
+//     C. Run a userbot (a real Telegram account via Telethon/Pyrogram)
+//        that reads the bot's messages and relays them.
+//   See ABA_AUTO_CONFIRM_FORWARD_GUIDE.md for the full walkthrough.
 //
-// MATCHING RULE: amount-only, fail-closed on ambiguity.
-//   ABA's own KHQR "scan to pay" notification doesn't carry any
-//   reference/note field through, so there's nothing to match on besides
-//   the amount. Every plan already has a distinct price, so this is safe
-//   AS LONG AS we refuse to guess when it's ambiguous: if two or more
-//   'pending' submissions share the same amount within the match window,
-//   neither gets auto-confirmed — they wait for the existing 30s
-//   auto-approve fallback or an admin's manual Approve tap instead.
-//
-// SETUP (do this once per ABA account / notification group):
-//   1. Create (or reuse) a bot via @BotFather, get its token. This can
-//      be a brand new bot — it doesn't need to be the same bot as
-//      TELEGRAM_BOT_TOKEN used elsewhere in this app.
-//   2. In BotFather: /setprivacy -> Disable for this bot, so it can read
-//      every message in the group, not just @mentions/commands.
-//   3. Add the bot to the Telegram group that your notification-forwarder
-//      posts ABA's payment alerts into.
-//   4. Register the webhook (run once from a browser/Postman):
-//        curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
-//          -d "url=https://dowjxhkijtlsdvhyuddt.supabase.co/functions/v1/aba-payment-webhook" \
-//          -d "secret_token=<A LONG RANDOM STRING YOU PICK>"
-//   5. Set these Supabase Edge Function secrets:
-//        ABA_NOTIFY_BOT_TOKEN     = the token from step 1
-//        ABA_NOTIFY_WEBHOOK_SECRET = the same secret_token from step 4
-//        ABA_NOTIFY_GROUP_ID      = the notification group's chat id
-//        ABA_NOTIFIER_ID          = sender id of whatever forwards ABA's
-//                                   alerts into that group
-//   6. Set the ABA account holder name in Admin Panel -> Subscriptions ->
-//      "ABA Auto-confirm" (exactly as it's printed in real ABA
-//      notifications) — this is the app_settings key aba_merchant_name.
-//
-// To point this whole thing at a DIFFERENT ABA account/group later:
-// change ABA_NOTIFY_BOT_TOKEN, ABA_NOTIFY_GROUP_ID, ABA_NOTIFIER_ID (and
-// re-run setWebhook with the new token) — nothing else needs to change.
+// MATCHING RULE: amount-only, fail-closed on ambiguity. Every plan has a
+// distinct price, so this is safe as long as we refuse to guess when two
+// pending submissions share the same amount.
 // =====================================================================
 
 const corsHeaders = {
@@ -57,16 +34,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Bot-Api-Secret-Token",
 };
 
-// A pending request is only eligible for matching while it's this fresh
-// — keeps an old abandoned 'pending' row from grabbing a much later,
-// unrelated payment of the same amount. The client already auto-approves
-// after 30s anyway, so this window just needs to comfortably cover a
-// slow payer + forwarder delay, not act as the real timer.
 const MATCH_WINDOW_MIN = 15;
 
-// Matches "$3.00", "3.00$", "USD3.00", "3.00 USD" etc. and captures the
-// numeric amount. ABA's notification format leads with "$X.XX" so this
-// covers the real case; the extra alternatives are defensive.
 const AMOUNT_PATTERN = /(?:\$|USD)\s*([0-9]+(?:\.[0-9]{1,2})?)|([0-9]+(?:\.[0-9]{1,2})?)\s*(?:\$|USD)/i;
 
 function extractAmount(text: string): number | null {
@@ -77,13 +46,24 @@ function extractAmount(text: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-const TIER_MONTHS: Record<string, number> = {
-  "1m": 1,
-  "2m": 2,
-  "3m": 3,
-  "6m": 6,
-  "12m": 12,
-};
+// ABA prints its own reference in every alert:
+//   "$2.00 paid by ROM SARY (*297) on Aug 14, 04:54 PM via ABA PAY at
+//    PANG SOK HENG S2_Nint.Ani. Trx. ID: 178670124828004, APV: 993238."
+// Unique per real payment — the only reliable replay guard here.
+const TRX_ID_PATTERN = /Trx\.?\s*ID\s*[:#]?\s*([0-9]{6,})/i;
+const PAYER_PATTERN = /paid\s+by\s+(.+?)\s+on\s+/i;
+
+function extractTrxId(text: string): string | null {
+  const m = TRX_ID_PATTERN.exec(text);
+  return m ? m[1] : null;
+}
+
+function extractPayer(text: string): string | null {
+  const m = PAYER_PATTERN.exec(text);
+  return m ? m[1].trim().slice(0, 120) : null;
+}
+
+const TIER_MONTHS_FALLBACK: Record<string, number> = { "1m": 1, "2m": 2, "3m": 3, "6m": 6, "12m": 12 };
 
 async function tg(token: string, method: string, body: Record<string, unknown>) {
   try {
@@ -93,7 +73,7 @@ async function tg(token: string, method: string, body: Record<string, unknown>) 
       body: JSON.stringify(body),
     });
   } catch {
-    // Best-effort only — never let a notify failure affect confirmation.
+    // Best-effort only.
   }
 }
 
@@ -105,8 +85,6 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
-  // Always ack Telegram quickly with 200, even on internal problems, so
-  // it doesn't sit there retrying the same update forever.
   const ack = () => new Response("ok", { status: 200, headers: corsHeaders });
 
   const webhookSecret = Deno.env.get("ABA_NOTIFY_WEBHOOK_SECRET");
@@ -129,31 +107,70 @@ Deno.serve(async (req: Request) => {
     return ack();
   }
 
-  const message = body.message ?? body.channel_post;
+  // Accept every shape the ABA alert can arrive in.
+  const message =
+    body.message ?? body.channel_post ?? body.edited_message ?? body.edited_channel_post;
   if (!message) return ack();
 
   const chatId: number | undefined = message.chat?.id;
-  const fromId: number | undefined = message.from?.id ?? message.sender_chat?.id;
   const text: string = message.text ?? message.caption ?? "";
+
+  // Every id this update could legitimately be "from". A plain post has
+  // only message.from; a channel post has sender_chat; an auto-forward
+  // from a linked channel arrives with from.id = 777000 (Telegram
+  // itself) and the real origin in forward_from_chat / forward_origin;
+  // a userbot-relayed message has the userbot in from and the original
+  // bot/channel in forward_from / forward_origin.
+  const senderIds: string[] = [
+    message.from?.id,
+    message.sender_chat?.id,
+    message.forward_from?.id,
+    message.forward_from_chat?.id,
+    message.forward_origin?.chat?.id,
+    message.forward_origin?.sender_chat?.id,
+    message.forward_origin?.sender_user?.id,
+  ]
+    .filter((v) => v !== undefined && v !== null)
+    .map((v) => String(v));
+
+  // Printed on EVERY update, before any filtering, so the exact values to
+  // put in ABA_NOTIFY_GROUP_ID / ABA_NOTIFIER_ID can be read off the logs
+  // after one test message.
+  console.log(
+    `[IDS] chat=${chatId} senders=[${senderIds.join(",")}]` +
+      ` auto_forward=${message.is_automatic_forward === true}` +
+      ` via_bot=${message.via_bot?.username ?? "-"}` +
+      ` text="${text.slice(0, 120)}"`,
+  );
+
   if (!text) return ack();
 
-  // Only trust messages from the configured group / sender once those
-  // secrets are set. Until they are, every update is a silent no-op —
-  // set ABA_NOTIFY_GROUP_ID / ABA_NOTIFIER_ID as step 5 above.
-  if (groupId && String(chatId) !== groupId) {
-    console.log(`[FILTER] Chat ID mismatch: ${chatId} vs ${groupId}`);
+  // Both filters accept a comma-separated list. Set either to "any" (or
+  // leave unset) to skip that check — the merchant-name + amount +
+  // pending-row checks below still have to pass.
+  const idList = (raw: string | undefined) =>
+    (raw ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const allowedChats = idList(groupId);
+  const allowedSenders = idList(notifierId);
+  const isAny = (list: string[]) =>
+    list.length === 0 || list.some((v) => v === "any" || v === "*");
+
+  if (!isAny(allowedChats) && !allowedChats.includes(String(chatId))) {
+    console.log(`[FILTER] Chat ${chatId} not in ABA_NOTIFY_GROUP_ID (${groupId})`);
     return ack();
   }
-  if (notifierId && String(fromId) !== notifierId) {
-    console.log(`[FILTER] Sender ID mismatch: ${fromId} vs ${notifierId}`);
+  if (!isAny(allowedSenders) && !senderIds.some((id) => allowedSenders.includes(id))) {
+    console.log(`[FILTER] None of [${senderIds.join(",")}] is in ABA_NOTIFIER_ID (${notifierId})`);
     return ack();
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    // Merchant name is admin-editable (Admin Panel -> Subscriptions),
-    // not hardcoded, so swapping ABA accounts never needs a code change.
     const { data: nameRow } = await admin
       .from("app_settings")
       .select("value")
@@ -173,12 +190,9 @@ Deno.serve(async (req: Request) => {
       return ack();
     }
 
-    // Valid amounts come live from pricing_tiers, not a hardcoded list —
-    // a price change in Admin Panel -> Subscriptions takes effect here
-    // immediately, no redeploy.
     const { data: tiers, error: tiersErr } = await admin
       .from("pricing_tiers")
-      .select("key, price");
+      .select("key, price, months");
     if (tiersErr) {
       console.error("pricing_tiers lookup error:", tiersErr);
       return ack();
@@ -187,6 +201,28 @@ Deno.serve(async (req: Request) => {
     if (!tierForAmount) {
       console.log(`[NO_MATCH] $${amount} doesn't match any current plan price.`);
       return ack();
+    }
+
+    const trxId = extractTrxId(text);
+    const payer = extractPayer(text);
+    console.log(`[PARSED] amount=${amount} trx=${trxId ?? "-"} payer=${payer ?? "-"}`);
+
+    // Replay guard. A missing column here just means the migration has
+    // not been run; warn loudly rather than failing a real payment.
+    if (trxId) {
+      const { data: seen, error: seenErr } = await admin
+        .from("payment_submissions")
+        .select("id")
+        .eq("aba_trx_id", trxId)
+        .maybeSingle();
+      if (seenErr) {
+        console.warn(
+          `[MIGRATION] Could not check aba_trx_id (${seenErr.message}). Run database/aba-trx-id-addition.sql.`,
+        );
+      } else if (seen) {
+        console.log(`[DUPLICATE] Trx ${trxId} was already applied to ${seen.id}; ignoring.`);
+        return ack();
+      }
     }
 
     const sinceIso = new Date(Date.now() - MATCH_WINDOW_MIN * 60_000).toISOString();
@@ -206,22 +242,39 @@ Deno.serve(async (req: Request) => {
       return ack();
     }
     if (pendingRows.length > 1) {
-      // More than one pending request at this exact price right now —
-      // refuse to guess which payer this notification belongs to. They
-      // fall back to the 30s auto-approve or an admin's manual review.
       console.log(`[AMBIGUOUS] ${pendingRows.length} pending requests for tier ${tierForAmount.key}: ${pendingRows.map((r) => r.id).join(", ")}`);
       return ack();
     }
 
     const sub = pendingRows[0];
 
-    const { data: updated, error: updateErr } = await admin
+    const stamp = {
+      status: "approved",
+      auto_approved: true,
+      reviewed_at: new Date().toISOString(),
+    };
+
+    let updated: { id: string } | null = null;
+    let updateErr: { message?: string } | null = null;
+
+    ({ data: updated, error: updateErr } = await admin
       .from("payment_submissions")
-      .update({ status: "approved", auto_approved: true, reviewed_at: new Date().toISOString() })
+      .update({ ...stamp, aba_trx_id: trxId, aba_payer: payer })
       .eq("id", sub.id)
-      .eq("status", "pending") // guard against a race with another confirmation path
+      .eq("status", "pending")
       .select("id")
-      .maybeSingle();
+      .maybeSingle());
+
+    if (updateErr && /column .* does not exist/i.test(updateErr.message ?? "")) {
+      console.warn("[MIGRATION] Run database/aba-trx-id-addition.sql — falling back.");
+      ({ data: updated, error: updateErr } = await admin
+        .from("payment_submissions")
+        .update(stamp)
+        .eq("id", sub.id)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle());
+    }
 
     if (updateErr) {
       console.error("Update error:", updateErr);
@@ -242,7 +295,7 @@ Deno.serve(async (req: Request) => {
       existing?.expires_at && new Date(existing.expires_at) > new Date()
         ? new Date(existing.expires_at)
         : new Date();
-    base.setMonth(base.getMonth() + (TIER_MONTHS[sub.tier] ?? 1));
+    base.setMonth(base.getMonth() + (tierForAmount.months ?? TIER_MONTHS_FALLBACK[sub.tier] ?? 1));
 
     await admin.from("subscriptions").upsert({
       telegram_user_id: sub.telegram_user_id,
@@ -254,9 +307,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[SUCCESS] Auto-confirmed via ABA notification: ${sub.id} (tier: ${sub.tier}, $${amount})`);
 
-    // Notify the admin on the MAIN bot/chat — same one telegram-admin-bot
-    // already DMs for manual approvals — so this stays visible even
-    // though no tap was needed this time.
     const mainBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
     if (mainBotToken && adminChatId) {
