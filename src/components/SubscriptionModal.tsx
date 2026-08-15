@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BadgeCheck,
   Check,
+  Copy,
   Crown,
   Download,
   ImagePlus,
@@ -14,6 +15,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import { openExternalLink, copyToClipboard } from '@/lib/telegram';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -88,6 +90,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [checkingPending, setCheckingPending] = useState(true);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [payLinks, setPayLinks] = useState<Record<string, string>>({});
+  const [payLinkCopied, setPayLinkCopied] = useState(false);
   const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
@@ -645,14 +648,42 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                     </div>
 
                     {payLinkSrc ? (
-                      <a
-                        href={payLinkSrc}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#4A72C4] to-[#1F3A73] py-4 text-sm font-extrabold text-white shadow-[0_14px_32px_-12px_rgba(74,114,196,0.9)] transition active:scale-[0.98]"
-                      >
-                        <Zap className="h-4 w-4" /> {t.subOpenAba}
-                      </a>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openExternalLink(payLinkSrc)}
+                          className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#4A72C4] to-[#1F3A73] py-4 text-sm font-extrabold text-white shadow-[0_14px_32px_-12px_rgba(74,114,196,0.9)] transition active:scale-[0.98]"
+                        >
+                          <Zap className="h-4 w-4" /> {t.subOpenAba}
+                        </button>
+
+                        {/* Escape hatch. Some Telegram builds still keep the
+                            link inside their own browser, where the ABA app
+                            can never be handed the universal link and the
+                            page just spins. Copying it lets the viewer paste
+                            it into Safari/Chrome, which does open ABA. */}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = await copyToClipboard(payLinkSrc);
+                            if (ok) {
+                              setPayLinkCopied(true);
+                              window.setTimeout(() => setPayLinkCopied(false), 2200);
+                            }
+                          }}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-full border border-white/12 py-2.5 text-[11px] font-bold text-white/55 transition active:scale-[0.98] hover:border-white/30 hover:text-white/80"
+                        >
+                          {payLinkCopied ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 text-[#35D399]" /> {t.subPayLinkCopied}
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5" /> {t.subCopyPayLink}
+                            </>
+                          )}
+                        </button>
+                      </>
                     ) : (
                       <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-white/40">
                         {t.subQrCaption}
