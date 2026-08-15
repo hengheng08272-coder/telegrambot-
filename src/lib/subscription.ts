@@ -243,6 +243,24 @@ export async function expireStaleSubmission(submissionId: string): Promise<boole
   return data === true;
 }
 
+// Closes a ticket the viewer wants to abandon on purpose — e.g. they tap
+// "Change Plan" on the pay screen because they want a different tier.
+// Unlike expireStaleSubmission this has no 150-second floor: it cancels
+// immediately, regardless of how long the ticket has been open. Runs
+// through the same kind of narrow SECURITY DEFINER function (see
+// database/cancel-submission-addition.sql) since viewers can't UPDATE
+// payment_submissions directly. Returns false if the helper isn't
+// installed yet or the row is no longer pending (already decided by
+// something else) — the caller can proceed to the picker regardless,
+// since either way there's nothing left to wait on.
+export async function cancelPaymentSubmission(submissionId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('cancel_payment_submission', {
+    p_submission_id: submissionId,
+  });
+  if (error) return false;
+  return data === true;
+}
+
 // Pings the admin's Telegram for a submission that's already sitting in
 // the DB — called once the in-app listening window runs out (no
 // screenshot yet, asking the admin to check their own bank statement)
