@@ -14,23 +14,23 @@ import VideoPlayerScreen from '@/components/VideoPlayerScreen';
 import WatchlistScreen from '@/components/WatchlistScreen';
 import AdminScreen from '@/components/AdminScreen';
 import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
-import NotMemberScreen from '@/components/NotMemberScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
 import SubscriptionModal from '@/components/SubscriptionModal';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { getSubscriptionStatus } from '@/lib/subscription';
 import { getAvailableBonusSpin } from '@/lib/spin';
-import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess, getCurrentTelegramUser } from '@/lib/telegram';
+import { recordReferralIfPresent } from '@/lib/referral';
+import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
 
-// This build is the Telegram VIP Mini App: access is gated two ways —
-// Telegram group membership (a separate admin bot bans/kicks non-members)
-// controls whether the app opens at all, and a VIP subscription (paid via
-// KHQR screenshot, reviewed by the admin) controls which episodes can be
-// watched inside it. There's still no viewer sign-in/sign-up — everyone
-// is identified by their Telegram id, and subscriptions are keyed to
-// that. The only login left is the existing admin sign-in, desktop-only,
-// for content management and payment review.
+// This build is the Telegram VIP Mini App: the app itself opens for
+// everyone, no group-join check and no viewer sign-in/sign-up required.
+// Free shows/episodes (is_free / is_free_preview) play for anyone; a VIP
+// subscription (paid via KHQR screenshot, reviewed by the admin) is the
+// only thing gating everything else. Everyone is identified by their
+// Telegram id, and subscriptions are keyed to that. The only login left
+// is the existing admin sign-in, desktop-only, for content management
+// and payment review.
 type Screen =
   | { name: 'auth'; mode: 'signin' | 'signup' }
   | { name: 'home' }
@@ -61,14 +61,6 @@ function App() {
   }, []);
   const isMobile = useIsMobile();
   const isAdmin = !!profile?.is_admin;
-  // 'checking' briefly blanks the screen (loading spinner) while we ask
-  // Telegram whether this viewer is actually in the VIP group.
-  // 'skip' means we're not inside Telegram at all (desktop admin login,
-  // local dev) — that path has its own gate already, so this one is N/A.
-  // On any verification error we fail OPEN ('ok') rather than locking out
-  // a paying member over a transient network hiccup — the cost of a rare
-  // false negative here is much lower than blocking real customers.
-  const [membership, setMembership] = useState<'checking' | 'ok' | 'blocked'>('checking');
   // Testing override: ?admin=1 forces the admin gate on regardless of screen
   // width, so the admin sign-in screen can be reached from Bolt's mobile preview.
   const adminOverride =
@@ -77,7 +69,10 @@ function App() {
 
   // Tell Telegram the app is ready + expand to full height. Also resolve
   // a deep link: a group message linking to https://t.me/Bot/app?startapp=show_<id>
-  // opens straight to that show instead of the home screen.
+  // opens straight to that show instead of the home screen. A personal
+  // referral link (?startapp=ref_<telegram_id>, see lib/referral.ts and
+  // AccountScreen's "Invite & Earn" card) instead tags this viewer as
+  // referred by that person — it doesn't change what screen they land on.
   useEffect(() => {
     initTelegramApp();
     const startParam = getStartParam();
@@ -86,33 +81,10 @@ function App() {
       fetchShowById(showId).then((show) => {
         if (show) setScreen({ name: 'detail', show });
       });
+    } else if (startParam?.startsWith('ref_')) {
+      const referrerId = startParam.slice('ref_'.length);
+      recordReferralIfPresent(referrerId);
     }
-  }, []);
-
-  // The actual access-control check — see supabase/functions/verify-membership.
-  // Runs once per app open, independent of how the person got here
-  // (direct open, deep link, or a link forwarded by someone else via the
-  // Share button).
-  useEffect(() => {
-    if (!isInTelegram()) {
-      setMembership('ok');
-      return;
-    }
-    const user = getCurrentTelegramUser();
-    if (!user) {
-      setMembership('ok');
-      return;
-    }
-    supabase.functions
-      .invoke('verify-membership', { body: { telegram_user_id: user.id } })
-      .then(({ data, error }) => {
-        if (error || !data) {
-          setMembership('ok');
-          return;
-        }
-        setMembership(data.isMember ? 'ok' : 'blocked');
-      })
-      .catch(() => setMembership('ok'));
   }, []);
 
   // Telegram Mini Apps have no browser chrome, so there's no native back
@@ -222,8 +194,7 @@ function App() {
   // Desktop is admin-only. On mobile (the real Telegram Mini App surface)
   // everyone lands straight in the viewer app below — no gate, no login.
   // Being genuinely inside Telegram (even the Desktop client, which can
-  // report a wide viewport) also skips the gate entirely: group
-  // membership is already the real access control there, so a wide
+  // report a wide viewport) also skips the gate entirely, so a wide
   // Telegram window should never get shown the "open on your phone" QR
   // screen. The adminOverride (?admin=1) forces the gate on for testing
   // in Bolt's plain-browser mobile preview — it never applies once we're
@@ -267,18 +238,6 @@ function App() {
   if (screen.name === 'admin') {
     if (!profile?.is_admin) return null;
     return <AdminScreen onBack={() => setScreen({ name: 'home' })} />;
-  }
-
-  // The actual gate: block viewers who aren't in the VIP group, no matter
-  // how they got the link. Admins skip this — they already proved who
-  // they are via the sign-in screen above.
-  if (!isAdmin) {
-    if (membership === 'checking') {
-      return <div className="min-h-screen bg-[#0A0A0D]" />;
-    }
-    if (membership === 'blocked') {
-      return <NotMemberScreen groupLink={import.meta.env.VITE_TELEGRAM_GROUP_LINK as string | undefined} />;
-    }
   }
 
   if (screen.name === 'watchlist') {
