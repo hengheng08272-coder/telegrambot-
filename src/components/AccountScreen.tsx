@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Bookmark, Crown, Gift, ShieldCheck, Sparkles, User, FileText, Copy, Check } from 'lucide-react';
-import { getCurrentTelegramProfile } from '@/lib/telegram';
+import { ArrowLeft, Bookmark, Crown, Gift, ShieldCheck, Sparkles, User, FileText, Copy, Check, UserPlus } from 'lucide-react';
+import { getCurrentTelegramProfile, shareReferralLink } from '@/lib/telegram';
 import { getSubscriptionStatus, PRICING_TIERS, type SubscriptionStatus } from '@/lib/subscription';
 import { getAvailableBonusSpin, type BonusSpinInfo } from '@/lib/spin';
+import { getReferralStats, type ReferralStats } from '@/lib/referral';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -23,6 +24,8 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [bonusInfo, setBonusInfo] = useState<BonusSpinInfo | null>(null);
   const [idCopied, setIdCopied] = useState(false);
+  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
+  const [inviteState, setInviteState] = useState<'idle' | 'sent'>('idle');
   const profile = getCurrentTelegramProfile();
   const { lang, setLang } = useLang();
   const t = appText[lang];
@@ -30,7 +33,16 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
   useEffect(() => {
     getSubscriptionStatus().then(setStatus);
     getAvailableBonusSpin().then(setBonusInfo);
+    getReferralStats().then(setReferralStats);
   }, []);
+
+  const handleInviteReferral = async () => {
+    const result = await shareReferralLink();
+    if (result === 'shared' || result === 'copied') {
+      setInviteState('sent');
+      window.setTimeout(() => setInviteState('idle'), 2000);
+    }
+  };
 
   // Hidden admin entry point: 5 taps on the logo watermark within 2.5s
   // opens admin sign-in. Nothing else on mobile can reach it, since the
@@ -243,6 +255,34 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             <Sparkles className="h-4 w-4 text-[#E3B341]" />
           </button>
         )}
+
+        {/* Invite & Earn — the referral growth loop that replaces the old
+            "must join the group" gate: sharing this viewer's personal
+            link tags whoever opens it as referred by them (App.tsx +
+            lib/referral.ts), and the moment that friend's first VIP
+            payment is approved, this viewer's own subscription is
+            extended automatically (see telegram-admin-bot/index.ts).
+            Shows a running count so the reward feels real, not just a
+            promise in copy. */}
+        <button
+          onClick={handleInviteReferral}
+          className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#E6231F]/25 bg-gradient-to-r from-[#E6231F]/10 to-transparent p-4 text-left transition hover:border-[#E6231F]/50"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E6231F] to-[#7A0F0D]">
+            <UserPlus className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-white">អញ្ជើញមិត្តភ័ក្តិ ទទួល VIP ឥតគិតថ្លៃ</p>
+            <p className="text-xs text-white/50">
+              {referralStats && referralStats.totalReferred > 0
+                ? `មិត្តភ័ក្តិ ${referralStats.totalReferred} នាក់បានចូល • ទទួលបានរង្វាន់ ${referralStats.totalBonusDays} ថ្ងៃ`
+                : 'ចែករំលែក link ផ្ទាល់ខ្លួន — មិត្តភ័ក្តិទិញ VIP លើកដំបូង អ្នកទទួលបានថ្ងៃ VIP ដោយឥតគិតថ្លៃ'}
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/70">
+            {inviteState === 'sent' ? 'បានផ្ញើ!' : 'ចែករំលែក'}
+          </span>
+        </button>
 
         {/* Quick links — grouped into a single card with an internal
             divider (matches the identity/status card's radius + border

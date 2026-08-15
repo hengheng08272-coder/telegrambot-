@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BadgeCheck,
   Check,
-  Clock,
   Crown,
   Download,
   ImagePlus,
@@ -96,7 +95,11 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
   const [attachingProof, setAttachingProof] = useState(false);
   const [proofSent, setProofSent] = useState(false);
-  const [ticketRenewed, setTicketRenewed] = useState(false);
+  // Manual-pay staging: the viewer picks a screenshot first and reviews
+  // it, then taps Pay to actually submit it. Nothing is uploaded (and the
+  // admin is not messaged) until that Pay tap.
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
   const notifiedApprovedRef = useRef(false);
   const recyclingRef = useRef(false);
 
@@ -193,7 +196,6 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
         setAbaCheckout(await createAbaCheckout(fresh.id));
       }
       setSecondsLeft(WAIT_WINDOW_SECONDS);
-      setTicketRenewed(true);
       recyclingRef.current = false;
     })();
   }, [secondsLeft, step, pending, decision, proofSent, attachingProof, tiers]);
@@ -220,9 +222,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const payLinkSrc = payTier ? gatewayLink || payLinks[payTier.key] || null : null;
   const isRealGateway = Boolean(gatewayLink);
 
-  // "Join VIP" is the one commit point in the flow: it opens the payment
-  // ticket AND pings the admin's Telegram straight away, so a human
-  // knows a payment is coming even if the ABA webhook never fires.
+  // "Join VIP" just opens the payment ticket (QR + Auto/Manual screen).
+  // The admin is not messaged at this point any more — only once there's
+  // something for them to actually act on: an ABA webhook match, or the
+  // viewer submitting a receipt photo on the Manual tab (see
+  // handleAttachProof / confirm-payment-proof, which sends the photo
+  // itself with Confirm/Revoke buttons).
   const handleJoinVip = async () => {
     if (!tier) return;
     setError('');
@@ -230,7 +235,6 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     const { error: err, id } = await submitPaymentIntent({
       tierKey: tier.key,
       amount: tier.price,
-      notifyAdmin: true,
     });
     setSubmitting(false);
     if (err || !id) {
@@ -242,7 +246,11 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     setDecision('waiting');
     setReceipt(null);
     setProofSent(false);
-    setTicketRenewed(false);
+    setProofFile(null);
+    setProofPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setPayMode('auto');
     recyclingRef.current = false;
     const fresh = await getPendingSubmission();
@@ -263,10 +271,36 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
       setError(err);
       return;
     }
+    if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    setProofPreviewUrl(null);
+    setProofFile(null);
     setProofSent(true);
     // No separate notify call — confirm-payment-proof already grants VIP
     // and forwards the photo to the admin with Confirm/Revoke buttons.
-    // The poll above picks up the resulting 'approved' status.
+    // The poll above picks up the resulting 'approved' status, usually
+    // within a few seconds.
+  };
+
+  // Manual tab, step 1: just stage the picked screenshot locally for
+  // review — nothing is uploaded and the admin isn't messaged yet.
+  const handlePickProof = (file: File) => {
+    if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    setError('');
+    setProofFile(file);
+    setProofPreviewUrl(URL.createObjectURL(file));
+  };
+
+  // Manual tab, step 2: viewer reviewed the screenshot and taps Pay —
+  // this is the actual submit, which uploads the photo and pings admin.
+  const handleConfirmManualPay = () => {
+    if (proofFile) handleAttachProof(proofFile);
+  };
+
+  const handleDiscardPickedProof = () => {
+    if (attachingProof) return;
+    if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    setProofFile(null);
+    setProofPreviewUrl(null);
   };
 
   // "Change Plan" — the viewer decided they want a different tier mid-
@@ -284,7 +318,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     setSecondsLeft(WAIT_WINDOW_SECONDS);
     setReceipt(null);
     setProofSent(false);
-    setTicketRenewed(false);
+    if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    setProofFile(null);
+    setProofPreviewUrl(null);
     setPayMode('auto');
     recyclingRef.current = false;
   };
@@ -363,33 +399,33 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   <button
                     key={tr.key}
                     onClick={() => setSelectedKey(tr.key)}
-                    className={`relative w-full overflow-hidden rounded-2xl border px-4 pt-4 text-left transition-all active:scale-[0.99] ${
+                    className={`relative w-full overflow-hidden rounded-xl border px-3.5 pt-3.5 text-left transition-all active:scale-[0.99] ${
                       selected
-                        ? 'border-[#4A72C4]/55 bg-[#4A72C4]/[0.06] pb-0 shadow-[0_14px_40px_-16px_rgba(74,114,196,0.55)]'
-                        : 'border-white/[0.08] bg-white/[0.025] pb-4 hover:border-white/20'
+                        ? 'border-[#4A72C4]/35 bg-[#4A72C4]/[0.045] pb-0 shadow-[0_6px_18px_-12px_rgba(74,114,196,0.45)]'
+                        : 'border-white/[0.08] bg-white/[0.025] pb-3.5 hover:border-white/20'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <div
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
                           selected
-                            ? 'bg-gradient-to-br from-[#4A72C4] to-[#1F3A73] shadow-[0_6px_18px_-4px_rgba(74,114,196,0.6)]'
+                            ? 'bg-[#4A72C4]/15 ring-1 ring-[#4A72C4]/40'
                             : 'bg-white/[0.07]'
                         }`}
                       >
-                        <Icon className={`h-5 w-5 ${selected ? 'text-white' : 'text-white/60'}`} />
+                        <Icon className={`h-4 w-4 ${selected ? 'text-[#7FA3E8]' : 'text-white/60'}`} />
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-white">{lang === 'km' ? tr.labelKm : tr.labelEn}</span>
                           {tr.badge === 'best' && (
-                            <span className="rounded-full bg-[#4A72C4]/20 px-2 py-0.5 text-[10px] font-bold text-[#4A72C4]">
+                            <span className="rounded-md bg-[#4A72C4]/20 px-2 py-0.5 text-[10px] font-bold text-[#4A72C4]">
                               {t.subBestValue}
                             </span>
                           )}
                           {tr.badge === 'popular' && (
-                            <span className="rounded-full bg-[#7A5CFF]/20 px-2 py-0.5 text-[10px] font-bold text-[#A392FF]">
+                            <span className="rounded-md bg-[#7A5CFF]/20 px-2 py-0.5 text-[10px] font-bold text-[#A392FF]">
                               {t.subPopular}
                             </span>
                           )}
@@ -407,12 +443,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                         strip, echoing the "សំបុត្រចូលប្រើ VIP" (access pass)
                         language the app already uses for membership. */}
                     {selected && (
-                      <div className="relative mt-3.5">
-                        <span className="absolute -left-[23px] top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-[#07070C]" />
-                        <span className="absolute -right-[23px] top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full bg-[#07070C]" />
-                        <div className="border-t border-dashed border-[#4A72C4]/30" />
-                        <div className="flex items-center justify-between py-2.5">
-                          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#4A72C4]">
+                      <div className="relative mt-3">
+                        <span className="absolute -left-[21px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#07070C]" />
+                        <span className="absolute -right-[21px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#07070C]" />
+                        <div className="border-t border-dashed border-[#4A72C4]/25" />
+                        <div className="flex items-center justify-between py-2">
+                          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#7FA3E8]">
                             <BadgeCheck className="h-3.5 w-3.5" />
                             {t.subSelected}
                           </span>
@@ -529,7 +565,10 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 setAbaCheckout(null);
                 setDecision('waiting');
                 setReceipt(null);
-                setTicketRenewed(false);
+                setProofSent(false);
+                if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+                setProofFile(null);
+                setProofPreviewUrl(null);
               }}
               className="w-full rounded-full border border-white/10 bg-white/5 py-3.5 text-sm font-bold text-white transition active:scale-[0.98] hover:bg-white/10"
             >
@@ -627,7 +666,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                     )}
                   </div>
                 ) : (
-                  /* MANUAL — save the QR, upload a receipt. */
+                  /* MANUAL — save the QR, pick a receipt, review it, then
+                     tap Pay to actually submit (that's the only moment
+                     the admin gets pinged on this tab). */
                   <div className="mt-4 space-y-3 text-left">
                     {qrSrc && (
                       <a
@@ -639,39 +680,65 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       </a>
                     )}
 
-                    <p className="text-[11px] leading-relaxed text-white/50">{t.subQrCaption}</p>
+                    <p className="text-[11px] leading-relaxed text-white/50">{t.subManualFlowNote}</p>
 
                     {proofSent ? (
                       <p className="flex items-center justify-center gap-1.5 rounded-2xl border border-[#35D399]/25 bg-[#35D399]/[0.07] py-3 text-xs font-semibold text-[#35D399]">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.subCheckingPayment}
                       </p>
+                    ) : proofFile ? (
+                      <div className="space-y-2.5">
+                        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                          {proofPreviewUrl && (
+                            <img
+                              src={proofPreviewUrl}
+                              alt=""
+                              className="max-h-48 w-full object-contain"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleDiscardPickedProof}
+                            disabled={attachingProof}
+                            aria-label={t.subChangePhoto}
+                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white/80 transition active:scale-90 hover:bg-black/80 disabled:opacity-40"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleConfirmManualPay}
+                          disabled={attachingProof}
+                          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#7A5CFF] py-3.5 text-sm font-extrabold text-white shadow-[0_10px_26px_-12px_rgba(122,92,255,0.75)] transition active:scale-[0.98] disabled:opacity-50"
+                        >
+                          {attachingProof ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                          {attachingProof ? t.subUploadingProof : t.subPayNow}
+                        </button>
+                      </div>
                     ) : (
                       <label
-                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-[#7A5CFF]/40 bg-[#7A5CFF]/[0.07] px-3.5 py-3 transition active:scale-[0.99] hover:border-[#7A5CFF]/70 ${
-                          attachingProof ? 'pointer-events-none opacity-60' : ''
-                        }`}
+                        className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-[#7A5CFF]/40 bg-[#7A5CFF]/[0.07] px-3.5 py-3 transition active:scale-[0.99] hover:border-[#7A5CFF]/70"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#7A5CFF]/20">
-                          {attachingProof ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-[#A392FF]" />
-                          ) : (
-                            <ImagePlus className="h-4 w-4 text-[#A392FF]" />
-                          )}
+                          <ImagePlus className="h-4 w-4 text-[#A392FF]" />
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-xs font-bold text-white">
-                            {attachingProof ? t.subUploadingProof : t.subUploadReceiptCta}
-                          </span>
+                          <span className="block text-xs font-bold text-white">{t.subUploadReceiptCta}</span>
                           <span className="block text-[10px] text-white/40">{t.subUploadReceiptHint}</span>
                         </span>
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          disabled={attachingProof}
                           onChange={(e) => {
                             const f = e.target.files?.[0];
-                            if (f) handleAttachProof(f);
+                            if (f) handlePickProof(f);
+                            e.target.value = '';
                           }}
                         />
                       </label>
@@ -680,32 +747,6 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 )}
               </div>
             )}
-
-            {/* Status card — reports where the ticket stands. Shared by
-                both tabs since the underlying ticket (ABA webhook match
-                or an approved receipt) is the same either way. */}
-            <div className="rounded-3xl border border-white/[0.08] bg-white/[0.025] px-4 py-5 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.06]">
-                <Clock className="h-6 w-6 animate-pulse text-[#4A72C4]" />
-              </div>
-
-              <p className="mt-3 text-[15px] font-bold text-white">{t.subAutoWaitTitle}</p>
-              <p className="mx-auto mt-1.5 max-w-[19rem] text-xs leading-relaxed text-white/50">
-                {t.subAutoWaitDesc}
-              </p>
-
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold tabular-nums text-white/65">
-                <Clock className="h-3 w-3" />
-                {mmss}
-                <span className="text-white/30">· {t.subCooldownNote}</span>
-              </div>
-
-              {ticketRenewed && (
-                <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-white/35">
-                  <RefreshCw className="h-3 w-3" /> {t.subTicketRenewed}
-                </p>
-              )}
-            </div>
 
             {error && (
               <p className="rounded-xl border border-[#E6231F]/25 bg-[#E6231F]/10 px-3 py-2 text-xs text-[#FF8A85]">

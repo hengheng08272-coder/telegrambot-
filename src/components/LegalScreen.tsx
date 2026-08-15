@@ -54,15 +54,16 @@ export default function LegalScreen({ onBack }: Props) {
           isKh ? (
             <div className="space-y-4 text-sm leading-relaxed text-white/70">
               <p>
-                NINT ANIME ជា Mini App ដែលដំណើរការក្នុង Telegram សម្រាប់សមាជិកនៃ group
-                Telegram ជាក់លាក់ប៉ុណ្ណោះ។ សិទ្ធិចូលប្រើប្រាស់ខ្លឹមសារត្រូវបានគ្រប់គ្រងដោយ
-                membership ក្នុង group នេះ — មិនមែនដោយ account ដាច់ដោយឡែកទេ។
+                NINT ANIME ជា Mini App ដែលដំណើរការក្នុង Telegram។ គ្រប់គ្នាអាចបើក app និង
+                មើលខ្លឹមសារ free បាន ដោយមិនចាំបាច់ join group ណាមួយឡើយ។ សិទ្ធិចូលប្រើប្រាស់
+                ខ្លឹមសារ VIP ត្រូវបានគ្រប់គ្រងដោយ subscription ភ្ជាប់ជាមួយ Telegram account
+                របស់អ្នក — មិនមែនដោយ membership ក្នុង group ណាមួយទេ។
               </p>
               <p>
                 ខ្លឹមសារទាំងអស់ផ្តល់ជូនសម្រាប់គោលបំណងកម្សាន្តផ្ទាល់ខ្លួនប៉ុណ្ណោះ។ ការថត
-                screenshot, screen recording, ចែកចាយ, ឬលក់បន្តខ្លឹមសារណាមួយចេញក្រៅ
-                group ដោយគ្មានការអនុញ្ញាត ជាការរំលោភលើលក្ខខណ្ឌនេះ ហើយអាចនាំឲ្យសមាជិកភាព
-                ត្រូវបានផ្អាក ឬដកចេញពី group ដោយគ្មានការជូនដំណឹងជាមុន។
+                screenshot, screen recording, ចែកចាយ, ឬលក់បន្តខ្លឹមសារណាមួយ ដោយគ្មានការ
+                អនុញ្ញាត ជាការរំលោភលើលក្ខខណ្ឌនេះ ហើយអាចនាំឲ្យ VIP subscription ត្រូវបានផ្អាក
+                ដោយគ្មានការជូនដំណឹងជាមុន។
               </p>
               <p>
                 សេវាកម្ម VIP subscription ត្រូវបង់ប្រាក់តាមមធ្យោបាយដែលបានកំណត់ (ឧ. ABA/KHQR)
@@ -77,15 +78,15 @@ export default function LegalScreen({ onBack }: Props) {
           ) : (
             <div className="space-y-4 text-sm leading-relaxed text-white/70">
               <p>
-                NINT ANIME is a Telegram Mini App available only to members of a specific
-                Telegram group. Access is controlled by group membership, not a separate
-                account system.
+                NINT ANIME is a Telegram Mini App open to anyone — no group join is required
+                to use the app or watch free content. Access to VIP content is controlled by
+                your subscription, tied to your Telegram account, not by group membership.
               </p>
               <p>
                 All content is provided for personal entertainment only. Screenshotting,
-                screen recording, redistributing, or reselling any content outside the group
-                without permission violates these terms and may result in suspension or
-                removal from the group without prior notice.
+                screen recording, redistributing, or reselling any content without permission
+                violates these terms and may result in suspension of your VIP subscription
+                without prior notice.
               </p>
               <p>
                 VIP subscriptions are paid through the designated method (e.g. ABA/KHQR) and
