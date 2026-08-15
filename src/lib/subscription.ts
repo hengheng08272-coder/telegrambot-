@@ -12,11 +12,12 @@ export interface PricingTier {
   bonusEnabled: boolean;
 }
 
-// Real prices, matching the actual ABA KHQR in use — this is the
-// fallback/seed shape (and the source of truth for `months`, which the
-// admin-editable table below doesn't cover). Price, labels, pitch text,
-// and whether the bonus spin is offered can be overridden per-tier from
-// Admin Panel -> Subscriptions — see getEffectivePricingTiers().
+// Seed/fallback shape only — used when a tier has no row in
+// `pricing_tiers` yet. Price, DURATION (months), both labels, pitch text
+// and the bonus-spin toggle are all admin-editable per tier from Admin
+// Panel -> Subscriptions and override everything here at runtime; see
+// getEffectivePricingTiers(). `key` and `badge` are the only things still
+// fixed in code.
 export const PRICING_TIERS: PricingTier[] = [
   { key: '1m', months: 1, price: 3, labelKm: '១ ខែ', labelEn: '1 Month', pitchKm: 'មើលគ្មានដែនកំណត់ពេញ ១ខែ + ចាប់រង្វាន់ថ្ងៃបន្ថែម', bonusEnabled: true },
   { key: '2m', months: 1, price: 5, labelKm: '១ ខែ (Bonus ធំ)', labelEn: '1 Month (Big Bonus)', badge: 'popular', pitchKm: 'ដូចគ្នា ១ខែ ប៉ុន្តែឱកាសឈ្នះរង្វាន់ធំដល់ 100 ថ្ងៃ!', bonusEnabled: true },
@@ -166,6 +167,40 @@ export async function checkSubmissionStatus(id: string): Promise<PaymentSubmissi
     .eq('id', id)
     .maybeSingle();
   return data?.status ?? null;
+}
+
+// Everything a payer expects to see on a confirmation screen once the
+// payment lands: what they bought, what it cost, the bank's own
+// reference (ABA's "Trx. ID", pulled out of the notification text by
+// aba-notify-ingest) and when the membership runs out. `select('*')` on
+// purpose — aba_trx_id only exists once database/aba-trx-id-addition.sql
+// has been run, and a receipt should degrade to the internal id rather
+// than error out.
+export interface PaymentReceipt {
+  id: string;
+  tier: string;
+  amount: number;
+  abaTrxId: string | null;
+  expiresAt: string | null;
+}
+
+export async function getPaymentReceipt(submissionId: string): Promise<PaymentReceipt | null> {
+  const { data } = await supabase
+    .from('payment_submissions')
+    .select('*')
+    .eq('id', submissionId)
+    .maybeSingle();
+  if (!data) return null;
+
+  const row = data as Record<string, unknown>;
+  const status = await getSubscriptionStatus();
+  return {
+    id: String(row.id),
+    tier: String(row.tier ?? ''),
+    amount: Number(row.amount ?? 0),
+    abaTrxId: (row.aba_trx_id as string | null) ?? null,
+    expiresAt: status.expiresAt,
+  };
 }
 
 // Fired once the 30-second grace window runs out with no admin decision
