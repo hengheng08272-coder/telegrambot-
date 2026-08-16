@@ -79,6 +79,49 @@ export function isKhqrPayload(value: string | null | undefined): value is string
   return !!value && value.length > 40 && value.startsWith('0002');
 }
 
+/**
+ * Decodes a KHQR payload straight out of a File the admin just picked,
+ * before it is ever uploaded. This is the reliable path: a local File
+ * has no origin, so there is no CORS involved and no chance of a
+ * tainted canvas -- unlike decodeKhqrFromImage above, which has to
+ * re-download the stored image and depends on the storage host sending
+ * the right headers. The result is saved next to the image so viewers
+ * never decode anything at all.
+ */
+export async function decodeKhqrFromFile(file: File): Promise<string | null> {
+  const url = URL.createObjectURL(file);
+  try {
+    const result = await new Promise<string | null>((resolve) => {
+      const img = new Image();
+      const done = (v: string | null) => resolve(v);
+      const timer = window.setTimeout(() => done(null), 8000);
+      img.onload = () => {
+        window.clearTimeout(timer);
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          if (!ctx) return done(null);
+          ctx.drawImage(img, 0, 0);
+          const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          done(jsQR(data.data, data.width, data.height)?.data ?? null);
+        } catch {
+          done(null);
+        }
+      };
+      img.onerror = () => {
+        window.clearTimeout(timer);
+        done(null);
+      };
+      img.src = url;
+    });
+    return result;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 /** Builds ABA Mobile's deeplink for a KHQR payload. */
 export function buildAbaDeeplink(khqr: string): string {
   return `abamobilebank://ababank.com?type=payway&qrcode=${encodeURIComponent(khqr)}`;

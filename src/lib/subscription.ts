@@ -129,6 +129,24 @@ export async function getQrCodes(): Promise<Record<string, string>> {
   return map;
 }
 
+// KHQR payloads decoded from each tier's QR image at upload time (see
+// SubscriptionsPanel). Having these stored means SubscriptionModal can
+// build the one-tap ABA deeplink instantly, without re-downloading and
+// re-decoding the image in the viewer's browser -- which is both slower
+// and dependent on the storage host's CORS headers.
+export async function getKhqrStrings(): Promise<Record<string, string>> {
+  const { data, error } = await supabase.from('payment_qr_codes').select('tier, khqr_string');
+  // The column is added by database/khqr-string-addition.sql. Until that
+  // has been run the select errors; fall back to an empty map so the
+  // modal quietly reverts to decoding the image itself.
+  if (error) return {};
+  const map: Record<string, string> = {};
+  for (const row of data ?? []) {
+    if (row.khqr_string) map[row.tier] = row.khqr_string;
+  }
+  return map;
+}
+
 // Admin-editable ABA PayWay links, one per tier (same table as the QR
 // images — see database/pay-link-addition.sql). When a tier has one,
 // SubscriptionModal shows a "Pay Now" button that opens it directly
