@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BadgeCheck,
   Check,
+  Copy,
   Crown,
   Download,
   ImagePlus,
@@ -14,7 +15,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { openExternalLink } from '@/lib/telegram';
+import { openExternalLink, copyToClipboard } from '@/lib/telegram';
 import {
   decodeKhqrFromImage,
   isKhqrPayload,
@@ -95,6 +96,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [checkingPending, setCheckingPending] = useState(true);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [payLinks, setPayLinks] = useState<Record<string, string>>({});
+  const [payLinkCopied, setPayLinkCopied] = useState(false);
   // KHQR payload read back out of the tier's QR image -> lets the primary
   // button jump straight into ABA instead of via PayWay's web page.
   const [khqrString, setKhqrString] = useState<string | null>(null);
@@ -673,28 +675,30 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       {t.subWaitingPayment} ({mmss})
                     </div>
 
-                    {payLinkSrc ? (
+                    {payLinkSrc || abaDeeplink ? (
                       <>
-                        <div className="flex justify-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // One tap = ABA. The PayWay web page is only
-                              // reached if the scheme goes nowhere (ABA not
-                              // installed, or the client blocked it).
-                              if (abaDeeplink) {
-                                openDeeplinkWithFallback(abaDeeplink, () =>
-                                  openExternalLink(payLinkSrc),
-                                );
-                              } else {
-                                openExternalLink(payLinkSrc);
-                              }
-                            }}
-                            className="flex items-center justify-center gap-2 rounded-xl bg-[#4A72C4]/14 px-6 py-2.5 text-sm font-extrabold text-[#7FA3E8] ring-1 ring-[#4A72C4]/35 transition active:scale-[0.98] hover:bg-[#4A72C4]/20"
-                          >
-                            <Zap className="h-4 w-4" /> {t.subOpenAba}
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // One tap = ABA. The PayWay web page is only
+                            // reached if the scheme goes nowhere (ABA not
+                            // installed, or the client blocked it).
+                            if (abaDeeplink) {
+                              // Only fall back when there is somewhere to fall
+                              // back TO. Tiers with no PayWay link rely on the
+                              // deeplink alone; the QR above stays as the
+                              // manual route either way.
+                              openDeeplinkWithFallback(abaDeeplink, () => {
+                                if (payLinkSrc) openExternalLink(payLinkSrc);
+                              });
+                            } else if (payLinkSrc) {
+                              openExternalLink(payLinkSrc);
+                            }
+                          }}
+                          className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#4A72C4] to-[#1F3A73] py-4 text-sm font-extrabold text-white shadow-[0_14px_32px_-12px_rgba(74,114,196,0.9)] transition active:scale-[0.98]"
+                        >
+                          <Zap className="h-4 w-4" /> {t.subOpenAba}
+                        </button>
 
                         {/* Reassurance sits directly under the primary
                             action, where the hesitation actually happens. */}
@@ -702,6 +706,42 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                           <ShieldCheck className="mt-[1px] h-3 w-3 shrink-0 text-[#7FE3C0]/70" />
                           <span>{isRealGateway ? t.subGatewayVerifiedNote : t.subGatewayManualNote}</span>
                         </p>
+
+                        {/* Escape hatch, deliberately understated. It sits
+                            AFTER the reassurance note and is sized like a
+                            small utility chip, not a second call to action —
+                            a full-width outlined button next to the real one
+                            reads as "the payment is unreliable", which is
+                            exactly the wrong feeling on a checkout screen. */}
+                        {payLinkSrc && (
+                        <div className="flex justify-center pt-0.5">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const ok = await copyToClipboard(payLinkSrc);
+                              if (ok) {
+                                setPayLinkCopied(true);
+                                window.setTimeout(() => setPayLinkCopied(false), 2200);
+                              }
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition active:scale-[0.97] ${
+                              payLinkCopied
+                                ? 'bg-[#35D399]/12 text-[#7FE3C0]'
+                                : 'bg-white/[0.07] text-white/55 hover:bg-white/[0.11] hover:text-white/80'
+                            }`}
+                          >
+                            {payLinkCopied ? (
+                              <>
+                                <Check className="h-3 w-3" /> {t.subPayLinkCopied}
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3" /> {t.subCopyPayLink}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        )}
                       </>
                     ) : (
                       <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-white/40">
