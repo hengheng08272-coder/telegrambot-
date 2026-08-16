@@ -26,6 +26,51 @@ import jsQR from 'jsqr';
 
 const cache = new Map<string, string | null>();
 
+// jsQR misses far more often than it should on real-world KHQR exports —
+// large source images (some bank apps export 2000px+ PNGs), a logo baked
+// into the finder-pattern quiet zone, or a color profile that leaves the
+// "white" modules slightly off-white all trip it up even though the code
+// is perfectly scannable by a phone camera. A single pass at native
+// resolution was silently failing on every real upload in production
+// (all four tiers came back with no khqr_string). This tries native
+// resolution first, then a couple of downscaled passes — each a fresh
+// canvas — since jsQR's own scaling behaves differently at different
+// source sizes and a size that fails at 2000px can succeed at 800px.
+const DECODE_WIDTHS = [0, 900, 600, 1400]; // 0 = native size, tried first
+
+function decodeFromCanvasSource(
+  img: HTMLImageElement,
+  targetWidth: number,
+): string | null {
+  const scale = targetWidth > 0 ? targetWidth / img.naturalWidth : 1;
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h);
+  const code = jsQR(data.data, data.width, data.height, {
+    inversionAttempts: 'attemptBoth',
+  });
+  return code?.data ?? null;
+}
+
+function decodeWithRetries(img: HTMLImageElement): string | null {
+  for (const width of DECODE_WIDTHS) {
+    try {
+      const value = decodeFromCanvasSource(img, width);
+      if (value) return value;
+    } catch {
+      // A tainted canvas or decode error at one size shouldn't stop the
+      // other sizes from being tried.
+    }
+  }
+  return null;
+}
+
 /** Reads the KHQR payload back out of a QR image URL. Null on any failure. */
 export async function decodeKhqrFromImage(url: string): Promise<string | null> {
   if (!url) return null;
@@ -44,19 +89,7 @@ export async function decodeKhqrFromImage(url: string): Promise<string | null> {
 
     img.onload = () => {
       window.clearTimeout(timer);
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) return done(null);
-        ctx.drawImage(img, 0, 0);
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(data.data, data.width, data.height);
-        done(code?.data ?? null);
-      } catch {
-        done(null);
-      }
+      done(decodeWithRetries(img));
     };
     img.onerror = () => {
       window.clearTimeout(timer);
@@ -97,18 +130,7 @@ export async function decodeKhqrFromFile(file: File): Promise<string | null> {
       const timer = window.setTimeout(() => done(null), 8000);
       img.onload = () => {
         window.clearTimeout(timer);
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (!ctx) return done(null);
-          ctx.drawImage(img, 0, 0);
-          const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          done(jsQR(data.data, data.width, data.height)?.data ?? null);
-        } catch {
-          done(null);
-        }
+        done(decodeWithRetries(img));
       };
       img.onerror = () => {
         window.clearTimeout(timer);
