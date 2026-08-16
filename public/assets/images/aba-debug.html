@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ABA Deeplink Debug</title>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; padding:18px 14px 44px; background:#0B0F1A; color:#E8ECF5;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; }
+  h1 { font-size:16px; margin:0 0 14px; }
+  .card { background:#141A2A; border:1px solid #222B40; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .t { font-size:13px; font-weight:700; margin-bottom:6px; }
+  .step { font-size:12px; padding:3px 0; }
+  .ok::before { content:"✅ "; } .bad::before { content:"❌ "; } .wait::before { content:"⏳ "; }
+  .ok { color:#7FE3C0; } .bad { color:#FF8B8B; } .wait { color:#E8C98A; }
+  button { width:100%; border:0; border-radius:10px; padding:13px; font-size:13px; font-weight:700;
+    color:#fff; background:linear-gradient(90deg,#4A72C4,#1F3A73); margin-top:8px; }
+  button:disabled { background:#222B40; color:#666F82; }
+  code { display:block; word-break:break-all; font-size:9px; color:#7FE3C0;
+    background:#0B0F1A; border:1px solid #222B40; border-radius:6px; padding:8px; margin-top:6px; }
+</style>
+</head>
+<body>
+<h1>ABA Deeplink Debug</h1>
+<div id="out"></div>
+
+<script>
+var BASE = "https://dowjxhkijtlsdvhyuddt.supabase.co/storage/v1/object/public/payment-qr-codes/";
+var TIERS = [
+  { key: "1m",  price: "$2",  file: "1m-1786612069698.png"  },
+  { key: "2m",  price: "$4",  file: "2m-1786612095140.png"  },
+  { key: "6m",  price: "$7",  file: "6m-1786612125341.png"  },
+  { key: "12m", price: "$27", file: "12m-1786612173580.png" }
+];
+
+var out = document.getElementById('out');
+
+function row(parent, cls, text) {
+  var d = document.createElement('div');
+  d.className = 'step ' + cls;
+  d.textContent = text;
+  parent.appendChild(d);
+  return d;
+}
+
+// Reproduces exactly what src/lib/khqr.ts does, but reports which step fails.
+function check(tier) {
+  var card = document.createElement('div');
+  card.className = 'card';
+  var h = document.createElement('div');
+  h.className = 't';
+  h.textContent = tier.key + ' — ' + tier.price;
+  card.appendChild(h);
+  out.appendChild(card);
+
+  var url = BASE + tier.file;
+  var s1 = row(card, 'wait', '1. កំពុងទាញរូប…');
+
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+
+  img.onerror = function () {
+    s1.className = 'step bad';
+    s1.textContent = '1. ទាញរូបមិនបាន (CORS ឬរូបបាត់)';
+  };
+
+  img.onload = function () {
+    s1.className = 'step ok';
+    s1.textContent = '1. ទាញរូបបាន — ' + img.naturalWidth + '×' + img.naturalHeight;
+
+    var s2 = row(card, 'wait', '2. កំពុងអាន canvas…');
+    var data;
+    try {
+      var c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      var ctx = c.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+      data = ctx.getImageData(0, 0, c.width, c.height);
+      s2.className = 'step ok';
+      s2.textContent = '2. Canvas អានបាន (គ្មាន CORS taint)';
+    } catch (e) {
+      s2.className = 'step bad';
+      s2.textContent = '2. Canvas ជាប់ CORS taint — ' + e.message;
+      return;
+    }
+
+    var s3 = row(card, 'wait', '3. កំពុង decode QR…');
+    var code = null;
+    try { code = jsQR(data.data, data.width, data.height); } catch (e) {}
+    if (!code || !code.data) {
+      s3.className = 'step bad';
+      s3.textContent = '3. jsQR អាន QR មិនចេញ (ប្រហែលដោយសារ logo នៅកណ្ដាល)';
+      return;
+    }
+    s3.className = 'step ok';
+    s3.textContent = '3. Decode បាន — ' + code.data.length + ' តួអក្សរ';
+
+    var s4 = row(card, 'wait', '4. ពិនិត្យទម្រង់ KHQR…');
+    if (code.data.indexOf('0002') !== 0 || code.data.length <= 40) {
+      s4.className = 'step bad';
+      s4.textContent = '4. មិនមែន KHQR (មិនចាប់ផ្ដើមដោយ 0002)';
+      return;
+    }
+    s4.className = 'step ok';
+    s4.textContent = '4. ជា KHQR ត្រឹមត្រូវ';
+
+    var dl = 'abamobilebank://ababank.com?type=payway&qrcode=' + encodeURIComponent(code.data);
+    var pre = document.createElement('code');
+    pre.textContent = dl;
+    card.appendChild(pre);
+
+    var b = document.createElement('button');
+    b.textContent = '5. សាកបើក ABA (' + tier.price + ')';
+    b.onclick = function () {
+      var left = false;
+      var mark = function () { left = true; };
+      document.addEventListener('visibilitychange', mark, { once: true });
+      window.addEventListener('pagehide', mark, { once: true });
+      setTimeout(function () {
+        b.textContent = (left || document.visibilityState === 'hidden')
+          ? '✅ ABA បើក — ដំណើរការ'
+          : '❌ ABA មិនបើក ក្នុង browser នេះ';
+      }, 2500);
+      window.location.href = dl;
+    };
+    card.appendChild(b);
+  };
+
+  img.src = url;
+}
+
+TIERS.forEach(check);
+</script>
+</body>
+</html>

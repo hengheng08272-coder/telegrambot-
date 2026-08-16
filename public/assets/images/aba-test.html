@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ABA Deeplink Test</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 20px 16px 48px;
+    background: #0B0F1A; color: #E8ECF5;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  .sub { font-size: 12px; color: #8A94A8; margin: 0 0 20px; }
+  .card {
+    background: #141A2A; border: 1px solid #222B40;
+    border-radius: 14px; padding: 14px; margin-bottom: 12px;
+  }
+  .label { font-size: 11px; color: #8A94A8; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  button {
+    width: 100%; border: 0; border-radius: 12px;
+    padding: 15px 12px; font-size: 14px; font-weight: 700;
+    color: #fff; background: linear-gradient(90deg, #4A72C4, #1F3A73);
+    margin-bottom: 8px; cursor: pointer;
+  }
+  button.alt { background: #222B40; }
+  button:active { transform: scale(.985); }
+  code {
+    display: block; word-break: break-all; font-size: 10px;
+    color: #7FE3C0; background: #0B0F1A; border: 1px solid #222B40;
+    border-radius: 8px; padding: 10px; margin-top: 8px;
+  }
+  textarea {
+    width: 100%; min-height: 96px; background: #0B0F1A; color: #E8ECF5;
+    border: 1px solid #222B40; border-radius: 8px; padding: 10px;
+    font-size: 11px; font-family: ui-monospace, Menlo, monospace;
+  }
+  #log { font-size: 12px; }
+  .ok { color: #7FE3C0; } .bad { color: #FF8B8B; } .wait { color: #E8C98A; }
+</style>
+</head>
+<body>
+
+<h1>ABA Deeplink Test</h1>
+<p class="sub">បើកទំព័រនេះក្នុងទូរស័ព្ទដែលមាន App ABA។ សាកសង្កត់ប៊ូតុងម្តងមួយៗ។</p>
+
+<div class="card">
+  <div class="label">KHQR string</div>
+  <textarea id="khqr" spellcheck="false"></textarea>
+</div>
+
+<div class="card">
+  <div class="label">សាកល្បង</div>
+  <button onclick="fire('encoded')">1 · Encoded (ដែល app ប្រើ)</button>
+  <button class="alt" onclick="fire('raw')">2 · Raw (មិន encode)</button>
+  <button class="alt" onclick="fire('short')">3 · abamobilebank://?qrcode=</button>
+</div>
+
+<div class="card">
+  <div class="label">លទ្ធផល</div>
+  <div id="log">មិនទាន់សាកល្បង</div>
+  <code id="url">—</code>
+</div>
+
+<script>
+// The $2 / 1-month KHQR payload decoded from the tier QR image.
+var DEFAULT_KHQR = "00020101021230510016abaakhppxxx@abaa01151260802062405260208ABA Bank52047832530384054042.005802KH5925PANG SOK HENG S2_Nint.Ani6010PHNOM PENH626568610010PAYWAY@ABA0107181087402090323994040619118094506083241532d993400131785945060832011318175020128326304F1DC";
+document.getElementById('khqr').value = DEFAULT_KHQR;
+
+var logEl = document.getElementById('log');
+var urlEl = document.getElementById('url');
+
+function build(mode, q) {
+  if (mode === 'encoded') return 'abamobilebank://ababank.com?type=payway&qrcode=' + encodeURIComponent(q);
+  if (mode === 'raw')     return 'abamobilebank://ababank.com?type=payway&qrcode=' + q;
+  return 'abamobilebank://?qrcode=' + encodeURIComponent(q);
+}
+
+function fire(mode) {
+  var q = document.getElementById('khqr').value.trim();
+  if (!q) { logEl.innerHTML = '<span class="bad">គ្មាន KHQR string</span>'; return; }
+
+  var url = build(mode, q);
+  urlEl.textContent = url;
+  logEl.innerHTML = '<span class="wait">កំពុងសាកល្បង… (' + mode + ')</span>';
+
+  // The only reliable signal that a custom scheme worked is that this page
+  // stops being the foreground page — there is no success callback.
+  var left = false;
+  var mark = function () { left = true; };
+  document.addEventListener('visibilitychange', mark, { once: true });
+  window.addEventListener('pagehide', mark, { once: true });
+  window.addEventListener('blur', mark, { once: true });
+
+  setTimeout(function () {
+    document.removeEventListener('visibilitychange', mark);
+    window.removeEventListener('pagehide', mark);
+    window.removeEventListener('blur', mark);
+    if (left || document.visibilityState === 'hidden') {
+      logEl.innerHTML = '<span class="ok">✅ ដំណើរការ — ទំព័របានចាកចេញ (ABA បើក)</span>';
+    } else {
+      logEl.innerHTML = '<span class="bad">❌ គ្មានអ្វីកើតឡើង — សាកទម្រង់បន្ទាប់</span>';
+    }
+  }, 2500);
+
+  window.location.href = url;
+}
+</script>
+
+</body>
+</html>
