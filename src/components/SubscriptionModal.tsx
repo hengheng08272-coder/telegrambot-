@@ -16,6 +16,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { openExternalLink, copyToClipboard } from '@/lib/telegram';
+import {
+  decodeKhqrFromImage,
+  isKhqrPayload,
+  buildAbaDeeplink,
+  openDeeplinkWithFallback,
+} from '@/lib/khqr';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -91,6 +97,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [payLinks, setPayLinks] = useState<Record<string, string>>({});
   const [payLinkCopied, setPayLinkCopied] = useState(false);
+  // KHQR payload read back out of the tier's QR image -> lets the primary
+  // button jump straight into ABA instead of via PayWay's web page.
+  const [khqrString, setKhqrString] = useState<string | null>(null);
   const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
@@ -224,6 +233,25 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const gatewayLink = abaCheckout?.configured ? abaCheckout.deeplink || abaCheckout.checkoutUrl : null;
   const payLinkSrc = payTier ? gatewayLink || payLinks[payTier.key] || null : null;
   const isRealGateway = Boolean(gatewayLink);
+  // A real gateway already hands us its own deeplink, so only fall back to
+  // rebuilding one from the QR image when there isn't one.
+  const abaDeeplink =
+    !isRealGateway && isKhqrPayload(khqrString) ? buildAbaDeeplink(khqrString) : null;
+
+  // Decode the tier's QR image once so the primary button can jump
+  // straight into ABA. Cancelled on tier change so a slow decode can't
+  // apply a stale plan's payload to the newly-selected one.
+  useEffect(() => {
+    let cancelled = false;
+    setKhqrString(null);
+    if (!qrSrc) return;
+    decodeKhqrFromImage(qrSrc).then((value) => {
+      if (!cancelled) setKhqrString(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [qrSrc]);
 
   // "Join VIP" just opens the payment ticket (QR + Auto/Manual screen).
   // The admin is not messaged at this point any more — only once there's
@@ -651,38 +679,63 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       <>
                         <button
                           type="button"
-                          onClick={() => openExternalLink(payLinkSrc)}
+                          onClick={() => {
+                            // One tap = ABA. The PayWay web page is only
+                            // reached if the scheme goes nowhere (ABA not
+                            // installed, or the client blocked it).
+                            if (abaDeeplink) {
+                              openDeeplinkWithFallback(abaDeeplink, () =>
+                                openExternalLink(payLinkSrc),
+                              );
+                            } else {
+                              openExternalLink(payLinkSrc);
+                            }
+                          }}
                           className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#4A72C4] to-[#1F3A73] py-4 text-sm font-extrabold text-white shadow-[0_14px_32px_-12px_rgba(74,114,196,0.9)] transition active:scale-[0.98]"
                         >
                           <Zap className="h-4 w-4" /> {t.subOpenAba}
                         </button>
 
-                        {/* Escape hatch. Some Telegram builds still keep the
-                            link inside their own browser, where the ABA app
-                            can never be handed the universal link and the
-                            page just spins. Copying it lets the viewer paste
-                            it into Safari/Chrome, which does open ABA. */}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const ok = await copyToClipboard(payLinkSrc);
-                            if (ok) {
-                              setPayLinkCopied(true);
-                              window.setTimeout(() => setPayLinkCopied(false), 2200);
-                            }
-                          }}
-                          className="flex w-full items-center justify-center gap-1.5 rounded-full border border-white/12 py-2.5 text-[11px] font-bold text-white/55 transition active:scale-[0.98] hover:border-white/30 hover:text-white/80"
-                        >
-                          {payLinkCopied ? (
-                            <>
-                              <Check className="h-3.5 w-3.5 text-[#35D399]" /> {t.subPayLinkCopied}
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3.5 w-3.5" /> {t.subCopyPayLink}
-                            </>
-                          )}
-                        </button>
+                        {/* Reassurance sits directly under the primary
+                            action, where the hesitation actually happens. */}
+                        <p className="flex items-start justify-center gap-1.5 px-1 text-center text-[10px] leading-relaxed text-white/45">
+                          <ShieldCheck className="mt-[1px] h-3 w-3 shrink-0 text-[#7FE3C0]/70" />
+                          <span>{isRealGateway ? t.subGatewayVerifiedNote : t.subGatewayManualNote}</span>
+                        </p>
+
+                        {/* Escape hatch, deliberately understated. It sits
+                            AFTER the reassurance note and is sized like a
+                            small utility chip, not a second call to action —
+                            a full-width outlined button next to the real one
+                            reads as "the payment is unreliable", which is
+                            exactly the wrong feeling on a checkout screen. */}
+                        <div className="flex justify-center pt-0.5">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const ok = await copyToClipboard(payLinkSrc);
+                              if (ok) {
+                                setPayLinkCopied(true);
+                                window.setTimeout(() => setPayLinkCopied(false), 2200);
+                              }
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition active:scale-[0.97] ${
+                              payLinkCopied
+                                ? 'bg-[#35D399]/12 text-[#7FE3C0]'
+                                : 'bg-white/[0.07] text-white/55 hover:bg-white/[0.11] hover:text-white/80'
+                            }`}
+                          >
+                            {payLinkCopied ? (
+                              <>
+                                <Check className="h-3 w-3" /> {t.subPayLinkCopied}
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3" /> {t.subCopyPayLink}
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </>
                     ) : (
                       <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-white/40">
@@ -690,11 +743,6 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       </p>
                     )}
 
-                    {payLinkSrc && (
-                      <p className="text-[10px] leading-relaxed text-white/35">
-                        {isRealGateway ? t.subGatewayVerifiedNote : t.subGatewayManualNote}
-                      </p>
-                    )}
                   </div>
                 ) : (
                   /* MANUAL — save the QR, pick a receipt, review it, then
