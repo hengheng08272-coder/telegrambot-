@@ -687,6 +687,13 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
 
                     {payLinkSrc || abaDeeplink ? (
                       <>
+                        {/* Light, compact "chip" rather than a full-width
+                            dark pill — this sits right under a QR the
+                            viewer might still scan by hand, so it reads as
+                            a fast shortcut next to it, not a second,
+                            competing full-size CTA. Squared-off rounded
+                            corners (not fully pill-shaped) and a light
+                            surface match ABA's own app-button convention. */}
                         <button
                           type="button"
                           onClick={() => {
@@ -705,9 +712,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                               openExternalLink(payLinkSrc);
                             }
                           }}
-                          className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#4A72C4] to-[#1F3A73] py-4 text-sm font-extrabold text-white shadow-[0_14px_32px_-12px_rgba(74,114,196,0.9)] transition active:scale-[0.98]"
+                          className="mx-auto flex items-center justify-center gap-2 rounded-2xl border border-[#4A72C4]/20 bg-white px-7 py-3 text-[13px] font-extrabold text-[#1F3A73] shadow-[0_8px_20px_-10px_rgba(74,114,196,0.55)] transition active:scale-[0.97] hover:bg-white/90"
                         >
-                          <Zap className="h-4 w-4" /> {t.subOpenAba}
+                          <Zap className="h-4 w-4 text-[#4A72C4]" /> {t.subOpenAba}
                         </button>
 
                         {/* Reassurance sits directly under the primary
