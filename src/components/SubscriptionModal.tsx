@@ -33,6 +33,7 @@ import {
   getPendingSubmission,
   getQrCodes,
   getPayLinks,
+  getKhqrStrings,
   createAbaCheckout,
   type AbaCheckoutResult,
   checkSubmissionStatus,
@@ -100,6 +101,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // KHQR payload read back out of the tier's QR image -> lets the primary
   // button jump straight into ABA instead of via PayWay's web page.
   const [khqrString, setKhqrString] = useState<string | null>(null);
+  // Payloads stored at upload time — preferred over decoding the image.
+  const [storedKhqr, setStoredKhqr] = useState<Record<string, string>>({});
   const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
@@ -133,6 +136,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     });
     getQrCodes().then(setQrImages);
     getPayLinks().then(setPayLinks);
+    getKhqrStrings().then(setStoredKhqr);
     getEffectivePricingTiers().then((rows) => {
       setTiers(rows);
       // Preselect the plan flagged "best" so the CTA is never dead on
@@ -235,8 +239,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const isRealGateway = Boolean(gatewayLink);
   // A real gateway already hands us its own deeplink, so only fall back to
   // rebuilding one from the QR image when there isn't one.
+  // Prefer the payload saved when the admin uploaded the QR; only fall
+  // back to decoding the image in the browser when that is missing (old
+  // uploads, or before the migration was run).
+  const effectiveKhqr = (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
   const abaDeeplink =
-    !isRealGateway && isKhqrPayload(khqrString) ? buildAbaDeeplink(khqrString) : null;
+    !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
 
   // Decode the tier's QR image once so the primary button can jump
   // straight into ABA. Cancelled on tier change so a slow decode can't
@@ -244,6 +252,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   useEffect(() => {
     let cancelled = false;
     setKhqrString(null);
+    // Nothing to decode when the payload is already stored.
+    if (payTier && storedKhqr[payTier.key]) return;
     if (!qrSrc) return;
     decodeKhqrFromImage(qrSrc).then((value) => {
       if (!cancelled) setKhqrString(value);
@@ -251,7 +261,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     return () => {
       cancelled = true;
     };
-  }, [qrSrc]);
+  }, [qrSrc, payTier, storedKhqr]);
 
   // "Join VIP" just opens the payment ticket (QR + Auto/Manual screen).
   // The admin is not messaged at this point any more — only once there's

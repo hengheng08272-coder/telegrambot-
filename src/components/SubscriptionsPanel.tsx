@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Check, Loader2, QrCode, Save, Upload, X, Zap } from 'lucide-react';
+import { decodeKhqrFromFile, isKhqrPayload } from '@/lib/khqr';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { PRICING_TIERS } from '@/lib/subscription';
 import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
@@ -152,6 +153,20 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     setUploadingTier(tierKey);
     setError('');
 
+    // Read the KHQR payload out of the file BEFORE uploading, while it is
+    // still a local File — no CORS, no tainted canvas, no re-download.
+    // Stored alongside the image so the payment screen can build the
+    // one-tap ABA deeplink without decoding anything.
+    const khqr = await decodeKhqrFromFile(file);
+    if (!isKhqrPayload(khqr)) {
+      // Not fatal: the image still works as a scannable QR. But the
+      // one-tap button will be missing for this tier, and silently
+      // missing is exactly the kind of thing that wastes an evening.
+      setError(
+        'រូបនេះ upload បាន តែអានជា KHQR មិនចេញ — ប៊ូតុង "បើក App ABA" នឹងមិនបង្ហាញសម្រាប់ថ្នាក់នេះទេ។ សូមប្រើរូបច្បាស់ជាងនេះ។',
+      );
+    }
+
     const ext = file.name.split('.').pop() || 'png';
     const path = `${tierKey}-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage
@@ -164,11 +179,20 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     }
 
     const { data: pub } = supabase.storage.from('payment-qr-codes').getPublicUrl(path);
-    const { error: upsertErr } = await supabase.from('payment_qr_codes').upsert({
+    const row: Record<string, unknown> = {
       tier: tierKey,
       image_url: pub.publicUrl,
       updated_at: new Date().toISOString(),
-    });
+    };
+    if (isKhqrPayload(khqr)) row.khqr_string = khqr;
+
+    let { error: upsertErr } = await supabase.from('payment_qr_codes').upsert(row);
+    if (upsertErr && /khqr_string/i.test(upsertErr.message)) {
+      // Migration not run yet — save the image anyway rather than losing
+      // the upload over an optional column.
+      delete row.khqr_string;
+      ({ error: upsertErr } = await supabase.from('payment_qr_codes').upsert(row));
+    }
     setUploadingTier(null);
     if (upsertErr) {
       setError(upsertErr.message);
