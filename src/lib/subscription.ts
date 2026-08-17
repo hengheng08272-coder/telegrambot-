@@ -71,6 +71,89 @@ function getIdentity() {
   return { id: deviceId, username: null as string | null };
 }
 
+export interface SubscriptionDetail extends SubscriptionStatus {
+  /** When the current period was last granted/extended. The table has no
+   *  separate start column — `updated_at` is stamped every time VIP time
+   *  is added, so it is the honest "this period began" marker. */
+  startedAt: string | null;
+}
+
+// Everything the account screen needs to answer "how long have I got
+// left, and out of how long" in one round trip.
+export async function getSubscriptionDetail(): Promise<SubscriptionDetail> {
+  const { id } = getIdentity();
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('expires_at, tier, updated_at')
+    .eq('telegram_user_id', id)
+    .maybeSingle();
+
+  if (!data?.expires_at) {
+    return { subscribed: false, expiresAt: null, tier: null, startedAt: null };
+  }
+  return {
+    subscribed: new Date(data.expires_at) > new Date(),
+    expiresAt: data.expires_at,
+    tier: data.tier,
+    startedAt: data.updated_at ?? null,
+  };
+}
+
+export interface PaymentHistoryRow {
+  id: string;
+  tier: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  submitted_at: string;
+  aba_trx_id?: string | null;
+}
+
+// This viewer's own payments, newest first — the "have I actually been
+// charged for this" record. Uses select('*') because aba_trx_id only
+// exists after database/aba-trx-id-addition.sql, and a history list
+// should degrade rather than error out.
+export async function getMyPayments(limit = 20): Promise<PaymentHistoryRow[]> {
+  const { id } = getIdentity();
+  const { data } = await supabase
+    .from('payment_submissions')
+    .select('*')
+    .eq('telegram_user_id', id)
+    .order('submitted_at', { ascending: false })
+    .limit(limit);
+  return (data ?? []) as PaymentHistoryRow[];
+}
+
+// Which plans are currently offered in the picker. This lives in
+// app_settings (comma-separated keys) rather than in code, because the
+// last time it was hardcoded the '2m' slot was hidden as the old "Big
+// Bonus" plan, then later re-purposed as the 3-month / $5 plan — and it
+// stayed invisible to every viewer even though the admin had priced it,
+// named it and attached a QR to it. A plan the admin can configure must
+// be a plan the admin can also un-hide, without a code change.
+const HIDDEN_TIERS_SETTING_KEY = 'hidden_tier_keys';
+
+export async function getHiddenTierKeys(): Promise<Set<string>> {
+  const { data } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', HIDDEN_TIERS_SETTING_KEY)
+    .maybeSingle();
+  return new Set(
+    (data?.value ?? '')
+      .split(',')
+      .map((key: string) => key.trim())
+      .filter(Boolean),
+  );
+}
+
+export async function setHiddenTierKeys(keys: Iterable<string>): Promise<void> {
+  const value = [...new Set(keys)].filter(Boolean).join(',');
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert({ key: HIDDEN_TIERS_SETTING_KEY, value }, { onConflict: 'key' });
+  if (error) throw error;
+}
+
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   const { id } = getIdentity();
   const { data } = await supabase
