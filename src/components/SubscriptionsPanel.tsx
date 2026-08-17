@@ -10,7 +10,13 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { decodeKhqrFromFile, isKhqrPayload } from '@/lib/khqr';
+import {
+  buildAbaDeeplink,
+  decodeKhqrFromFile,
+  isKhqrPayload,
+  readKhqrAmount,
+  readKhqrMerchant,
+} from '@/lib/khqr';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { PRICING_TIERS } from '@/lib/subscription';
 import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
@@ -92,6 +98,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [khqrDrafts, setKhqrDrafts] = useState<Record<string, string>>({});
   const [khqrEditingTier, setKhqrEditingTier] = useState<string | null>(null);
   const [savingKhqrTier, setSavingKhqrTier] = useState<string | null>(null);
+  const [copiedDeeplinkTier, setCopiedDeeplinkTier] = useState<string | null>(null);
   const [expandedTier, setExpandedTier] = useState<string | null>(null);
 
   // ABA auto-confirm matching — the name printed on every real ABA
@@ -431,8 +438,23 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               };
               const mismatch = labelMonthsMismatch(edit.label_km, edit.label_en, edit.months);
               const qr = images[tier.key] || FALLBACK_QR_IMAGES[tier.key];
-              const hasKhqr = Boolean(khqrStrings[tier.key]);
+              const khqrValue = khqrStrings[tier.key] ?? null;
+              const hasKhqr = Boolean(khqrValue);
               const isEditingKhqr = khqrEditingTier === tier.key;
+              // The QR is what ABA actually obeys — the price field here
+              // is only a label. If they disagree the viewer is charged
+              // the QR's amount and auto-confirm then waits forever for
+              // the app's amount, so the payer loses money AND gets no
+              // VIP. Reading it back out of the payload is the only way
+              // to catch that from the admin side.
+              const qrAmount = readKhqrAmount(khqrValue);
+              const qrMerchant = readKhqrMerchant(khqrValue);
+              const priceNumber = parseFloat(edit.price);
+              const amountMismatch =
+                qrAmount !== null &&
+                Number.isFinite(priceNumber) &&
+                Math.abs(qrAmount - priceNumber) > 0.001;
+              const abaDeeplink = khqrValue ? buildAbaDeeplink(khqrValue) : null;
               return (
                 <div key={tier.key} className="flex flex-col rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="mb-3 flex items-center gap-3">
@@ -443,9 +465,32 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         <QrCode className="h-5 w-5 text-white/20" />
                       )}
                     </div>
+                    {/* The heading has to read from `edit`, not from the
+                        hardcoded PRICING_TIERS entry. `tier.key` is a
+                        permanent internal id ('2m') and `tier.labelEn` is
+                        only a seed value — once a plan is re-purposed
+                        (the '2m' slot now sells 3 months) the code
+                        default is stale forever, so a header printing it
+                        says "1 Month (Big Bonus)" over a card that is
+                        actually configured as 3 months. The internal key
+                        moves to a small chip so rows stay identifiable
+                        without pretending to be the plan's name. */}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-white">{tier.labelEn}</p>
-                      <p className="text-xs text-white/40">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {edit.label_en.trim() || edit.label_km.trim() || tier.labelEn}
+                        </p>
+                        <span className="shrink-0 rounded bg-white/[0.07] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-white/35">
+                          {tier.key}
+                        </span>
+                      </div>
+                      <p className="truncate text-xs text-white/55">
+                        {edit.label_km.trim() || '—'}
+                        <span className="text-white/30"> · </span>
+                        {edit.months || '—'} ខែ
+                        <span className="text-white/30"> · </span>${edit.price || '—'}
+                      </p>
+                      <p className="text-[11px] text-white/35">
                         {images[tier.key] ? 'QR uploaded' : qr ? 'Using default QR' : 'No QR yet'}
                       </p>
                     </div>
@@ -634,6 +679,64 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         {isEditingKhqr ? 'បិទ' : hasKhqr ? 'កែ' : 'បិទភ្ជាប់ដោយដៃ'}
                       </button>
                     </div>
+
+                    {/* What the QR itself says, read straight out of the
+                        payload — the numbers ABA will actually use. */}
+                    {hasKhqr && (
+                      <p className="mt-1.5 text-[10px] leading-relaxed text-white/40">
+                        ក្នុង QR៖ <span className="font-bold text-white/70">${qrAmount?.toFixed(2) ?? '?'}</span>
+                        {qrMerchant ? ` · ${qrMerchant}` : ''}
+                      </p>
+                    )}
+                    {amountMismatch && (
+                      <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-[#FF6B6B]/10 px-2 py-1.5 text-[11px] leading-relaxed text-[#FF9C9C]">
+                        <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          QR យក ${qrAmount?.toFixed(2)} តែតម្លៃក្នុង app ដាក់ ${edit.price} — អតិថិជននឹងបង់តាម QR
+                          ហើយការបញ្ជាក់ស្វ័យប្រវត្តិនឹងរង់ចាំលេខមួយទៀត ដូច្នេះគាត់បង់លុយហើយមិនបានVIP។
+                          សូមធ្វើ QR ថ្មីតាមតម្លៃនេះ ឬកែតម្លៃឲ្យស្មើ QR។
+                        </span>
+                      </p>
+                    )}
+
+                    {/* A real anchor, so this is testable exactly the way
+                        a viewer's phone will meet it. Opening ABA from a
+                        genuine link is what works; the copy button is
+                        here so the same string can be pasted into a note
+                        or sent to a phone for a hands-on check. */}
+                    {abaDeeplink && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <a
+                          href={abaDeeplink}
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#4A72C4]/25 bg-[#4A72C4]/10 px-2.5 py-1 text-[11px] font-bold text-[#9DBBEE] no-underline transition hover:bg-[#4A72C4]/20"
+                        >
+                          <Zap className="h-3 w-3" /> សាកល្បងបើក ABA
+                        </a>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(abaDeeplink);
+                              setCopiedDeeplinkTier(tier.key);
+                              window.setTimeout(() => setCopiedDeeplinkTier(null), 2000);
+                            } catch {
+                              setError('ចម្លងមិនបាន — សូមចម្លងដោយដៃពីប្រអប់ខាងក្រោម។');
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.07] px-2.5 py-1 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.11] hover:text-white/80"
+                        >
+                          {copiedDeeplinkTier === tier.key ? (
+                            <>
+                              <Check className="h-3 w-3 text-[#5FD9A0]" /> ចម្លងរួច
+                            </>
+                          ) : (
+                            'ចម្លង deep link'
+                          )}
+                        </button>
+                      </div>
+                    )}
+
                     {isEditingKhqr && (
                       <div className="mt-2 space-y-1.5">
                         <p className="text-[10px] leading-relaxed text-white/40">

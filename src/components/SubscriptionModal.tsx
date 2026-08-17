@@ -20,7 +20,7 @@ import {
   decodeKhqrFromImage,
   isKhqrPayload,
   buildAbaDeeplink,
-  openDeeplinkWithFallback,
+  armDeeplinkFallback,
 } from '@/lib/khqr';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
@@ -694,28 +694,45 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                             competing full-size CTA. Squared-off rounded
                             corners (not fully pill-shaped) and a light
                             surface match ABA's own app-button convention. */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // One tap = ABA. The PayWay web page is only
-                            // reached if the scheme goes nowhere (ABA not
-                            // installed, or the client blocked it).
-                            if (abaDeeplink) {
-                              // Only fall back when there is somewhere to fall
-                              // back TO. Tiers with no PayWay link rely on the
-                              // deeplink alone; the QR above stays as the
-                              // manual route either way.
-                              openDeeplinkWithFallback(abaDeeplink, () => {
+                        {/* A REAL <a href="abamobilebank://...">, not a
+                            button that assigns location.href. Every
+                            WebView hands a non-http scheme to the OS when
+                            the viewer taps an actual link; a scripted
+                            navigation to the same string is routinely
+                            swallowed without an error, which is why the
+                            deeplink "worked like text, not a link". The
+                            fallback is only armed -- the navigation
+                            itself belongs to the browser now. */}
+                        <div className="flex justify-center">
+                          {abaDeeplink ? (
+                            <a
+                              href={abaDeeplink}
+                              rel="noreferrer"
+                              onClick={() => {
+                                // Only fall back when there is somewhere to
+                                // fall back TO. Tiers with no PayWay link rely
+                                // on the deeplink alone; the QR above stays as
+                                // the manual route either way.
+                                if (payLinkSrc) {
+                                  armDeeplinkFallback(() => openExternalLink(payLinkSrc));
+                                }
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#5C82CE]/25 bg-[#5C82CE]/[0.16] px-5 py-2 text-[12px] font-bold text-[#BED2F0] no-underline transition active:scale-[0.97] hover:bg-[#5C82CE]/[0.24] hover:text-[#D8E4F7]"
+                            >
+                              <Zap className="h-3.5 w-3.5 text-[#8FADE0]" /> {t.subOpenAba}
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
                                 if (payLinkSrc) openExternalLink(payLinkSrc);
-                              });
-                            } else if (payLinkSrc) {
-                              openExternalLink(payLinkSrc);
-                            }
-                          }}
-                          className="mx-auto flex items-center justify-center gap-2 rounded-2xl border border-[#4A72C4]/20 bg-white px-7 py-3 text-[13px] font-extrabold text-[#1F3A73] shadow-[0_8px_20px_-10px_rgba(74,114,196,0.55)] transition active:scale-[0.97] hover:bg-white/90"
-                        >
-                          <Zap className="h-4 w-4 text-[#4A72C4]" /> {t.subOpenAba}
-                        </button>
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#5C82CE]/25 bg-[#5C82CE]/[0.16] px-5 py-2 text-[12px] font-bold text-[#BED2F0] transition active:scale-[0.97] hover:bg-[#5C82CE]/[0.24] hover:text-[#D8E4F7]"
+                            >
+                              <Zap className="h-3.5 w-3.5 text-[#8FADE0]" /> {t.subOpenAba}
+                            </button>
+                          )}
+                        </div>
 
                         {/* Reassurance sits directly under the primary
                             action, where the hesitation actually happens. */}
