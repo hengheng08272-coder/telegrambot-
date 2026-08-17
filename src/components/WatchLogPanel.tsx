@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Eye as EyeIcon, X } from 'lucide-react';
+import { Loader2, Eye as EyeIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
+import AdminPanelShell from '@/components/AdminPanelShell';
 
 interface Props {
   onClose: () => void;
@@ -38,24 +39,18 @@ export default function WatchLogPanel({ onClose }: Props) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#0F1116] p-5"
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white">
-            <EyeIcon className="h-4 w-4 text-[#E3B341]" />
-            <h2 className="text-sm font-bold">Watch log</h2>
-          </div>
-          <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <AdminPanelShell
+      title="Watch log"
+      subtitle="Every playback session, newest first"
+      icon={<EyeIcon className="h-4 w-4" />}
+      accent="#E3B341"
+      maxWidth="max-w-[900px]"
+      onClose={onClose}
+    >
 
         {error && <p className="mb-2 text-xs text-red-300">{error}</p>}
 
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+        <div className="space-y-2">
           {loading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="h-5 w-5 animate-spin text-white/40" />
@@ -80,7 +75,6 @@ export default function WatchLogPanel({ onClose }: Props) {
             ))
           )}
         </div>
-      </div>
-    </div>
+    </AdminPanelShell>
   );
 }

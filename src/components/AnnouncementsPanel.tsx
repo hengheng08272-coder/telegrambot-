@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Megaphone, Send, Trash2, X, Eye, EyeOff, Save } from 'lucide-react';
+import { Loader2, Megaphone, Send, Trash2, Eye, EyeOff, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { fetchTickerMessage, saveTickerMessage } from '@/lib/api';
+import AdminPanelShell from '@/components/AdminPanelShell';
 
 interface Props {
   onClose: () => void;
@@ -94,20 +95,14 @@ export default function AnnouncementsPanel({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#0F1116] p-5"
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white">
-            <Megaphone className="h-4 w-4 text-[#E3B341]" />
-            <h2 className="text-sm font-bold">Announcements (home screen)</h2>
-          </div>
-          <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <AdminPanelShell
+      title="Announcements"
+      subtitle="Ticker text and the banner announcements shown on the home screen"
+      icon={<Megaphone className="h-4 w-4" />}
+      accent="#E3B341"
+      maxWidth="max-w-[900px]"
+      onClose={onClose}
+    >
 
         <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-white/50">
@@ -155,7 +150,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+        <div className="space-y-2">
           {loading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="h-5 w-5 animate-spin text-white/40" />
@@ -192,7 +187,6 @@ export default function AnnouncementsPanel({ onClose }: Props) {
             ))
           )}
         </div>
-      </div>
-    </div>
+    </AdminPanelShell>
   );
 }

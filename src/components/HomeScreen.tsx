@@ -598,7 +598,7 @@ export default function HomeScreen({
               title={t.newRelease}
               shows={newReleases}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.newRelease, shows })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
               tag={{ label: t.newTag ?? 'NEW', color: '#EDEDF0' }}
             />
@@ -607,7 +607,7 @@ export default function HomeScreen({
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle ?? t.popularSeason, shows })}
+              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
               tag={{ label: t.hotTag ?? 'HOT', color: '#E6231F' }}
             />
@@ -773,6 +773,7 @@ type TranslationText = {
   top10Label?: string;
   featuredLabel?: string;
   vipBadge?: string;
+  ongoing?: string;
   myList: string;
 };
 

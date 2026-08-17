@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Search, ShieldCheck, ShieldX, User, X, Plus } from 'lucide-react';
+import { Loader2, Search, ShieldCheck, ShieldX, User, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
+import AdminPanelShell from '@/components/AdminPanelShell';
 
 interface Props {
   onClose: () => void;
@@ -82,20 +83,14 @@ export default function UsersPanel({ onClose }: Props) {
   });
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-white/10 bg-[#0F1116] p-5"
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white">
-            <User className="h-4 w-4 text-[#2B5CAD]" />
-            <h2 className="text-sm font-bold">Users — search & manage VIP</h2>
-          </div>
-          <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <AdminPanelShell
+      title="Users"
+      subtitle="Search by Telegram ID or @username — extend or revoke VIP"
+      icon={<User className="h-4 w-4" />}
+      accent="#2B5CAD"
+      maxWidth="max-w-[1000px]"
+      onClose={onClose}
+    >
 
         <div className="relative mb-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -109,7 +104,7 @@ export default function UsersPanel({ onClose }: Props) {
 
         {error && <p className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
 
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+        <div className="space-y-2">
           {loading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="h-5 w-5 animate-spin text-white/40" />
@@ -167,7 +162,6 @@ export default function UsersPanel({ onClose }: Props) {
             })
           )}
         </div>
-      </div>
-    </div>
+    </AdminPanelShell>
   );
 }

@@ -1,7 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Bookmark, Crown, Gift, ShieldCheck, Sparkles, User, FileText, Copy, Check, UserPlus } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bookmark,
+  CalendarClock,
+  Check,
+  Copy,
+  Crown,
+  FileText,
+  Gift,
+  Receipt,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+  User,
+  UserPlus,
+} from 'lucide-react';
 import { getCurrentTelegramProfile, shareReferralLink } from '@/lib/telegram';
-import { getSubscriptionStatus, PRICING_TIERS, type SubscriptionStatus } from '@/lib/subscription';
+import {
+  getEffectivePricingTiers,
+  getMyPayments,
+  getSubscriptionDetail,
+  type PaymentHistoryRow,
+  type PricingTier,
+  type SubscriptionDetail,
+} from '@/lib/subscription';
 import { getAvailableBonusSpin, type BonusSpinInfo } from '@/lib/spin';
 import { getReferralStats, type ReferralStats } from '@/lib/referral';
 import { useLang } from '@/lib/useLang';
@@ -21,7 +43,10 @@ interface Props {
 }
 
 export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscription, onOpenSpin, onOpenLegal, onAdminSecretTap }: Props) {
-  const [status, setStatus] = useState<SubscriptionStatus | null>(null);
+  const [status, setStatus] = useState<SubscriptionDetail | null>(null);
+  const [tiers, setTiers] = useState<PricingTier[]>([]);
+  const [payments, setPayments] = useState<PaymentHistoryRow[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [bonusInfo, setBonusInfo] = useState<BonusSpinInfo | null>(null);
   const [idCopied, setIdCopied] = useState(false);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
@@ -31,7 +56,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
   const t = appText[lang];
 
   useEffect(() => {
-    getSubscriptionStatus().then(setStatus);
+    getSubscriptionDetail().then(setStatus);
+    getEffectivePricingTiers().then(setTiers);
+    getMyPayments().then(setPayments);
     getAvailableBonusSpin().then(setBonusInfo);
     getReferralStats().then(setReferralStats);
   }, []);
@@ -58,11 +85,55 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
     }
   };
 
-  const tierLabel = status?.tier ? PRICING_TIERS.find((tier) => tier.key === status.tier)?.labelKm ?? status.tier : null;
+  // Read the plan off the LIVE pricing_tiers rows, not the hardcoded
+  // seed list. A plan slot can be re-priced or re-purposed by the admin
+  // (the '2m' slot currently sells 3 months), and the code default goes
+  // stale the moment that happens — so reading it from code would name
+  // someone's plan wrongly on the one screen they open to check it.
+  const currentTier = status?.tier ? tiers.find((tier) => tier.key === status.tier) ?? null : null;
+  const tierLabel = currentTier?.labelKm ?? status?.tier ?? null;
 
   const daysLeft = status?.expiresAt
     ? Math.max(0, Math.ceil((new Date(status.expiresAt).getTime() - Date.now()) / 86_400_000))
     : null;
+
+  // How far through the current period they are. `startedAt` is when VIP
+  // time was last added, so this is honest even after an extension or a
+  // bonus-spin top-up, without needing a separate start column.
+  const totalDays =
+    status?.startedAt && status?.expiresAt
+      ? Math.max(
+          1,
+          Math.round(
+            (new Date(status.expiresAt).getTime() - new Date(status.startedAt).getTime()) / 86_400_000,
+          ),
+        )
+      : null;
+  const usedPercent =
+    totalDays !== null && daysLeft !== null
+      ? Math.min(100, Math.max(0, ((totalDays - daysLeft) / totalDays) * 100))
+      : null;
+  // Expiry inside a week is the point where a reminder is useful rather
+  // than nagging — before that the number alone is enough.
+  const expiringSoon = daysLeft !== null && daysLeft <= 7;
+
+  const approvedPayments = payments.filter((row) => row.status === 'approved');
+  const totalPaid = approvedPayments.reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(lang === 'km' ? 'km-KH' : 'en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+
+  const planNameFor = (key: string) => tiers.find((tier) => tier.key === key)?.labelKm ?? key;
+
+  const STATUS_STYLE: Record<string, { label: string; className: string }> = {
+    approved: { label: 'ជោគជ័យ', className: 'bg-[#34B37A]/15 text-[#5FD9A0]' },
+    pending: { label: 'កំពុងរង់ចាំ', className: 'bg-[#E3B341]/15 text-[#E3B341]' },
+    rejected: { label: 'បដិសេធ', className: 'bg-[#EF4444]/15 text-[#FCA5A5]' },
+  };
 
   return (
     <div className="min-h-screen bg-[#0A0A0D] pb-10 text-white">
@@ -201,21 +272,77 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               )}
             </div>
 
-            {status.expiresAt && (
-              <div className="mb-3 rounded-xl border border-white/10 bg-black/25 p-3 text-center">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">ផុតកំណត់</p>
-                <p className="mt-0.5 text-xl font-black text-white">
-                  {new Date(status.expiresAt).toLocaleDateString('km-KH', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+            {/* Days left is the headline, with the period bar under it —
+                a bare date answers "when" but not "how much is left of
+                what I bought", which is the thing people are actually
+                checking for. */}
+            <div className="mb-3 rounded-xl border border-white/10 bg-black/25 p-4 text-center">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">នៅសល់</p>
+              <p
+                className={`text-4xl font-black leading-none ${
+                  expiringSoon ? 'text-[#FFB84D]' : 'text-white'
+                }`}
+              >
+                {daysLeft ?? '—'}
+                <span className="ml-1 text-base font-bold text-white/50">ថ្ងៃ</span>
+              </p>
+
+              {usedPercent !== null && (
+                <div className="mt-3">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${100 - usedPercent}%`,
+                        background: expiringSoon
+                          ? 'linear-gradient(90deg,#FFB84D,#E3B341)'
+                          : 'linear-gradient(90deg,#E3B341,#5FD9A0)',
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-white/35">
+                    ប្រើទៅ {Math.round(usedPercent)}% នៃ {totalDays} ថ្ងៃ
+                  </p>
+                </div>
+              )}
+
+              {expiringSoon && (
+                <p className="mt-2 text-[11px] font-semibold text-[#FFB84D]">
+                  ជិតផុតកំណត់ហើយ — បន្តឥឡូវដើម្បីកុំឲ្យដាច់
                 </p>
-                {daysLeft !== null && (
-                  <p className="mt-0.5 text-xs font-semibold text-[#2B5CAD]">នៅសល់ {daysLeft} ថ្ងៃ</p>
-                )}
+              )}
+            </div>
+
+            {/* The plan's own facts: which plan, how long it grants, and
+                the exact start/end dates of the period being counted. */}
+            <div className="mb-3 space-y-px overflow-hidden rounded-xl border border-white/10 bg-black/20">
+              <div className="flex items-center gap-2 px-3 py-2.5">
+                <Tag className="h-3.5 w-3.5 shrink-0 text-white/35" />
+                <span className="text-[11px] text-white/45">គម្រោង</span>
+                <span className="ml-auto truncate text-xs font-semibold text-white">
+                  {tierLabel ?? '—'}
+                  {currentTier && (
+                    <span className="text-white/40"> · {currentTier.months} ខែ · ${currentTier.price}</span>
+                  )}
+                </span>
               </div>
-            )}
+              {status.startedAt && (
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-white/35" />
+                  <span className="text-[11px] text-white/45">ចាប់ផ្ដើម</span>
+                  <span className="ml-auto text-xs font-semibold text-white">{fmtDate(status.startedAt)}</span>
+                </div>
+              )}
+              {status.expiresAt && (
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#E3B341]" />
+                  <span className="text-[11px] text-white/45">ផុតកំណត់</span>
+                  <span className="ml-auto text-xs font-semibold text-[#E3B341]">
+                    {fmtDate(status.expiresAt)}
+                  </span>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={onOpenSubscription}
@@ -233,6 +360,97 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             >
               ក្លាយជា VIP ឥឡូវនេះ
             </button>
+          </div>
+        )}
+
+        {/* Every plan on sale, with what each one actually grants. The
+            picker inside the payment modal is a commitment step; this is
+            the reference list, readable without starting a purchase. */}
+        {tiers.length > 0 && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+            <p className="border-b border-white/10 px-4 py-3 text-xs font-bold uppercase tracking-wide text-white/45">
+              គម្រោងទាំងអស់
+            </p>
+            {tiers.map((tier) => {
+              const isCurrent = tier.key === status?.tier && status?.subscribed;
+              return (
+                <button
+                  key={tier.key}
+                  onClick={onOpenSubscription}
+                  className="flex w-full items-center gap-3 border-b border-white/[0.06] px-4 py-3 text-left transition last:border-b-0 hover:bg-white/[0.05]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-white">
+                      {tier.labelKm}
+                      {isCurrent && (
+                        <span className="ml-2 rounded-full bg-[#E3B341]/15 px-2 py-0.5 text-[9px] font-bold text-[#E3B341]">
+                          គម្រោងបច្ចុប្បន្ន
+                        </span>
+                      )}
+                    </p>
+                    <p className="truncate text-[11px] text-white/40">
+                      {tier.months} ខែ
+                      {tier.months > 1 && ` · $${(tier.price / tier.months).toFixed(2)}/ខែ`}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-black text-[#E3B341]">${tier.price}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Payment record. Someone who paid and is waiting, or who thinks
+            they were charged twice, has nowhere else to look — and a
+            visible bank reference is what turns "trust me" into
+            something they can check against their own ABA history. */}
+        {payments.length > 0 && (
+          <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+            <button
+              onClick={() => setHistoryOpen((open) => !open)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.05]"
+            >
+              <Receipt className="h-4 w-4 shrink-0 text-white/45" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white">ប្រវត្តិទូទាត់</p>
+                <p className="text-[11px] text-white/40">
+                  {approvedPayments.length} ដងជោគជ័យ · សរុប ${totalPaid.toFixed(2)}
+                </p>
+              </div>
+              <span className="shrink-0 text-[11px] font-semibold text-white/45">
+                {historyOpen ? 'បិទ' : 'មើល'}
+              </span>
+            </button>
+
+            {historyOpen && (
+              <div className="border-t border-white/10">
+                {payments.map((row) => {
+                  const badge = STATUS_STYLE[row.status] ?? STATUS_STYLE.pending;
+                  return (
+                    <div
+                      key={row.id}
+                      className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-2.5 last:border-b-0"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-white">
+                          {planNameFor(row.tier)}
+                          <span className="text-white/40"> · ${Number(row.amount).toFixed(2)}</span>
+                        </p>
+                        <p className="truncate text-[10px] text-white/35">
+                          {fmtDate(row.submitted_at)}
+                          {row.aba_trx_id ? ` · Ref ${row.aba_trx_id}` : ''}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${badge.className}`}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

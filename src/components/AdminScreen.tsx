@@ -25,6 +25,8 @@ import {
   Unlock,
   Crown,
   Users as UsersIcon,
+  ChevronRight,
+  ListVideo,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import type { Show, Episode } from '@/lib/types';
@@ -115,7 +117,12 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  // Which show has the full screen. The old accordion kept every show
+  // in one long column and pushed the rest of the list far down the
+  // moment one was expanded, so adding episode 40 of a series meant
+  // scrolling past everything else first. One show at a time, with the
+  // list a single tap away, is what actually matches the job.
+  const [focusedShowId, setFocusedShowId] = useState<string | null>(null);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [addEpOpen, setAddEpOpen] = useState<string | null>(null);
@@ -232,13 +239,13 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     .filter((s) => s.type !== 'movie' && !s.coming_soon)
     .map((s) => {
       const last = s.episodes[s.episodes.length - 1];
-      return { show: s, lastAt: last ? new Date(last.created_at).getTime() : 0 };
+      return { show: s, lastAt: last?.created_at ? new Date(last.created_at).getTime() : 0 };
     })
     .sort((a, b) => a.lastAt - b.lastAt)
     .slice(0, 6)
     .map((x) => x.show);
 
-  const showRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const addEpisodeRef = useRef<HTMLDivElement | null>(null);
 
   // Shared "jump to this show and open a pre-filled Add Episode form"
   // action — used by both the per-show Add Episode button and the
@@ -254,10 +261,10 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       duration: '',
       video_url: '',
     });
-    setSelectedShowId(show.id);
+    setFocusedShowId(show.id);
     setAddEpOpen(show.id);
     requestAnimationFrame(() => {
-      showRefs.current[show.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      addEpisodeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   };
 
@@ -605,6 +612,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     await loadShows();
   };
 
+  // The show that currently owns the screen, resolved fresh from
+  // `shows` on every render so an upload or delete inside the workspace
+  // is reflected immediately without a second source of truth.
+  const focusedShow = shows.find((item) => item.id === focusedShowId) ?? null;
+  const nextEpisodeNumber = focusedShow
+    ? focusedShow.episodes.reduce((max, ep) => Math.max(max, ep.episode_number), 0) + 1
+    : 1;
+
   return (
     <div className="min-h-screen bg-[#0A0A0D] text-white">
       {/* Header — split into a primary row (back / title / new show / search)
@@ -766,423 +781,508 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             <Loader2 className="h-8 w-8 animate-spin text-[#34B37A]" />
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
             {filteredShows.map((show) => {
-              const isExpanded = selectedShowId === show.id;
+              const nextNumber =
+                show.episodes.reduce((max, ep) => Math.max(max, ep.episode_number), 0) + 1;
+              const withVideo = show.episodes.filter((ep) => ep.video_url).length;
+              const unlocked = show.episodes.filter((ep) => ep.is_free_preview).length;
               return (
-                <div
+                <button
                   key={show.id}
-                  ref={(el) => { showRefs.current[show.id] = el; }}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#0F1116] scroll-mt-40"
+                  onClick={() => setFocusedShowId(show.id)}
+                  className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-[#0F1116] p-3.5 text-left transition hover:border-[#34B37A]/40 hover:bg-white/[0.03]"
                 >
-                  {/* Show header */}
-                  <button
-                    onClick={() =>
-                      setSelectedShowId(isExpanded ? null : show.id)
-                    }
-                    className="flex w-full items-center gap-4 p-4 text-left transition hover:bg-white/[0.02]"
-                  >
-                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-[#151822]">
-                      {show.poster_url && (
-                        <img
-                          src={show.poster_url}
-                          alt={show.title}
-                          className="h-full w-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-white">{show.title}</h3>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-white/50">
-                        <span className="flex items-center gap-1">
-                          {show.type === 'movie' ? (
-                            <Film className="h-3.5 w-3.5" />
-                          ) : (
-                            <Tv className="h-3.5 w-3.5" />
-                          )}
-                          {show.type === 'movie' ? 'Movie' : 'Series'}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Video className="h-3.5 w-3.5" />
-                          {show.episodes.length} episode{show.episodes.length === 1 ? '' : 's'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEdit(show);
-                        }}
-                        className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
-                      >
-                        <Pencil className="h-3.5 w-3.5" /> Edit
-                      </button>
-                      <span className="text-xs text-white/40">
-                        {isExpanded ? 'Collapse' : 'Expand'}
+                  <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151822]">
+                    {show.poster_url && (
+                      <img src={show.poster_url} alt={show.title} className="h-full w-full object-cover" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-bold text-white">{show.title}</h3>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/50">
+                      <span className="flex items-center gap-1">
+                        {show.type === 'movie' ? <Film className="h-3.5 w-3.5" /> : <Tv className="h-3.5 w-3.5" />}
+                        {show.type === 'movie' ? 'Movie' : 'Series'}
                       </span>
-                    </div>
-                  </button>
-
-                  {/* Episodes */}
-                  {isExpanded && (
-                    <div className="border-t border-white/10 px-4 py-4">
-                      {/* Bulk unlock/lock — every episode is VIP-locked by default,
-                          this is the fast path for "unlock this whole show" instead
-                          of tapping Unlock on each episode one at a time. */}
+                      <span className="flex items-center gap-1">
+                        <Video className="h-3.5 w-3.5" />
+                        {show.episodes.length} ep{show.episodes.length === 1 ? '' : 's'}
+                      </span>
                       {show.episodes.length > 0 && (
-                        <div className="mb-3 flex items-center gap-2">
-                          <span className="flex items-center gap-1.5 text-xs font-semibold text-white/50">
-                            <Crown className="h-3.5 w-3.5 text-[#E3B341]" />
-                            {show.episodes.filter((ep) => ep.is_free_preview).length}/{show.episodes.length} unlocked
-                          </span>
-                          <button
-                            onClick={() =>
-                              handleBulkSetEpisodesFree(
-                                show.id,
-                                show.episodes.map((ep) => ep.id),
-                                true,
-                              )
-                            }
-                            disabled={bulkLockBusyShowId === show.id}
-                            className="ml-auto flex items-center gap-1.5 rounded-lg border border-[#34B37A]/30 bg-[#34B37A]/10 px-3 py-1.5 text-xs font-semibold text-[#34B37A] transition hover:bg-[#34B37A]/20 disabled:opacity-50"
-                          >
-                            {bulkLockBusyShowId === show.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Unlock className="h-3.5 w-3.5" />
-                            )}
-                            Unlock all
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleBulkSetEpisodesFree(
-                                show.id,
-                                show.episodes.map((ep) => ep.id),
-                                false,
-                              )
-                            }
-                            disabled={bulkLockBusyShowId === show.id}
-                            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 disabled:opacity-50"
-                          >
-                            <Lock className="h-3.5 w-3.5" />
-                            Lock all
-                          </button>
-                        </div>
-                      )}
-                      <div className="space-y-3">
-                        {show.episodes.map((ep) => {
-                          const hasVideo = !!ep.video_url;
-                          const isUploading = uploadingFor === ep.id;
-                          return (
-                            <div
-                              key={ep.id}
-                              className="rounded-xl border border-white/5 bg-[#151822] p-3"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-white/60">
-                                  {ep.episode_number}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-semibold text-white">
-                                    {ep.title}
-                                  </p>
-                                  <div className="mt-0.5 flex items-center gap-2 text-xs">
-                                    {hasVideo ? (
-                                      <span className="flex items-center gap-1 text-[#34B37A]">
-                                        <CheckCircle2 className="h-3 w-3" /> Video ready
-                                      </span>
-                                    ) : (
-                                      <span className="flex items-center gap-1 text-[#E3B341]">
-                                        <Clock className="h-3 w-3" /> No video uploaded
-                                      </span>
-                                    )}
-                                    {ep.duration && (
-                                      <span className="text-white/40">
-                                        · {ep.duration} min
-                                      </span>
-                                    )}
-                                  </div>
-                                  {isUploading && (
-                                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/10">
-                                      <div
-                                        className="h-full rounded-full bg-[#34B37A] transition-all"
-                                        style={{ width: `${uploadProgress}%` }}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                                {hasVideo && (
-                                  <button
-                                    onClick={() => handlePreviewVideo(ep.id)}
-                                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
-                                  >
-                                    <Play className="h-3.5 w-3.5" />
-                                    Preview
-                                  </button>
-                                )}
-                                {/* Per-episode free-preview toggle — episodes are locked
-                                    (VIP-only) by default, this is the one-tap way to make
-                                    a single episode playable without a subscription. */}
-                                <button
-                                  onClick={() => handleToggleEpisodeFree(ep)}
-                                  disabled={episodeLockBusyId === ep.id}
-                                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:opacity-50 ${
-                                    ep.is_free_preview
-                                      ? 'border-[#34B37A]/40 bg-[#34B37A]/10 text-[#34B37A] hover:bg-[#34B37A]/20'
-                                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                                  }`}
-                                  title={ep.is_free_preview ? 'Unlocked — tap to lock again' : 'Locked — tap to unlock (playable without VIP)'}
-                                >
-                                  {episodeLockBusyId === ep.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : ep.is_free_preview ? (
-                                    <Unlock className="h-3.5 w-3.5" />
-                                  ) : (
-                                    <Lock className="h-3.5 w-3.5" />
-                                  )}
-                                  {ep.is_free_preview ? 'Unlocked' : 'Locked'}
-                                </button>
-                                <button
-                                  onClick={() => triggerFileUpload(ep.id)}
-                                  disabled={isUploading}
-                                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:opacity-50"
-                                >
-                                  {isUploading ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Upload className="h-3.5 w-3.5" />
-                                  )}
-                                  {hasVideo ? 'Replace' : 'Upload'}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (pasteUrlFor === ep.id) {
-                                      setPasteUrlFor(null);
-                                      setPasteUrlValue('');
-                                    } else {
-                                      setPasteUrlFor(ep.id);
-                                      setPasteUrlValue(ep.video_url ?? '');
-                                    }
-                                  }}
-                                  className="flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-white/50 underline-offset-2 transition hover:text-white hover:underline"
-                                >
-                                  <Link2 className="h-3.5 w-3.5" /> Paste URL
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteEpisode(ep.id)}
-                                  className="rounded-lg p-2 text-white/40 transition hover:bg-[#EF4444]/10 hover:text-[#EF4444]"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-
-                              {pasteUrlFor === ep.id && (
-                                <div className="mt-2.5 flex items-center gap-2 border-t border-white/5 pt-2.5">
-                                  <input
-                                    type="text"
-                                    value={pasteUrlValue}
-                                    onChange={(e) => setPasteUrlValue(e.target.value)}
-                                    placeholder="https://.../episode.mp4 or .m3u8"
-                                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-white outline-none"
-                                  />
-                                  <button
-                                    onClick={() => handleSaveVideoUrl(ep.id)}
-                                    disabled={savingUrlFor === ep.id || !pasteUrlValue.trim()}
-                                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#34B37A] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
-                                  >
-                                    {savingUrlFor === ep.id ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <CheckCircle2 className="h-3.5 w-3.5" />
-                                    )}
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setPasteUrlFor(null);
-                                      setPasteUrlValue('');
-                                    }}
-                                    className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/5"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Add episode / video */}
-                      {(show.type !== 'movie' || show.episodes.length === 0) && (
-                        <div className="mt-4">
-                          {addEpOpen === show.id ? (
-                            <div className="space-y-3 rounded-xl border border-white/10 bg-[#151822] p-4">
-                              {show.type !== 'movie' && (
-                              <div className="grid grid-cols-3 gap-2">
-                                <div>
-                                  <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                    Episode #
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={newEp.episode_number}
-                                    onChange={(e) =>
-                                      setNewEp({ ...newEp, episode_number: e.target.value })
-                                    }
-                                    placeholder="1"
-                                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                    Season
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={newEp.season}
-                                    onChange={(e) =>
-                                      setNewEp({ ...newEp, season: e.target.value })
-                                    }
-                                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                    Duration (min) — auto
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={newEp.duration}
-                                    onChange={(e) =>
-                                      setNewEp({ ...newEp, duration: e.target.value })
-                                    }
-                                    placeholder="Leave blank — read from video"
-                                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none placeholder:text-[11px]"
-                                  />
-                                </div>
-                              </div>
-                              )}
-                              {show.type === 'movie' && (
-                                <div>
-                                  <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                    Duration (min) — auto
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={newEp.duration}
-                                    onChange={(e) =>
-                                      setNewEp({ ...newEp, duration: e.target.value })
-                                    }
-                                    placeholder="Leave blank — read from video"
-                                    className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none placeholder:text-[11px]"
-                                  />
-                                </div>
-                              )}
-                              {show.type !== 'movie' && (
-                              <div>
-                                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                  Title
-                                </label>
-                                <input
-                                  value={newEp.title}
-                                  onChange={(e) =>
-                                    setNewEp({ ...newEp, title: e.target.value })
-                                  }
-                                  placeholder="Episode title"
-                                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
-                                />
-                              </div>
-                              )}
-                              {show.type !== 'movie' && (
-                              <div>
-                                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                                  Description
-                                </label>
-                                <textarea
-                                  value={newEp.description}
-                                  onChange={(e) =>
-                                    setNewEp({ ...newEp, description: e.target.value })
-                                  }
-                                  rows={2}
-                                  className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
-                                />
-                              </div>
-                              )}
-                              <div>
-                                <label className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
-                                  <Link2 className="h-3 w-3" /> Video URL (optional — paste now or add later)
-                                </label>
-                                <input
-                                  value={newEp.video_url}
-                                  onChange={(e) =>
-                                    setNewEp({ ...newEp, video_url: e.target.value })
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      handleAddEpisode(
-                                        show.id,
-                                        show.type === 'movie' ? show.title : undefined,
-                                      );
-                                    }
-                                  }}
-                                  placeholder="https://…  (paste link, press Enter or Add to save + jump to next ep)"
-                                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none focus:border-[#34B37A]/50"
-                                  autoFocus
-                                />
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() =>
-                                    handleAddEpisode(
-                                      show.id,
-                                      show.type === 'movie' ? show.title : undefined,
-                                    )
-                                  }
-                                  disabled={busy}
-                                  className="flex items-center gap-1.5 rounded-lg bg-[#34B37A] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
-                                >
-                                  {busy ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Plus className="h-3.5 w-3.5" />
-                                  )}
-                                  {show.type === 'movie' ? 'Add Movie Slot' : `Add Ep ${newEp.episode_number || ''} & Next`}
-                                </button>
-                                <button
-                                  onClick={() => setAddEpOpen(null)}
-                                  className="rounded-lg border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/5"
-                                >
-                                  {show.type === 'movie' ? 'Cancel' : 'Done'}
-                                </button>
-                              </div>
-                              {show.type !== 'movie' && (
-                                <p className="text-[11px] text-white/35">
-                                  Tip: paste the link, hit Enter — it saves this episode and jumps straight to the next number so you can paste again.
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => openAddEpisodeFor(show)}
-                              className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-4 py-2.5 text-xs font-semibold text-white/60 transition hover:border-[#34B37A]/40 hover:text-white"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                              {show.type === 'movie' ? 'Add Movie Video Slot' : 'Add Episode'}
-                            </button>
-                          )}
-                        </div>
+                        <span className="flex items-center gap-1">
+                          <Crown className="h-3.5 w-3.5 text-[#E3B341]" />
+                          {unlocked}/{show.episodes.length} unlocked
+                        </span>
                       )}
                     </div>
-                  )}
-                </div>
+                    {/* The gap that actually costs money: an episode row
+                        exists but no video is attached, so viewers see a
+                        listing that will not play. Surfaced on the card
+                        so it is visible without opening the show. */}
+                    {show.episodes.length > withVideo && (
+                      <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#E3B341]/12 px-2 py-[2px] text-[10px] font-bold text-[#E3B341]">
+                        <Clock className="h-2.5 w-2.5" />
+                        {show.episodes.length - withVideo} without video
+                      </p>
+                    )}
+                  </div>
+                  <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-white/60">
+                      {show.type === 'movie' ? 'Open' : `Next: Ep ${nextNumber}`}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-white/30" />
+                  </div>
+                </button>
               );
             })}
           </div>
         )}
       </main>
+
+
+      {/* ============ Full-screen show workspace ============
+          One show owns the screen: its poster and stats up top, a
+          sticky action bar, then its episodes. Everything that used to
+          be buried inside an accordion row is now the whole page, so
+          adding an episode is not a scrolling exercise. */}
+      {focusedShow && (
+        <div className="fixed inset-0 z-[80] flex flex-col bg-[#0A0A0D]">
+          <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-[#0A0A0D]/95 backdrop-blur-md">
+            <div className="mx-auto flex max-w-[1100px] items-center gap-3 px-4 py-3.5 sm:px-8">
+              <button
+                onClick={() => {
+                  setFocusedShowId(null);
+                  setAddEpOpen(null);
+                  setPasteUrlFor(null);
+                }}
+                className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">All shows</span>
+              </button>
+              <div className="h-10 w-7 shrink-0 overflow-hidden rounded-md bg-[#151822]">
+                {focusedShow.poster_url && (
+                  <img src={focusedShow.poster_url} alt="" className="h-full w-full object-cover" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-sm font-bold text-white sm:text-base">{focusedShow.title}</h2>
+                <p className="truncate text-[11px] text-white/40">
+                  {focusedShow.type === 'movie' ? 'Movie' : 'Series'} · {focusedShow.episodes.length} ep
+                  {focusedShow.episodes.length === 1 ? '' : 's'}
+                </p>
+              </div>
+              <button
+                onClick={() => openEdit(focusedShow)}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Edit show</span>
+              </button>
+              {(focusedShow.type !== 'movie' || focusedShow.episodes.length === 0) && (
+                <button
+                  onClick={() => openAddEpisodeFor(focusedShow)}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#34B37A] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#2B9A67]"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">
+                    {focusedShow.type === 'movie' ? 'Add video slot' : `Add Ep ${nextEpisodeNumber}`}
+                  </span>
+                </button>
+              )}
+            </div>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-[1100px] px-4 py-5 sm:px-8">
+              {/* At-a-glance state of this focusedShow. "Missing video" is the
+                  one that matters — those rows are visible to viewers
+                  and will not play. */}
+              <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: 'Episodes', value: focusedShow.episodes.length, tone: 'text-white' },
+                  {
+                    label: 'Video ready',
+                    value: focusedShow.episodes.filter((ep) => ep.video_url).length,
+                    tone: 'text-[#34B37A]',
+                  },
+                  {
+                    label: 'Missing video',
+                    value: focusedShow.episodes.filter((ep) => !ep.video_url).length,
+                    tone: focusedShow.episodes.some((ep) => !ep.video_url) ? 'text-[#E3B341]' : 'text-white/40',
+                  },
+                  {
+                    label: 'Unlocked (free)',
+                    value: focusedShow.episodes.filter((ep) => ep.is_free_preview).length,
+                    tone: 'text-white',
+                  },
+                ].map((stat) => (
+                  <div key={stat.label} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                    <p className={`text-2xl font-black ${stat.tone}`}>{stat.value}</p>
+                    <p className="text-xs text-white/40">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white/70">
+                <ListVideo className="h-4 w-4 text-[#34B37A]" /> Episodes &amp; video
+              </h3>
+
+              <div ref={addEpisodeRef}>
+            {/* Bulk unlock/lock — every episode is VIP-locked by default,
+                this is the fast path for "unlock this whole show" instead
+                of tapping Unlock on each episode one at a time. */}
+            {focusedShow.episodes.length > 0 && (
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-white/50">
+                  <Crown className="h-3.5 w-3.5 text-[#E3B341]" />
+                  {focusedShow.episodes.filter((ep) => ep.is_free_preview).length}/{focusedShow.episodes.length} unlocked
+                </span>
+                <button
+                  onClick={() =>
+                    handleBulkSetEpisodesFree(
+                      focusedShow.id,
+                      focusedShow.episodes.map((ep) => ep.id),
+                      true,
+                    )
+                  }
+                  disabled={bulkLockBusyShowId === focusedShow.id}
+                  className="ml-auto flex items-center gap-1.5 rounded-lg border border-[#34B37A]/30 bg-[#34B37A]/10 px-3 py-1.5 text-xs font-semibold text-[#34B37A] transition hover:bg-[#34B37A]/20 disabled:opacity-50"
+                >
+                  {bulkLockBusyShowId === focusedShow.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Unlock className="h-3.5 w-3.5" />
+                  )}
+                  Unlock all
+                </button>
+                <button
+                  onClick={() =>
+                    handleBulkSetEpisodesFree(
+                      focusedShow.id,
+                      focusedShow.episodes.map((ep) => ep.id),
+                      false,
+                    )
+                  }
+                  disabled={bulkLockBusyShowId === focusedShow.id}
+                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 disabled:opacity-50"
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                  Lock all
+                </button>
+              </div>
+            )}
+            <div className="space-y-3">
+              {focusedShow.episodes.map((ep) => {
+                const hasVideo = !!ep.video_url;
+                const isUploading = uploadingFor === ep.id;
+                return (
+                  <div
+                    key={ep.id}
+                    className="rounded-xl border border-white/5 bg-[#151822] p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-white/60">
+                        {ep.episode_number}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {ep.title}
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-2 text-xs">
+                          {hasVideo ? (
+                            <span className="flex items-center gap-1 text-[#34B37A]">
+                              <CheckCircle2 className="h-3 w-3" /> Video ready
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[#E3B341]">
+                              <Clock className="h-3 w-3" /> No video uploaded
+                            </span>
+                          )}
+                          {ep.duration && (
+                            <span className="text-white/40">
+                              · {ep.duration} min
+                            </span>
+                          )}
+                        </div>
+                        {isUploading && (
+                          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className="h-full rounded-full bg-[#34B37A] transition-all"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      {hasVideo && (
+                        <button
+                          onClick={() => handlePreviewVideo(ep.id)}
+                          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                        >
+                          <Play className="h-3.5 w-3.5" />
+                          Preview
+                        </button>
+                      )}
+                      {/* Per-episode free-preview toggle — episodes are locked
+                          (VIP-only) by default, this is the one-tap way to make
+                          a single episode playable without a subscription. */}
+                      <button
+                        onClick={() => handleToggleEpisodeFree(ep)}
+                        disabled={episodeLockBusyId === ep.id}
+                        className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:opacity-50 ${
+                          ep.is_free_preview
+                            ? 'border-[#34B37A]/40 bg-[#34B37A]/10 text-[#34B37A] hover:bg-[#34B37A]/20'
+                            : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                        }`}
+                        title={ep.is_free_preview ? 'Unlocked — tap to lock again' : 'Locked — tap to unlock (playable without VIP)'}
+                      >
+                        {episodeLockBusyId === ep.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : ep.is_free_preview ? (
+                          <Unlock className="h-3.5 w-3.5" />
+                        ) : (
+                          <Lock className="h-3.5 w-3.5" />
+                        )}
+                        {ep.is_free_preview ? 'Unlocked' : 'Locked'}
+                      </button>
+                      <button
+                        onClick={() => triggerFileUpload(ep.id)}
+                        disabled={isUploading}
+                        className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:opacity-50"
+                      >
+                        {isUploading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5" />
+                        )}
+                        {hasVideo ? 'Replace' : 'Upload'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (pasteUrlFor === ep.id) {
+                            setPasteUrlFor(null);
+                            setPasteUrlValue('');
+                          } else {
+                            setPasteUrlFor(ep.id);
+                            setPasteUrlValue(ep.video_url ?? '');
+                          }
+                        }}
+                        className="flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-white/50 underline-offset-2 transition hover:text-white hover:underline"
+                      >
+                        <Link2 className="h-3.5 w-3.5" /> Paste URL
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEpisode(ep.id)}
+                        className="rounded-lg p-2 text-white/40 transition hover:bg-[#EF4444]/10 hover:text-[#EF4444]"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    {pasteUrlFor === ep.id && (
+                      <div className="mt-2.5 flex items-center gap-2 border-t border-white/5 pt-2.5">
+                        <input
+                          type="text"
+                          value={pasteUrlValue}
+                          onChange={(e) => setPasteUrlValue(e.target.value)}
+                          placeholder="https://.../episode.mp4 or .m3u8"
+                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-white outline-none"
+                        />
+                        <button
+                          onClick={() => handleSaveVideoUrl(ep.id)}
+                          disabled={savingUrlFor === ep.id || !pasteUrlValue.trim()}
+                          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#34B37A] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
+                        >
+                          {savingUrlFor === ep.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          )}
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPasteUrlFor(null);
+                            setPasteUrlValue('');
+                          }}
+                          className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/5"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add episode / video */}
+            {(focusedShow.type !== 'movie' || focusedShow.episodes.length === 0) && (
+              <div className="mt-4">
+                {addEpOpen === focusedShow.id ? (
+                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#151822] p-4">
+                    {focusedShow.type !== 'movie' && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-white/60">
+                          Episode #
+                        </label>
+                        <input
+                          type="number"
+                          value={newEp.episode_number}
+                          onChange={(e) =>
+                            setNewEp({ ...newEp, episode_number: e.target.value })
+                          }
+                          placeholder="1"
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-white/60">
+                          Season
+                        </label>
+                        <input
+                          type="number"
+                          value={newEp.season}
+                          onChange={(e) =>
+                            setNewEp({ ...newEp, season: e.target.value })
+                          }
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-white/60">
+                          Duration (min) — auto
+                        </label>
+                        <input
+                          type="number"
+                          value={newEp.duration}
+                          onChange={(e) =>
+                            setNewEp({ ...newEp, duration: e.target.value })
+                          }
+                          placeholder="Leave blank — read from video"
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none placeholder:text-[11px]"
+                        />
+                      </div>
+                    </div>
+                    )}
+                    {focusedShow.type === 'movie' && (
+                      <div>
+                        <label className="mb-1 block text-[11px] font-semibold text-white/60">
+                          Duration (min) — auto
+                        </label>
+                        <input
+                          type="number"
+                          value={newEp.duration}
+                          onChange={(e) =>
+                            setNewEp({ ...newEp, duration: e.target.value })
+                          }
+                          placeholder="Leave blank — read from video"
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none placeholder:text-[11px]"
+                        />
+                      </div>
+                    )}
+                    {focusedShow.type !== 'movie' && (
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-white/60">
+                        Title
+                      </label>
+                      <input
+                        value={newEp.title}
+                        onChange={(e) =>
+                          setNewEp({ ...newEp, title: e.target.value })
+                        }
+                        placeholder="Episode title"
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
+                      />
+                    </div>
+                    )}
+                    {focusedShow.type !== 'movie' && (
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold text-white/60">
+                        Description
+                      </label>
+                      <textarea
+                        value={newEp.description}
+                        onChange={(e) =>
+                          setNewEp({ ...newEp, description: e.target.value })
+                        }
+                        rows={2}
+                        className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
+                      />
+                    </div>
+                    )}
+                    <div>
+                      <label className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
+                        <Link2 className="h-3 w-3" /> Video URL (optional — paste now or add later)
+                      </label>
+                      <input
+                        value={newEp.video_url}
+                        onChange={(e) =>
+                          setNewEp({ ...newEp, video_url: e.target.value })
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddEpisode(
+                              focusedShow.id,
+                              focusedShow.type === 'movie' ? focusedShow.title : undefined,
+                            );
+                          }
+                        }}
+                        placeholder="https://…  (paste link, press Enter or Add to save + jump to next ep)"
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none focus:border-[#34B37A]/50"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          handleAddEpisode(
+                            focusedShow.id,
+                            focusedShow.type === 'movie' ? focusedShow.title : undefined,
+                          )
+                        }
+                        disabled={busy}
+                        className="flex items-center gap-1.5 rounded-lg bg-[#34B37A] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
+                      >
+                        {busy ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Plus className="h-3.5 w-3.5" />
+                        )}
+                        {focusedShow.type === 'movie' ? 'Add Movie Slot' : `Add Ep ${newEp.episode_number || ''} & Next`}
+                      </button>
+                      <button
+                        onClick={() => setAddEpOpen(null)}
+                        className="rounded-lg border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/5"
+                      >
+                        {focusedShow.type === 'movie' ? 'Cancel' : 'Done'}
+                      </button>
+                    </div>
+                    {focusedShow.type !== 'movie' && (
+                      <p className="text-[11px] text-white/35">
+                        Tip: paste the link, hit Enter — it saves this episode and jumps straight to the next number so you can paste again.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => openAddEpisodeFor(focusedShow)}
+                    className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-4 py-2.5 text-xs font-semibold text-white/60 transition hover:border-[#34B37A]/40 hover:text-white"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {focusedShow.type === 'movie' ? 'Add Movie Video Slot' : 'Add Episode'}
+                  </button>
+                )}
+              </div>
+            )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Show modal */}
       {addShowOpen && (

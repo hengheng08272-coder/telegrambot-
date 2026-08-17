@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   BadgeCheck,
   Check,
   Copy,
@@ -27,6 +28,7 @@ import { appText } from '@/lib/appTranslations';
 import {
   PRICING_TIERS,
   getEffectivePricingTiers,
+  getHiddenTierKeys,
   type PricingTier,
   submitPaymentIntent,
   attachScreenshotToSubmission,
@@ -59,14 +61,6 @@ type Step = 'pick' | 'pay';
 // ticket is auto-rejected server-side and a fresh one is opened in its
 // place — see the recycle effect below.
 const WAIT_WINDOW_SECONDS = 180;
-
-// Tiers that exist in the DB but are deliberately not offered in the
-// picker any more. The "Bonus" tier was removed at the owner's request:
-// every approved payment already unlocks a lucky draw afterwards, so
-// selling a separate "bigger bonus" plan just duplicated the 1-month
-// plan. Delete the key from this set to bring it back — nothing else
-// needs changing.
-const HIDDEN_TIER_KEYS = new Set(['2m']);
 
 const TIER_ICON: Record<string, typeof Zap> = {
   '1m': Zap,
@@ -115,10 +109,27 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // admin is not messaged) until that Pay tap.
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
+  // Set when the ABA hand-off was tapped and this page was still in the
+  // foreground afterwards — i.e. nothing opened. Without this the tap
+  // silently does nothing and the viewer has no idea whether to wait,
+  // retry, or scan the QR instead.
+  const [abaDidNotOpen, setAbaDidNotOpen] = useState(false);
+  // Reveals the deeplink as the raw underlined string. Notes shows it
+  // that way because Notes auto-detects URLs in plain text and styles
+  // them; HTML never does that — a string is only tappable if it is
+  // wrapped in an <a href>, and the underline is just link styling that
+  // a button-shaped link deliberately removes. So the underlined form
+  // has to be rendered on purpose.
+  const [showRawLink, setShowRawLink] = useState(false);
   const notifiedApprovedRef = useRef(false);
   const recyclingRef = useRef(false);
 
-  const visibleTiers = useMemo(() => tiers.filter((tr) => !HIDDEN_TIER_KEYS.has(tr.key)), [tiers]);
+  // Loaded from app_settings, not hardcoded — see getHiddenTierKeys().
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+  const visibleTiers = useMemo(
+    () => tiers.filter((tr) => !hiddenKeys.has(tr.key)),
+    [tiers, hiddenKeys],
+  );
 
   useEffect(() => {
     getPendingSubmission().then((p) => {
@@ -137,13 +148,16 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     getQrCodes().then(setQrImages);
     getPayLinks().then(setPayLinks);
     getKhqrStrings().then(setStoredKhqr);
-    getEffectivePricingTiers().then((rows) => {
+    // Both are needed before a plan can be preselected, so they resolve
+    // together rather than racing each other into setState.
+    Promise.all([getEffectivePricingTiers(), getHiddenTierKeys()]).then(([rows, hidden]) => {
       setTiers(rows);
+      setHiddenKeys(hidden);
       // Preselect the plan flagged "best" so the CTA is never dead on
       // arrival — the viewer can still change it before paying.
       setSelectedKey((cur) => {
         if (cur) return cur;
-        const offered = rows.filter((r) => !HIDDEN_TIER_KEYS.has(r.key));
+        const offered = rows.filter((r) => !hidden.has(r.key));
         return (offered.find((r) => r.badge === 'best') ?? offered[0])?.key ?? null;
       });
     });
@@ -713,9 +727,11 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                                 // fall back TO. Tiers with no PayWay link rely
                                 // on the deeplink alone; the QR above stays as
                                 // the manual route either way.
-                                if (payLinkSrc) {
-                                  armDeeplinkFallback(() => openExternalLink(payLinkSrc));
-                                }
+                                setAbaDidNotOpen(false);
+                                armDeeplinkFallback(() => {
+                                  if (payLinkSrc) openExternalLink(payLinkSrc);
+                                  else setAbaDidNotOpen(true);
+                                });
                               }}
                               className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#5C82CE]/25 bg-[#5C82CE]/[0.16] px-5 py-2 text-[12px] font-bold text-[#BED2F0] no-underline transition active:scale-[0.97] hover:bg-[#5C82CE]/[0.24] hover:text-[#D8E4F7]"
                             >
@@ -734,6 +750,56 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                           )}
                         </div>
 
+                        {/* The same target as the button, but rendered as
+                            a plain visible link. Long-press gives "Open in
+                            ABA" / "Copy", which is the exact form the owner
+                            verified by hand in Notes — so if the styled
+                            button ever fails, the thing that is known to
+                            work is right there instead of nowhere. */}
+                        {abaDeeplink && abaDidNotOpen && (
+                          <div className="rounded-xl border border-[#FFB84D]/25 bg-[#FFB84D]/[0.07] px-3 py-2.5">
+                            <p className="flex items-start gap-1.5 text-[11px] font-semibold leading-relaxed text-[#FFB84D]">
+                              <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
+                              {t.subAbaDidNotOpen}
+                            </p>
+                            <a
+                              href={abaDeeplink}
+                              rel="noreferrer"
+                              className="mt-1.5 block break-all text-[10px] leading-relaxed text-[#9DBBEE] underline decoration-[#9DBBEE]/40 underline-offset-2"
+                            >
+                              {abaDeeplink}
+                            </a>
+                          </div>
+                        )}
+
+                        {/* The deeplink in the exact shape the owner
+                            verified by hand: underlined, wrapped, tappable.
+                            Long-press gives "Open in ABA" and "Copy", so
+                            this is the escape hatch that is known to work
+                            on their own phone. Collapsed by default —
+                            300 characters of payload on a checkout screen
+                            reads as a malfunction, not an option. */}
+                        {abaDeeplink && (
+                          <div className="text-center">
+                            <button
+                              type="button"
+                              onClick={() => setShowRawLink((open) => !open)}
+                              className="text-[10px] text-white/40 underline underline-offset-2 transition hover:text-white/70"
+                            >
+                              {showRawLink ? t.subHideAbaLink : t.subShowAbaLink}
+                            </button>
+                            {showRawLink && (
+                              <a
+                                href={abaDeeplink}
+                                rel="noreferrer"
+                                className="mt-1.5 block break-all text-left text-[10px] leading-relaxed text-[#9DBBEE] underline decoration-[#9DBBEE]/50 underline-offset-2"
+                              >
+                                {abaDeeplink}
+                              </a>
+                            )}
+                          </div>
+                        )}
+
                         {/* Reassurance sits directly under the primary
                             action, where the hesitation actually happens. */}
                         <p className="flex items-start justify-center gap-1.5 px-1 text-center text-[10px] leading-relaxed text-white/45">
@@ -747,12 +813,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                             a full-width outlined button next to the real one
                             reads as "the payment is unreliable", which is
                             exactly the wrong feeling on a checkout screen. */}
-                        {payLinkSrc && (
+                        {(payLinkSrc || abaDeeplink) && (
                         <div className="flex justify-center pt-0.5">
                           <button
                             type="button"
                             onClick={async () => {
-                              const ok = await copyToClipboard(payLinkSrc);
+                              const ok = await copyToClipboard(payLinkSrc || abaDeeplink!);
                               if (ok) {
                                 setPayLinkCopied(true);
                                 window.setTimeout(() => setPayLinkCopied(false), 2200);

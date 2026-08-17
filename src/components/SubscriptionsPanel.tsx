@@ -2,14 +2,17 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
   AlertTriangle,
   Check,
+  Eye,
+  EyeOff,
   Loader2,
   QrCode,
   Save,
   ShieldCheck,
+  Tag,
   Upload,
-  X,
   Zap,
 } from 'lucide-react';
+import AdminPanelShell, { PanelTabs } from '@/components/AdminPanelShell';
 import {
   buildAbaDeeplink,
   decodeKhqrFromFile,
@@ -18,12 +21,25 @@ import {
   readKhqrMerchant,
 } from '@/lib/khqr';
 import { supabase } from '@/lib/supabase/supabaseClient';
-import { PRICING_TIERS } from '@/lib/subscription';
+import { getHiddenTierKeys, setHiddenTierKeys, PRICING_TIERS } from '@/lib/subscription';
 import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
 
 interface Props {
   onClose: () => void;
 }
+
+// The panel used to stack every job onto one card: pricing, the QR
+// image, the KHQR payload, the PayWay link and the auto-confirm
+// merchant name, all at once. Splitting them means each visit is about
+// one thing, and the fields for that one thing are the only ones on
+// screen.
+type Section = 'plans' | 'qr' | 'auto';
+
+const SECTION_SUBTITLE: Record<Section, string> = {
+  plans: 'តម្លៃ · រយៈពេល (ខែ) · ឈ្មោះគម្រោង · ការពិពណ៌នា · Bonus spin',
+  qr: 'រូប KHQR · KHQR text (Open ABA) · ABA PayWay link',
+  auto: 'ឈ្មោះគណនី ABA និងតារាងផ្គូផ្គងតម្លៃ→គម្រោង',
+};
 
 // Real KHQR images bundled with the app on day one — the panel shows
 // these until the admin uploads a replacement.
@@ -73,6 +89,7 @@ function labelMonthsMismatch(labelKm: string, labelEn: string, months: string): 
 }
 
 export default function SubscriptionsPanel({ onClose }: Props) {
+  const [section, setSection] = useState<Section>('plans');
   const [images, setImages] = useState<Record<string, string>>({});
   const [payLinks, setPayLinks] = useState<Record<string, string>>({});
   const [payLinkDrafts, setPayLinkDrafts] = useState<Record<string, string>>({});
@@ -99,7 +116,6 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [khqrEditingTier, setKhqrEditingTier] = useState<string | null>(null);
   const [savingKhqrTier, setSavingKhqrTier] = useState<string | null>(null);
   const [copiedDeeplinkTier, setCopiedDeeplinkTier] = useState<string | null>(null);
-  const [expandedTier, setExpandedTier] = useState<string | null>(null);
 
   // ABA auto-confirm matching — the name printed on every real ABA
   // notification for this account, used by the aba-payment-webhook
@@ -108,6 +124,9 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   // (which amounts are valid, which tier they map to) already comes from
   // the pricing_tiers table above — this is the one extra piece of admin
   // config auto-confirm needs.
+  // Which plans are currently withheld from the viewer's picker.
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+  const [hiddenBusyTier, setHiddenBusyTier] = useState<string | null>(null);
   const [abaMerchantName, setAbaMerchantName] = useState('');
   const [abaMerchantNameLoaded, setAbaMerchantNameLoaded] = useState(false);
   const [abaSaving, setAbaSaving] = useState(false);
@@ -136,8 +155,27 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     }
   };
 
+  // A plan can be priced, named and given a QR and still never appear to
+  // anyone, so this has to be visible and switchable right next to the
+  // fields that configure it.
+  const toggleVisible = async (tierKey: string) => {
+    setHiddenBusyTier(tierKey);
+    const next = new Set(hiddenKeys);
+    if (next.has(tierKey)) next.delete(tierKey);
+    else next.add(tierKey);
+    try {
+      await setHiddenTierKeys(next);
+      setHiddenKeys(next);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to change plan visibility');
+    } finally {
+      setHiddenBusyTier(null);
+    }
+  };
+
   const load = async () => {
     setLoading(true);
+    getHiddenTierKeys().then(setHiddenKeys);
     const [qrRes, priceRes] = await Promise.all([
       supabase.from('payment_qr_codes').select('tier, image_url, pay_link, khqr_string'),
       supabase.from('pricing_tiers').select('key, price, months, label_km, label_en, pitch_km, bonus_enabled'),
@@ -356,38 +394,29 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     // only reachable after scrolling inside a scrollbox inside a modal.
     // Full width + a two-column grid on wider screens means every tier's
     // full editor is visible without nested scrolling.
-    <div className="fixed inset-0 z-[90] flex flex-col bg-[#0B0C10]">
-      <div className="shrink-0 border-b border-white/10 bg-[#0F1116] px-4 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-2.5 text-white">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E3B341]/10">
-              <QrCode className="h-4.5 w-4.5 text-[#E3B341]" />
-            </span>
-            <div>
-              <h2 className="text-sm font-bold sm:text-base">Subscriptions</h2>
-              <p className="text-[11px] text-white/40">QR, តម្លៃ, រយៈពេល &amp; ការពិពណ៌នា</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white/60 transition hover:border-white/25 hover:text-white"
-            aria-label="Close"
-          >
-            <X className="h-4.5 w-4.5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8">
-        <div className="mx-auto max-w-6xl">
-          <p className="mb-4 max-w-2xl text-xs leading-relaxed text-white/50">
-            Everything a viewer sees when they tap Subscribe — the KHQR they scan, the price, and the
-            short pitch line under each plan. Edit any of it here; changes show up immediately, no
-            developer or code deploy needed.
-          </p>
-
-          {error && <p className="mb-4 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
-
+    <AdminPanelShell
+      title="Subscriptions"
+      subtitle={SECTION_SUBTITLE[section]}
+      icon={<QrCode className="h-4 w-4" />}
+      accent="#E3B341"
+      maxWidth="max-w-6xl"
+      error={error}
+      onDismissError={() => setError('')}
+      onClose={onClose}
+      toolbar={
+        <PanelTabs<Section>
+          active={section}
+          onChange={setSection}
+          tabs={[
+            { key: 'plans', label: 'គម្រោង & តម្លៃ', icon: <Tag className="h-3.5 w-3.5" /> },
+            { key: 'qr', label: 'QR & Deep link', icon: <QrCode className="h-3.5 w-3.5" /> },
+            { key: 'auto', label: 'ABA Auto-confirm', icon: <Zap className="h-3.5 w-3.5" /> },
+          ]}
+        />
+      }
+    >
+      {section === 'auto' && (
+        <>
           <div className="mb-5 rounded-xl border border-[#2B5CAD]/20 bg-[#2B5CAD]/[0.04] p-4">
             <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#2B5CAD]">
               <Zap className="h-3.5 w-3.5" /> ABA Auto-confirm
@@ -421,12 +450,60 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-5 w-5 animate-spin text-white/40" />
+          {/* Auto-confirm matches an incoming ABA alert to a plan by its
+              amount and nothing else, so two plans sharing a price is
+              not a cosmetic problem: the webhook cannot tell which one
+              was bought and refuses the match outright. This table is
+              the only place that rule is visible before it bites. */}
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-white/50">
+              តារាងផ្គូផ្គង៖ ទឹកប្រាក់ → គម្រោង
+            </p>
+            <div className="space-y-1.5">
+              {PRICING_TIERS.map((tier) => {
+                const edit = edits[tier.key];
+                if (!edit) return null;
+                const clash = PRICING_TIERS.some(
+                  (other) =>
+                    other.key !== tier.key &&
+                    edits[other.key] &&
+                    parseFloat(edits[other.key].price) === parseFloat(edit.price),
+                );
+                return (
+                  <div
+                    key={tier.key}
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-xs ${
+                      clash
+                        ? 'border-[#FF6B6B]/30 bg-[#FF6B6B]/[0.07]'
+                        : 'border-white/[0.07] bg-black/20'
+                    }`}
+                  >
+                    <span className="w-16 shrink-0 font-bold text-[#E3B341]">${edit.price || '—'}</span>
+                    <span className="min-w-0 flex-1 truncate text-white/70">
+                      {edit.label_km.trim() || edit.label_en.trim() || tier.key} · {edit.months || '—'} ខែ
+                    </span>
+                    {clash ? (
+                      <span className="shrink-0 text-[11px] font-semibold text-[#FF9C9C]">
+                        តម្លៃដូចគ្នា — auto-confirm នឹងបដិសេធ
+                      </span>
+                    ) : (
+                      <Check className="h-3.5 w-3.5 shrink-0 text-[#5FD9A0]" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          </div>
+        </>
+      )}
+
+      {section !== 'auto' &&
+        (loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-5 w-5 animate-spin text-white/40" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {PRICING_TIERS.map((tier) => {
               const edit = edits[tier.key] ?? {
                 price: String(tier.price),
@@ -494,6 +571,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         {images[tier.key] ? 'QR uploaded' : qr ? 'Using default QR' : 'No QR yet'}
                       </p>
                     </div>
+                    {section === 'qr' && (
                     <button
                       onClick={() => triggerUpload(tier.key)}
                       disabled={uploadingTier === tier.key}
@@ -506,8 +584,11 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       )}
                       {qr ? 'Replace' : 'Upload'}
                     </button>
+                    )}
                   </div>
 
+                  {section === 'plans' && (
+                  <>
                   <div className="grid grid-cols-[76px_76px_1fr] gap-2">
                     <div>
                       <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
@@ -591,7 +672,10 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       </p>
                     )}
                   </div>
+                  </>
+                  )}
 
+                  {section === 'qr' && (
                   <div className="mt-2.5">
                     <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
                       ABA PayWay link (ជម្រើស — ចុចទូទាត់ភ្លាមៗ)
@@ -625,7 +709,42 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       {payLinks[tier.key] ? ' Link uploaded ✓' : ''}
                     </p>
                   </div>
+                  )}
 
+                  {section === 'plans' && (
+                  <button
+                    type="button"
+                    onClick={() => toggleVisible(tier.key)}
+                    disabled={hiddenBusyTier === tier.key}
+                    className={`mt-2.5 flex w-full items-center justify-between rounded-lg border px-3 py-2 disabled:opacity-50 ${
+                      hiddenKeys.has(tier.key)
+                        ? 'border-[#FFB84D]/30 bg-[#FFB84D]/[0.07]'
+                        : 'border-white/10 bg-black/20'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-white/70">
+                      {hiddenKeys.has(tier.key) ? (
+                        <EyeOff className="h-3.5 w-3.5 text-[#FFB84D]" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5 text-[#5FD9A0]" />
+                      )}
+                      {hiddenKeys.has(tier.key) ? 'លាក់ — អតិថិជនមិនឃើញ' : 'បង្ហាញក្នុង app'}
+                    </span>
+                    <span
+                      className={`relative h-5 w-9 rounded-full transition ${
+                        hiddenKeys.has(tier.key) ? 'bg-white/15' : 'bg-[#34B37A]'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${
+                          hiddenKeys.has(tier.key) ? 'left-0.5' : 'left-[18px]'
+                        }`}
+                      />
+                    </span>
+                  </button>
+                  )}
+
+                  {section === 'plans' && (
                   <button
                     onClick={() => toggleBonus(tier.key)}
                     className="mt-2.5 flex w-full items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2"
@@ -643,14 +762,16 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       />
                     </span>
                   </button>
+                  )}
 
-                  {/* One-tap "Open ABA" for viewers depends entirely on this
+                  {section === 'qr' && (
+                  /* One-tap "Open ABA" for viewers depends entirely on this
                       payload existing — an uploaded image that scans fine
                       by eye can still fail automatic decode (logo overlay,
                       odd export size). Surfacing status + a manual paste
                       fallback here means that failure is visible and
                       fixable from the admin side instead of a silently
-                      missing button on the viewer's screen. */}
+                      missing button on the viewer's screen. */
                   <div
                     className={`mt-2.5 rounded-lg border px-3 py-2 ${
                       hasKhqr
@@ -737,6 +858,22 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       </div>
                     )}
 
+                    {/* The link itself, underlined and wrapped — the same
+                        form it takes in a notes app, where a URL in plain
+                        text is auto-detected and styled. A web page never
+                        does that on its own: text is only a link when it
+                        is wrapped in an <a href>, so it is rendered that
+                        way here deliberately, to be checked and copied. */}
+                    {abaDeeplink && (
+                      <a
+                        href={abaDeeplink}
+                        rel="noreferrer"
+                        className="mt-2 block break-all rounded-lg bg-black/30 px-2.5 py-2 text-[10px] leading-relaxed text-[#9DBBEE] underline decoration-[#9DBBEE]/50 underline-offset-2"
+                      >
+                        {abaDeeplink}
+                      </a>
+                    )}
+
                     {isEditingKhqr && (
                       <div className="mt-2 space-y-1.5">
                         <p className="text-[10px] leading-relaxed text-white/40">
@@ -767,11 +904,13 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       </div>
                     )}
                   </div>
+                  )}
 
+                  {section === 'plans' && (
                   <button
                     onClick={() => saveTier(tier)}
                     disabled={savingTier === tier.key}
-                    className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-white/10 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-white/10 py-2 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
                   >
                     {savingTier === tier.key ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -780,15 +919,14 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     ) : (
                       <Save className="h-3.5 w-3.5" />
                     )}
-                    Save
+                    រក្សាទុកគម្រោង
                   </button>
+                  )}
                 </div>
               );
             })}
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        ))}
 
       <input
         ref={fileInputRef}
@@ -797,6 +935,6 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         className="hidden"
         onChange={handleFileSelected}
       />
-    </div>
+    </AdminPanelShell>
   );
 }

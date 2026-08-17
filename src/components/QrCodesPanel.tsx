@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, QrCode, Upload, X } from 'lucide-react';
+import { Loader2, QrCode, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { PRICING_TIERS } from '@/lib/subscription';
+import AdminPanelShell from '@/components/AdminPanelShell';
 
 interface Props {
   onClose: () => void;
@@ -81,20 +82,14 @@ export default function QrCodesPanel({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#170D0C] p-5"
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white">
-            <QrCode className="h-4 w-4 text-[#FFC94A]" />
-            <h2 className="text-sm font-bold">Payment QR codes</h2>
-          </div>
-          <button onClick={onClose} className="text-white/50 hover:text-white" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <AdminPanelShell
+      title="Payment QR codes"
+      subtitle="The KHQR image each plan shows to viewers"
+      icon={<QrCode className="h-4 w-4" />}
+      accent="#FFC94A"
+      maxWidth="max-w-[900px]"
+      onClose={onClose}
+    >
 
         <p className="mb-4 text-xs leading-relaxed text-white/50">
           Upload the KHQR image for each plan here — this is what viewers scan to pay. Replace it
@@ -104,7 +99,7 @@ export default function QrCodesPanel({ onClose }: Props) {
 
         {error && <p className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+        <div className="space-y-3">
           {loading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="h-5 w-5 animate-spin text-white/40" />
@@ -157,7 +152,6 @@ export default function QrCodesPanel({ onClose }: Props) {
           className="hidden"
           onChange={handleFileSelected}
         />
-      </div>
-    </div>
+    </AdminPanelShell>
   );
 }
