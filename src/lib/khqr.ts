@@ -150,17 +150,25 @@ export function buildAbaDeeplink(khqr: string): string {
 }
 
 /**
- * Opens a custom-scheme deeplink, with a web fallback for the two cases
- * it can fail: ABA is not installed, or the client refuses the scheme.
+ * Watches for the hand-off to another app and runs `onFallback` if it
+ * never happens.
  *
- * Telegram's WebApp.openLink() is for http(s) only, so the scheme has to
- * go through a plain top-level navigation. There is no success callback
- * for that -- the only reliable signal is that the page gets hidden when
- * another app takes over. So: navigate, then after a short grace period,
- * if this page is still in the foreground, assume nothing happened and
- * run the fallback.
+ * This deliberately does NOT navigate. The navigation itself must come
+ * from a real <a href="abamobilebank://..."> that the viewer taps,
+ * because that is the only form every WebView treats as a genuine
+ * link: an iOS WKWebView hands a non-http scheme to the system from a
+ * link click, while a scripted `location.href = 'abamobilebank://...'`
+ * is frequently swallowed with no error at all -- which is exactly the
+ * "it behaves like plain text, not a link" symptom. Pasting the same
+ * string somewhere it renders as a real link (Notes, Safari) opens ABA
+ * every time; so the button has to BE a link, not simulate one.
+ *
+ * There is no success callback for a scheme hand-off, so the only
+ * reliable signal is that this page stops being frontmost. Arm the
+ * watchers on the click, then after a short grace period, if we are
+ * still in the foreground, assume nothing happened and fall back.
  */
-export function openDeeplinkWithFallback(deeplink: string, onFallback: () => void): void {
+export function armDeeplinkFallback(onFallback: () => void, graceMs = 1800): void {
   let handled = false;
 
   const markHandled = () => {
@@ -175,11 +183,60 @@ export function openDeeplinkWithFallback(deeplink: string, onFallback: () => voi
     window.removeEventListener('pagehide', markHandled);
     window.removeEventListener('blur', markHandled);
     if (!handled && document.visibilityState === 'visible') onFallback();
-  }, 1500);
+  }, graceMs);
+}
 
+/**
+ * Scripted version, kept for callers that have no element to attach to.
+ * Prefer a real anchor plus armDeeplinkFallback() -- see the note above
+ * for why a scripted navigation is the less reliable of the two.
+ */
+export function openDeeplinkWithFallback(deeplink: string, onFallback: () => void): void {
+  armDeeplinkFallback(onFallback);
   try {
     window.location.href = deeplink;
   } catch {
     onFallback();
   }
+}
+
+// =====================================================================
+// Reading fields back out of a KHQR payload
+//
+// A KHQR string is EMVCo TLV: <2-digit tag><2-digit length><value>,
+// repeated. Tag 54 is the transaction amount and tag 59 the merchant
+// name. Being able to read those means the admin panel can check the
+// amount actually baked into the QR against the price configured for
+// the tier -- the one mismatch that silently charges a viewer the wrong
+// money, because the QR is the thing ABA obeys, not the app's label.
+// =====================================================================
+
+function readTlv(payload: string): Map<string, string> {
+  const fields = new Map<string, string>();
+  let i = 0;
+  while (i + 4 <= payload.length) {
+    const tag = payload.slice(i, i + 2);
+    const len = parseInt(payload.slice(i + 2, i + 4), 10);
+    if (!Number.isFinite(len) || len < 0) break;
+    const value = payload.slice(i + 4, i + 4 + len);
+    if (value.length < len) break;
+    if (!fields.has(tag)) fields.set(tag, value);
+    i += 4 + len;
+  }
+  return fields;
+}
+
+/** Transaction amount baked into a KHQR payload (tag 54). Null if absent. */
+export function readKhqrAmount(payload: string | null | undefined): number | null {
+  if (!isKhqrPayload(payload)) return null;
+  const raw = readTlv(payload).get('54');
+  if (!raw) return null;
+  const value = parseFloat(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** Merchant name baked into a KHQR payload (tag 59). Null if absent. */
+export function readKhqrMerchant(payload: string | null | undefined): string | null {
+  if (!isKhqrPayload(payload)) return null;
+  return readTlv(payload).get('59')?.trim() || null;
 }
