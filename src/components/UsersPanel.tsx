@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Search, ShieldCheck, ShieldX, User, Plus } from 'lucide-react';
+import { Loader2, Search, ShieldCheck, ShieldX, User, Plus, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
-import AdminPanelShell from '@/components/AdminPanelShell';
+import AdminPanelShell, { PanelTabs } from '@/components/AdminPanelShell';
 
 interface Props {
   onClose: () => void;
 }
+
+// "Expiring" is the only one of these that is actionable: those viewers
+// are still paying customers today and will quietly disappear within the
+// week unless someone reaches out. Everything else is just a count.
+type Filter = 'all' | 'active' | 'expiring' | 'expired';
 
 interface SubRow {
   telegram_user_id: string;
@@ -25,6 +30,10 @@ export default function UsersPanel({ onClose }: Props) {
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+
+  const DAY = 86_400_000;
+  const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / DAY);
 
   const load = async () => {
     setLoading(true);
@@ -73,13 +82,39 @@ export default function UsersPanel({ onClose }: Props) {
     load();
   };
 
+  const counts = {
+    all: rows.length,
+    active: rows.filter((r) => daysLeft(r.expires_at) > 0).length,
+    expiring: rows.filter((r) => {
+      const d = daysLeft(r.expires_at);
+      return d > 0 && d <= 7;
+    }).length,
+    expired: rows.filter((r) => daysLeft(r.expires_at) <= 0).length,
+  };
+
+  // A rough headline number, not accounting: it multiplies each row's
+  // tier by that tier's CURRENT price, so historic prices are restated
+  // at today's rate. Good enough to see the shape of the base; the
+  // Payments panel remains the source of truth for money.
+  const activeByTier = rows
+    .filter((r) => daysLeft(r.expires_at) > 0)
+    .reduce<Record<string, number>>((acc, r) => {
+      acc[r.tier] = (acc[r.tier] ?? 0) + 1;
+      return acc;
+    }, {});
+
   const filtered = rows.filter((r) => {
     const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return (
+    const matchesQuery =
+      !q ||
       r.telegram_user_id.includes(q) ||
-      (r.telegram_username ?? '').toLowerCase().includes(q)
-    );
+      (r.telegram_username ?? '').toLowerCase().includes(q);
+    if (!matchesQuery) return false;
+    const d = daysLeft(r.expires_at);
+    if (filter === 'active') return d > 0;
+    if (filter === 'expiring') return d > 0 && d <= 7;
+    if (filter === 'expired') return d <= 0;
+    return true;
   });
 
   return (
@@ -90,7 +125,69 @@ export default function UsersPanel({ onClose }: Props) {
       accent="#2B5CAD"
       maxWidth="max-w-[1000px]"
       onClose={onClose}
+      error={error}
+      onDismissError={() => setError('')}
+      actions={
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+        </button>
+      }
+      toolbar={
+        <PanelTabs<Filter>
+          active={filter}
+          onChange={setFilter}
+          accent="#2B5CAD"
+          tabs={[
+            { key: 'all', label: 'All', badge: counts.all },
+            { key: 'active', label: 'Active VIP', badge: counts.active },
+            { key: 'expiring', label: 'Expiring ≤7d', badge: counts.expiring },
+            { key: 'expired', label: 'Expired', badge: counts.expired },
+          ]}
+        />
+      }
     >
+        {/* The numbers an owner actually wants on opening this panel:
+            how big is the paying base, how much of it is about to lapse,
+            and how many have already gone. */}
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { label: 'Total subscribers', value: counts.all, tone: 'text-white' },
+            { label: 'Active VIP', value: counts.active, tone: 'text-[#5FD9A0]' },
+            {
+              label: 'Expiring in 7 days',
+              value: counts.expiring,
+              tone: counts.expiring > 0 ? 'text-[#FFB84D]' : 'text-white/40',
+            },
+            { label: 'Expired', value: counts.expired, tone: 'text-white/40' },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <p className={`text-2xl font-black ${stat.tone}`}>{stat.value}</p>
+              <p className="text-[11px] text-white/40">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {Object.keys(activeByTier).length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-white/35">
+              Active by plan
+            </span>
+            {Object.entries(activeByTier)
+              .sort((a, b) => b[1] - a[1])
+              .map(([tier, n]) => (
+                <span
+                  key={tier}
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/60"
+                >
+                  <span className="font-mono uppercase text-white/40">{tier}</span>{' '}
+                  <span className="font-bold text-white">{n}</span>
+                </span>
+              ))}
+          </div>
+        )}
 
         <div className="relative mb-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -102,18 +199,17 @@ export default function UsersPanel({ onClose }: Props) {
           />
         </div>
 
-        {error && <p className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
-
         <div className="space-y-2">
           {loading ? (
             <div className="flex justify-center py-6">
               <Loader2 className="h-5 w-5 animate-spin text-white/40" />
             </div>
           ) : filtered.length === 0 ? (
-            <p className="py-6 text-center text-xs text-white/40">No matching subscribers.</p>
+            <p className="py-6 text-center text-xs text-white/40">No subscribers match this view.</p>
           ) : (
             filtered.map((row) => {
-              const active = new Date(row.expires_at) > new Date();
+              const left = daysLeft(row.expires_at);
+              const active = left > 0;
               return (
                 <div
                   key={row.telegram_user_id}
@@ -126,6 +222,11 @@ export default function UsersPanel({ onClose }: Props) {
                     <p className="text-[11px] text-white/40">
                       ID {row.telegram_user_id} · {row.tier} ·{' '}
                       {active ? 'expires' : 'expired'} {new Date(row.expires_at).toLocaleDateString()}
+                      {active && (
+                        <span className={left <= 7 ? 'font-bold text-[#FFB84D]' : 'text-white/55'}>
+                          {' '}· {left}d left
+                        </span>
+                      )}
                     </p>
                   </div>
                   <span

@@ -8,7 +8,6 @@ import {
   Crown,
   FileText,
   Gift,
-  Receipt,
   ShieldCheck,
   Sparkles,
   Tag,
@@ -18,9 +17,7 @@ import {
 import { getCurrentTelegramProfile, shareReferralLink } from '@/lib/telegram';
 import {
   getEffectivePricingTiers,
-  getMyPayments,
   getSubscriptionDetail,
-  type PaymentHistoryRow,
   type PricingTier,
   type SubscriptionDetail,
 } from '@/lib/subscription';
@@ -45,8 +42,6 @@ interface Props {
 export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscription, onOpenSpin, onOpenLegal, onAdminSecretTap }: Props) {
   const [status, setStatus] = useState<SubscriptionDetail | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>([]);
-  const [payments, setPayments] = useState<PaymentHistoryRow[]>([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [bonusInfo, setBonusInfo] = useState<BonusSpinInfo | null>(null);
   const [idCopied, setIdCopied] = useState(false);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
@@ -58,7 +53,6 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
   useEffect(() => {
     getSubscriptionDetail().then(setStatus);
     getEffectivePricingTiers().then(setTiers);
-    getMyPayments().then(setPayments);
     getAvailableBonusSpin().then(setBonusInfo);
     getReferralStats().then(setReferralStats);
   }, []);
@@ -117,23 +111,12 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
   // than nagging — before that the number alone is enough.
   const expiringSoon = daysLeft !== null && daysLeft <= 7;
 
-  const approvedPayments = payments.filter((row) => row.status === 'approved');
-  const totalPaid = approvedPayments.reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
-
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString(lang === 'km' ? 'km-KH' : 'en-GB', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
-
-  const planNameFor = (key: string) => tiers.find((tier) => tier.key === key)?.labelKm ?? key;
-
-  const STATUS_STYLE: Record<string, { label: string; className: string }> = {
-    approved: { label: 'ជោគជ័យ', className: 'bg-[#34B37A]/15 text-[#5FD9A0]' },
-    pending: { label: 'កំពុងរង់ចាំ', className: 'bg-[#E3B341]/15 text-[#E3B341]' },
-    rejected: { label: 'បដិសេធ', className: 'bg-[#EF4444]/15 text-[#FCA5A5]' },
-  };
 
   return (
     <div className="min-h-screen bg-[#0A0A0D] pb-10 text-white">
@@ -186,7 +169,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           {status?.subscribed && (
             <span
               className="absolute right-3 top-3 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#0A0A0D]"
-              style={{ background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)' }}
+              style={{ background: 'linear-gradient(135deg, #F0D9A0, #E6231F 45%, #B2882F)' }}
             >
               <Crown className="h-2.5 w-2.5" /> VIP
             </span>
@@ -197,7 +180,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             style={
               status?.subscribed
                 ? {
-                    background: 'linear-gradient(135deg, #F0D9A0, #E3B341 45%, #B2882F)',
+                    background: 'linear-gradient(135deg, #F0D9A0, #E6231F 45%, #B2882F)',
                     padding: 2,
                     boxShadow: '0 0 20px rgba(227,179,65,0.35)',
                   }
@@ -226,7 +209,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             )}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {status?.subscribed ? (
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#E3B341]">
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#E6231F]">
                   សមាជិក VIP
                 </span>
               ) : (
@@ -261,9 +244,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             "when does my VIP run out" is the #1 thing people open this
             screen to check. */}
         {status?.subscribed ? (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-[#E3B341]/25 bg-gradient-to-br from-[#E3B341]/10 via-transparent to-[#2B5CAD]/5 p-4">
+          <div className="mb-4 overflow-hidden rounded-2xl border border-[#E6231F]/25 bg-gradient-to-br from-[#E6231F]/10 via-transparent to-[#2B5CAD]/5 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-[#E3B341]" />
+              <ShieldCheck className="h-4 w-4 text-[#E6231F]" />
               <p className="text-sm font-bold text-white">VIP កំពុងសកម្ម</p>
               {tierLabel && (
                 <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60">
@@ -295,8 +278,8 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                       style={{
                         width: `${100 - usedPercent}%`,
                         background: expiringSoon
-                          ? 'linear-gradient(90deg,#FFB84D,#E3B341)'
-                          : 'linear-gradient(90deg,#E3B341,#5FD9A0)',
+                          ? 'linear-gradient(90deg,#FFB84D,#E6231F)'
+                          : 'linear-gradient(90deg,#E6231F,#5FD9A0)',
                       }}
                     />
                   </div>
@@ -335,9 +318,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               )}
               {status.expiresAt && (
                 <div className="flex items-center gap-2 px-3 py-2.5">
-                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#E3B341]" />
+                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#E6231F]" />
                   <span className="text-[11px] text-white/45">ផុតកំណត់</span>
-                  <span className="ml-auto text-xs font-semibold text-[#E3B341]">
+                  <span className="ml-auto text-xs font-semibold text-[#E6231F]">
                     {fmtDate(status.expiresAt)}
                   </span>
                 </div>
@@ -346,7 +329,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
 
             <button
               onClick={onOpenSubscription}
-              className="w-full rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 py-2 text-xs font-bold text-[#E3B341] transition hover:bg-[#E3B341]/20"
+              className="w-full rounded-full border border-[#E6231F]/30 bg-[#E6231F]/10 py-2 text-xs font-bold text-[#E6231F] transition hover:bg-[#E6231F]/20"
             >
               បន្តគម្រោង / ប្តូរគម្រោង
             </button>
@@ -363,97 +346,6 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           </div>
         )}
 
-        {/* Every plan on sale, with what each one actually grants. The
-            picker inside the payment modal is a commitment step; this is
-            the reference list, readable without starting a purchase. */}
-        {tiers.length > 0 && (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-            <p className="border-b border-white/10 px-4 py-3 text-xs font-bold uppercase tracking-wide text-white/45">
-              គម្រោងទាំងអស់
-            </p>
-            {tiers.map((tier) => {
-              const isCurrent = tier.key === status?.tier && status?.subscribed;
-              return (
-                <button
-                  key={tier.key}
-                  onClick={onOpenSubscription}
-                  className="flex w-full items-center gap-3 border-b border-white/[0.06] px-4 py-3 text-left transition last:border-b-0 hover:bg-white/[0.05]"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-white">
-                      {tier.labelKm}
-                      {isCurrent && (
-                        <span className="ml-2 rounded-full bg-[#E3B341]/15 px-2 py-0.5 text-[9px] font-bold text-[#E3B341]">
-                          គម្រោងបច្ចុប្បន្ន
-                        </span>
-                      )}
-                    </p>
-                    <p className="truncate text-[11px] text-white/40">
-                      {tier.months} ខែ
-                      {tier.months > 1 && ` · $${(tier.price / tier.months).toFixed(2)}/ខែ`}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-black text-[#E3B341]">${tier.price}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Payment record. Someone who paid and is waiting, or who thinks
-            they were charged twice, has nowhere else to look — and a
-            visible bank reference is what turns "trust me" into
-            something they can check against their own ABA history. */}
-        {payments.length > 0 && (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-            <button
-              onClick={() => setHistoryOpen((open) => !open)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.05]"
-            >
-              <Receipt className="h-4 w-4 shrink-0 text-white/45" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white">ប្រវត្តិទូទាត់</p>
-                <p className="text-[11px] text-white/40">
-                  {approvedPayments.length} ដងជោគជ័យ · សរុប ${totalPaid.toFixed(2)}
-                </p>
-              </div>
-              <span className="shrink-0 text-[11px] font-semibold text-white/45">
-                {historyOpen ? 'បិទ' : 'មើល'}
-              </span>
-            </button>
-
-            {historyOpen && (
-              <div className="border-t border-white/10">
-                {payments.map((row) => {
-                  const badge = STATUS_STYLE[row.status] ?? STATUS_STYLE.pending;
-                  return (
-                    <div
-                      key={row.id}
-                      className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-2.5 last:border-b-0"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-semibold text-white">
-                          {planNameFor(row.tier)}
-                          <span className="text-white/40"> · ${Number(row.amount).toFixed(2)}</span>
-                        </p>
-                        <p className="truncate text-[10px] text-white/35">
-                          {fmtDate(row.submitted_at)}
-                          {row.aba_trx_id ? ` · Ref ${row.aba_trx_id}` : ''}
-                        </p>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${badge.className}`}
-                      >
-                        {badge.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Bonus spin available — the actual mechanism: buying certain VIP
             plans unlocks one spin for bonus days on top of the plan
             (see BONUS_POOLS), it's a spin the person plays, not days
@@ -463,14 +355,14 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             onClick={onOpenSpin}
             className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#2B5CAD]/30 bg-gradient-to-r from-[#2B5CAD]/10 to-transparent p-4 text-left transition hover:border-[#2B5CAD]/60"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E3B341] to-[#A9782E]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E6231F] to-[#A9782E]">
               <Gift className="h-5 w-5 text-[#0A0A0D]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white">មាន Bonus Spin រង់ចាំ!</p>
               <p className="text-xs text-white/50">ការទិញ VIP លើកនេះឲ្យអ្នកនូវការចាប់រង្វាន់ថ្ងៃបន្ថែម ១ដង — ចុចដើម្បីចាប់</p>
             </div>
-            <Sparkles className="h-4 w-4 text-[#E3B341]" />
+            <Sparkles className="h-4 w-4 text-[#E6231F]" />
           </button>
         )}
 

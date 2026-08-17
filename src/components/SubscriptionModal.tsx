@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   BadgeCheck,
   Check,
-  Copy,
   Crown,
   Download,
   ImagePlus,
@@ -16,7 +15,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { openExternalLink, copyToClipboard } from '@/lib/telegram';
+import { openExternalLink } from '@/lib/telegram';
 import {
   decodeKhqrFromImage,
   isKhqrPayload,
@@ -96,7 +95,6 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [checkingPending, setCheckingPending] = useState(true);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [payLinks, setPayLinks] = useState<Record<string, string>>({});
-  const [payLinkCopied, setPayLinkCopied] = useState(false);
   // KHQR payload read back out of the tier's QR image -> lets the primary
   // button jump straight into ABA instead of via PayWay's web page.
   const [khqrString, setKhqrString] = useState<string | null>(null);
@@ -119,13 +117,6 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // silently does nothing and the viewer has no idea whether to wait,
   // retry, or scan the QR instead.
   const [abaDidNotOpen, setAbaDidNotOpen] = useState(false);
-  // Reveals the deeplink as the raw underlined string. Notes shows it
-  // that way because Notes auto-detects URLs in plain text and styles
-  // them; HTML never does that — a string is only tappable if it is
-  // wrapped in an <a href>, and the underline is just link styling that
-  // a button-shaped link deliberately removes. So the underlined form
-  // has to be rendered on purpose.
-  const [showRawLink, setShowRawLink] = useState(false);
   const notifiedApprovedRef = useRef(false);
   const recyclingRef = useRef(false);
 
@@ -395,7 +386,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 90% 40% at 50% -5%, rgba(227,179,65,0.14) 0%, rgba(7,7,12,0) 62%), radial-gradient(ellipse 80% 45% at 12% 108%, rgba(224,166,58,0.16) 0%, rgba(7,7,12,0) 60%)',
+            'radial-gradient(ellipse 90% 40% at 50% -5%, rgba(230,35,31,0.14) 0%, rgba(7,7,12,0) 62%), radial-gradient(ellipse 80% 45% at 12% 108%, rgba(224,166,58,0.16) 0%, rgba(7,7,12,0) 60%)',
         }}
       />
 
@@ -430,14 +421,14 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           <>
             <div className="flex flex-col items-center pb-6 pt-2 text-center">
               <div className="relative mb-3">
-                <div className="pointer-events-none absolute inset-[-10px] rounded-3xl bg-[#E3B341]/20 blur-2xl" />
+                <div className="pointer-events-none absolute inset-[-10px] rounded-3xl bg-[#E6231F]/20 blur-2xl" />
                 <img
                   src="/assets/logo.png"
                   alt="NINT ANIME"
-                  className="relative h-[68px] w-[68px] rounded-2xl ring-1 ring-[#E3B341]/35"
+                  className="relative h-[68px] w-[68px] rounded-2xl ring-1 ring-[#E6231F]/35"
                 />
               </div>
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[#E3B341]/25 bg-[#E3B341]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#E3B341]">
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[#E6231F]/25 bg-[#E6231F]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#E6231F]">
                 <Crown className="h-3 w-3" />
                 {t.subTicketEyebrow}
               </div>
@@ -461,7 +452,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                     onClick={() => setSelectedKey(tr.key)}
                     className={`relative w-full overflow-hidden rounded-xl border px-3.5 pt-3.5 text-left transition-all active:scale-[0.99] ${
                       selected
-                        ? 'border-[#E3B341]/45 bg-[#E3B341]/[0.07] pb-0 shadow-[0_6px_20px_-12px_rgba(227,179,65,0.5)] ring-1 ring-inset ring-[#E3B341]/20'
+                        ? 'border-[#E6231F]/45 bg-[#E6231F]/[0.07] pb-0 shadow-[0_6px_20px_-12px_rgba(230,35,31,0.5)] ring-1 ring-inset ring-[#E6231F]/20'
                         : 'border-white/[0.08] bg-white/[0.025] pb-3.5 hover:border-white/20'
                     }`}
                   >
@@ -469,23 +460,23 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       <div
                         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
                           selected
-                            ? 'bg-[#E3B341]/15 ring-1 ring-[#E3B341]/40'
+                            ? 'bg-[#E6231F]/15 ring-1 ring-[#E6231F]/40'
                             : 'bg-white/[0.07]'
                         }`}
                       >
-                        <Icon className={`h-4 w-4 ${selected ? 'text-[#F2CE79]' : 'text-white/60'}`} />
+                        <Icon className={`h-4 w-4 ${selected ? 'text-[#FF9E95]' : 'text-white/60'}`} />
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-white">{lang === 'km' ? tr.labelKm : tr.labelEn}</span>
                           {tr.badge === 'best' && (
-                            <span className="rounded-md bg-[#E3B341]/20 px-2 py-0.5 text-[10px] font-bold text-[#E3B341]">
+                            <span className="rounded-md bg-[#E6231F]/20 px-2 py-0.5 text-[10px] font-bold text-[#E6231F]">
                               {t.subBestValue}
                             </span>
                           )}
                           {tr.badge === 'popular' && (
-                            <span className="rounded-md border border-[#E3B341]/40 px-2 py-0.5 text-[10px] font-bold text-[#E3B341]">
+                            <span className="rounded-md border border-[#E6231F]/40 px-2 py-0.5 text-[10px] font-bold text-[#E6231F]">
                               {t.subPopular}
                             </span>
                           )}
@@ -506,9 +497,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       <div className="relative mt-3">
                         <span className="absolute -left-[21px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#07070C]" />
                         <span className="absolute -right-[21px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#07070C]" />
-                        <div className="border-t border-dashed border-[#E3B341]/25" />
+                        <div className="border-t border-dashed border-[#E6231F]/25" />
                         <div className="flex items-center justify-between py-2">
-                          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#F2CE79]">
+                          <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#FF9E95]">
                             <BadgeCheck className="h-3.5 w-3.5" />
                             {t.subSelected}
                           </span>
@@ -526,12 +517,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 <ShieldCheck className="h-3 w-3 text-[#35D399]" /> {t.subInstantUnlock}
               </span>
               <span className="flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-[#E3B341]" /> {t.subDrawAfterPay}
+                <Sparkles className="h-3 w-3 text-[#E6231F]" /> {t.subDrawAfterPay}
               </span>
             </div>
 
             {error && (
-              <p className="mt-4 rounded-xl border border-[#E6231F]/25 bg-[#E6231F]/10 px-3 py-2 text-xs text-[#FF8A85]">
+              <p className="mt-4 rounded-xl border border-[#FFB84D]/30 bg-[#FFB84D]/10 px-3 py-2 text-xs text-[#FFC97A]">
                 {error}
               </p>
             )}
@@ -595,7 +586,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             <div className="space-y-2.5">
               <button
                 onClick={onGoSpin}
-                className="w-full rounded-full bg-gradient-to-r from-[#E3B341] to-[#8A6414] py-3.5 text-sm font-bold text-white shadow-[0_12px_34px_-12px_rgba(227,179,65,0.8)] transition active:scale-[0.98]"
+                className="w-full rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] py-3.5 text-sm font-bold text-white shadow-[0_12px_34px_-12px_rgba(230,35,31,0.8)] transition active:scale-[0.98]"
               >
                 <Sparkles className="mr-1.5 inline h-4 w-4" />
                 {t.subGoDraw}
@@ -611,7 +602,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
         ) : decision === 'rejected' ? (
           /* ---------------------------- REJECTED ---------------------------- */
           <div className="flex h-full flex-col items-center justify-center gap-5 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E6231F]/10">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFB84D]/10">
               <X className="h-8 w-8 text-[#FF6B66]" />
             </div>
             <div>
@@ -649,7 +640,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   onClick={() => setPayMode('auto')}
                   className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-bold transition active:scale-[0.98] ${
                     payMode === 'auto'
-                      ? 'bg-gradient-to-r from-[#E3B341] to-[#8A6414] text-white shadow-[0_8px_20px_-8px_rgba(227,179,65,0.75)]'
+                      ? 'bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] text-white shadow-[0_8px_20px_-8px_rgba(230,35,31,0.75)]'
                       : 'text-white/45 hover:text-white/70'
                   }`}
                 >
@@ -660,7 +651,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   onClick={() => setPayMode('manual')}
                   className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-bold transition active:scale-[0.98] ${
                     payMode === 'manual'
-                      ? 'bg-[#E0A63A] text-white shadow-[0_8px_20px_-8px_rgba(224,166,58,0.7)]'
+                      ? 'bg-[#D01E1A] text-white shadow-[0_8px_20px_-8px_rgba(224,166,58,0.7)]'
                       : 'text-white/45 hover:text-white/70'
                   }`}
                 >
@@ -673,7 +664,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 not have paid yet when this first opens. Bigger amount +
                 bigger QR so it reads clearly at a glance. */}
             {payTier && (
-              <div className="relative overflow-hidden rounded-3xl border border-[#E3B341]/20 bg-white/[0.03] p-4 text-center">
+              <div className="relative overflow-hidden rounded-3xl border border-[#E6231F]/20 bg-white/[0.03] p-4 text-center">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-white/40">{t.subTotalDue}</p>
                 <p className="mt-1 text-[28px] font-extrabold leading-none text-white">
                   ${payTier.price}
@@ -689,7 +680,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                     className="mx-auto mt-3.5 w-full max-w-[220px] rounded-2xl border border-white/10 bg-white p-2 shadow-[0_10px_34px_rgba(0,0,0,0.55)]"
                   />
                 ) : (
-                  <p className="mt-4 rounded-xl border border-[#E3B341]/25 bg-[#E3B341]/5 p-4 text-xs text-[#E3B341]">
+                  <p className="mt-4 rounded-xl border border-[#E6231F]/25 bg-[#E6231F]/5 p-4 text-xs text-[#E6231F]">
                     {t.subQrMissing}
                   </p>
                 )}
@@ -700,7 +691,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       static PayWay link) drives where this goes. */
                   <div className="mt-4 space-y-3">
                     <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-4 py-2 text-[13px] font-semibold tabular-nums text-white/75">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#E3B341]" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#E6231F]" />
                       {t.subWaitingPayment} ({mmss})
                     </div>
 
@@ -777,76 +768,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                           </div>
                         )}
 
-                        {/* The deeplink in the exact shape the owner
-                            verified by hand: underlined, wrapped, tappable.
-                            Long-press gives "Open in ABA" and "Copy", so
-                            this is the escape hatch that is known to work
-                            on their own phone. Collapsed by default —
-                            300 characters of payload on a checkout screen
-                            reads as a malfunction, not an option. */}
-                        {abaDeeplink && (
-                          <div className="text-center">
-                            <button
-                              type="button"
-                              onClick={() => setShowRawLink((open) => !open)}
-                              className="text-[10px] text-white/40 underline underline-offset-2 transition hover:text-white/70"
-                            >
-                              {showRawLink ? t.subHideAbaLink : t.subShowAbaLink}
-                            </button>
-                            {showRawLink && (
-                              <a
-                                href={abaDeeplink}
-                                rel="noreferrer"
-                                className="mt-1.5 block break-all text-left text-[10px] leading-relaxed text-[#9DBBEE] underline decoration-[#9DBBEE]/50 underline-offset-2"
-                              >
-                                {abaDeeplink}
-                              </a>
-                            )}
-                          </div>
-                        )}
-
                         {/* Reassurance sits directly under the primary
                             action, where the hesitation actually happens. */}
                         <p className="flex items-start justify-center gap-1.5 px-1 text-center text-[10px] leading-relaxed text-white/45">
                           <ShieldCheck className="mt-[1px] h-3 w-3 shrink-0 text-[#7FE3C0]/70" />
                           <span>{isRealGateway ? t.subGatewayVerifiedNote : t.subGatewayManualNote}</span>
                         </p>
-
-                        {/* Escape hatch, deliberately understated. It sits
-                            AFTER the reassurance note and is sized like a
-                            small utility chip, not a second call to action —
-                            a full-width outlined button next to the real one
-                            reads as "the payment is unreliable", which is
-                            exactly the wrong feeling on a checkout screen. */}
-                        {(payLinkSrc || abaDeeplink) && (
-                        <div className="flex justify-center pt-0.5">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const ok = await copyToClipboard(payLinkSrc || abaDeeplink!);
-                              if (ok) {
-                                setPayLinkCopied(true);
-                                window.setTimeout(() => setPayLinkCopied(false), 2200);
-                              }
-                            }}
-                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition active:scale-[0.97] ${
-                              payLinkCopied
-                                ? 'bg-[#35D399]/12 text-[#7FE3C0]'
-                                : 'bg-white/[0.07] text-white/55 hover:bg-white/[0.11] hover:text-white/80'
-                            }`}
-                          >
-                            {payLinkCopied ? (
-                              <>
-                                <Check className="h-3 w-3" /> {t.subPayLinkCopied}
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3 w-3" /> {t.subCopyPayLink}
-                              </>
-                            )}
-                          </button>
-                        </div>
-                        )}
                       </>
                     ) : (
                       <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-white/40">
@@ -900,7 +827,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                           type="button"
                           onClick={handleConfirmManualPay}
                           disabled={attachingProof}
-                          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#E0A63A] py-3.5 text-sm font-extrabold text-white shadow-[0_10px_26px_-12px_rgba(224,166,58,0.75)] transition active:scale-[0.98] disabled:opacity-50"
+                          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#D01E1A] py-3.5 text-sm font-extrabold text-white shadow-[0_10px_26px_-12px_rgba(224,166,58,0.75)] transition active:scale-[0.98] disabled:opacity-50"
                         >
                           {attachingProof ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -912,10 +839,10 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       </div>
                     ) : (
                       <label
-                        className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-[#E0A63A]/40 bg-[#E0A63A]/[0.07] px-3.5 py-3 transition active:scale-[0.99] hover:border-[#E0A63A]/70"
+                        className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-[#D01E1A]/40 bg-[#D01E1A]/[0.07] px-3.5 py-3 transition active:scale-[0.99] hover:border-[#D01E1A]/70"
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E0A63A]/20">
-                          <ImagePlus className="h-4 w-4 text-[#F0C766]" />
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#D01E1A]/20">
+                          <ImagePlus className="h-4 w-4 text-[#FF8F86]" />
                         </span>
                         <span className="min-w-0">
                           <span className="block text-xs font-bold text-white">{t.subUploadReceiptCta}</span>
@@ -939,7 +866,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             )}
 
             {error && (
-              <p className="rounded-xl border border-[#E6231F]/25 bg-[#E6231F]/10 px-3 py-2 text-xs text-[#FF8A85]">
+              <p className="rounded-xl border border-[#FFB84D]/30 bg-[#FFB84D]/10 px-3 py-2 text-xs text-[#FFC97A]">
                 {error}
               </p>
             )}
@@ -970,7 +897,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           <button
             onClick={handleJoinVip}
             disabled={!tier || submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#E3B341] to-[#8A6414] py-4 text-sm font-extrabold text-white shadow-[0_14px_36px_-14px_rgba(227,179,65,0.95)] transition active:scale-[0.98] disabled:opacity-40"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] py-4 text-sm font-extrabold text-white shadow-[0_14px_36px_-14px_rgba(230,35,31,0.95)] transition active:scale-[0.98] disabled:opacity-40"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
             {submitting ? t.subSending : t.subJoinVip}
