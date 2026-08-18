@@ -19,7 +19,7 @@ export default function NotMemberScreen({ groupLink }: Props) {
       {groupLink && (
         <a
           href={groupLink}
-          className="rounded-full bg-gradient-to-r from-[#FF2D46] to-[#8F1020] px-6 py-2.5 text-sm font-bold text-white transition active:scale-95"
+          className="btn-primary rounded-full px-6 py-2.5 text-sm font-bold transition active:scale-95"
         >
           ចូលរួម VIP Group
         </a>

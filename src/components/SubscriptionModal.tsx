@@ -379,7 +379,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const mmss = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
 
   return (
-    <div className="fixed inset-0 z-[95] flex flex-col bg-[#04050A]">
+    <div className="fixed inset-0 z-[95] flex flex-col bg-app-deep">
       {/* Aurora backdrop — one quiet atmospheric layer, muted dark blue at
           the top (VIP) fading into violet at the bottom. */}
       <div
@@ -450,7 +450,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   <button
                     key={tr.key}
                     onClick={() => setSelectedKey(tr.key)}
-                    className={`relative w-full overflow-hidden rounded-xl border px-3.5 pt-3.5 text-left transition-all active:scale-[0.99] ${
+                    className={`relative w-full overflow-hidden rounded-card border px-3.5 pt-3.5 text-left transition-all active:scale-[0.99] ${
                       selected
                         ? 'border-[#FF2D46]/45 bg-[#FF2D46]/[0.07] pb-0 shadow-[0_6px_20px_-12px_rgba(255,45,70,0.5)] ring-1 ring-inset ring-[#FF2D46]/20'
                         : 'border-white/[0.08] bg-white/[0.025] pb-3.5 hover:border-white/20'
@@ -586,7 +586,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             <div className="space-y-2.5">
               <button
                 onClick={onGoSpin}
-                className="w-full rounded-full bg-gradient-to-r from-[#FF2D46] to-[#8F1020] py-3.5 text-sm font-bold text-white shadow-[0_12px_34px_-12px_rgba(255,45,70,0.8)] transition active:scale-[0.98]"
+                className="btn-primary w-full rounded-full py-3.5 text-sm font-bold"
               >
                 <Sparkles className="mr-1.5 inline h-4 w-4" />
                 {t.subGoDraw}
@@ -887,7 +887,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           one action are always reachable no matter how long the list. */}
       {!checkingPending && step === 'pick' && (
         <footer
-          className="relative z-10 shrink-0 border-t border-white/[0.08] bg-[#04050A]/95 px-4 pt-3 backdrop-blur"
+          className="relative z-10 shrink-0 border-t border-white/[0.08] bar-blur px-4 pt-3"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
           <div className="mb-2.5 flex items-baseline justify-between">
@@ -897,7 +897,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           <button
             onClick={handleJoinVip}
             disabled={!tier || submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#FF2D46] to-[#8F1020] py-4 text-sm font-extrabold text-white shadow-[0_14px_36px_-14px_rgba(255,45,70,0.95)] transition active:scale-[0.98] disabled:opacity-40"
+            className="btn-primary flex w-full items-center justify-center gap-2 rounded-full py-4 text-sm font-extrabold disabled:opacity-40"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
             {submitting ? t.subSending : t.subJoinVip}

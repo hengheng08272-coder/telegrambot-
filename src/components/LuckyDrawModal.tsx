@@ -193,7 +193,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
               </div>
               <button
                 onClick={onClose}
-                className="w-full rounded-full bg-gradient-to-r from-[#FF2D46] to-[#8F1020] py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(255,45,70,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(255,45,70,0.5)] active:scale-[0.98]"
+                className="btn-primary w-full rounded-full py-3.5 text-sm font-bold shadow-[0_8px_24px_rgba(255,45,70,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(255,45,70,0.5)] active:scale-[0.98]"
               >
                 {t.spinCollect}
               </button>

@@ -143,7 +143,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
           <button
             onClick={handlePost}
             disabled={posting || !draft.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#FF2D46] to-[#8F1020] py-2.5 text-sm font-bold text-white transition disabled:opacity-50"
+            className="btn-primary flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm font-bold text-white transition disabled:opacity-50"
           >
             {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Post announcement

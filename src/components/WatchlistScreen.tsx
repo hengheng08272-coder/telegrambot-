@@ -58,7 +58,7 @@ export default function WatchlistScreen({
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1400px] px-4 pb-28 pt-24 sm:px-8 sm:pb-12">
+      <main className="mx-auto max-w-[1400px] px-4 pb-28 pt-24 fade-up sm:px-8 sm:pb-12">
         {/* Continue watching */}
         <section className="mt-4">
           <div className="mb-3 flex items-center gap-2">
@@ -66,7 +66,7 @@ export default function WatchlistScreen({
             <h2 className="text-lg font-bold tracking-tight">{t.continueWatching}</h2>
           </div>
           {continueItems.length === 0 ? (
-            <p className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-8 text-center text-sm text-white/40">
+            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-white/40">
               {t.continueEmpty}
             </p>
           ) : (
@@ -74,13 +74,13 @@ export default function WatchlistScreen({
               {continueItems.map((item) => (
                 <div
                   key={item.show.id}
-                  className="group flex items-center gap-4 overflow-hidden rounded-xl border border-white/5 bg-[#0E1017] p-3"
+                  className="card-surface group flex items-center gap-4 overflow-hidden rounded-card p-3 transition hover:bg-[#151926]"
                 >
                   <button
                     onClick={() =>
                       onResumeEpisode(item.show, item.episode.id)
                     }
-                    className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg sm:w-48"
+                    className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-xl sm:w-48"
                   >
                     <img
                       src={item.episode.thumbnail_url ?? item.show.banner_url ?? ''}
@@ -89,7 +89,7 @@ export default function WatchlistScreen({
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition group-hover:bg-black/30">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF2D46]">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_22px_rgba(255,45,70,0.5)]">
                         <Play className="h-4 w-4 fill-white text-white" />
                       </div>
                     </div>
@@ -103,7 +103,7 @@ export default function WatchlistScreen({
                     </p>
                     <button
                       onClick={() => onResumeEpisode(item.show, item.episode.id)}
-                      className="mt-2 flex items-center gap-1.5 rounded-full bg-[#FF2D46] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#8F1020] active:scale-95"
+                      className="btn-primary mt-2 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold"
                     >
                       <Play className="h-3 w-3 fill-white" /> {t.resume}
                     </button>
@@ -128,7 +128,7 @@ export default function WatchlistScreen({
             <h2 className="text-lg font-bold tracking-tight">{t.wantToWatch}</h2>
           </div>
           {watchlist.length === 0 ? (
-            <p className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-8 text-center text-sm text-white/40">
+            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-white/40">
               {t.watchlistEmpty}
             </p>
           ) : (
@@ -139,7 +139,7 @@ export default function WatchlistScreen({
                     onClick={() => onSelectShow(s)}
                     className="block w-full text-left"
                   >
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/5">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-[16px] bg-[#151926] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#FF2D46]/50">
                       <img
                         src={s.poster_url ?? ''}
                         alt={s.title}
@@ -173,14 +173,14 @@ export default function WatchlistScreen({
 
         {/* Empty state search hint */}
         {watchlist.length === 0 && continueItems.length === 0 && (
-          <div className="mt-10 flex flex-col items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.02] px-6 py-10 text-center">
+          <div className="card-surface mt-10 flex flex-col items-center gap-3 rounded-card px-6 py-10 text-center">
             <SearchIcon className="h-8 w-8 text-white/20" />
             <p className="text-sm text-white/40">
               {t.watchlistEmpty}
             </p>
             <button
               onClick={onBack}
-              className="mt-2 rounded-full bg-[#FF2D46] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#8F1020] active:scale-95"
+              className="btn-primary mt-2 rounded-full px-5 py-2 text-sm font-bold active:scale-95"
             >
               {t.navHome}
             </button>

@@ -120,14 +120,21 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
 
   return (
     <div className="min-h-screen bg-app pb-10 text-white">
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
-        <button onClick={onBack} className="text-white/70 transition hover:text-white" aria-label="Back">
-          <ArrowLeft className="h-5 w-5" />
+      <div
+        className="sticky top-0 z-30 flex items-center gap-3 border-b border-white/10 bar-blur px-4 py-3"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+      >
+        <button
+          onClick={onBack}
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white/80 transition hover:bg-white/[0.12] hover:text-white"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-4 w-4" />
         </button>
         <h1 className="text-sm font-bold">គណនីរបស់ខ្ញុំ</h1>
       </div>
 
-      <div className="px-4 py-6">
+      <div className="px-4 py-6 fade-up">
         {/* Logo watermark — sits above the profile card and doubles as the
             hidden admin entry point (5 taps within 2.5s), moved here from
             the home header so mobile still has a way in without a
@@ -154,7 +161,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             guests), and it's the real Telegram photo + name, not a
             placeholder — sized and spaced for a phone screen first. */}
         <div
-          className="relative mb-4 flex items-center gap-3 overflow-hidden rounded-2xl border p-3.5 sm:gap-4 sm:p-4"
+          className={`relative mb-4 flex items-center gap-3 overflow-hidden rounded-card border p-3.5 shadow-card sm:gap-4 sm:p-4 ${
+            status?.subscribed ? 'gold-frame' : ''
+          }`}
           style={
             status?.subscribed
               ? {
@@ -244,7 +253,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             "when does my VIP run out" is the #1 thing people open this
             screen to check. */}
         {status?.subscribed ? (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-[#FF2D46]/25 bg-gradient-to-br from-[#FF2D46]/10 via-transparent to-[#4C6FFF]/5 p-4">
+          <div className="mb-4 overflow-hidden rounded-card border border-[#FF2D46]/25 bg-gradient-to-br from-[#FF2D46]/12 via-transparent to-[#4C6FFF]/8 p-4 shadow-card">
             <div className="mb-3 flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-[#FF2D46]" />
               <p className="text-sm font-bold text-white">VIP កំពុងសកម្ម</p>
@@ -259,7 +268,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                 a bare date answers "when" but not "how much is left of
                 what I bought", which is the thing people are actually
                 checking for. */}
-            <div className="mb-3 rounded-xl border border-white/10 bg-black/25 p-4 text-center">
+            <div className="mb-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-center">
               <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">នៅសល់</p>
               <p
                 className={`text-4xl font-black leading-none ${
@@ -335,11 +344,11 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             </button>
           </div>
         ) : (
-          <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center">
+          <div className="card-surface mb-4 rounded-card p-4 text-center">
             <p className="mb-3 text-sm text-white/60">ចុះឈ្មោះជា VIP ដើម្បីមើលគ្រប់វគ្គ + ចាប់រង្វាន់ bonus</p>
             <button
               onClick={onOpenSubscription}
-              className="w-full rounded-full bg-gradient-to-r from-[#FF2D46] to-[#8F1020] py-2.5 text-sm font-bold text-white transition"
+              className="btn-primary w-full rounded-full py-2.5 text-sm font-bold"
             >
               ក្លាយជា VIP ឥឡូវនេះ
             </button>
@@ -353,7 +362,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
         {bonusInfo && (
           <button
             onClick={onOpenSpin}
-            className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#4C6FFF]/30 bg-gradient-to-r from-[#4C6FFF]/10 to-transparent p-4 text-left transition hover:border-[#4C6FFF]/60"
+            className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#4C6FFF]/30 bg-gradient-to-r from-[#4C6FFF]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#4C6FFF]/60 hover:from-[#4C6FFF]/20 active:scale-[0.99]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D46] to-[#B98430]">
               <Gift className="h-5 w-5 text-[#07080C]" />
@@ -376,7 +385,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             promise in copy. */}
         <button
           onClick={handleInviteReferral}
-          className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#FF2D46]/25 bg-gradient-to-r from-[#FF2D46]/10 to-transparent p-4 text-left transition hover:border-[#FF2D46]/50"
+          className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#FF2D46]/25 bg-gradient-to-r from-[#FF2D46]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#FF2D46]/50 hover:from-[#FF2D46]/20 active:scale-[0.99]"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D46] to-[#8F1020]">
             <UserPlus className="h-5 w-5 text-white" />
@@ -398,7 +407,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             divider (matches the identity/status card's radius + border
             treatment above) instead of two separate floating blocks, so
             the bottom of the screen reads as one settings list. */}
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+        <div className="card-surface overflow-hidden rounded-card">
           <button
             onClick={onOpenWatchlist}
             className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-white/[0.06]"

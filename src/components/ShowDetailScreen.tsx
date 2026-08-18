@@ -106,7 +106,8 @@ export default function ShowDetailScreen({
       {!isInTelegram() && (
         <button
           onClick={onBack}
-          className="fixed left-4 top-4 z-50 flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition hover:bg-black/70 hover:text-white"
+          className="glass fixed left-4 top-4 z-50 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white/80 transition hover:text-white"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}
         >
           <ArrowLeft className="h-4 w-4" /> {t.back}
         </button>
@@ -136,7 +137,7 @@ export default function ShowDetailScreen({
             <img
               src={show.poster_url ?? ''}
               alt={show.title}
-              className="w-56 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] ring-1 ring-white/10"
+              className="w-56 rounded-card shadow-elevated ring-1 ring-white/10"
             />
           </div>
 
@@ -210,10 +211,8 @@ export default function ShowDetailScreen({
                   if (!show.coming_soon && episodes.length > 0 && detail) onPlayEpisode(episodes[0], detail);
                 }}
                 disabled={show.coming_soon}
-                className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition active:scale-95 ${
-                  show.coming_soon
-                    ? 'cursor-not-allowed bg-white/10 text-white/50'
-                    : 'bg-gradient-to-r from-[#FF2D46] to-[#8F1020] text-white shadow-[0_10px_30px_rgba(255,45,70,0.35)] hover:shadow-[0_14px_40px_rgba(255,45,70,0.5)]'
+                className={`flex items-center gap-2 rounded-full px-7 py-3 text-sm font-bold transition active:scale-95 ${
+                  show.coming_soon ? 'cursor-not-allowed bg-white/10 text-white/50' : 'btn-primary'
                 }`}
               >
                 <Play className="h-5 w-5 fill-current" />
@@ -221,7 +220,7 @@ export default function ShowDetailScreen({
               </button>
               <button
                 onClick={handleInvite}
-                className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/10 active:scale-95"
+                className="glass flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.14] active:scale-95"
                 aria-label={t.inviteFriend ?? 'Invite a friend'}
               >
                 <UserPlus className="h-4 w-4" />
@@ -238,7 +237,7 @@ export default function ShowDetailScreen({
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 animate-pulse rounded-xl bg-[#151926]" />
+                  <div key={i} className="skeleton-shimmer h-24 rounded-card bg-[#151926]" />
                 ))}
               </div>
             ) : error ? (
@@ -255,13 +254,13 @@ export default function ShowDetailScreen({
                   <button
                     key={ep.id}
                     onClick={() => detail && onPlayEpisode(ep, detail)}
-                    className={`group flex w-full items-center gap-4 overflow-hidden rounded-xl border p-3 text-left transition ${
+                    className={`group flex w-full items-center gap-4 overflow-hidden rounded-card border p-3 text-left shadow-card transition active:scale-[0.995] ${
                       locked
-                        ? 'border-[#F5C563]/25 bg-[#1A1710] hover:border-[#F5C563]/60 hover:shadow-[0_0_24px_rgba(245,197,99,0.18)]'
-                        : 'border-white/5 bg-[#0E1017] hover:border-[#FF2D46]/30 hover:bg-[#151926]'
+                        ? 'border-[#F5C563]/25 bg-[#1A1710] hover:border-[#F5C563]/60 hover:shadow-glow-gold'
+                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#FF2D46]/35 hover:bg-[#151926]'
                     }`}
                   >
-                    <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg sm:w-48">
+                    <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-xl sm:w-48">
                       <img
                         src={ep.thumbnail_url ?? show.banner_url ?? ''}
                         alt={ep.title}
@@ -287,7 +286,7 @@ export default function ShowDetailScreen({
                         </div>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition group-hover:opacity-100">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF2D46]">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_24px_rgba(255,45,70,0.55)]">
                             <Play className="h-4 w-4 fill-white text-white" />
                           </div>
                         </div>
@@ -312,7 +311,7 @@ export default function ShowDetailScreen({
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#FF2D46]">
+                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#FF6B7C]">
                         {ep.title}
                       </h3>
                       <p className="mt-1 line-clamp-1 text-sm text-white/50">

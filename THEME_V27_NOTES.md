@@ -67,3 +67,21 @@ lock (hides all controls and tap zones so a resting thumb can't seek), buffered
 range behind the played range, drag-to-scrub with a growing track and knob,
 desktop volume slider, and keyboard shortcuts (space/k, ←/→, ↑/↓, m, f, l).
 Kept: double-tap ±10s, resume position, auto-advance, in-player episode sheet.
+
+## 4. Screen polish (follow-up)
+
+The screens that the first pass only recoloured now use the shared design
+language too:
+
+- **Account** — sticky frosted header with a round back button, `card-surface`
+  blocks, `gold-frame` ring on the identity card while VIP is active, shared
+  `btn-primary` CTA, settings list as one card.
+- **Show detail** — glass back pill (safe-area aware), `rounded-card` poster and
+  episode rows, gold glow on VIP-locked episodes, pill CTAs (`btn-primary` +
+  glass secondary), shimmer skeletons.
+- **Watchlist** — `card-surface` continue-watching rows, poster tiles matching
+  the home rails (lift + brand ring on hover), `card-surface` empty states.
+- **Subscription modal** — `bg-app-deep` sheet, `bar-blur` sticky footer,
+  `rounded-card` plan cards, shared primary CTA.
+- Remaining one-off primary buttons (lucky draw, not-member, announcements)
+  now use `.btn-primary` instead of re-declaring the gradient.
