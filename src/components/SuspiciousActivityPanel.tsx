@@ -45,7 +45,7 @@ export default function SuspiciousActivityPanel({ onClose }: Props) {
       title="Suspicious activity"
       subtitle="Viewers who burned through episodes fast enough to look like ripping"
       icon={<AlertTriangle className="h-4 w-4" />}
-      accent="#E3B341"
+      accent="#F5C563"
       maxWidth="max-w-[900px]"
       onClose={onClose}
     >

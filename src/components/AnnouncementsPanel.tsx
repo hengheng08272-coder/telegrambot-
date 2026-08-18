@@ -99,7 +99,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
       title="Announcements"
       subtitle="Ticker text and the banner announcements shown on the home screen"
       icon={<Megaphone className="h-4 w-4" />}
-      accent="#E3B341"
+      accent="#F5C563"
       maxWidth="max-w-[900px]"
       onClose={onClose}
     >
@@ -113,7 +113,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
             onChange={(e) => setTickerDraft(e.target.value)}
             placeholder={tickerLoaded ? '' : 'Loading current ticker text…'}
             rows={2}
-            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#E6231F]/50"
+            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#FF2D46]/50"
           />
           <button
             onClick={handleSaveTicker}
@@ -123,7 +123,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
             {tickerSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : tickerSaved ? (
-              <Save className="h-4 w-4 text-[#34B37A]" />
+              <Save className="h-4 w-4 text-[#2FD98C]" />
             ) : (
               <Save className="h-4 w-4" />
             )}
@@ -137,13 +137,13 @@ export default function AnnouncementsPanel({ onClose }: Props) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="ឧ. ថ្ងៃនេះ episode ថ្មីចេញ 3 ភាគ! / ថ្ងៃស្អែក spin ថ្មីមកដល់..."
             rows={3}
-            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#E6231F]/50"
+            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#FF2D46]/50"
           />
           {error && <p className="mb-2 text-xs text-red-300">{error}</p>}
           <button
             onClick={handlePost}
             disabled={posting || !draft.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] py-2.5 text-sm font-bold text-white transition disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#FF2D46] to-[#8F1020] py-2.5 text-sm font-bold text-white transition disabled:opacity-50"
           >
             {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Post announcement
@@ -162,7 +162,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
               <div
                 key={item.id}
                 className={`rounded-xl border px-3 py-2.5 ${
-                  item.active ? 'border-[#E3B341]/25 bg-[#E3B341]/5' : 'border-white/10 bg-white/[0.03]'
+                  item.active ? 'border-[#F5C563]/25 bg-[#F5C563]/5' : 'border-white/10 bg-white/[0.03]'
                 }`}
               >
                 <p className={`mb-2 text-sm ${item.active ? 'text-white' : 'text-white/40 line-through'}`}>

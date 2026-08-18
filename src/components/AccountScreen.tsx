@@ -119,7 +119,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
     });
 
   return (
-    <div className="min-h-screen bg-[#0A0A0D] pb-10 text-white">
+    <div className="min-h-screen bg-app pb-10 text-white">
       <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
         <button onClick={onBack} className="text-white/70 transition hover:text-white" aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
@@ -158,18 +158,18 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           style={
             status?.subscribed
               ? {
-                  borderColor: 'rgba(227,179,65,0.3)',
+                  borderColor: 'rgba(245,197,99,0.3)',
                   background:
-                    'linear-gradient(120deg, rgba(227,179,65,0.14), rgba(10,10,13,0.4) 60%)',
-                  boxShadow: '0 0 24px rgba(227,179,65,0.12)',
+                    'linear-gradient(120deg, rgba(245,197,99,0.14), rgba(7,8,12,0.4) 60%)',
+                  boxShadow: '0 0 24px rgba(245,197,99,0.12)',
                 }
               : { borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }
           }
         >
           {status?.subscribed && (
             <span
-              className="absolute right-3 top-3 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#0A0A0D]"
-              style={{ background: 'linear-gradient(135deg, #F0D9A0, #E6231F 45%, #B2882F)' }}
+              className="absolute right-3 top-3 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#07080C]"
+              style={{ background: 'linear-gradient(135deg, #FFE7B0, #FF2D46 45%, #C08F33)' }}
             >
               <Crown className="h-2.5 w-2.5" /> VIP
             </span>
@@ -180,11 +180,11 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             style={
               status?.subscribed
                 ? {
-                    background: 'linear-gradient(135deg, #F0D9A0, #E6231F 45%, #B2882F)',
+                    background: 'linear-gradient(135deg, #FFE7B0, #FF2D46 45%, #C08F33)',
                     padding: 2,
-                    boxShadow: '0 0 20px rgba(227,179,65,0.35)',
+                    boxShadow: '0 0 20px rgba(245,197,99,0.35)',
                   }
-                : { background: 'rgba(43,92,173,0.35)', padding: 2 }
+                : { background: 'rgba(76,111,255,0.35)', padding: 2 }
             }
           >
             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#12302D] to-[#151A1A]">
@@ -209,7 +209,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             )}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {status?.subscribed ? (
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#E6231F]">
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#FF2D46]">
                   សមាជិក VIP
                 </span>
               ) : (
@@ -232,7 +232,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                   title="ចម្លង Telegram ID"
                 >
                   ID: {profile.id}
-                  {idCopied ? <Check className="h-2.5 w-2.5 text-[#34B37A]" /> : <Copy className="h-2.5 w-2.5" />}
+                  {idCopied ? <Check className="h-2.5 w-2.5 text-[#2FD98C]" /> : <Copy className="h-2.5 w-2.5" />}
                 </button>
               )}
             </div>
@@ -244,9 +244,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             "when does my VIP run out" is the #1 thing people open this
             screen to check. */}
         {status?.subscribed ? (
-          <div className="mb-4 overflow-hidden rounded-2xl border border-[#E6231F]/25 bg-gradient-to-br from-[#E6231F]/10 via-transparent to-[#2B5CAD]/5 p-4">
+          <div className="mb-4 overflow-hidden rounded-2xl border border-[#FF2D46]/25 bg-gradient-to-br from-[#FF2D46]/10 via-transparent to-[#4C6FFF]/5 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-[#E6231F]" />
+              <ShieldCheck className="h-4 w-4 text-[#FF2D46]" />
               <p className="text-sm font-bold text-white">VIP កំពុងសកម្ម</p>
               {tierLabel && (
                 <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60">
@@ -263,7 +263,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">នៅសល់</p>
               <p
                 className={`text-4xl font-black leading-none ${
-                  expiringSoon ? 'text-[#FFB84D]' : 'text-white'
+                  expiringSoon ? 'text-[#FFC24D]' : 'text-white'
                 }`}
               >
                 {daysLeft ?? '—'}
@@ -278,8 +278,8 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                       style={{
                         width: `${100 - usedPercent}%`,
                         background: expiringSoon
-                          ? 'linear-gradient(90deg,#FFB84D,#E6231F)'
-                          : 'linear-gradient(90deg,#E6231F,#5FD9A0)',
+                          ? 'linear-gradient(90deg,#FFC24D,#FF2D46)'
+                          : 'linear-gradient(90deg,#FF2D46,#86EEC0)',
                       }}
                     />
                   </div>
@@ -290,7 +290,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               )}
 
               {expiringSoon && (
-                <p className="mt-2 text-[11px] font-semibold text-[#FFB84D]">
+                <p className="mt-2 text-[11px] font-semibold text-[#FFC24D]">
                   ជិតផុតកំណត់ហើយ — បន្តឥឡូវដើម្បីកុំឲ្យដាច់
                 </p>
               )}
@@ -318,9 +318,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               )}
               {status.expiresAt && (
                 <div className="flex items-center gap-2 px-3 py-2.5">
-                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#E6231F]" />
+                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#FF2D46]" />
                   <span className="text-[11px] text-white/45">ផុតកំណត់</span>
-                  <span className="ml-auto text-xs font-semibold text-[#E6231F]">
+                  <span className="ml-auto text-xs font-semibold text-[#FF2D46]">
                     {fmtDate(status.expiresAt)}
                   </span>
                 </div>
@@ -329,7 +329,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
 
             <button
               onClick={onOpenSubscription}
-              className="w-full rounded-full border border-[#E6231F]/30 bg-[#E6231F]/10 py-2 text-xs font-bold text-[#E6231F] transition hover:bg-[#E6231F]/20"
+              className="w-full rounded-full border border-[#FF2D46]/30 bg-[#FF2D46]/10 py-2 text-xs font-bold text-[#FF2D46] transition hover:bg-[#FF2D46]/20"
             >
               បន្តគម្រោង / ប្តូរគម្រោង
             </button>
@@ -339,7 +339,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             <p className="mb-3 text-sm text-white/60">ចុះឈ្មោះជា VIP ដើម្បីមើលគ្រប់វគ្គ + ចាប់រង្វាន់ bonus</p>
             <button
               onClick={onOpenSubscription}
-              className="w-full rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] py-2.5 text-sm font-bold text-white transition"
+              className="w-full rounded-full bg-gradient-to-r from-[#FF2D46] to-[#8F1020] py-2.5 text-sm font-bold text-white transition"
             >
               ក្លាយជា VIP ឥឡូវនេះ
             </button>
@@ -353,16 +353,16 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
         {bonusInfo && (
           <button
             onClick={onOpenSpin}
-            className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#2B5CAD]/30 bg-gradient-to-r from-[#2B5CAD]/10 to-transparent p-4 text-left transition hover:border-[#2B5CAD]/60"
+            className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#4C6FFF]/30 bg-gradient-to-r from-[#4C6FFF]/10 to-transparent p-4 text-left transition hover:border-[#4C6FFF]/60"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E6231F] to-[#A9782E]">
-              <Gift className="h-5 w-5 text-[#0A0A0D]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D46] to-[#B98430]">
+              <Gift className="h-5 w-5 text-[#07080C]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white">មាន Bonus Spin រង់ចាំ!</p>
               <p className="text-xs text-white/50">ការទិញ VIP លើកនេះឲ្យអ្នកនូវការចាប់រង្វាន់ថ្ងៃបន្ថែម ១ដង — ចុចដើម្បីចាប់</p>
             </div>
-            <Sparkles className="h-4 w-4 text-[#E6231F]" />
+            <Sparkles className="h-4 w-4 text-[#FF2D46]" />
           </button>
         )}
 
@@ -376,9 +376,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             promise in copy. */}
         <button
           onClick={handleInviteReferral}
-          className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#E6231F]/25 bg-gradient-to-r from-[#E6231F]/10 to-transparent p-4 text-left transition hover:border-[#E6231F]/50"
+          className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-[#FF2D46]/25 bg-gradient-to-r from-[#FF2D46]/10 to-transparent p-4 text-left transition hover:border-[#FF2D46]/50"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E6231F] to-[#7A0F0D]">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D46] to-[#8F1020]">
             <UserPlus className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">

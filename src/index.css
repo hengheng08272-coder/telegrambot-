@@ -2,8 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────
+   "Obsidian" dark theme tokens — the single CSS-side source of truth for
+   the app's palette, elevation and motion. Mirrors theme.ts. The app is
+   dark-only by design (it lives inside Telegram, over a dark client), so
+   these are declared once on :root rather than behind a media query, and
+   `color-scheme: dark` makes the browser's own chrome — form controls,
+   scrollbars, the tap-highlight — match instead of flashing white.
+   ───────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: dark;
+
+  /* Base surfaces, from deepest to most raised */
+  --nv-bg-deep: #04050a;
+  --nv-bg: #07080c;
+  --nv-surface: #0e1017;
+  --nv-surface-2: #151926;
+  --nv-surface-3: #1b2030;
+  --nv-border: #232838;
+  --nv-hairline: rgba(255, 255, 255, 0.08);
+
+  /* Brand */
+  --nv-primary: #ff2d46;
+  --nv-primary-light: #ff6b7c;
+  --nv-primary-dark: #8f1020;
+  --nv-indigo: #4c6fff;
+  --nv-indigo-light: #8098ff;
+  --nv-gold: #f5c563;
+  --nv-gold-light: #ffe7b0;
+  --nv-gold-dark: #b98430;
+
+  /* Text */
+  --nv-text: #f4f5fa;
+  --nv-text-muted: #a0a5b8;
+  --nv-text-dim: #6c7185;
+
+  /* Status */
+  --nv-success: #2fd98c;
+  --nv-warning: #ffc24d;
+  --nv-error: #ff4d5e;
+
+  /* Elevation */
+  --nv-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.55);
+  --nv-shadow-elevated: 0 24px 60px rgba(0, 0, 0, 0.68);
+  --nv-glow-primary: 0 0 34px rgba(255, 45, 70, 0.38);
+  --nv-glow-gold: 0 0 28px rgba(245, 197, 99, 0.32);
+
+  /* Safe-area insets, so bars can sit flush against the notch/home bar */
+  --nv-safe-top: env(safe-area-inset-top, 0px);
+  --nv-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 html,
@@ -19,18 +66,20 @@ body,
 html {
   touch-action: manipulation;
   overscroll-behavior: none;
+  background-color: var(--nv-bg);
 }
 
 body {
   margin: 0;
-  background-color: #0a0a0d;
-  color: #f5f5f7;
+  background-color: var(--nv-bg);
+  color: var(--nv-text);
   font-family: 'Battambang', 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
 
@@ -47,13 +96,138 @@ h3 {
   user-select: text;
 }
 
-/* Hide scrollbars on horizontal rails while keeping scroll */
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* Keyboard focus stays visible on the dark base without the default
+   browser ring, which reads as a white box on every rounded control. */
+:focus-visible {
+  outline: 2px solid var(--nv-primary);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+
+::selection {
+  background: rgba(255, 45, 70, 0.35);
+  color: #fff;
+}
+
+@layer components {
+  /* ── Ambient app background ──────────────────────────────────────────
+     Every full-screen surface uses `.bg-app` instead of a flat fill: the
+     base colour plus three very soft aurora pools (scarlet top-left,
+     indigo top-right, gold bottom) and a faint diagonal sheen. It's fixed
+     to the viewport, so scrolling a long rail list moves the content over
+     a still backdrop the way a cinema screen sits still behind subtitles,
+     and it costs nothing at runtime — no extra elements, no image. */
+  .bg-app {
+    background-color: var(--nv-bg);
+    background-image:
+      radial-gradient(70% 48% at 12% -6%, rgba(255, 45, 70, 0.16) 0%, rgba(7, 8, 12, 0) 62%),
+      radial-gradient(60% 42% at 92% 4%, rgba(76, 111, 255, 0.14) 0%, rgba(7, 8, 12, 0) 60%),
+      radial-gradient(80% 55% at 50% 108%, rgba(245, 197, 99, 0.07) 0%, rgba(7, 8, 12, 0) 64%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  /* A darker variant for sheets/overlays that sit on top of .bg-app and
+     still need to read as "another layer", not the same wash repeated. */
+  .bg-app-deep {
+    background-color: var(--nv-bg-deep);
+    background-image: radial-gradient(
+      90% 60% at 50% 0%,
+      rgba(76, 111, 255, 0.1) 0%,
+      rgba(4, 5, 10, 0) 65%
+    );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  /* Sticky bars (home header, screen headers, bottom nav) — translucent
+     over the ambient background so content scrolling underneath stays
+     faintly visible instead of hitting a hard opaque edge. */
+  .bar-blur {
+    background-color: rgba(7, 8, 12, 0.72);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .bar-blur {
+      background-color: rgba(7, 8, 12, 0.97);
+    }
+  }
+
+  /* ── Surface treatments ─────────────────────────────────────────────── */
+
+  /* Frosted panel — the house style for bars, sheets and info cards that
+     float over artwork. Falls back to a solid tint where backdrop-filter
+     isn't supported, so nothing ever renders as unreadable transparency. */
+  .glass {
+    background-color: rgba(14, 16, 23, 0.72);
+    border: 1px solid var(--nv-hairline);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass {
+      background-color: rgba(14, 16, 23, 0.96);
+    }
+  }
+
+  /* Raised content card: subtle top-light gradient + hairline + depth. */
+  .card-surface {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0) 42%);
+    background-color: var(--nv-surface);
+    border: 1px solid var(--nv-hairline);
+    box-shadow: var(--nv-shadow-card);
+  }
+
+  /* Gradient hairline frame for premium/VIP blocks — a gold ring drawn
+     with a masked border so the fill underneath stays untouched. */
+  .gold-frame {
+    position: relative;
+  }
+  .gold-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(140deg, rgba(255, 231, 176, 0.9), rgba(185, 132, 48, 0.25) 45%, rgba(255, 231, 176, 0.7));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Text painted with the brand gradients — used for section eyebrows and
+     the VIP wordmark. */
+  .text-gradient-primary {
+    background-image: linear-gradient(120deg, #ff6b7c 0%, #ff2d46 55%, #8f1020 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .text-gradient-gold {
+    background-image: linear-gradient(120deg, #ffe7b0 0%, #f5c563 48%, #b98430 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Primary action surface — one class so every CTA in the app shares the
+     same gradient, glow and press feedback instead of redefining it. */
+  .btn-primary {
+    background-image: linear-gradient(135deg, #ff445a 0%, #ff2d46 45%, #c4142c 100%);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(255, 45, 70, 0.32);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  }
+  .btn-primary:hover {
+    filter: brightness(1.06);
+    box-shadow: 0 10px 30px rgba(255, 45, 70, 0.42);
+  }
+  .btn-primary:active {
+    transform: scale(0.97);
+  }
+
 }
 
 /* Thin custom scrollbar for the page body */
@@ -62,15 +236,24 @@ h3 {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0d;
+  background: var(--nv-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2a3a;
+  background: var(--nv-surface-3);
   border-radius: 8px;
-  border: 2px solid #0a0a0d;
+  border: 2px solid var(--nv-bg);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a4a;
+  background: #2b3245;
+}
+
+/* Hide scrollbars on horizontal rails while keeping scroll */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Smooth fade for image loading */
@@ -125,7 +308,7 @@ h3 {
   inset: -1.5px;
   border-radius: inherit;
   padding: 1.5px;
-  background: conic-gradient(from 0deg, #e3b341, #0f8f72, #e3b341, #c98a2e, #e3b341);
+  background: conic-gradient(from 0deg, #F5C563, #0f8f72, #F5C563, #c98a2e, #F5C563);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -213,7 +396,7 @@ h3 {
   position: absolute;
   bottom: 6%;
   border-radius: 9999px;
-  background: radial-gradient(circle, #f5e0b0 0%, #e3b341 45%, #e6231f 80%, transparent 100%);
+  background: radial-gradient(circle, #FFEFC8 0%, #F5C563 45%, #FF2D46 80%, transparent 100%);
   opacity: 0;
   animation-name: ember-rise;
   animation-timing-function: ease-in;
@@ -261,7 +444,7 @@ h3 {
   background-image: linear-gradient(
     100deg,
     #ffffff 40%,
-    #f0d9a0 48%,
+    #FFE7B0 48%,
     #ffffff 56%,
     #ffffff 100%
   );
@@ -303,5 +486,206 @@ h3 {
   100% {
     opacity: 0;
     transform: translateY(-50%) scale(1);
+  }
+}
+
+/* ── Motion utilities ───────────────────────────────────────────────── */
+
+/* Content entrance used by screens and sheets — a short rise + fade that
+   makes navigation feel like a transition rather than a hard cut. */
+.fade-up {
+  animation: fade-up 0.42s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bottom sheets (episode switcher, subscribe, lucky draw) slide up. */
+.sheet-in {
+  animation: sheet-in 0.32s cubic-bezier(0.22, 0.9, 0.3, 1) both;
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Soft breathing glow for "live"/VIP dots. */
+.pulse-soft {
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@layer components {
+  /* ── Video player ───────────────────────────────────────────────────── */
+
+  /* The player owns the whole viewport. `100dvh` keeps the frame correct
+     while a mobile browser's address bar collapses on scroll — with plain
+     `100vh` the bottom control bar ends up under the chrome. Locking
+     overscroll/touch-action here means a swipe on the video seeks or
+     scrubs rather than bouncing the page behind it. */
+  .player-root {
+    position: fixed;
+    inset: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: 100vw;
+    background: #000;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
+  /* Letterbox area around the video: pure black rather than the app base,
+     so bars around a 21:9 film read as part of the frame. */
+  .player-stage {
+    background: #000;
+  }
+
+  /* Controls fade together as one layer. `visibility` (not just opacity)
+     is what actually stops a hidden bar from swallowing taps meant for the
+     video, and hiding the cursor completes the immersive state on desktop. */
+  .player-chrome {
+    transition: opacity 0.28s ease, visibility 0.28s ease;
+  }
+  .player-chrome[data-hidden='true'] {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .player-immersive[data-hidden='true'] {
+    cursor: none;
+  }
+
+  /* Top/bottom scrims — dark enough for white controls to stay legible
+     over a bright scene, transparent enough not to crop the picture. */
+  .player-scrim-top {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 45%, rgba(0, 0, 0, 0) 100%);
+  }
+  .player-scrim-bottom {
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 42%, rgba(0, 0, 0, 0) 100%);
+  }
+
+  /* Round control buttons in the player: big enough to hit with a thumb,
+     frosted so they never disappear into a bright frame. */
+  .player-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: background 0.18s ease, transform 0.18s ease, color 0.18s ease;
+  }
+  .player-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .player-btn:active {
+    transform: scale(0.92);
+  }
+
+  /* Seek bar: a slim track that thickens on interaction, with the buffered
+     range behind the played range so stalls are explainable at a glance. */
+  .seek-track {
+    position: relative;
+    height: 4px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.22);
+    transition: height 0.16s ease;
+  }
+  .seek-wrap:hover .seek-track,
+  .seek-wrap:active .seek-track,
+  .seek-wrap[data-scrubbing='true'] .seek-track {
+    height: 7px;
+  }
+  .seek-buffered {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.32);
+  }
+  .seek-played {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #ff6b7c, #ff2d46);
+    box-shadow: 0 0 12px rgba(255, 45, 70, 0.55);
+  }
+  .seek-knob {
+    position: absolute;
+    top: 50%;
+    height: 13px;
+    width: 13px;
+    transform: translate(-50%, -50%) scale(0.7);
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(255, 45, 70, 0.35);
+    opacity: 0;
+    transition: opacity 0.16s ease, transform 0.16s ease;
+  }
+  .seek-wrap:hover .seek-knob,
+  .seek-wrap:active .seek-knob,
+  .seek-wrap[data-scrubbing='true'] .seek-knob {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* Center play/pause pill shown while paused. */
+  .player-center-btn {
+    background: linear-gradient(135deg, rgba(255, 68, 90, 0.95) 0%, rgba(196, 20, 44, 0.95) 100%);
+    box-shadow: 0 0 46px rgba(255, 45, 70, 0.5), 0 12px 34px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Anything the player renders while genuinely inside the Fullscreen API
+     still needs the notch/home-bar insets respected in landscape. */
+  .player-safe-x {
+    padding-left: max(env(safe-area-inset-left, 0px), 12px);
+    padding-right: max(env(safe-area-inset-right, 0px), 12px);
+  }
+
+}
+
+/* Respect a viewer who's asked their phone for less motion: the decorative
+   loops stop, while functional transitions stay short instead of vanishing. */
+@media (prefers-reduced-motion: reduce) {
+  .ember-particle,
+  .sparkle-twinkle,
+  .gift-float,
+  .pulse-soft,
+  .promo-card-glow::before,
+  .skeleton-shimmer::after,
+  .title-shine {
+    animation: none !important;
+  }
+  .fade-up,
+  .sheet-in,
+  .hero-card-enter,
+  .win-pop-in {
+    animation-duration: 0.01ms !important;
   }
 }

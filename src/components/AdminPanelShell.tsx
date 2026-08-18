@@ -43,7 +43,7 @@ export default function AdminPanelShell({
   title,
   subtitle,
   icon,
-  accent = '#E3B341',
+  accent = '#F5C563',
   actions,
   toolbar,
   error,
@@ -69,8 +69,8 @@ export default function AdminPanelShell({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[90] flex flex-col bg-[#0A0A0D] text-white">
-      <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-[#0A0A0D]/95 backdrop-blur-md">
+    <div className="fixed inset-0 z-[90] flex flex-col bg-app text-white">
+      <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bar-blur">
         <div className={`mx-auto flex ${maxWidth} items-center gap-3 px-4 py-3.5 sm:px-8`}>
           <button
             onClick={onClose}
@@ -105,10 +105,10 @@ export default function AdminPanelShell({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className={`mx-auto ${maxWidth} px-4 py-5 sm:px-8 sm:py-6`}>
           {error && (
-            <div className="mb-4 flex items-start gap-2 rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 px-3.5 py-3 text-xs text-[#FCA5A5]">
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/10 px-3.5 py-3 text-xs text-[#FFB3BD]">
               <span className="flex-1 leading-relaxed">{error}</span>
               {onDismissError && (
-                <button onClick={onDismissError} className="shrink-0 text-[#FCA5A5]/70 hover:text-[#FCA5A5]">
+                <button onClick={onDismissError} className="shrink-0 text-[#FFB3BD]/70 hover:text-[#FFB3BD]">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -131,7 +131,7 @@ export function PanelTabs<T extends string>({
   tabs,
   active,
   onChange,
-  accent = '#E3B341',
+  accent = '#F5C563',
 }: {
   tabs: { key: T; label: string; icon?: ReactNode; badge?: number }[];
   active: T;

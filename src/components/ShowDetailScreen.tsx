@@ -97,7 +97,7 @@ export default function ShowDetailScreen({
     mins ? `${Math.floor(mins / 60) > 0 ? Math.floor(mins / 60) + 'h ' : ''}${mins % 60}m` : '';
 
   return (
-    <div className="min-h-screen bg-[#0A0A0D] text-white">
+    <div className="min-h-screen bg-app text-white">
       {/* Back bar — Telegram's own native BackButton (registered in
           App.tsx) already handles this when actually inside Telegram, so
           this on-screen fallback only renders outside it (plain browser
@@ -123,7 +123,7 @@ export default function ShowDetailScreen({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(90deg, rgba(10,10,13,0.85) 0%, rgba(10,10,13,0.4) 50%, rgba(10,10,13,0.2) 100%), linear-gradient(0deg, rgba(10,10,13,1) 0%, rgba(10,10,13,0) 45%)',
+              'linear-gradient(90deg, rgba(7,8,12,0.85) 0%, rgba(7,8,12,0.4) 50%, rgba(7,8,12,0.2) 100%), linear-gradient(0deg, rgba(7,8,12,1) 0%, rgba(7,8,12,0) 45%)',
           }}
         />
       </div>
@@ -151,8 +151,8 @@ export default function ShowDetailScreen({
 
             {/* Meta row */}
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-              <span className="flex items-center gap-1 font-semibold text-[#E3B341]">
-                <Star className="h-4 w-4 fill-[#E3B341]" /> {Number(show.rating).toFixed(1)}
+              <span className="flex items-center gap-1 font-semibold text-[#F5C563]">
+                <Star className="h-4 w-4 fill-[#F5C563]" /> {Number(show.rating).toFixed(1)}
               </span>
               {!!show.view_count && (
                 <>
@@ -174,7 +174,7 @@ export default function ShowDetailScreen({
               <span
                 className={`rounded px-2 py-0.5 text-xs font-semibold ${
                   show.status === 'ongoing'
-                    ? 'bg-[#E3B341]/15 text-[#E3B341]'
+                    ? 'bg-[#F5C563]/15 text-[#F5C563]'
                     : 'bg-white/10 text-white/60'
                 }`}
               >
@@ -213,7 +213,7 @@ export default function ShowDetailScreen({
                 className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition active:scale-95 ${
                   show.coming_soon
                     ? 'cursor-not-allowed bg-white/10 text-white/50'
-                    : 'bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] text-white shadow-[0_10px_30px_rgba(230,35,31,0.35)] hover:shadow-[0_14px_40px_rgba(230,35,31,0.5)]'
+                    : 'bg-gradient-to-r from-[#FF2D46] to-[#8F1020] text-white shadow-[0_10px_30px_rgba(255,45,70,0.35)] hover:shadow-[0_14px_40px_rgba(255,45,70,0.5)]'
                 }`}
               >
                 <Play className="h-5 w-5 fill-current" />
@@ -238,11 +238,11 @@ export default function ShowDetailScreen({
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 animate-pulse rounded-xl bg-[#151822]" />
+                  <div key={i} className="h-24 animate-pulse rounded-xl bg-[#151926]" />
                 ))}
               </div>
             ) : error ? (
-              <p className="text-sm text-[#EF4444]">{error}</p>
+              <p className="text-sm text-[#FF4D5E]">{error}</p>
             ) : episodes.length === 0 ? (
               <p className="text-sm text-white/40">
                 {show.coming_soon ? `🎬 ${t.comingSoonLabel}` : t.noEpisodes}
@@ -257,8 +257,8 @@ export default function ShowDetailScreen({
                     onClick={() => detail && onPlayEpisode(ep, detail)}
                     className={`group flex w-full items-center gap-4 overflow-hidden rounded-xl border p-3 text-left transition ${
                       locked
-                        ? 'border-[#E3B341]/25 bg-[#1A1710] hover:border-[#E3B341]/60 hover:shadow-[0_0_24px_rgba(227,179,65,0.18)]'
-                        : 'border-white/5 bg-[#0F1116] hover:border-[#E6231F]/30 hover:bg-[#151822]'
+                        ? 'border-[#F5C563]/25 bg-[#1A1710] hover:border-[#F5C563]/60 hover:shadow-[0_0_24px_rgba(245,197,99,0.18)]'
+                        : 'border-white/5 bg-[#0E1017] hover:border-[#FF2D46]/30 hover:bg-[#151926]'
                     }`}
                   >
                     <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg sm:w-48">
@@ -275,19 +275,19 @@ export default function ShowDetailScreen({
                           <div
                             className="flex h-10 w-10 items-center justify-center rounded-full transition group-hover:scale-110"
                             style={{
-                              background: 'linear-gradient(145deg, #E9CC8E 0%, #E3B341 45%, #8F6425 100%)',
-                              boxShadow: '0 0 18px rgba(227,179,65,0.55)',
+                              background: 'linear-gradient(145deg, #F8DCA0 0%, #F5C563 45%, #8F6425 100%)',
+                              boxShadow: '0 0 18px rgba(245,197,99,0.55)',
                             }}
                           >
-                            <Lock className="h-4 w-4 text-[#241B10]" strokeWidth={2.5} />
+                            <Lock className="h-4 w-4 text-[#211A0E]" strokeWidth={2.5} />
                           </div>
-                          <span className="rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#E3B341]">
+                          <span className="rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#F5C563]">
                             {t.lockedVip}
                           </span>
                         </div>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition group-hover:opacity-100">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E6231F]">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF2D46]">
                             <Play className="h-4 w-4 fill-white text-white" />
                           </div>
                         </div>
@@ -305,21 +305,21 @@ export default function ShowDetailScreen({
                         )}
                         {locked && (
                           <span
-                            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#241B10]"
-                            style={{ background: 'linear-gradient(90deg,#E3B341,#B2882F)' }}
+                            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#211A0E]"
+                            style={{ background: 'linear-gradient(90deg,#F5C563,#C08F33)' }}
                           >
                             <Lock className="h-2.5 w-2.5" /> {t.lockedVip}
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#E6231F]">
+                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#FF2D46]">
                         {ep.title}
                       </h3>
                       <p className="mt-1 line-clamp-1 text-sm text-white/50">
                         {locked ? t.lockedUnlockHint : ep.description}
                       </p>
                     </div>
-                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-white/30 transition group-hover:text-[#E6231F] sm:block" />
+                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-white/30 transition group-hover:text-[#FF2D46] sm:block" />
                   </button>
                   );
                 })}

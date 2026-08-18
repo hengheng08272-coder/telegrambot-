@@ -86,7 +86,7 @@ export default function QrCodesPanel({ onClose }: Props) {
       title="Payment QR codes"
       subtitle="The KHQR image each plan shows to viewers"
       icon={<QrCode className="h-4 w-4" />}
-      accent="#FFC94A"
+      accent="#FFD166"
       maxWidth="max-w-[900px]"
       onClose={onClose}
     >
@@ -131,7 +131,7 @@ export default function QrCodesPanel({ onClose }: Props) {
                 <button
                   onClick={() => triggerUpload(tier.key)}
                   disabled={uploadingTier === tier.key}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#FFC94A]/30 bg-[#FFC94A]/10 px-3 py-1.5 text-xs font-bold text-[#FFC94A] transition hover:bg-[#FFC94A]/20 disabled:opacity-50"
+                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#FFD166]/30 bg-[#FFD166]/10 px-3 py-1.5 text-xs font-bold text-[#FFD166] transition hover:bg-[#FFD166]/20 disabled:opacity-50"
                 >
                   {uploadingTier === tier.key ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

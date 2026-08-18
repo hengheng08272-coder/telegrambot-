@@ -122,7 +122,7 @@ export default function UsersPanel({ onClose }: Props) {
       title="Users"
       subtitle="Search by Telegram ID or @username — extend or revoke VIP"
       icon={<User className="h-4 w-4" />}
-      accent="#2B5CAD"
+      accent="#4C6FFF"
       maxWidth="max-w-[1000px]"
       onClose={onClose}
       error={error}
@@ -139,7 +139,7 @@ export default function UsersPanel({ onClose }: Props) {
         <PanelTabs<Filter>
           active={filter}
           onChange={setFilter}
-          accent="#2B5CAD"
+          accent="#4C6FFF"
           tabs={[
             { key: 'all', label: 'All', badge: counts.all },
             { key: 'active', label: 'Active VIP', badge: counts.active },
@@ -155,11 +155,11 @@ export default function UsersPanel({ onClose }: Props) {
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Total subscribers', value: counts.all, tone: 'text-white' },
-            { label: 'Active VIP', value: counts.active, tone: 'text-[#5FD9A0]' },
+            { label: 'Active VIP', value: counts.active, tone: 'text-[#86EEC0]' },
             {
               label: 'Expiring in 7 days',
               value: counts.expiring,
-              tone: counts.expiring > 0 ? 'text-[#FFB84D]' : 'text-white/40',
+              tone: counts.expiring > 0 ? 'text-[#FFC24D]' : 'text-white/40',
             },
             { label: 'Expired', value: counts.expired, tone: 'text-white/40' },
           ].map((stat) => (
@@ -195,7 +195,7 @@ export default function UsersPanel({ onClose }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by Telegram ID or @username…"
-            className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#2B5CAD]/50"
+            className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#4C6FFF]/50"
           />
         </div>
 
@@ -223,7 +223,7 @@ export default function UsersPanel({ onClose }: Props) {
                       ID {row.telegram_user_id} · {row.tier} ·{' '}
                       {active ? 'expires' : 'expired'} {new Date(row.expires_at).toLocaleDateString()}
                       {active && (
-                        <span className={left <= 7 ? 'font-bold text-[#FFB84D]' : 'text-white/55'}>
+                        <span className={left <= 7 ? 'font-bold text-[#FFC24D]' : 'text-white/55'}>
                           {' '}· {left}d left
                         </span>
                       )}
@@ -231,7 +231,7 @@ export default function UsersPanel({ onClose }: Props) {
                   </div>
                   <span
                     className={`flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${
-                      active ? 'bg-[#2B5CAD]/15 text-[#2B5CAD]' : 'bg-white/10 text-white/40'
+                      active ? 'bg-[#4C6FFF]/15 text-[#4C6FFF]' : 'bg-white/10 text-white/40'
                     }`}
                   >
                     {active ? <ShieldCheck className="h-3 w-3" /> : <ShieldX className="h-3 w-3" />}

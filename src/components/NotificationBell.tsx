@@ -55,12 +55,12 @@ export default function NotificationBell({ title, emptyLabel }: NotificationBell
       >
         <Bell className="h-4 w-4" />
         {announcements.length > 0 && (
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#E6231F] ring-2 ring-[#0A0A0D]" aria-hidden />
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#FF2D46] ring-2 ring-[#07080C]" aria-hidden />
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 z-[70] w-72 overflow-hidden rounded-xl border border-white/10 bg-[#0F1116]/98 shadow-2xl backdrop-blur-md sm:w-80">
+        <div className="absolute right-0 top-10 z-[70] w-72 overflow-hidden rounded-xl border border-white/10 bg-[#0E1017]/98 shadow-2xl backdrop-blur-md sm:w-80">
           <div className="border-b border-white/10 px-3.5 py-2.5 text-xs font-bold uppercase tracking-wide text-white/50">
             {title}
           </div>
@@ -70,7 +70,7 @@ export default function NotificationBell({ title, emptyLabel }: NotificationBell
             ) : (
               announcements.map((a) => (
                 <div key={a.id} className="flex items-start gap-2.5 border-b border-white/5 px-3.5 py-3 last:border-0">
-                  <Megaphone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#E3B341]" />
+                  <Megaphone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#F5C563]" />
                   <p className="text-xs leading-snug text-white/85">{a.message}</p>
                 </div>
               ))

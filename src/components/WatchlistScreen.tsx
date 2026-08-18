@@ -38,9 +38,9 @@ export default function WatchlistScreen({
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0D] text-white">
+    <div className="min-h-screen bg-app text-white">
       {/* Top bar */}
-      <header className="fixed inset-x-0 top-0 z-50 bg-[#0A0A0D]/95 backdrop-blur-md">
+      <header className="fixed inset-x-0 top-0 z-50 bar-blur">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-4 sm:px-8">
           <button
             onClick={onBack}
@@ -62,7 +62,7 @@ export default function WatchlistScreen({
         {/* Continue watching */}
         <section className="mt-4">
           <div className="mb-3 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-[#E3B341]" />
+            <Clock className="h-5 w-5 text-[#F5C563]" />
             <h2 className="text-lg font-bold tracking-tight">{t.continueWatching}</h2>
           </div>
           {continueItems.length === 0 ? (
@@ -74,7 +74,7 @@ export default function WatchlistScreen({
               {continueItems.map((item) => (
                 <div
                   key={item.show.id}
-                  className="group flex items-center gap-4 overflow-hidden rounded-xl border border-white/5 bg-[#0F1116] p-3"
+                  className="group flex items-center gap-4 overflow-hidden rounded-xl border border-white/5 bg-[#0E1017] p-3"
                 >
                   <button
                     onClick={() =>
@@ -89,7 +89,7 @@ export default function WatchlistScreen({
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition group-hover:bg-black/30">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E6231F]">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FF2D46]">
                         <Play className="h-4 w-4 fill-white text-white" />
                       </div>
                     </div>
@@ -103,14 +103,14 @@ export default function WatchlistScreen({
                     </p>
                     <button
                       onClick={() => onResumeEpisode(item.show, item.episode.id)}
-                      className="mt-2 flex items-center gap-1.5 rounded-full bg-[#E6231F] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#7A0F0D] active:scale-95"
+                      className="mt-2 flex items-center gap-1.5 rounded-full bg-[#FF2D46] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#8F1020] active:scale-95"
                     >
                       <Play className="h-3 w-3 fill-white" /> {t.resume}
                     </button>
                   </div>
                   <button
                     onClick={() => handleClearContinue(item.show.id)}
-                    className="shrink-0 rounded-full p-2 text-white/30 transition hover:text-[#E6231F]"
+                    className="shrink-0 rounded-full p-2 text-white/30 transition hover:text-[#FF2D46]"
                     aria-label={t.removeFromList}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -124,7 +124,7 @@ export default function WatchlistScreen({
         {/* Want to watch */}
         <section className="mt-10">
           <div className="mb-3 flex items-center gap-2">
-            <Bookmark className="h-5 w-5 text-[#E6231F]" />
+            <Bookmark className="h-5 w-5 text-[#FF2D46]" />
             <h2 className="text-lg font-bold tracking-tight">{t.wantToWatch}</h2>
           </div>
           {watchlist.length === 0 ? (
@@ -139,7 +139,7 @@ export default function WatchlistScreen({
                     onClick={() => onSelectShow(s)}
                     className="block w-full text-left"
                   >
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#151822] ring-1 ring-white/5">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/5">
                       <img
                         src={s.poster_url ?? ''}
                         alt={s.title}
@@ -150,7 +150,7 @@ export default function WatchlistScreen({
                         className="absolute inset-0"
                         style={{
                           background:
-                            'linear-gradient(180deg, rgba(10,10,13,0) 50%, rgba(10,10,13,0.9) 100%)',
+                            'linear-gradient(180deg, rgba(7,8,12,0) 50%, rgba(7,8,12,0.9) 100%)',
                         }}
                       />
                     </div>
@@ -160,7 +160,7 @@ export default function WatchlistScreen({
                   </button>
                   <button
                     onClick={() => handleRemove(s.id)}
-                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white/70 backdrop-blur-sm transition hover:text-[#E6231F]"
+                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white/70 backdrop-blur-sm transition hover:text-[#FF2D46]"
                     aria-label={t.removeFromList}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -180,7 +180,7 @@ export default function WatchlistScreen({
             </p>
             <button
               onClick={onBack}
-              className="mt-2 rounded-full bg-[#E6231F] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#7A0F0D] active:scale-95"
+              className="mt-2 rounded-full bg-[#FF2D46] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#8F1020] active:scale-95"
             >
               {t.navHome}
             </button>

@@ -398,7 +398,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       title="Subscriptions"
       subtitle={SECTION_SUBTITLE[section]}
       icon={<QrCode className="h-4 w-4" />}
-      accent="#E3B341"
+      accent="#F5C563"
       maxWidth="max-w-6xl"
       error={error}
       onDismissError={() => setError('')}
@@ -417,8 +417,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     >
       {section === 'auto' && (
         <>
-          <div className="mb-5 rounded-xl border border-[#2B5CAD]/20 bg-[#2B5CAD]/[0.04] p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#2B5CAD]">
+          <div className="mb-5 rounded-xl border border-[#4C6FFF]/20 bg-[#4C6FFF]/[0.04] p-4">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#4C6FFF]">
               <Zap className="h-3.5 w-3.5" /> ABA Auto-confirm
             </p>
             <p className="mb-2 max-w-2xl text-[11px] leading-relaxed text-white/50">
@@ -431,7 +431,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 value={abaMerchantName}
                 onChange={(e) => setAbaMerchantName(e.target.value)}
                 placeholder={abaMerchantNameLoaded ? 'ឧ. PANG SOK HENG' : 'Loading…'}
-                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2B5CAD]/50"
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#4C6FFF]/50"
               />
               <button
                 onClick={handleSaveAbaMerchantName}
@@ -441,7 +441,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 {abaSaving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : abaSaved ? (
-                  <Check className="h-3.5 w-3.5 text-[#34B37A]" />
+                  <Check className="h-3.5 w-3.5 text-[#2FD98C]" />
                 ) : (
                   <Save className="h-3.5 w-3.5" />
                 )}
@@ -474,20 +474,20 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     key={tier.key}
                     className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-xs ${
                       clash
-                        ? 'border-[#FF6B6B]/30 bg-[#FF6B6B]/[0.07]'
+                        ? 'border-[#FF8494]/30 bg-[#FF8494]/[0.07]'
                         : 'border-white/[0.07] bg-black/20'
                     }`}
                   >
-                    <span className="w-16 shrink-0 font-bold text-[#E3B341]">${edit.price || '—'}</span>
+                    <span className="w-16 shrink-0 font-bold text-[#F5C563]">${edit.price || '—'}</span>
                     <span className="min-w-0 flex-1 truncate text-white/70">
                       {edit.label_km.trim() || edit.label_en.trim() || tier.key} · {edit.months || '—'} ខែ
                     </span>
                     {clash ? (
-                      <span className="shrink-0 text-[11px] font-semibold text-[#FF9C9C]">
+                      <span className="shrink-0 text-[11px] font-semibold text-[#FFA8B2]">
                         តម្លៃដូចគ្នា — auto-confirm នឹងបដិសេធ
                       </span>
                     ) : (
-                      <Check className="h-3.5 w-3.5 shrink-0 text-[#5FD9A0]" />
+                      <Check className="h-3.5 w-3.5 shrink-0 text-[#86EEC0]" />
                     )}
                   </div>
                 );
@@ -575,7 +575,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     <button
                       onClick={() => triggerUpload(tier.key)}
                       disabled={uploadingTier === tier.key}
-                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-3 py-1.5 text-xs font-bold text-[#E3B341] transition hover:bg-[#E3B341]/20 disabled:opacity-50"
+                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#F5C563]/30 bg-[#F5C563]/10 px-3 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20 disabled:opacity-50"
                     >
                       {uploadingTier === tier.key ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -598,7 +598,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         inputMode="decimal"
                         value={edit.price}
                         onChange={(e) => updateEdit(tier.key, 'price', e.target.value.replace(/[^0-9.]/g, ''))}
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#E3B341]/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#F5C563]/50"
                       />
                     </div>
                     <div>
@@ -609,7 +609,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         inputMode="numeric"
                         value={edit.months}
                         onChange={(e) => updateEdit(tier.key, 'months', e.target.value.replace(/[^0-9]/g, ''))}
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#2B5CAD]/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#4C6FFF]/50"
                       />
                     </div>
                     <div>
@@ -620,7 +620,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         value={edit.label_km}
                         onChange={(e) => updateEdit(tier.key, 'label_km', e.target.value)}
                         placeholder="ឧ. ៣ ខែ"
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#E3B341]/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-[#F5C563]/50"
                       />
                     </div>
                   </div>
@@ -634,7 +634,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         value={edit.label_en}
                         onChange={(e) => updateEdit(tier.key, 'label_en', e.target.value)}
                         placeholder="e.g. 3 Months"
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#E3B341]/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#F5C563]/50"
                       />
                     </div>
                     <div>
@@ -645,7 +645,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         value={edit.pitch_km}
                         onChange={(e) => updateEdit(tier.key, 'pitch_km', e.target.value)}
                         placeholder="ឧ. ចាប់ផ្តើមមើលភ្លាមៗ — មួយខែពេញ"
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#E3B341]/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#F5C563]/50"
                       />
                     </div>
                   </div>
@@ -658,7 +658,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       អ្នកទស្សនាឃើញ
                     </p>
                     <p className="mt-0.5 text-xs text-white">
-                      <span className="font-bold text-[#E3B341]">${edit.price || '—'}</span>
+                      <span className="font-bold text-[#F5C563]">${edit.price || '—'}</span>
                       <span className="text-white/40"> · </span>
                       {edit.label_km || '—'}
                       <span className="text-white/40">
@@ -666,7 +666,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       </span>
                     </p>
                     {mismatch !== null && (
-                      <p className="mt-1.5 text-[11px] leading-relaxed text-[#FFB84D]">
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-[#FFC24D]">
                         ⚠️ ឈ្មោះសរសេរ {mismatch} ខែ ប៉ុន្តែផ្ដល់ពិត {edit.months} ខែ —
                         សូមកែឲ្យត្រូវគ្នា មិនដូច្នេះអតិថិជននឹងទទួលខុសពីអ្វីដែលគាត់ឃើញ។
                       </p>
@@ -687,7 +687,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                           setPayLinkDrafts((prev) => ({ ...prev, [tier.key]: e.target.value }))
                         }
                         placeholder="https://link.payway.com.kh/ABAPAY..."
-                        className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-white outline-none focus:border-[#E3B341]/50"
+                        className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-xs text-white outline-none focus:border-[#F5C563]/50"
                       />
                       <button
                         onClick={() => savePayLink(tier.key)}
@@ -697,7 +697,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         {savingPayLinkTier === tier.key ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : payLinkSavedAt[tier.key] && Date.now() - payLinkSavedAt[tier.key] < 2000 ? (
-                          <Check className="h-3.5 w-3.5 text-[#34B37A]" />
+                          <Check className="h-3.5 w-3.5 text-[#2FD98C]" />
                         ) : (
                           <Save className="h-3.5 w-3.5" />
                         )}
@@ -718,21 +718,21 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     disabled={hiddenBusyTier === tier.key}
                     className={`mt-2.5 flex w-full items-center justify-between rounded-lg border px-3 py-2 disabled:opacity-50 ${
                       hiddenKeys.has(tier.key)
-                        ? 'border-[#FFB84D]/30 bg-[#FFB84D]/[0.07]'
+                        ? 'border-[#FFC24D]/30 bg-[#FFC24D]/[0.07]'
                         : 'border-white/10 bg-black/20'
                     }`}
                   >
                     <span className="flex items-center gap-1.5 text-xs font-medium text-white/70">
                       {hiddenKeys.has(tier.key) ? (
-                        <EyeOff className="h-3.5 w-3.5 text-[#FFB84D]" />
+                        <EyeOff className="h-3.5 w-3.5 text-[#FFC24D]" />
                       ) : (
-                        <Eye className="h-3.5 w-3.5 text-[#5FD9A0]" />
+                        <Eye className="h-3.5 w-3.5 text-[#86EEC0]" />
                       )}
                       {hiddenKeys.has(tier.key) ? 'លាក់ — អតិថិជនមិនឃើញ' : 'បង្ហាញក្នុង app'}
                     </span>
                     <span
                       className={`relative h-5 w-9 rounded-full transition ${
-                        hiddenKeys.has(tier.key) ? 'bg-white/15' : 'bg-[#34B37A]'
+                        hiddenKeys.has(tier.key) ? 'bg-white/15' : 'bg-[#2FD98C]'
                       }`}
                     >
                       <span
@@ -752,7 +752,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     <span className="text-xs font-medium text-white/70">Bonus spin ចាប់រង្វាន់</span>
                     <span
                       className={`relative h-5 w-9 rounded-full transition ${
-                        edit.bonus_enabled ? 'bg-[#34B37A]' : 'bg-white/15'
+                        edit.bonus_enabled ? 'bg-[#2FD98C]' : 'bg-white/15'
                       }`}
                     >
                       <span
@@ -775,14 +775,14 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                   <div
                     className={`mt-2.5 rounded-lg border px-3 py-2 ${
                       hasKhqr
-                        ? 'border-[#34B37A]/20 bg-[#34B37A]/[0.06]'
-                        : 'border-[#FFB84D]/25 bg-[#FFB84D]/[0.06]'
+                        ? 'border-[#2FD98C]/20 bg-[#2FD98C]/[0.06]'
+                        : 'border-[#FFC24D]/25 bg-[#FFC24D]/[0.06]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p
                         className={`flex items-center gap-1.5 text-[11px] font-semibold ${
-                          hasKhqr ? 'text-[#5FD9A0]' : 'text-[#FFB84D]'
+                          hasKhqr ? 'text-[#86EEC0]' : 'text-[#FFC24D]'
                         }`}
                       >
                         {hasKhqr ? (
@@ -810,7 +810,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       </p>
                     )}
                     {amountMismatch && (
-                      <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-[#FF6B6B]/10 px-2 py-1.5 text-[11px] leading-relaxed text-[#FF9C9C]">
+                      <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-[#FF8494]/10 px-2 py-1.5 text-[11px] leading-relaxed text-[#FFA8B2]">
                         <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
                         <span>
                           QR យក ${qrAmount?.toFixed(2)} តែតម្លៃក្នុង app ដាក់ ${edit.price} — អតិថិជននឹងបង់តាម QR
@@ -830,7 +830,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         <a
                           href={abaDeeplink}
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#4A72C4]/25 bg-[#4A72C4]/10 px-2.5 py-1 text-[11px] font-bold text-[#9DBBEE] no-underline transition hover:bg-[#4A72C4]/20"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#6B85FF]/25 bg-[#6B85FF]/10 px-2.5 py-1 text-[11px] font-bold text-[#B6C3FF] no-underline transition hover:bg-[#6B85FF]/20"
                         >
                           <Zap className="h-3 w-3" /> សាកល្បងបើក ABA
                         </a>
@@ -849,7 +849,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         >
                           {copiedDeeplinkTier === tier.key ? (
                             <>
-                              <Check className="h-3 w-3 text-[#5FD9A0]" /> ចម្លងរួច
+                              <Check className="h-3 w-3 text-[#86EEC0]" /> ចម្លងរួច
                             </>
                           ) : (
                             'ចម្លង deep link'
@@ -868,7 +868,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       <a
                         href={abaDeeplink}
                         rel="noreferrer"
-                        className="mt-2 block break-all rounded-lg bg-black/30 px-2.5 py-2 text-[10px] leading-relaxed text-[#9DBBEE] underline decoration-[#9DBBEE]/50 underline-offset-2"
+                        className="mt-2 block break-all rounded-lg bg-black/30 px-2.5 py-2 text-[10px] leading-relaxed text-[#B6C3FF] underline decoration-[#B6C3FF]/50 underline-offset-2"
                       >
                         {abaDeeplink}
                       </a>
@@ -887,7 +887,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                           }
                           placeholder="0002010102..."
                           rows={2}
-                          className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-[#34B37A]/50"
+                          className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-[#2FD98C]/50"
                         />
                         <button
                           onClick={() => saveKhqrString(tier.key)}
@@ -915,7 +915,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     {savingTier === tier.key ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : savedAt[tier.key] && Date.now() - savedAt[tier.key] < 2000 ? (
-                      <Check className="h-3.5 w-3.5 text-[#34B37A]" />
+                      <Check className="h-3.5 w-3.5 text-[#2FD98C]" />
                     ) : (
                       <Save className="h-3.5 w-3.5" />
                     )}

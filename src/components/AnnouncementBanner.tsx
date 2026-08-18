@@ -38,9 +38,9 @@ export default function AnnouncementBanner() {
       {visible.map((a) => (
         <div
           key={a.id}
-          className="mx-auto flex max-w-[1400px] items-start gap-2.5 rounded-xl border border-[#E3B341]/25 bg-[#0F1116]/95 px-3.5 py-2.5 shadow-lg backdrop-blur-md"
+          className="mx-auto flex max-w-[1400px] items-start gap-2.5 rounded-xl border border-[#F5C563]/25 bg-[#0E1017]/95 px-3.5 py-2.5 shadow-lg backdrop-blur-md"
         >
-          <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-[#E3B341]" />
+          <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-[#F5C563]" />
           <p className="flex-1 text-sm leading-snug text-white/90">{a.message}</p>
           <button
             onClick={() => setDismissed((prev) => new Set(prev).add(a.id))}

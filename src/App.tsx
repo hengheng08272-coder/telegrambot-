@@ -188,7 +188,7 @@ function App() {
   }, [screen.name]);
 
   if (!authReady) {
-    return <div className="min-h-screen bg-[#0A0A0D]" />;
+    return <div className="min-h-screen bg-app" />;
   }
 
   // Desktop is admin-only. On mobile (the real Telegram Mini App surface)

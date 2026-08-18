@@ -43,7 +43,7 @@ export default function WatchLogPanel({ onClose }: Props) {
       title="Watch log"
       subtitle="Every playback session, newest first"
       icon={<EyeIcon className="h-4 w-4" />}
-      accent="#E3B341"
+      accent="#F5C563"
       maxWidth="max-w-[900px]"
       onClose={onClose}
     >
