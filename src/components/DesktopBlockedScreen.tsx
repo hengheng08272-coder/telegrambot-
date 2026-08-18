@@ -54,7 +54,7 @@ export default function DesktopBlockedScreen({
         </p>
 
         {!qrFailed && currentUrl && (
-          <div className="mx-auto mb-6 w-fit rounded-2xl border border-white/10 bg-white p-2.5">
+          <div className="mx-auto mb-6 w-fit rounded-xl border border-white/10 bg-white p-2.5">
             <img
               src={qrSrc}
               alt="Scan to open on mobile"

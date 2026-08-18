@@ -40,8 +40,8 @@ export default {
         display: ['Anton', 'Battambang', 'Poppins', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
-        card: '18px',
-        sheet: '26px',
+        card: '12px',
+        sheet: '18px',
       },
       boxShadow: {
         card: '0 10px 30px rgba(0,0,0,0.55)',

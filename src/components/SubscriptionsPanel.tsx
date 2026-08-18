@@ -436,7 +436,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               <button
                 onClick={handleSaveAbaMerchantName}
                 disabled={abaSaving || !abaMerchantName.trim()}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
               >
                 {abaSaving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -575,7 +575,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     <button
                       onClick={() => triggerUpload(tier.key)}
                       disabled={uploadingTier === tier.key}
-                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#F5C563]/30 bg-[#F5C563]/10 px-3 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20 disabled:opacity-50"
+                      className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-3 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20 disabled:opacity-50"
                     >
                       {uploadingTier === tier.key ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -692,7 +692,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       <button
                         onClick={() => savePayLink(tier.key)}
                         disabled={savingPayLinkTier === tier.key}
-                        className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+                        className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
                       >
                         {savingPayLinkTier === tier.key ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -892,7 +892,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         <button
                           onClick={() => saveKhqrString(tier.key)}
                           disabled={savingKhqrTier === tier.key}
-                          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+                          className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
                         >
                           {savingKhqrTier === tier.key ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />

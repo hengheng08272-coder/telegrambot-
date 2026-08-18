@@ -47,10 +47,10 @@ export const theme = {
     body: '"Battambang", "Poppins", "Inter", system-ui, -apple-system, sans-serif',
   },
   radius: {
-    sm: '8px',
-    md: '12px',
-    lg: '18px',
-    xl: '26px',
+    sm: '6px',
+    md: '10px',
+    lg: '12px',
+    xl: '18px',
     pill: '9999px',
   },
   shadows: {

@@ -402,7 +402,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
         {step === 'pay' && decision === 'waiting' ? (
           <button
             onClick={handleChangePlan}
-            className="flex h-9 items-center gap-1 rounded-full bg-white/5 px-2.5 text-[11px] font-semibold text-white/55 transition active:scale-95 hover:bg-white/10 hover:text-white"
+            className="flex h-9 items-center gap-1 rounded-xl bg-white/5 px-2.5 text-[11px] font-semibold text-white/55 transition active:scale-95 hover:bg-white/10 hover:text-white"
           >
             <RefreshCw className="h-3 w-3" /> {t.subChangePlan}
           </button>
@@ -421,14 +421,14 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           <>
             <div className="flex flex-col items-center pb-6 pt-2 text-center">
               <div className="relative mb-3">
-                <div className="pointer-events-none absolute inset-[-10px] rounded-3xl bg-[#FF2D46]/20 blur-2xl" />
+                <div className="pointer-events-none absolute inset-[-10px] rounded-2xl bg-[#FF2D46]/20 blur-2xl" />
                 <img
                   src="/assets/logo.png"
                   alt="NINT ANIME"
-                  className="relative h-[68px] w-[68px] rounded-2xl ring-1 ring-[#FF2D46]/35"
+                  className="relative h-[68px] w-[68px] rounded-xl ring-1 ring-[#FF2D46]/35"
                 />
               </div>
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[#FF2D46]/25 bg-[#FF2D46]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF2D46]">
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-[#FF2D46]/25 bg-[#FF2D46]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF2D46]">
                 <Crown className="h-3 w-3" />
                 {t.subTicketEyebrow}
               </div>
@@ -545,7 +545,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 "Trx. ID", so it can be checked against a statement) and
                 when it expires. Falls back to the internal ticket id when
                 the notification carried no reference. */}
-            <div className="rounded-3xl border border-white/[0.08] bg-white/[0.025] px-4 py-1">
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-4 py-1">
               {(
                 [
                   [
@@ -634,7 +634,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 tabs point at the same live payment ticket underneath;
                 this only changes which actions are shown. */}
             {decision === 'waiting' && (
-              <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-1.5">
+              <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1.5">
                 <button
                   type="button"
                   onClick={() => setPayMode('auto')}
@@ -664,7 +664,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 not have paid yet when this first opens. Bigger amount +
                 bigger QR so it reads clearly at a glance. */}
             {payTier && (
-              <div className="relative overflow-hidden rounded-3xl border border-[#FF2D46]/20 bg-white/[0.03] p-4 text-center">
+              <div className="relative overflow-hidden rounded-2xl border border-[#FF2D46]/20 bg-white/[0.03] p-4 text-center">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-white/40">{t.subTotalDue}</p>
                 <p className="mt-1 text-[28px] font-extrabold leading-none text-white">
                   ${payTier.price}
@@ -677,7 +677,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   <img
                     src={qrSrc}
                     alt="KHQR"
-                    className="mx-auto mt-3.5 w-full max-w-[220px] rounded-2xl border border-white/10 bg-white p-2 shadow-[0_10px_34px_rgba(0,0,0,0.55)]"
+                    className="mx-auto mt-3.5 w-full max-w-[220px] rounded-xl border border-white/10 bg-white p-2 shadow-[0_10px_34px_rgba(0,0,0,0.55)]"
                   />
                 ) : (
                   <p className="mt-4 rounded-xl border border-[#FF2D46]/25 bg-[#FF2D46]/5 p-4 text-xs text-[#FF2D46]">
@@ -690,7 +690,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       button. The admin's plan link (real gateway or the
                       static PayWay link) drives where this goes. */
                   <div className="mt-4 space-y-3">
-                    <div className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-4 py-2 text-[13px] font-semibold tabular-nums text-white/75">
+                    <div className="mx-auto inline-flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-4 py-2 text-[13px] font-semibold tabular-nums text-white/75">
                       <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FF2D46]" />
                       {t.subWaitingPayment} ({mmss})
                     </div>
@@ -800,12 +800,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                     <p className="text-[11px] leading-relaxed text-white/50">{t.subManualFlowNote}</p>
 
                     {proofSent ? (
-                      <p className="flex items-center justify-center gap-1.5 rounded-2xl border border-[#4FE3A3]/25 bg-[#4FE3A3]/[0.07] py-3 text-xs font-semibold text-[#4FE3A3]">
+                      <p className="flex items-center justify-center gap-1.5 rounded-xl border border-[#4FE3A3]/25 bg-[#4FE3A3]/[0.07] py-3 text-xs font-semibold text-[#4FE3A3]">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.subCheckingPayment}
                       </p>
                     ) : proofFile ? (
                       <div className="space-y-2.5">
-                        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black/20">
                           {proofPreviewUrl && (
                             <img
                               src={proofPreviewUrl}
@@ -839,7 +839,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       </div>
                     ) : (
                       <label
-                        className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-[#E01E3C]/40 bg-[#E01E3C]/[0.07] px-3.5 py-3 transition active:scale-[0.99] hover:border-[#E01E3C]/70"
+                        className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#E01E3C]/40 bg-[#E01E3C]/[0.07] px-3.5 py-3 transition active:scale-[0.99] hover:border-[#E01E3C]/70"
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E01E3C]/20">
                           <ImagePlus className="h-4 w-4 text-[#FF8F86]" />

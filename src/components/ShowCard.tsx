@@ -74,7 +74,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
         style={{ transition: 'transform 0.35s ease-out', transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }}
       >
         <div
-          className={`aspect-[2/3] overflow-hidden rounded-[16px] bg-[#151926] ring-1 ring-white/[0.07] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-[#FF2D46]/60 ${
+          className={`aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.07] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-[#FF2D46]/60 ${
             large
               ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)] group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.8)]'
               : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)]'
@@ -117,7 +117,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
               not an admin-typed rating, so this is what actually drives
               Top 10 and shows the owner which titles viewers watch most. */}
           <div
-            className={`absolute left-1.5 z-[2] flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold text-white/85 backdrop-blur-md sm:text-[10px] ${
+            className={`absolute left-1.5 z-[2] flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold text-white/85 backdrop-blur-md sm:text-[10px] ${
               rank ? 'bottom-9' : 'bottom-1.5'
             }`}
           >
@@ -139,12 +139,12 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           {!show.coming_soon && (
             <div className="absolute left-1.5 top-1.5">
               {show.is_free ? (
-                <span className="rounded-full border border-[#2FD98C]/40 bg-[#2FD98C]/20 px-1.5 py-[2px] text-[8px] font-bold text-[#86EEC0] backdrop-blur-md sm:px-2 sm:text-[9px]">
+                <span className="rounded-md border border-[#2FD98C]/40 bg-[#2FD98C]/20 px-1.5 py-[2px] text-[8px] font-bold text-[#86EEC0] backdrop-blur-md sm:px-2 sm:text-[9px]">
                   {t.freeBadge}
                 </span>
               ) : (
                 <span
-                  className="flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[8px] font-black text-[#211A0E] backdrop-blur-sm sm:px-2 sm:text-[9px]"
+                  className="flex items-center gap-0.5 rounded-md px-1.5 py-[2px] text-[8px] font-black text-[#211A0E] backdrop-blur-sm sm:px-2 sm:text-[9px]"
                   style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
                 >
                   👑 {t.vipBadge}

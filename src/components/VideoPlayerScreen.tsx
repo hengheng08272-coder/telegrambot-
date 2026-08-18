@@ -696,7 +696,7 @@ export default function VideoPlayerScreen({
         {seekFlash && (
           <div
             key={seekFlash.key}
-            className={`pointer-events-none absolute top-1/2 z-[6] flex -translate-y-1/2 items-center gap-1.5 rounded-2xl border border-white/15 bg-black/55 px-5 py-3.5 text-white backdrop-blur-md seek-flash-pop ${
+            className={`pointer-events-none absolute top-1/2 z-[6] flex -translate-y-1/2 items-center gap-1.5 rounded-xl border border-white/15 bg-black/55 px-5 py-3.5 text-white backdrop-blur-md seek-flash-pop ${
               seekFlash.side === 'left' ? 'left-[10%]' : 'right-[10%]'
             }`}
           >
@@ -723,7 +723,7 @@ export default function VideoPlayerScreen({
             <p className="max-w-xs text-sm font-semibold text-white">{accessError}</p>
             <button
               onClick={handleBackPress}
-              className="mt-2 rounded-full border border-white/15 bg-white/10 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              className="mt-2 rounded-xl border border-white/15 bg-white/10 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               {t.goBack}
             </button>
@@ -745,7 +745,7 @@ export default function VideoPlayerScreen({
             <p className="max-w-xs text-xs text-white/50">{t.videoMissingHint}</p>
             <button
               onClick={handleBackPress}
-              className="mt-2 rounded-full border border-white/15 bg-white/10 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              className="mt-2 rounded-xl border border-white/15 bg-white/10 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               {t.goBack}
             </button>
@@ -938,7 +938,7 @@ export default function VideoPlayerScreen({
                 {speedOpen && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-12 right-0 z-30 w-32 overflow-hidden rounded-2xl border border-white/[0.12] bg-black/85 py-1 backdrop-blur-xl sheet-in"
+                    className="absolute bottom-12 right-0 z-30 w-32 overflow-hidden rounded-xl border border-white/[0.12] bg-black/85 py-1 backdrop-blur-xl sheet-in"
                   >
                     {SPEEDS.map((s) => (
                       <button
@@ -1007,7 +1007,7 @@ export default function VideoPlayerScreen({
 
         {/* End-of-episode auto-advance prompt */}
         {autoAdvanceIn !== null && nextEpisode && (
-          <div className="absolute bottom-28 right-4 z-20 flex w-64 items-center gap-3 rounded-2xl border border-white/[0.12] bg-black/80 p-3 shadow-elevated backdrop-blur-xl sheet-in sm:right-6">
+          <div className="absolute bottom-28 right-4 z-20 flex w-64 items-center gap-3 rounded-xl border border-white/[0.12] bg-black/80 p-3 shadow-elevated backdrop-blur-xl sheet-in sm:right-6">
             <img
               src={nextEpisode.thumbnail_url ?? show.poster_url ?? ''}
               alt=""
@@ -1039,7 +1039,7 @@ export default function VideoPlayerScreen({
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[72%] overflow-y-auto rounded-t-[26px] border-t border-white/10 bg-app-deep p-4 pb-6 shadow-elevated sheet-in"
+              className="relative max-h-[72%] overflow-y-auto rounded-t-[18px] border-t border-white/10 bg-app-deep p-4 pb-6 shadow-elevated sheet-in"
             >
               <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden />
               <div className="mb-3 flex items-center justify-between">
@@ -1067,7 +1067,7 @@ export default function VideoPlayerScreen({
                         setEpisodeListOpen(false);
                         if (!isCurrent) onSwitchEpisode?.(ep);
                       }}
-                      className={`flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition ${
+                      className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition ${
                         isCurrent
                           ? 'border-[#FF2D46]/45 bg-[#FF2D46]/[0.12] shadow-[0_0_22px_rgba(255,45,70,0.18)]'
                           : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08]'

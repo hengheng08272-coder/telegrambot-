@@ -171,14 +171,14 @@ export default function AnnouncementsPanel({ onClose }: Props) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => toggleActive(item)}
-                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/70 transition hover:bg-white/10"
+                    className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/70 transition hover:bg-white/10"
                   >
                     {item.active ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                     {item.active ? 'Hide' : 'Show'}
                   </button>
                   <button
                     onClick={() => remove(item.id)}
-                    className="flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/5 px-2.5 py-1 text-xs text-red-300 transition hover:bg-red-500/15"
+                    className="flex items-center gap-1 rounded-xl border border-red-500/20 bg-red-500/5 px-2.5 py-1 text-xs text-red-300 transition hover:bg-red-500/15"
                   >
                     <Trash2 className="h-3 w-3" /> Delete
                   </button>

@@ -177,7 +177,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
         >
           {status?.subscribed && (
             <span
-              className="absolute right-3 top-3 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#07080C]"
+              className="absolute right-3 top-3 flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#07080C]"
               style={{ background: 'linear-gradient(135deg, #FFE7B0, #FF2D46 45%, #C08F33)' }}
             >
               <Crown className="h-2.5 w-2.5" /> VIP
@@ -218,11 +218,11 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             )}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {status?.subscribed ? (
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#FF2D46]">
+                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#FF2D46]">
                   សមាជិក VIP
                 </span>
               ) : (
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/50">
+                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/50">
                   មិនទាន់ជា VIP
                 </span>
               )}
@@ -237,7 +237,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                       /* clipboard unavailable — the ID is still visible to read/copy manually */
                     }
                   }}
-                  className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-white/40 transition hover:bg-white/10 hover:text-white/70"
+                  className="flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-[10px] font-medium text-white/40 transition hover:bg-white/10 hover:text-white/70"
                   title="ចម្លង Telegram ID"
                 >
                   ID: {profile.id}
@@ -258,7 +258,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               <ShieldCheck className="h-4 w-4 text-[#FF2D46]" />
               <p className="text-sm font-bold text-white">VIP កំពុងសកម្ម</p>
               {tierLabel && (
-                <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60">
+                <span className="ml-auto rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/60">
                   {tierLabel}
                 </span>
               )}
@@ -268,7 +268,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                 a bare date answers "when" but not "how much is left of
                 what I bought", which is the thing people are actually
                 checking for. */}
-            <div className="mb-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-center">
+            <div className="mb-3 rounded-xl border border-white/10 bg-black/30 p-4 text-center">
               <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">នៅសល់</p>
               <p
                 className={`text-4xl font-black leading-none ${
@@ -398,7 +398,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                 : 'ចែករំលែក link ផ្ទាល់ខ្លួន — មិត្តភ័ក្តិទិញ VIP លើកដំបូង អ្នកទទួលបានថ្ងៃ VIP ដោយឥតគិតថ្លៃ'}
             </p>
           </div>
-          <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/70">
+          <span className="shrink-0 rounded-md bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/70">
             {inviteState === 'sent' ? 'បានផ្ញើ!' : 'ចែករំលែក'}
           </span>
         </button>

@@ -44,7 +44,7 @@ export default function WatchlistScreen({
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-4 sm:px-8">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/[0.08] hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" /> {t.back}
           </button>
@@ -103,7 +103,7 @@ export default function WatchlistScreen({
                     </p>
                     <button
                       onClick={() => onResumeEpisode(item.show, item.episode.id)}
-                      className="btn-primary mt-2 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold"
+                      className="btn-primary mt-2 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold"
                     >
                       <Play className="h-3 w-3 fill-white" /> {t.resume}
                     </button>
@@ -139,7 +139,7 @@ export default function WatchlistScreen({
                     onClick={() => onSelectShow(s)}
                     className="block w-full text-left"
                   >
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-[16px] bg-[#151926] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#FF2D46]/50">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#FF2D46]/50">
                       <img
                         src={s.poster_url ?? ''}
                         alt={s.title}
@@ -180,7 +180,7 @@ export default function WatchlistScreen({
             </p>
             <button
               onClick={onBack}
-              className="btn-primary mt-2 rounded-full px-5 py-2 text-sm font-bold active:scale-95"
+              className="btn-primary mt-2 rounded-xl px-5 py-2 text-sm font-bold active:scale-95"
             >
               {t.navHome}
             </button>

@@ -130,7 +130,7 @@ export default function AuthScreen({
         <div className="flex items-center justify-between px-5 py-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white"
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" /> {t.back}
           </button>
@@ -181,7 +181,7 @@ export default function AuthScreen({
         <div className="flex flex-1 items-center justify-center px-5 py-8">
           <div className="w-full max-w-md">
             {kickedOut && (
-              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/[0.08] p-4 text-left">
+              <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/[0.08] p-4 text-left">
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#FF4D5E]/15">
                   <AlertTriangle className="h-4 w-4 text-[#FF4D5E]" />
                 </div>
@@ -195,7 +195,7 @@ export default function AuthScreen({
             )}
 
             <div className="mb-7 text-center">
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#F5C563]/25 bg-[#F5C563]/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#F5C563]">
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-xl border border-[#F5C563]/25 bg-[#F5C563]/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#F5C563]">
                 <ShieldCheck className="h-3 w-3" /> Premium Access
               </div>
               <h1
@@ -210,7 +210,7 @@ export default function AuthScreen({
             </div>
 
             <div
-              className="rounded-[26px] p-[1px] shadow-[0_30px_70px_rgba(0,0,0,0.55)]"
+              className="rounded-[18px] p-[1px] shadow-[0_30px_70px_rgba(0,0,0,0.55)]"
               style={{
                 background:
                   'linear-gradient(160deg, rgba(255,231,176,0.35), rgba(255,255,255,0.06) 30%, rgba(255,45,70,0.18) 100%)',

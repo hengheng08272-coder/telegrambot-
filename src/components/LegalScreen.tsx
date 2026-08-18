@@ -34,7 +34,7 @@ export default function LegalScreen({ onBack }: Props) {
         <div className="mb-6 flex gap-2">
           <button
             onClick={() => setTab('terms')}
-            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+            className={`rounded-xl px-4 py-1.5 text-xs font-bold transition ${
               tab === 'terms' ? 'bg-[#FF2D46] text-white' : 'border border-white/10 bg-white/5 text-white/60'
             }`}
           >
@@ -42,7 +42,7 @@ export default function LegalScreen({ onBack }: Props) {
           </button>
           <button
             onClick={() => setTab('privacy')}
-            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+            className={`rounded-xl px-4 py-1.5 text-xs font-bold transition ${
               tab === 'privacy' ? 'bg-[#FF2D46] text-white' : 'border border-white/10 bg-white/5 text-white/60'
             }`}
           >

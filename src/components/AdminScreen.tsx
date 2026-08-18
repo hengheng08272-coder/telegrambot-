@@ -629,14 +629,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
         <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 pt-4 sm:px-8">
           <button
             onClick={onBack}
-            className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
           <h1 className="hidden text-lg font-bold sm:block">Admin</h1>
           <button
             onClick={() => setAddShowOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#2FD98C] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#4C6FFF]"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#2FD98C] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#4C6FFF]"
           >
             <Plus className="h-4 w-4" /> New Show
           </button>
@@ -653,49 +653,49 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
         <nav className="no-scrollbar mx-auto flex max-w-[1200px] items-center gap-2 overflow-x-auto px-4 py-3 sm:px-8">
           <button
             onClick={() => setAnnouncementsOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#F5C563]/30 bg-[#F5C563]/10 px-3.5 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-3.5 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20"
           >
             <Megaphone className="h-3.5 w-3.5" /> Announcements
           </button>
           <button
             onClick={() => setPaymentsOpen(true)}
-            className="relative flex shrink-0 items-center gap-1.5 rounded-full border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3.5 py-1.5 text-xs font-bold text-[#2FD98C] transition hover:bg-[#2FD98C]/20"
+            className="relative flex shrink-0 items-center gap-1.5 rounded-xl border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3.5 py-1.5 text-xs font-bold text-[#2FD98C] transition hover:bg-[#2FD98C]/20"
           >
             <Wallet className="h-3.5 w-3.5" /> Payments
             {pendingPaymentsCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF2D46] px-1 text-[10px] font-extrabold text-white">
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-md bg-[#FF2D46] px-1 text-[10px] font-extrabold text-white">
                 {pendingPaymentsCount}
               </span>
             )}
           </button>
           <button
             onClick={() => setSubscriptionsOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3.5 py-1.5 text-xs font-bold text-[#2FD98C] transition hover:bg-[#2FD98C]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3.5 py-1.5 text-xs font-bold text-[#2FD98C] transition hover:bg-[#2FD98C]/20"
           >
             <QrCode className="h-3.5 w-3.5" /> Subscriptions
           </button>
           <button
             onClick={() => setUsersOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
           >
             <UsersIcon className="h-3.5 w-3.5" /> Users
           </button>
           <span className="mx-1 h-4 w-px shrink-0 bg-white/10" aria-hidden />
           <button
             onClick={() => setWatchLogOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-xs font-bold text-white/70 transition hover:bg-white/10"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-xs font-bold text-white/70 transition hover:bg-white/10"
           >
             <Eye className="h-3.5 w-3.5" /> Watch log
           </button>
           <button
             onClick={() => setSuspiciousOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#F5C563]/30 bg-[#F5C563]/10 px-3.5 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-3.5 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20"
           >
             <AlertTriangle className="h-3.5 w-3.5" /> Suspicious
           </button>
           <button
             onClick={() => setBanLogOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-3.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/20"
           >
             <ShieldBan className="h-3.5 w-3.5" /> Ban log
           </button>
@@ -763,7 +763,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     <p className="mt-0.5 text-[11px] text-white/40">
                       {show.episodes.length} ep{show.episodes.length === 1 ? '' : 's'} so far
                     </p>
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#FF2D46]/15 px-2 py-[2px] text-[10px] font-bold text-[#FF6B7C]">
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-[#FF2D46]/15 px-2 py-[2px] text-[10px] font-bold text-[#FF6B7C]">
                       <Plus className="h-2.5 w-2.5" /> Ep {nextNumber}
                     </span>
                   </div>
@@ -791,7 +791,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 <button
                   key={show.id}
                   onClick={() => setFocusedShowId(show.id)}
-                  className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-[#0E1017] p-3.5 text-left transition hover:border-[#2FD98C]/40 hover:bg-white/[0.03]"
+                  className="flex w-full items-center gap-4 rounded-xl border border-white/10 bg-[#0E1017] p-3.5 text-left transition hover:border-[#2FD98C]/40 hover:bg-white/[0.03]"
                 >
                   <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151926]">
                     {show.poster_url && (
@@ -821,14 +821,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         listing that will not play. Surfaced on the card
                         so it is visible without opening the show. */}
                     {show.episodes.length > withVideo && (
-                      <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#F5C563]/12 px-2 py-[2px] text-[10px] font-bold text-[#F5C563]">
+                      <p className="mt-1 inline-flex items-center gap-1 rounded-md bg-[#F5C563]/12 px-2 py-[2px] text-[10px] font-bold text-[#F5C563]">
                         <Clock className="h-2.5 w-2.5" />
                         {show.episodes.length - withVideo} without video
                       </p>
                     )}
                   </div>
                   <div className="hidden shrink-0 items-center gap-2 sm:flex">
-                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-white/60">
+                    <span className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-white/60">
                       {show.type === 'movie' ? 'Open' : `Next: Ep ${nextNumber}`}
                     </span>
                     <ChevronRight className="h-4 w-4 text-white/30" />
@@ -856,7 +856,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   setAddEpOpen(null);
                   setPasteUrlFor(null);
                 }}
-                className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
+                className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">All shows</span>
@@ -875,7 +875,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               </div>
               <button
                 onClick={() => openEdit(focusedShow)}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Edit show</span>
@@ -883,7 +883,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               {(focusedShow.type !== 'movie' || focusedShow.episodes.length === 0) && (
                 <button
                   onClick={() => openAddEpisodeFor(focusedShow)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#2FD98C] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#2B9A67]"
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#2FD98C] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#2B9A67]"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">
@@ -1287,7 +1287,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {/* Add Show modal */}
       {addShowOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0E1017] p-5">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#0E1017] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">New Show / Movie</h2>
               <button
@@ -1448,7 +1448,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {/* Edit Show modal */}
       {editShow && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0E1017] p-5">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#0E1017] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">Edit Show</h2>
               <button
@@ -1613,7 +1613,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           onClick={closePreview}
         >
           <div
-            className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-black"
+            className="relative w-full max-w-3xl overflow-hidden rounded-xl bg-black"
             onClick={(e) => e.stopPropagation()}
           >
             <button

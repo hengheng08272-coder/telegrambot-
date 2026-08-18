@@ -112,3 +112,20 @@ Changes made after seeing the app running on a phone:
   bottom-left (on a ~104px-wide card it collided with the VIP/FREE pill),
   Coming Soon moved to the right, badges are smaller below `sm:`, and the
   rails have more clearance above the tab bar.
+
+## 6. Corner radius
+
+Corners were too round throughout, so every radius came down one step and
+capsule-shaped buttons became soft squares:
+
+| | before | after |
+| --- | --- | --- |
+| Cards (`rounded-card`) | 18px | 12px |
+| Sheets (`rounded-sheet`, episode sheet) | 26px | 18px |
+| Poster tiles | 16px | 10px |
+| Buttons / chips with text | full capsule | 12px (`rounded-xl`) |
+| Small badges (VIP, FREE, views) | full capsule | 6px (`rounded-md`) |
+| Player control buttons | circle | 12px |
+
+Genuinely circular things keep their shape: avatars, icon-only round
+buttons, live dots, spinners, and the player's centre play button.

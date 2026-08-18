@@ -23,7 +23,7 @@ export default function LanguageSwitcher({ lang, onChange, className = '', bare 
         type="button"
         onClick={() => onChange('km')}
         aria-pressed={lang === 'km'}
-        className={`rounded-full px-2 py-1 text-[10px] font-semibold leading-none transition font-khmer ${
+        className={`rounded-md px-2 py-1 text-[10px] font-semibold leading-none transition font-khmer ${
           lang === 'km' ? 'bg-[#FF2D46] text-white' : 'text-white/60 hover:text-white'
         }`}
       >
@@ -33,7 +33,7 @@ export default function LanguageSwitcher({ lang, onChange, className = '', bare 
         type="button"
         onClick={() => onChange('en')}
         aria-pressed={lang === 'en'}
-        className={`rounded-full px-2 py-1 text-[10px] font-semibold leading-none transition ${
+        className={`rounded-md px-2 py-1 text-[10px] font-semibold leading-none transition ${
           lang === 'en' ? 'bg-[#FF2D46] text-white' : 'text-white/60 hover:text-white'
         }`}
       >

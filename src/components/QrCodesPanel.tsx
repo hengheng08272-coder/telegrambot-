@@ -131,7 +131,7 @@ export default function QrCodesPanel({ onClose }: Props) {
                 <button
                   onClick={() => triggerUpload(tier.key)}
                   disabled={uploadingTier === tier.key}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#FFD166]/30 bg-[#FFD166]/10 px-3 py-1.5 text-xs font-bold text-[#FFD166] transition hover:bg-[#FFD166]/20 disabled:opacity-50"
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#FFD166]/30 bg-[#FFD166]/10 px-3 py-1.5 text-xs font-bold text-[#FFD166] transition hover:bg-[#FFD166]/20 disabled:opacity-50"
                 >
                   {uploadingTier === tier.key ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

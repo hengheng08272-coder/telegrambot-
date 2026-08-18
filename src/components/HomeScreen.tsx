@@ -273,9 +273,9 @@ export default function HomeScreen({
         <div className="relative w-full overflow-hidden" style={{ height: 'min(28vh, 250px)' }}>
           <div className="skeleton-shimmer absolute inset-0 bg-white/[0.03]" />
           <div className="relative flex h-full items-center justify-center gap-3">
-            <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-2xl bg-white/5" />
-            <div className="h-[74%] w-[38%] max-w-[164px] animate-pulse rounded-2xl bg-white/10" />
-            <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-2xl bg-white/5" />
+            <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-xl bg-white/5" />
+            <div className="h-[74%] w-[38%] max-w-[164px] animate-pulse rounded-xl bg-white/10" />
+            <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-xl bg-white/5" />
           </div>
         </div>
 
@@ -346,7 +346,7 @@ export default function HomeScreen({
           <button
             onClick={onOpenProfile}
             aria-label={t.navAccount}
-            className="flex shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition hover:bg-white/5 sm:gap-2 sm:pr-2.5"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl py-0.5 pl-0.5 pr-2 transition hover:bg-white/5 sm:gap-2 sm:pr-2.5"
           >
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ${
@@ -385,7 +385,7 @@ export default function HomeScreen({
               (see src/lib/presence.ts), not a randomized/fake number.
               Kept next to the profile chip, just tighter now that the
               chip above takes some of the header's width. */}
-          <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
+          <div className="flex shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF2D46]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FF2D46]" />
@@ -451,7 +451,7 @@ export default function HomeScreen({
           <NotificationBell title={t.notifications ?? 'Notifications'} emptyLabel={t.noNotifications ?? ''} />
           <button
             onClick={onOpenSubscription}
-            className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(245,197,99,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs"
+            className="flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(245,197,99,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs"
             style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
           >
             <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -906,10 +906,10 @@ function CoverflowHero({
               rank numeral. It reads as "the one worth lighting up" without
               pinning the hero's identity to a view-count rank. */}
           <div
-            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-2xl transition-transform duration-500"
+            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-xl transition-transform duration-500"
             style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.8), 0 6px 18px rgba(0,0,0,0.55)' }}
           >
-            <div className="pointer-events-none absolute inset-0 z-10 rounded-2xl ring-1 ring-inset ring-white/12" />
+            <div className="pointer-events-none absolute inset-0 z-10 rounded-xl ring-1 ring-inset ring-white/12" />
             <img
               src={hero.poster_url ?? hero.banner_url ?? ''}
               alt={hero.title}
@@ -949,7 +949,7 @@ function CoverflowHero({
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
           <span
-            className="relative -top-1 mb-1 inline-flex items-center gap-1 rounded-full border border-[#FF2D46]/40 bg-[#FF2D46]/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#FF6B7C] sm:text-[11px]"
+            className="relative -top-1 mb-1 inline-flex items-center gap-1 rounded-md border border-[#FF2D46]/40 bg-[#FF2D46]/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#FF6B7C] sm:text-[11px]"
             style={{ fontFamily: '"Anton", Battambang, sans-serif', letterSpacing: '0.06em' }}
           >
             <span className="animate-pulse">🔥</span> {t.featuredLabel ?? 'កំពុងពេញនិយម'}
@@ -1008,7 +1008,7 @@ function CoverflowHero({
           <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
             <button
               onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(255,45,70,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
+              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(255,45,70,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
               style={{ background: 'linear-gradient(135deg, #FF2D46, #FF2D46 55%, #8F1020)' }}
             >
               <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
@@ -1018,7 +1018,7 @@ function CoverflowHero({
                 const now = toggleWatchlist(hero);
                 setInList(now);
               }}
-              className={`flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11px] font-bold transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs ${
+              className={`flex items-center justify-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-[11px] font-bold transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs ${
                 inList
                   ? 'border-white/30 bg-white/[0.12] text-white'
                   : 'border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10'
@@ -1210,7 +1210,7 @@ function NavLink({ label, active, onClick }: NavLinkProps) {
   return (
     <button
       onClick={onClick}
-      className={`relative shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-semibold transition sm:text-sm ${
+      className={`relative shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-[11px] font-semibold transition sm:text-sm ${
         active
           ? 'bg-white/[0.06] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
           : 'text-white/55 hover:bg-white/[0.04] hover:text-white/85'
@@ -1254,7 +1254,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
   }, []);
 
   return (
-    <section className={ranked ? 'relative mt-8 overflow-hidden rounded-2xl' : 'mt-8'}>
+    <section className={ranked ? 'relative mt-8 overflow-hidden rounded-xl' : 'mt-8'}>
       {ranked ? (
         // Centered, Netflix-style row header — the "View All" link moves
         // to its own row underneath instead of crowding the centered
@@ -1265,7 +1265,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
             <h2 className="text-xl font-black tracking-wide text-white">{title}</h2>
             {tag && (
               <span
-                className="rounded-full px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
+                className="rounded-md px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
                 style={{ backgroundColor: tag.color }}
               >
                 {tag.label}
@@ -1288,7 +1288,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
             <h2 className="text-lg font-bold tracking-tight">{title}</h2>
             {tag && (
               <span
-                className="rounded-full px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
+                className="rounded-md px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
                 style={{ backgroundColor: tag.color }}
               >
                 {tag.label}

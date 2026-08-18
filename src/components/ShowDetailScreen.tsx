@@ -106,7 +106,7 @@ export default function ShowDetailScreen({
       {!isInTelegram() && (
         <button
           onClick={onBack}
-          className="glass fixed left-4 top-4 z-50 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white/80 transition hover:text-white"
+          className="glass fixed left-4 top-4 z-50 flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/80 transition hover:text-white"
           style={{ top: 'calc(env(safe-area-inset-top, 0px) + 16px)' }}
         >
           <ArrowLeft className="h-4 w-4" /> {t.back}
@@ -189,7 +189,7 @@ export default function ShowDetailScreen({
                 {detail.genres.map((g) => (
                   <span
                     key={g.id}
-                    className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-medium text-white/70 ring-1 ring-white/10"
+                    className="rounded-xl bg-white/[0.06] px-3 py-1 text-xs font-medium text-white/70 ring-1 ring-white/10"
                   >
                     {g.name}
                   </span>
@@ -211,7 +211,7 @@ export default function ShowDetailScreen({
                   if (!show.coming_soon && episodes.length > 0 && detail) onPlayEpisode(episodes[0], detail);
                 }}
                 disabled={show.coming_soon}
-                className={`flex items-center gap-2 rounded-full px-7 py-3 text-sm font-bold transition active:scale-95 ${
+                className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition active:scale-95 ${
                   show.coming_soon ? 'cursor-not-allowed bg-white/10 text-white/50' : 'btn-primary'
                 }`}
               >
@@ -220,7 +220,7 @@ export default function ShowDetailScreen({
               </button>
               <button
                 onClick={handleInvite}
-                className="glass flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.14] active:scale-95"
+                className="glass flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition hover:bg-white/[0.14] active:scale-95"
                 aria-label={t.inviteFriend ?? 'Invite a friend'}
               >
                 <UserPlus className="h-4 w-4" />
@@ -280,7 +280,7 @@ export default function ShowDetailScreen({
                           >
                             <Lock className="h-4 w-4 text-[#211A0E]" strokeWidth={2.5} />
                           </div>
-                          <span className="rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#F5C563]">
+                          <span className="rounded-md bg-black/60 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#F5C563]">
                             {t.lockedVip}
                           </span>
                         </div>
@@ -304,7 +304,7 @@ export default function ShowDetailScreen({
                         )}
                         {locked && (
                           <span
-                            className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#211A0E]"
+                            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#211A0E]"
                             style={{ background: 'linear-gradient(90deg,#F5C563,#C08F33)' }}
                           >
                             <Lock className="h-2.5 w-2.5" /> {t.lockedVip}

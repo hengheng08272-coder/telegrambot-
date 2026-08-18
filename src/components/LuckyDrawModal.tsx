@@ -81,11 +81,11 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="promo-card-glow relative w-full max-w-sm rounded-3xl"
+        className="promo-card-glow relative w-full max-w-sm rounded-2xl"
       >
         <div className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-[#F5C563]/10 blur-3xl" />
 
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#07080C] p-6 text-center shadow-[0_0_70px_rgba(245,197,99,0.2)]">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#07080C] p-6 text-center shadow-[0_0_70px_rgba(245,197,99,0.2)]">
           <Sparkles className="sparkle-twinkle pointer-events-none absolute left-5 top-5 h-3.5 w-3.5 text-[#F5C563]/50" />
           <Sparkles
             className="sparkle-twinkle pointer-events-none absolute right-14 top-8 h-2.5 w-2.5 text-[#FF2D46]/60"
@@ -185,7 +185,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
 
           {result ? (
             <div className="win-pop-in space-y-3">
-              <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-[#F5C563]/30 bg-[#F5C563]/10 px-4 py-1.5">
+              <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-4 py-1.5">
                 <PartyPopper className="h-4 w-4 text-[#F5C563]" />
                 <p className="text-base font-bold text-[#F5C563]">
                   {t.spinWonPrefix} {result.label} {t.spinWonSuffixVip}
