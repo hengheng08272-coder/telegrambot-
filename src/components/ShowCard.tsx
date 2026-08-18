@@ -43,7 +43,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
     <button
       onClick={() => onClick(show)}
       className={`group relative shrink-0 text-left ${
-        large ? 'w-[168px] sm:w-[210px]' : rank ? 'w-[126px] sm:w-[160px]' : 'w-[100px] sm:w-[124px]'
+        large ? 'w-[160px] sm:w-[210px]' : rank ? 'w-[122px] sm:w-[160px]' : 'w-[104px] sm:w-[124px]'
       } ${rank ? 'pl-8 sm:pl-10' : ''}`}
     >
       {rank && (
@@ -116,7 +116,11 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           {/* View-count badge — real play counts (see increment_show_view_count),
               not an admin-typed rating, so this is what actually drives
               Top 10 and shows the owner which titles viewers watch most. */}
-          <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full border border-white/10 bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-[#B6C3FF] backdrop-blur-md">
+          <div
+            className={`absolute left-1.5 z-[2] flex items-center gap-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold text-white/85 backdrop-blur-md sm:text-[10px] ${
+              rank ? 'bottom-9' : 'bottom-1.5'
+            }`}
+          >
             <Eye className="h-2.5 w-2.5" />
             {fmtViews(show.view_count)}
           </div>
@@ -124,7 +128,7 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
               (admin toggle). Icon-only since the row header above already
               says "Coming Soon" in words. */}
           {show.coming_soon && (
-            <div className="absolute left-1.5 top-1.5 flex items-center justify-center rounded-full bg-[#FF2D46]/90 p-1.5 text-white shadow-[0_0_16px_rgba(255,45,70,0.5)] backdrop-blur-sm">
+            <div className="absolute right-1.5 top-1.5 flex items-center justify-center rounded-full bg-[#FF2D46]/90 p-1 text-white backdrop-blur-sm">
               <Clock className="h-2.5 w-2.5" />
             </div>
           )}
@@ -135,12 +139,12 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           {!show.coming_soon && (
             <div className="absolute left-1.5 top-1.5">
               {show.is_free ? (
-                <span className="rounded-full border border-[#2FD98C]/40 bg-[#2FD98C]/20 px-2 py-[2px] text-[9px] font-bold text-[#86EEC0] backdrop-blur-md">
+                <span className="rounded-full border border-[#2FD98C]/40 bg-[#2FD98C]/20 px-1.5 py-[2px] text-[8px] font-bold text-[#86EEC0] backdrop-blur-md sm:px-2 sm:text-[9px]">
                   {t.freeBadge}
                 </span>
               ) : (
                 <span
-                  className="flex items-center gap-0.5 rounded-full px-2 py-[2px] text-[9px] font-black text-[#211A0E] shadow-[0_2px_10px_rgba(245,197,99,0.45)] backdrop-blur-sm"
+                  className="flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[8px] font-black text-[#211A0E] backdrop-blur-sm sm:px-2 sm:text-[9px]"
                   style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
                 >
                   👑 {t.vipBadge}

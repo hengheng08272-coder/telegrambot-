@@ -14,8 +14,8 @@
   color-scheme: dark;
 
   /* Base surfaces, from deepest to most raised */
-  --nv-bg-deep: #04050a;
-  --nv-bg: #07080c;
+  --nv-bg-deep: #000000;
+  --nv-bg: #050609;
   --nv-surface: #0e1017;
   --nv-surface-2: #151926;
   --nv-surface-3: #1b2030;
@@ -110,47 +110,34 @@ h3 {
 }
 
 @layer components {
-  /* ── Ambient app background ──────────────────────────────────────────
-     Every full-screen surface uses `.bg-app` instead of a flat fill: the
-     base colour plus three very soft aurora pools (scarlet top-left,
-     indigo top-right, gold bottom) and a faint diagonal sheen. It's fixed
-     to the viewport, so scrolling a long rail list moves the content over
-     a still backdrop the way a cinema screen sits still behind subtitles,
-     and it costs nothing at runtime — no extra elements, no image. */
+  /* ── App background ─────────────────────────────────────────────────
+     Flat near-black. Deliberately not an image and not a
+     `background-attachment: fixed` gradient: both force the whole
+     viewport to repaint on every frame of a scroll, which is what makes
+     a phone feel like it's skidding. The only light in the app comes
+     from the hero's own blurred poster, so artwork lights the screen and
+     everything else stays out of its way. */
   .bg-app {
-    background-color: var(--nv-bg);
-    background-image:
-      radial-gradient(70% 48% at 12% -6%, rgba(255, 45, 70, 0.16) 0%, rgba(7, 8, 12, 0) 62%),
-      radial-gradient(60% 42% at 92% 4%, rgba(76, 111, 255, 0.14) 0%, rgba(7, 8, 12, 0) 60%),
-      radial-gradient(80% 55% at 50% 108%, rgba(245, 197, 99, 0.07) 0%, rgba(7, 8, 12, 0) 64%);
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+    background-color: #050609;
   }
 
-  /* A darker variant for sheets/overlays that sit on top of .bg-app and
-     still need to read as "another layer", not the same wash repeated. */
+  /* Sheets and overlays that sit on top of .bg-app go a shade darker so
+     the layering still reads. */
   .bg-app-deep {
-    background-color: var(--nv-bg-deep);
-    background-image: radial-gradient(
-      90% 60% at 50% 0%,
-      rgba(76, 111, 255, 0.1) 0%,
-      rgba(4, 5, 10, 0) 65%
-    );
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+    background-color: #000;
   }
 
   /* Sticky bars (home header, screen headers, bottom nav) — translucent
      over the ambient background so content scrolling underneath stays
      faintly visible instead of hitting a hard opaque edge. */
   .bar-blur {
-    background-color: rgba(7, 8, 12, 0.72);
+    background-color: rgba(0, 0, 0, 0.88);
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .bar-blur {
-      background-color: rgba(7, 8, 12, 0.97);
+      background-color: rgba(0, 0, 0, 0.97);
     }
   }
 
@@ -173,8 +160,8 @@ h3 {
 
   /* Raised content card: subtle top-light gradient + hairline + depth. */
   .card-surface {
-    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0) 42%);
-    background-color: var(--nv-surface);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 46%);
+    background-color: #0C0E14;
     border: 1px solid var(--nv-hairline);
     box-shadow: var(--nv-shadow-card);
   }
@@ -217,12 +204,12 @@ h3 {
   .btn-primary {
     background-image: linear-gradient(135deg, #ff445a 0%, #ff2d46 45%, #c4142c 100%);
     color: #fff;
-    box-shadow: 0 8px 24px rgba(255, 45, 70, 0.32);
+    box-shadow: 0 6px 18px rgba(255, 45, 70, 0.22);
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
   }
   .btn-primary:hover {
     filter: brightness(1.06);
-    box-shadow: 0 10px 30px rgba(255, 45, 70, 0.42);
+    box-shadow: 0 8px 24px rgba(255, 45, 70, 0.3);
   }
   .btn-primary:active {
     transform: scale(0.97);

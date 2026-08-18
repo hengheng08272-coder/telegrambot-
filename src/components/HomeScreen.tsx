@@ -136,6 +136,26 @@ export default function HomeScreen({
   // unmounts/remounts on navigation, so a fresh read here already stays
   // current without needing a storage listener).
   const [continueItems] = useState<ContinueItem[]>(() => getContinueWatching());
+  // The header is see-through over the hero and picks up its dark blur as
+  // soon as the page moves — without this it stayed transparent all the way
+  // down, so poster art and row titles scrolled straight under the logo and
+  // the VIP button. Throttled to one read per frame and registered passive,
+  // so it never fights the scroll itself.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 40);
+        ticking = false;
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -293,37 +313,15 @@ export default function HomeScreen({
 
   const heroVisible = hero && !query.trim();
 
+
   return (
     <div className="relative min-h-screen bg-app text-white">
-      {/* Brand key art — sits behind absolutely everything, now shown
-          clearly (no blur, higher opacity) per request. Cropped toward the
-          character on the right so it doesn't fight with the separate
-          wordmark watermark below; a top-to-bottom darkening keeps it
-          vivid near the header and fades it out by the time content rows
-          need clean contrast to read against. */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
-        <img
-          src="/assets/nint-keyart.jpg"
-          alt=""
-          className="h-full w-full object-cover opacity-[0.22]"
-          style={{ objectPosition: '68% 30%', transform: 'scale(1.1)' }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#07080C]/40 via-[#07080C]/70 to-[#07080C]/94" />
-      </div>
-
-      {/* Whole-page ambient glow — two faint warm radials fixed to the
-          viewport corners so the background still feels alive once the
-          user has scrolled past the hero into the rails, instead of
-          flattening to plain black. Kept very low-opacity and behind
-          everything (z-0) so it never competes with poster art. */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 60% 40% at 12% 0%, rgba(143,16,32,0.13) 0%, rgba(7,8,12,0) 60%), radial-gradient(ellipse 55% 45% at 88% 100%, rgba(245,197,99,0.06) 0%, rgba(7,8,12,0) 60%)',
-        }}
-        aria-hidden
-      />
+      {/* No page-wide artwork or ambient wash: the background is flat
+          black, and the only light on the screen comes from the hero's own
+          blurred poster below. Keeping it a plain colour (rather than a
+          fixed image or a fixed-attachment gradient) is also what keeps
+          scrolling smooth on phones — fixed backdrops force a repaint of
+          the whole viewport on every frame of a scroll. */}
 
       {/* Header v4 — one responsive top nav bar for every screen size, per
           request: no more separate desktop-only nav row vs. a mobile-only
@@ -335,7 +333,7 @@ export default function HomeScreen({
           opens the full-screen search overlay below that. */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-          heroVisible ? 'bg-transparent' : 'bar-blur'
+          heroVisible && !scrolled ? 'bg-transparent' : 'bar-blur'
         }`}
       >
         <div className="mx-auto flex max-w-[1400px] items-center gap-1.5 px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
@@ -519,7 +517,7 @@ export default function HomeScreen({
           see everything. Search results and "View All" stay as normal
           scrollable grids since those are explicit drill-down views, not
           the main browse screen. */}
-      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-24 sm:px-8 sm:pb-14">
+      <main className="relative z-10 mx-auto max-w-[1400px] px-4 pb-28 sm:px-8 sm:pb-14">
         {viewAll ? (
           <section className="pt-4">
             <div className="mb-5 flex items-center gap-3">
@@ -814,7 +812,7 @@ function CoverflowHero({
   t,
 }: CoverflowHeroProps) {
   const [bgLoaded, setBgLoaded] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
+  const ambienceRef = useRef<HTMLDivElement>(null);
   const [inList, setInList] = useState(() => isInWatchlist(hero.id));
   const bg = hero.banner_url ?? hero.poster_url ?? '';
 
@@ -825,17 +823,34 @@ function CoverflowHero({
     setInList(isInWatchlist(hero.id));
   }, [hero.id]);
 
-  // Ambient background drifts slower than the page (classic parallax) and
-  // fades out as the user scrolls past the hero into the content rails.
+  // Ambient background drifts a little slower than the page and fades out
+  // as the viewer scrolls past the hero. This writes straight to the DOM
+  // node inside a single rAF instead of storing scrollY in state: the old
+  // version re-rendered the whole hero — including a `blur-3xl` poster,
+  // which is one of the most expensive things a phone GPU can be asked to
+  // repaint — on every scroll event, which is what made scrolling feel
+  // like it was skidding. The drift is also gentler now (0.18 rather than
+  // 0.35), so the backdrop never appears to outrun the finger.
   useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY);
+    let ticking = false;
+    const apply = () => {
+      ticking = false;
+      const el = ambienceRef.current;
+      if (!el) return;
+      const y = window.scrollY;
+      const heroHeightPx = Math.min(window.innerHeight * 0.32, 280);
+      el.style.transform = `translate3d(0, ${Math.min(y * 0.18, 80)}px, 0)`;
+      el.style.opacity = String(Math.max(1 - y / heroHeightPx, 0));
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(apply);
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
+    apply();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  const heroHeightPx = typeof window !== 'undefined' ? Math.min(window.innerHeight * 0.32, 280) : 280;
-  const parallaxOffset = Math.min(scrollY * 0.35, 120);
-  const parallaxOpacity = Math.max(1 - scrollY / heroHeightPx, 0);
 
   return (
     <section
@@ -845,11 +860,8 @@ function CoverflowHero({
     >
       {/* Blurred ambient background driven by the centered show */}
       <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          transform: `translateY(${parallaxOffset}px)`,
-          opacity: parallaxOpacity,
-        }}
+        ref={ambienceRef}
+        className="pointer-events-none absolute inset-0 will-change-transform"
       >
         {bg && (
           <img
@@ -866,13 +878,13 @@ function CoverflowHero({
             flat black wash: the blurred poster IS the colour source, so
             the ambience changes with every slide instead of every show
             looking identical. */}
-        <div className="absolute inset-0 bg-[#04050A]/42" />
+        <div className="absolute inset-0 bg-black/45" />
         {/* Fade the top into the header and the bottom into the page */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(4,5,10,0.92) 0%, rgba(4,5,10,0.5) 16%, rgba(4,5,10,0) 34%, rgba(4,5,10,0) 74%, rgba(4,5,10,0.85) 92%, rgba(4,5,10,1) 100%)',
+              'linear-gradient(180deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.55) 16%, rgba(0,0,0,0.05) 36%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.8) 90%, rgba(0,0,0,1) 100%)',
           }}
         />
       </div>
@@ -1142,14 +1154,14 @@ interface BottomNavProps {
 
 function BottomNav({ t, active, onHome, onSearch, onSeries, onMovies, onMyList, onAccount }: BottomNavProps) {
   return (
-    // Floating dock rather than a full-width bar welded to the bottom
-    // edge: the ambient background stays visible around it, and the
-    // rounded frame matches the card language used everywhere else.
+    // Welded to the bottom edge of the screen (not a floating pill): on a
+    // phone the tab bar has to sit in the thumb's resting place, flush
+    // with the home indicator, exactly like the previous home screen.
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 px-3 pt-2 sm:hidden"
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-black/95 backdrop-blur-xl sm:hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <div className="mx-auto flex max-w-[560px] items-stretch justify-between rounded-[22px] border border-white/10 bar-blur px-1 py-0.5 shadow-[0_12px_34px_rgba(0,0,0,0.55)]">
+      <div className="mx-auto flex max-w-[560px] items-stretch justify-between px-1">
         <BottomNavItem icon={<Home className="h-5 w-5" />} label={t.navHome} active={active === 'home'} onClick={onHome} />
         <BottomNavItem icon={<Search className="h-5 w-5" />} label={t.navSearch} active={active === 'search'} onClick={onSearch} />
         <BottomNavItem icon={<Tv className="h-5 w-5" />} label={t.navSeries} active={active === 'series'} onClick={onSeries} />
@@ -1172,15 +1184,13 @@ function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-[18px] py-2 transition ${
-        active
-          ? 'bg-[#FF2D46]/[0.12] text-[#FF6B7C]'
-          : 'text-white/50 active:bg-white/5 active:text-white/80'
+      className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 transition ${
+        active ? 'text-[#FF6B7C]' : 'text-white/45 active:text-white/80'
       }`}
     >
       {active && (
         <span
-          className="pointer-events-none absolute inset-x-3 -top-px h-px rounded-full bg-gradient-to-r from-transparent via-[#FF2D46] to-transparent"
+          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#FF2D46] to-transparent"
           aria-hidden
         />
       )}
@@ -1243,25 +1253,8 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
     if (node) node.scrollLeft = 0;
   }, []);
 
-  // Top 10 gets its own quiet backdrop — a blurred still of the #1 show,
-  // echoing the hero's "cover" treatment — but it's a fixed image, not an
-  // autoplaying/crossfading one: it only ever reflects whoever is
-  // currently ranked #1, changing exactly when the ranking itself changes,
-  // never on a timer.
-  const backdropSrc = ranked ? shows[0]?.banner_url ?? shows[0]?.poster_url : null;
-
   return (
     <section className={ranked ? 'relative mt-8 overflow-hidden rounded-2xl' : 'mt-8'}>
-      {ranked && backdropSrc && (
-        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden>
-          <img
-            src={backdropSrc}
-            alt=""
-            className="h-full w-full scale-110 object-cover opacity-[0.16] blur-2xl"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#07080C]/40 via-[#07080C]/70 to-[#07080C]" />
-        </div>
-      )}
       {ranked ? (
         // Centered, Netflix-style row header — the "View All" link moves
         // to its own row underneath instead of crowding the centered

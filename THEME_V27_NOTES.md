@@ -85,3 +85,30 @@ language too:
   `rounded-card` plan cards, shared primary CTA.
 - Remaining one-off primary buttons (lucky draw, not-member, announcements)
   now use `.btn-primary` instead of re-declaring the gradient.
+
+## 5. Feedback pass (on-device)
+
+Changes made after seeing the app running on a phone:
+
+- **No photo background.** The full-page key-art layer, the fixed corner
+  radials and the Top 10 rail's blurred still are gone. The page is flat
+  black (`#050609`) and the only light on screen is the hero's own blurred
+  poster, which now fades into pure black at both ends.
+- **Scrolling.** Two things were making the page feel like it skidded: the
+  background used `background-attachment: fixed` (repaints the viewport
+  every frame) and the hero stored `scrollY` in React state, re-rendering a
+  `blur-3xl` poster on every scroll event. The background is a flat colour
+  now, and the hero parallax writes transform/opacity straight to the DOM
+  node inside one `requestAnimationFrame`, with a gentler drift (0.18 vs
+  0.35) so the backdrop never outruns the finger. Measured: a steady 16.7ms
+  frame time while scrolling, no dropped frames.
+- **Bottom tab bar** is welded to the bottom edge again (full width, flush
+  with the home indicator) instead of a floating pill, and is opaque enough
+  that posters no longer show through it.
+- **Header** now turns from transparent to blurred once the page moves —
+  before, it stayed transparent at every scroll position, so row titles and
+  poster art slid under the logo and the VIP button.
+- **Cards on phones**: the view-count badge moved from the top-right to the
+  bottom-left (on a ~104px-wide card it collided with the VIP/FREE pill),
+  Coming Soon moved to the right, badges are smaller below `sm:`, and the
+  rails have more clearance above the tab bar.
