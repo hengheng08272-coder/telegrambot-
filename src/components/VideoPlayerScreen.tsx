@@ -7,7 +7,6 @@ import {
   Volume2,
   VolumeX,
   Lock,
-  Unlock,
   Loader2,
   RotateCcw,
   RotateCw,
@@ -19,6 +18,7 @@ import {
   Minimize,
   Gauge,
   Crop,
+  MoreVertical,
   AlertTriangle,
 } from 'lucide-react';
 import type { Episode, ShowWithGenres } from '@/lib/types';
@@ -119,7 +119,10 @@ export default function VideoPlayerScreen({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [locked, setLocked] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [speedOpen, setSpeedOpen] = useState(false);
+  // Lock, speed, fit/fill, and the full episode list are all "set once,
+  // rarely touched again" controls — grouped behind one overflow sheet
+  // instead of four separate icons crowding the bottom bar.
+  const [moreOpen, setMoreOpen] = useState(false);
   const [fillScreen, setFillScreen] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
   const currentIdx = allEpisodes.findIndex((e) => e.id === episode.id);
@@ -176,6 +179,11 @@ export default function VideoPlayerScreen({
     }
     lockLandscape();
     setIsFullscreen(true);
+    // One tap should give a clear, edge-to-edge picture without a second
+    // trip to the crop toggle — fill is what actually removes the black
+    // bars a landscape phone would otherwise show. Still overridable from
+    // the More sheet if the viewer prefers the letterboxed original frame.
+    setFillScreen(true);
   };
 
   const leaveFullscreen = async () => {
@@ -198,6 +206,9 @@ export default function VideoPlayerScreen({
     }
     unlockOrientation();
     setIsFullscreen(false);
+    // Fill is a fullscreen-only convenience — back in the windowed view,
+    // showing the untouched frame (no crop) is the more expected default.
+    setFillScreen(false);
   };
 
   const toggleFullscreen = () => {
@@ -515,10 +526,10 @@ export default function VideoPlayerScreen({
     };
   }, []);
 
-  // Anything open on top of the video (episode list, speed menu), or a
+  // Anything open on top of the video (episode list, the More sheet), or a
   // paused/scrubbing player, keeps the chrome pinned — hiding controls out
   // from under an open menu is the classic way to strand someone.
-  const chromeHidden = !showControls && playing && !episodeListOpen && !speedOpen && !scrubbing;
+  const chromeHidden = !showControls && playing && !episodeListOpen && !moreOpen && !scrubbing;
 
   // Desktop keyboard shortcuts — the usual video-player set. Suspended
   // while the controls are locked (except the unlock key itself), and
@@ -561,6 +572,7 @@ export default function VideoPlayerScreen({
           break;
         case 'l':
           setLocked((l) => !l);
+          setMoreOpen(false);
           revealControls();
           break;
         default:
@@ -771,7 +783,9 @@ export default function VideoPlayerScreen({
           </button>
         )}
 
-        {/* ── Top bar: back, title, lock ─────────────────────────────── */}
+        {/* ── Top bar: back + title only ──────────────────────────────
+            Lock now lives in the "More" sheet on the bottom bar — one
+            less icon competing with the title for attention on open. */}
         <div
           className={`player-chrome player-safe-x absolute inset-x-0 top-0 z-10 player-scrim-top pb-10 pt-[max(env(safe-area-inset-top,0px),14px)] ${
             locked ? 'pointer-events-none opacity-0' : ''
@@ -800,18 +814,6 @@ export default function VideoPlayerScreen({
                 {episodeTitle}
               </h2>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setLocked(true);
-                setSpeedOpen(false);
-              }}
-              className="player-btn h-10 w-10 shrink-0"
-              aria-label={t.lockScreen}
-              title={t.lockScreen}
-            >
-              <Unlock className="h-[18px] w-[18px]" />
-            </button>
           </div>
         </div>
 
@@ -919,71 +921,95 @@ export default function VideoPlayerScreen({
             </div>
 
             <div className="ml-auto flex items-center gap-2 sm:gap-3">
-              {/* Playback speed */}
+              {/* Overflow menu: lock, playback speed, fit/fill, and the
+                  full episode list — everything a viewer sets once and
+                  leaves alone, grouped behind a single icon instead of
+                  four competing for space on the bar. The dot keeps the
+                  non-default state visible at a glance even while
+                  collapsed. */}
               <div className="relative">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSpeedOpen((o) => !o);
+                    setMoreOpen((o) => !o);
                   }}
-                  className={`player-btn h-10 gap-1.5 px-3 text-xs font-bold ${
-                    speed !== 1 ? 'text-[#FF6B7C]' : ''
+                  className={`player-btn relative h-10 w-10 ${
+                    speed !== 1 || fillScreen ? 'text-[#FF6B7C]' : ''
                   }`}
-                  aria-label={t.playbackSpeed}
-                  title={t.playbackSpeed}
+                  aria-label={t.moreOptions}
+                  title={t.moreOptions}
                 >
-                  <Gauge className="h-[18px] w-[18px]" />
-                  {speed !== 1 && <span>{speed}×</span>}
+                  <MoreVertical className="h-[18px] w-[18px]" />
+                  {(speed !== 1 || fillScreen) && (
+                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FF2D46]" />
+                  )}
                 </button>
-                {speedOpen && (
+                {moreOpen && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-12 right-0 z-30 w-32 overflow-hidden rounded-xl border border-white/[0.12] bg-black/85 py-1 backdrop-blur-xl sheet-in"
+                    className="absolute bottom-12 right-0 z-30 w-56 overflow-hidden rounded-xl border border-white/[0.12] bg-black/85 p-1.5 backdrop-blur-xl sheet-in"
                   >
-                    {SPEEDS.map((s) => (
+                    <button
+                      onClick={() => {
+                        setMoreOpen(false);
+                        setLocked(true);
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-white/85 transition hover:bg-white/10"
+                    >
+                      <Lock className="h-4 w-4" /> {t.lockScreen}
+                    </button>
+
+                    <div className="px-3 py-2">
+                      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-white/40">
+                        <Gauge className="h-3.5 w-3.5" /> {t.playbackSpeed}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SPEEDS.map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => {
+                              setSpeed(s);
+                              setMoreOpen(false);
+                              revealControls();
+                            }}
+                            className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                              s === speed
+                                ? 'bg-[#FF2D46]/15 text-[#FF6B7C]'
+                                : 'bg-white/[0.06] text-white/75 hover:bg-white/10'
+                            }`}
+                          >
+                            {s}× {s === speed && <Check className="h-3 w-3" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setFillScreen((f) => !f);
+                        setMoreOpen(false);
+                        revealControls();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-white/85 transition hover:bg-white/10"
+                    >
+                      <Crop className="h-4 w-4" /> {fillScreen ? t.zoomFit : t.zoomFill}
+                    </button>
+
+                    {allEpisodes.length > 0 && onSwitchEpisode && (
                       <button
-                        key={s}
                         onClick={() => {
-                          setSpeed(s);
-                          setSpeedOpen(false);
-                          revealControls();
+                          setMoreOpen(false);
+                          setEpisodeListOpen(true);
                         }}
-                        className={`flex w-full items-center justify-between px-3 py-2 text-xs font-semibold transition ${
-                          s === speed ? 'bg-[#FF2D46]/15 text-[#FF6B7C]' : 'text-white/80 hover:bg-white/10'
-                        }`}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-white/85 transition hover:bg-white/10"
                       >
-                        {s}× {s === speed && <Check className="h-3.5 w-3.5" />}
+                        <ListVideo className="h-4 w-4" /> {t.episodesHeading}
                       </button>
-                    ))}
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Fit ↔ fill. On a phone held sideways a 21:9 film leaves
-                  thick black bars; this crops it to fill the screen instead,
-                  which is exactly the trade-off the viewer should own. */}
-              <button
-                onClick={() => setFillScreen((f) => !f)}
-                className={`player-btn h-10 w-10 ${fillScreen ? 'text-[#FF6B7C]' : ''}`}
-                aria-label={fillScreen ? t.zoomFit : t.zoomFill}
-                title={fillScreen ? t.zoomFit : t.zoomFill}
-              >
-                <Crop className="h-[18px] w-[18px]" />
-              </button>
-
-              {allEpisodes.length > 0 && onSwitchEpisode && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEpisodeListOpen(true);
-                  }}
-                  className="player-btn h-10 w-10"
-                  aria-label={t.episodesHeading}
-                  title={t.episodesHeading}
-                >
-                  <ListVideo className="h-[18px] w-[18px]" />
-                </button>
-              )}
               {nextEpisode && onSwitchEpisode && (
                 <button
                   onClick={() => onSwitchEpisode(nextEpisode)}
