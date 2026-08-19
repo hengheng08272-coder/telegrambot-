@@ -267,6 +267,14 @@ export default function VideoPlayerScreen({
   // Rotating the phone to landscape while watching is an unambiguous "make
   // this big" — worth one more fullscreen attempt (some browsers honour it
   // during the resulting gesture window), and harmless where it's refused.
+  // Two listeners because neither fires everywhere: `orientationchange` is
+  // deprecated and silent on some Android WebViews, while
+  // `screen.orientation`'s own `change` event is the modern replacement
+  // but isn't implemented in every in-app browser (notably older iOS
+  // Telegram WebViews) — so both are wired and either can trigger it.
+  // Also checked once on mount, since a viewer who opens an episode with
+  // the phone already lying flat should get the same behaviour as one who
+  // rotates into it mid-watch.
   useEffect(() => {
     const onOrientation = () => {
       const landscape = window.innerWidth > window.innerHeight;
@@ -274,8 +282,15 @@ export default function VideoPlayerScreen({
         void enterFullscreen();
       }
     };
+    onOrientation();
     window.addEventListener('orientationchange', onOrientation);
-    return () => window.removeEventListener('orientationchange', onOrientation);
+    window.addEventListener('resize', onOrientation);
+    screen.orientation?.addEventListener?.('change', onOrientation);
+    return () => {
+      window.removeEventListener('orientationchange', onOrientation);
+      window.removeEventListener('resize', onOrientation);
+      screen.orientation?.removeEventListener?.('change', onOrientation);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -787,9 +802,11 @@ export default function VideoPlayerScreen({
             Lock now lives in the "More" sheet on the bottom bar — one
             less icon competing with the title for attention on open. */}
         <div
-          className={`player-chrome player-safe-x absolute inset-x-0 top-0 z-10 player-scrim-top pb-10 pt-[max(env(safe-area-inset-top,0px),14px)] ${
-            locked ? 'pointer-events-none opacity-0' : ''
-          }`}
+          className={`player-chrome player-safe-x absolute inset-x-0 top-0 z-10 player-scrim-top pb-10 ${
+            isInTelegram() && !isFullscreen
+              ? 'pt-14'
+              : 'pt-[max(env(safe-area-inset-top,0px),14px)]'
+          } ${locked ? 'pointer-events-none opacity-0' : ''}`}
           data-hidden={chromeHidden}
         >
           <div className="flex items-start gap-3">
