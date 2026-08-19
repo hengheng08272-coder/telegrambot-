@@ -3,6 +3,12 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      // `xs` sits between the default base and `sm` (640px) — useful for
+      // header/pill layouts that need one extra step on phones without
+      // affecting anything already keyed to `sm:` and up.
+      screens: {
+        xs: '380px',
+      },
       // Semantic names for the "Obsidian" dark theme (see theme.ts and the
       // --nv-* custom properties in src/index.css). New UI should reach for
       // these — `bg-surface`, `text-muted`, `border-hairline` — instead of
