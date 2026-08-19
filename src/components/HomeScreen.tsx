@@ -7,7 +7,6 @@ import {
   Flame,
   User,
   Crown,
-  Sparkles,
   Gift,
   X,
   Home,
@@ -88,6 +87,20 @@ const GENRE_EMOJI: Record<string, string> = {
   'martial-arts': '🥋',
 };
 const genreEmoji = (slug: string) => GENRE_EMOJI[slug.toLowerCase()] ?? '🎬';
+
+// Custom clapperboard glyph for the "New Release" row — drawn in the same
+// stroke convention as the lucide set we use everywhere else (24x24,
+// currentColor, 2px rounded strokes) so it sits next to Flame/Gift/Clock
+// without looking like a different icon family.
+function ClapperIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M3 8.6 20 5l1 4-17 3.6z" />
+      <path d="M4 12h16v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
+      <path d="m7.5 8.3 2-4.2M12.5 7.3l2-4.2M17.3 6.3l1.7-3.6" />
+    </svg>
+  );
+}
 
 // "12345" -> "12.3K", "2100000" -> "2.1M" — used for the hero's view count.
 function formatCount(n: number): string {
@@ -330,65 +343,77 @@ export default function HomeScreen({
           scrolling smooth on phones — fixed backdrops force a repaint of
           the whole viewport on every frame of a scroll. */}
 
-      {/* Header v4 — one responsive top nav bar for every screen size, per
-          request: no more separate desktop-only nav row vs. a mobile-only
-          bottom tab bar. Home / Series / Movies stay a browse filter right
-          here (Series & Movies reuse the same "View All" grid the rail
-          rows already use); My List actually leaves this screen, so it's
-          styled the same but never shows an active state. Search is an
-          inline expanding box from `sm:` up and a plain icon button that
-          opens the full-screen search overlay below that. */}
+      {/* Header v5 — three loose zones instead of five separate bordered
+          pills. Identity (avatar + live count) and utility (search / bell
+          / VIP) now read as clusters separated by whitespace and one
+          hairline divider, not individually boxed — the "glass pill"
+          treatment is reserved for the one place status actually needs to
+          be seen: the avatar's own ring/glow. VIP status no longer says
+          itself twice, either: a subscriber already wears the crown on
+          their avatar, so the header button quiets to a plain icon once
+          subscribed instead of repeating "Premium" a second time — the
+          gold CTA stays loud only for the person it's still trying to
+          convert. */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-          heroVisible && !scrolled ? 'bg-transparent' : 'bar-blur border-b border-white/[0.06]'
+          heroVisible && !scrolled ? 'bg-transparent' : 'bar-blur'
         }`}
       >
-        <div className="no-scrollbar mx-auto flex max-w-[1400px] flex-nowrap items-center gap-1.5 overflow-x-auto px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
-          {/* Profile avatar + Telegram username, styled as one "glass"
-              capsule — same border/blur language as the live-count pill
-              next to it and the .player-btn controls elsewhere in the
-              app, so every pill on a black background reads as part of
-              one system instead of a plain hover-only button standing
-              apart from its neighbour. The app-icon button that used to
-              sit to the left of this was removed: Telegram already prints
-              "NINTANIME mini app" in its own title bar directly above, so
-              the icon was the third piece of branding in a 40px-tall
-              strip and pushed the person's own name off-screen on narrow
-              phones. */}
+        {/* Signature edge — a thin red broadcast line instead of the
+            generic neutral hairline most app headers default to. Only
+            appears once the bar goes solid, so it never competes with the
+            hero art underneath. */}
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#FF2D46]/50 to-transparent transition-opacity duration-300 ${
+            heroVisible && !scrolled ? 'opacity-0' : 'opacity-100'
+          }`}
+          aria-hidden
+        />
+        <div className="no-scrollbar mx-auto flex max-w-[1400px] flex-nowrap items-center gap-3 overflow-x-auto px-2.5 py-2.5 sm:gap-5 sm:px-8 sm:py-3">
+          {/* Identity — avatar + username, borderless at rest. The
+              Telegram app-icon button that used to sit here was removed
+              earlier: Telegram already prints "NINTANIME mini app" above,
+              so it was a third piece of branding pushing the person's own
+              name off-screen on narrow phones. */}
           <button
             onClick={onOpenProfile}
             aria-label={t.navAccount}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] py-1 pl-1 pr-2.5 backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.08] sm:gap-2 sm:pr-3"
+            className="flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-1 transition hover:bg-white/[0.04] sm:gap-2"
           >
-            <div
-              className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 sm:h-8 sm:w-8 ${
-                subscribed ? 'ring-[#F5C563]' : 'ring-white/20'
-              }`}
-            >
-              {telegramProfile?.photoUrl ? (
-                <img
-                  src={telegramProfile.photoUrl}
-                  alt=""
-                  draggable={false}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <img
-                  src="/assets/images/icon-192.png"
-                  alt=""
-                  draggable={false}
-                  className="h-full w-full object-cover"
+            <div className={`relative h-7 w-7 shrink-0 rounded-full sm:h-8 sm:w-8 ${subscribed ? 'shadow-glow-gold' : ''}`}>
+              <div
+                className={`flex h-full w-full items-center justify-center overflow-hidden rounded-full ring-2 ${
+                  subscribed ? 'ring-[#F5C563]' : 'ring-white/20'
+                }`}
+              >
+                {telegramProfile?.photoUrl ? (
+                  <img
+                    src={telegramProfile.photoUrl}
+                    alt=""
+                    draggable={false}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <img
+                    src="/assets/images/icon-192.png"
+                    alt=""
+                    draggable={false}
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </div>
+              {subscribed && (
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#07080C]">
+                  <Crown className="h-2 w-2 text-black" />
+                </span>
+              )}
+              {rewardsAvailable === 'spin-ready' && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B7C] ring-2 ring-[#07080C]"
+                  aria-hidden
                 />
               )}
             </div>
-            {/* Shown on every screen size — this was `hidden sm:inline`,
-                which meant the one place the app addresses the viewer by
-                name was invisible on the phones nearly everyone uses it
-                on. A tighter cap on the smallest phones keeps a long
-                Telegram @username from ever pushing the live-count pill
-                or the VIP badge off the edge of the screen. Falls back to
-                the real name when Telegram has no @username set, so the
-                slot is never silently empty. */}
             {(telegramProfile?.username || telegramProfile?.fullName) && (
               <span className="max-w-[64px] truncate text-xs font-bold text-white xs:max-w-[92px] sm:max-w-[130px]">
                 {telegramProfile.username ? `@${telegramProfile.username}` : telegramProfile.fullName}
@@ -397,25 +422,28 @@ export default function HomeScreen({
           </button>
 
           {/* Live "watching now" count — a real Realtime Presence tally
-              (see src/lib/presence.ts), not a randomized/fake number. The
-              "watching now" label itself only ever renders from `md:`
-              (≥768px) up — comfortably past every phone's CSS viewport
-              width, even the largest — so on a real phone this pill is
-              always just the pulsing dot and the number, never full
-              English/Khmer text spilling across the row. */}
-          <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 backdrop-blur-sm sm:gap-1.5 sm:px-2.5">
+              (see src/lib/presence.ts), sitting inline now with no border
+              of its own. Dot + number always show; the "watching now"
+              label only renders from `md:` up, past every phone's CSS
+              viewport width. */}
+          <div className="flex shrink-0 items-center gap-1.5">
             <span className="relative flex h-1.5 w-1.5 shrink-0">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF2D46]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FF2D46]" />
             </span>
-            <span className="text-xs font-bold text-white">{watchingNow.toLocaleString()}</span>
-            <span className="hidden text-[10px] text-[#A6ADBD] md:inline md:text-xs">{t.watchingNow ?? 'watching now'}</span>
+            <span className="font-display text-xs font-bold text-white sm:text-sm">{watchingNow.toLocaleString()}</span>
+            <span className="whitespace-nowrap text-[10px] text-[#A6ADBD] sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
           </div>
+
+          {/* Divider — marks where "browse" ends and personal/account
+              utility begins. One hairline does this instead of boxing
+              every control that follows it. */}
+          <span className="hidden h-5 w-px shrink-0 bg-white/10 sm:block" aria-hidden />
 
           {/* Nav links — scrolls horizontally instead of wrapping/breaking
               on the narrowest phones, but fits on one line on anything
               typical. */}
-          <nav className="no-scrollbar hidden min-w-0 flex-1 items-center gap-2.5 overflow-x-auto sm:flex sm:gap-5">
+          <nav className="no-scrollbar hidden min-w-0 flex-1 items-center gap-5 overflow-x-auto sm:flex">
             <NavLink
               label={t.navHome}
               active={!viewAll && !query.trim()}
@@ -459,7 +487,7 @@ export default function HomeScreen({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.searchPlaceholder}
-              className="w-48 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-64 focus:border-[#FF2D46]/50 focus:bg-white/[0.07]"
+              className="w-44 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#FF2D46]/50 focus:bg-white/[0.07]"
             />
           </div>
 
@@ -469,11 +497,16 @@ export default function HomeScreen({
           <NotificationBell title={t.notifications ?? 'Notifications'} emptyLabel={t.noNotifications ?? ''} />
           <button
             onClick={onOpenSubscription}
-            className="flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(245,197,99,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs"
-            style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
+            aria-label={t.premium}
+            className={
+              subscribed
+                ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#F5C563] transition hover:bg-[#F5C563]/10'
+                : 'flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(245,197,99,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs'
+            }
+            style={subscribed ? undefined : { background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
           >
-            <Crown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-            {subscribed ? t.premium : (t.vipBadge ?? 'VIP')}
+            <Crown className={subscribed ? 'h-4 w-4' : 'h-3 w-3 sm:h-3.5 sm:w-3.5'} />
+            {!subscribed && (t.vipBadge ?? 'VIP')}
           </button>
         </div>
       </header>
@@ -601,7 +634,12 @@ export default function HomeScreen({
             )}
             <RailRow
               episodeNumbers={episodeNumbers}
-              icon={<Sparkles className="h-5 w-5 text-[#FF2D46]" />}
+              icon={
+                <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center text-[#FF2D46]">
+                  <ClapperIcon className="h-5 w-5" />
+                  <span className="absolute -right-1 -top-1 h-2 w-2 animate-badge-pop rounded-full bg-[#FF2D46] ring-2 ring-[#07080C]" aria-hidden />
+                </span>
+              }
               title={t.newRelease}
               shows={newReleases}
               onSelectShow={onSelectShow}
@@ -1221,15 +1259,15 @@ function NavLink({ label, active, onClick }: NavLinkProps) {
   return (
     <button
       onClick={onClick}
-      className={`relative shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-[11px] font-semibold transition sm:text-sm ${
+      className={`relative shrink-0 whitespace-nowrap px-0.5 pb-2 pt-1 text-[11px] transition sm:text-sm ${
         active
-          ? 'bg-white/[0.06] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
-          : 'text-white/55 hover:bg-white/[0.04] hover:text-white/85'
+          ? 'font-display font-bold tracking-wide text-white'
+          : 'font-semibold text-white/50 hover:text-white/80'
       }`}
     >
       {label}
       {active && (
-        <span className="absolute bottom-0.5 left-1/2 h-[3px] w-5 -translate-x-1/2 rounded-full bg-gradient-to-r from-[#FF6B7C] to-[#FF2D46] shadow-[0_0_10px_rgba(255,45,70,0.8)]" />
+        <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#FF6B7C] to-[#FF2D46] shadow-[0_0_10px_rgba(255,45,70,0.8)]" />
       )}
     </button>
   );
