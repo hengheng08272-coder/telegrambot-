@@ -154,3 +154,14 @@ buttons, live dots, spinners, and the player's centre play button.
 | Live / trending | `#4C6FFF` | Cool cue that never competes with the scarlet |
 | Free | `#2FD98C` | Reads as "open" without looking like a system success toast |
 | Text | white → `#B9BFCC` → `#8B92A3` | Three steps is enough; more turns muddy on black |
+
+## 8. Poster badge: EP instead of views
+
+Cards now advertise the newest episode (`EP 12`) rather than a view count.
+A returning viewer scans a rail to answer "is there a new episode?", which
+a play count never answered. `fetchShowEpisodeInfo()` replaces
+`fetchLatestEpisodeDates()` — the same single query now returns both the
+latest air date and the highest episode number per show, so this costs no
+extra round trip. Movies and shows with no episodes get no badge; the view
+count still appears on the show detail screen, where it reads as a stat
+rather than a label.

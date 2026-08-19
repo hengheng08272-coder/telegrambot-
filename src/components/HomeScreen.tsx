@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   Star,
   ChevronLeft,
@@ -21,7 +21,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
-import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchLatestEpisodeDates } from '@/lib/api';
+import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, type ShowEpisodeInfo } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
@@ -126,7 +126,7 @@ export default function HomeScreen({
   const [interacting, setInteracting] = useState(false);
   const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
   const [tickerMessage, setTickerMessage] = useState<string | undefined>(undefined);
-  const [latestEpisodeDates, setLatestEpisodeDates] = useState<Record<string, string>>({});
+  const [episodeInfo, setEpisodeInfo] = useState<Record<string, ShowEpisodeInfo>>({});
 
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -170,8 +170,8 @@ export default function HomeScreen({
         setBannerShows(top10);
         setShows(s);
         setGenres(g);
-        fetchLatestEpisodeDates().then((dates) => {
-          if (active) setLatestEpisodeDates(dates);
+        fetchShowEpisodeInfo().then((info) => {
+          if (active) setEpisodeInfo(info);
         });
       } catch (e: unknown) {
         if (!active) return;
@@ -194,6 +194,13 @@ export default function HomeScreen({
       active = false;
     };
   }, []);
+
+  // show id -> highest published episode number, for the cards' EP badge.
+  const episodeNumbers = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const [id, info] of Object.entries(episodeInfo)) map[id] = info.latestEpisode;
+    return map;
+  }, [episodeInfo]);
 
   const wrap = useCallback(
     (i: number) => (bannerShows.length + i) % bannerShows.length,
@@ -520,7 +527,7 @@ export default function HomeScreen({
             </div>
             <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
               {viewAll.shows.map((s) => (
-                <ShowCard key={s.id} show={s} onClick={onSelectShow} />
+                <ShowCard key={s.id} show={s} onClick={onSelectShow} latestEpisode={episodeNumbers[s.id]} />
               ))}
             </div>
           </section>
@@ -535,7 +542,7 @@ export default function HomeScreen({
             ) : (
               <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
                 {filteredShows.map((s) => (
-                  <ShowCard key={s.id} show={s} onClick={onSelectShow} />
+                  <ShowCard key={s.id} show={s} onClick={onSelectShow} latestEpisode={episodeNumbers[s.id]} />
                 ))}
               </div>
             )}
@@ -559,6 +566,7 @@ export default function HomeScreen({
             )}
             {comingSoon.length > 0 && (
               <RailRow
+                episodeNumbers={episodeNumbers}
                 icon={<Clock className="h-5 w-5 text-[#FF6B7C]" />}
                 title={t.comingSoonLabel}
                 shows={comingSoon}
@@ -570,6 +578,7 @@ export default function HomeScreen({
             )}
             {freeShows.length > 0 && (
               <RailRow
+                episodeNumbers={episodeNumbers}
                 icon={<Gift className="h-5 w-5 text-[#2FD98C]" />}
                 title={t.freeRowLabel ?? 'Free to Watch'}
                 shows={freeShows}
@@ -580,6 +589,7 @@ export default function HomeScreen({
               />
             )}
             <RailRow
+              episodeNumbers={episodeNumbers}
               icon={<Sparkles className="h-5 w-5 text-[#FF2D46]" />}
               title={t.newRelease}
               shows={newReleases}
@@ -589,6 +599,7 @@ export default function HomeScreen({
               tag={{ label: t.newTag ?? 'NEW', color: '#EDEDF0' }}
             />
             <RailRow
+              episodeNumbers={episodeNumbers}
               icon={<Flame className="h-5 w-5 text-[#FF2D46]" />}
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
@@ -604,6 +615,7 @@ export default function HomeScreen({
               return (
                 <RailRow
                   key={g.id}
+                  episodeNumbers={episodeNumbers}
                   emoji={genreEmoji(g.slug)}
                   title={g.name}
                   shows={list}
@@ -1222,6 +1234,8 @@ interface RailRowProps {
   emoji?: string;
   shows: Show[];
   onSelectShow: (s: Show) => void;
+  /** show id -> newest episode number, for each card's EP badge. */
+  episodeNumbers?: Record<string, number>;
   onViewAll?: () => void;
   viewAllLabel?: string;
   /** When true, stamps each card with its 1-based position as a big
@@ -1236,7 +1250,7 @@ interface RailRowProps {
   tag?: { label: string; color: string };
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLabel, ranked, tag }: RailRowProps) {
+function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
@@ -1309,7 +1323,13 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         className={`no-scrollbar flex overflow-x-auto pb-3 ${ranked ? 'gap-5 px-3 pt-4' : 'gap-3'}`}
       >
         {shows.map((s, i) => (
-          <ShowCard key={s.id} show={s} onClick={onSelectShow} rank={ranked ? i + 1 : undefined} />
+          <ShowCard
+            key={s.id}
+            show={s}
+            onClick={onSelectShow}
+            latestEpisode={episodeNumbers?.[s.id]}
+            rank={ranked ? i + 1 : undefined}
+          />
         ))}
       </div>
     </section>

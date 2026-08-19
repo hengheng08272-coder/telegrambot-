@@ -94,17 +94,31 @@ export async function fetchGenres(): Promise<Genre[]> {
 // rail (shows that have genuinely posted a new episode recently) rather
 // than reusing the show's own created_at, which only reflects when the
 // show entry itself was added, not whether it's still actively updating.
-export async function fetchLatestEpisodeDates(): Promise<Record<string, string>> {
+export interface ShowEpisodeInfo {
+  /** When the newest episode was added — "is this show still running". */
+  latestAt: string;
+  /** Highest episode number published, i.e. what a card should advertise. */
+  latestEpisode: number;
+}
+
+export async function fetchShowEpisodeInfo(): Promise<Record<string, ShowEpisodeInfo>> {
   const { data, error } = await supabase
     .from('episodes')
-    .select('show_id, created_at')
+    .select('show_id, created_at, episode_number')
     .order('created_at', { ascending: false });
   if (error) return {};
-  const latest: Record<string, string> = {};
+  const info: Record<string, ShowEpisodeInfo> = {};
   for (const ep of data ?? []) {
-    if (!latest[ep.show_id]) latest[ep.show_id] = ep.created_at;
+    const current = info[ep.show_id];
+    if (!current) {
+      // Rows arrive newest-first, so the first one seen for a show is its
+      // latest air date.
+      info[ep.show_id] = { latestAt: ep.created_at, latestEpisode: ep.episode_number ?? 0 };
+    } else if ((ep.episode_number ?? 0) > current.latestEpisode) {
+      current.latestEpisode = ep.episode_number ?? 0;
+    }
   }
-  return latest;
+  return info;
 }
 
 export async function fetchShowById(id: string): Promise<ShowWithGenres | null> {

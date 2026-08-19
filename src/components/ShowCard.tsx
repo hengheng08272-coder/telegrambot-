@@ -1,13 +1,16 @@
 import { useRef, useState } from 'react';
-import { Eye, Play, Clock } from 'lucide-react';
+import { Play, Clock } from 'lucide-react';
 import type { Show } from '@/lib/types';
-import { fmtViews } from '@/lib/format';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 
 interface ShowCardProps {
   show: Show;
   onClick: (show: Show) => void;
+  /** Highest published episode number, shown as an "EP n" corner badge —
+   *  the thing a returning viewer actually scans a rail for. Omitted for
+   *  movies and for shows with no episodes yet, which get no badge. */
+  latestEpisode?: number;
   /** 1-based rank — when set, renders a big stroked numeral behind the
    *  bottom-left corner of the poster, Top-10-rail style. */
   rank?: number;
@@ -16,7 +19,7 @@ interface ShowCardProps {
   large?: boolean;
 }
 
-export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) {
+export default function ShowCard({ show, onClick, latestEpisode, rank, large }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
   const { lang } = useLang();
@@ -116,14 +119,15 @@ export default function ShowCard({ show, onClick, rank, large }: ShowCardProps) 
           {/* View-count badge — real play counts (see increment_show_view_count),
               not an admin-typed rating, so this is what actually drives
               Top 10 and shows the owner which titles viewers watch most. */}
-          <div
-            className={`absolute left-1.5 z-[2] flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold text-white/85 backdrop-blur-md sm:text-[10px] ${
-              rank ? 'bottom-9' : 'bottom-1.5'
-            }`}
-          >
-            <Eye className="h-2.5 w-2.5" />
-            {fmtViews(show.view_count)}
-          </div>
+          {show.type !== 'movie' && !!latestEpisode && (
+            <div
+              className={`absolute left-1.5 z-[2] rounded-md border border-white/10 bg-black/65 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white backdrop-blur-md sm:text-[10px] ${
+                rank ? 'bottom-9' : 'bottom-1.5'
+              }`}
+            >
+              EP {latestEpisode}
+            </div>
+          )}
           {/* Coming Soon marker — announced/promoted but no episodes yet
               (admin toggle). Icon-only since the row header above already
               says "Coming Soon" in words. */}
