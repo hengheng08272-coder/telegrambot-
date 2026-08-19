@@ -176,7 +176,7 @@ export default function ShowDetailScreen({
                 className={`rounded px-2 py-0.5 text-xs font-semibold ${
                   show.status === 'ongoing'
                     ? 'bg-[#F5C563]/15 text-[#F5C563]'
-                    : 'bg-white/10 text-white/60'
+                    : 'bg-white/10 text-[#B9BFCC]'
                 }`}
               >
                 {show.status === 'ongoing' ? t.ongoing : t.completed}
@@ -199,7 +199,7 @@ export default function ShowDetailScreen({
 
             {/* Studio */}
             {show.studio && (
-              <p className="mt-5 flex items-center gap-2 text-sm text-white/50">
+              <p className="mt-5 flex items-center gap-2 text-sm text-[#A6ADBD]">
                 <Building2 className="h-4 w-4" /> {t.studio} {show.studio}
               </p>
             )}
@@ -212,7 +212,7 @@ export default function ShowDetailScreen({
                 }}
                 disabled={show.coming_soon}
                 className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition active:scale-95 ${
-                  show.coming_soon ? 'cursor-not-allowed bg-white/10 text-white/50' : 'btn-primary'
+                  show.coming_soon ? 'cursor-not-allowed bg-white/10 text-[#A6ADBD]' : 'btn-primary'
                 }`}
               >
                 <Play className="h-5 w-5 fill-current" />
@@ -243,7 +243,7 @@ export default function ShowDetailScreen({
             ) : error ? (
               <p className="text-sm text-[#FF4D5E]">{error}</p>
             ) : episodes.length === 0 ? (
-              <p className="text-sm text-white/40">
+              <p className="text-sm text-[#8B92A3]">
                 {show.coming_soon ? `🎬 ${t.comingSoonLabel}` : t.noEpisodes}
               </p>
             ) : (
@@ -294,11 +294,11 @@ export default function ShowDetailScreen({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white/50">
+                        <span className="text-sm font-bold text-[#A6ADBD]">
                           {t.epShort} {ep.episode_number}
                         </span>
                         {ep.duration && (
-                          <span className="flex items-center gap-1 text-xs text-white/40">
+                          <span className="flex items-center gap-1 text-xs text-[#8B92A3]">
                             <Clock className="h-3 w-3" /> {fmtDuration(ep.duration)}
                           </span>
                         )}
@@ -314,11 +314,11 @@ export default function ShowDetailScreen({
                       <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#FF6B7C]">
                         {ep.title}
                       </h3>
-                      <p className="mt-1 line-clamp-1 text-sm text-white/50">
+                      <p className="mt-1 line-clamp-1 text-sm text-[#A6ADBD]">
                         {locked ? t.lockedUnlockHint : ep.description}
                       </p>
                     </div>
-                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-white/30 transition group-hover:text-[#FF2D46] sm:block" />
+                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-[#6E7586] transition group-hover:text-[#FF2D46] sm:block" />
                   </button>
                   );
                 })}

@@ -129,3 +129,28 @@ capsule-shaped buttons became soft squares:
 
 Genuinely circular things keep their shape: avatars, icon-only round
 buttons, live dots, spinners, and the player's centre play button.
+
+## 7. Black-page polish
+
+- The brand logo watermark behind the hero is gone — it was the last image
+  sitting behind content, and on a flat black page it read as a smudge.
+- Rails are separated by a hairline that fades out to the right, and each
+  row title carries a small accent bar in that row's colour. On black,
+  boxes would add visual weight; a hairline gives the same rhythm for free.
+- The header takes a bottom hairline once it goes opaque, so it has an edge
+  instead of floating.
+- Secondary text moved off `text-white/NN` (a flat mid-grey on black) onto a
+  slightly cool grey ramp: `#B9BFCC` / `#A6ADBD` / `#8B92A3` / `#6E7586`.
+- Poster tiles carry a 9%-white ring so artwork separates from the page.
+
+### Palette rationale on a black base
+
+| Role | Colour | Why |
+| --- | --- | --- |
+| Page | `#050609` | Near-black, a touch of blue so it isn't a dead flat void |
+| Card | `#0C0E14` + 6% white hairline | Reads as raised without becoming a grey box |
+| Primary action | `#FF2D46` | One loud colour only — CTAs, active tab, play |
+| VIP | `#F5C563` | Warm gold, reserved strictly for paid/premium |
+| Live / trending | `#4C6FFF` | Cool cue that never competes with the scarlet |
+| Free | `#2FD98C` | Reads as "open" without looking like a system success toast |
+| Text | white → `#B9BFCC` → `#8B92A3` | Three steps is enough; more turns muddy on black |

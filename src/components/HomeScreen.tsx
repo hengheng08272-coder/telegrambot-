@@ -305,7 +305,7 @@ export default function HomeScreen({
       <div className="flex min-h-screen items-center justify-center bg-app px-6">
         <div className="max-w-md text-center">
           <p className="text-lg font-semibold text-[#FF2D46]">{t.somethingWrong}</p>
-          <p className="mt-2 text-sm text-white/60">{error}</p>
+          <p className="mt-2 text-sm text-[#B9BFCC]">{error}</p>
         </div>
       </div>
     );
@@ -333,7 +333,7 @@ export default function HomeScreen({
           opens the full-screen search overlay below that. */}
       <header
         className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-          heroVisible && !scrolled ? 'bg-transparent' : 'bar-blur'
+          heroVisible && !scrolled ? 'bg-transparent' : 'bar-blur border-b border-white/[0.06]'
         }`}
       >
         <div className="mx-auto flex max-w-[1400px] items-center gap-1.5 px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
@@ -391,7 +391,7 @@ export default function HomeScreen({
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FF2D46]" />
             </span>
             <span className="text-xs font-bold text-white">{watchingNow.toLocaleString()}</span>
-            <span className="hidden text-[10px] text-white/50 sm:inline sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
+            <span className="hidden text-[10px] text-[#A6ADBD] sm:inline sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
           </div>
 
           {/* Nav links — scrolls horizontally instead of wrapping/breaking
@@ -436,7 +436,7 @@ export default function HomeScreen({
             <Search className="h-4 w-4" />
           </button>
           <div className="relative hidden shrink-0 sm:block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B92A3]" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -466,18 +466,6 @@ export default function HomeScreen({
           what made it visually collide with the header controls; being
           in-flow here means it can never land on top of them. */}
       <div className="relative z-10 pt-[52px] sm:pt-[60px]">
-        {/* Logo + wordmark watermark — lives in the normal scrolling flow
-            now (not the fixed background), so it scrolls away with the
-            hero instead of staying pinned over the rows below it once the
-            viewer scrolls down. */}
-        <img
-          src="/assets/images/logo-transparent.png"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-2 z-0 w-[58vw] max-w-[260px] -translate-x-1/2 opacity-[0.22] sm:top-4 sm:max-w-[300px]"
-          draggable={false}
-        />
-
         <SupporterTicker
           trendingTitle={trending[0]?.title}
           trendingPrefix={t.trendingNowPrefix}
@@ -540,10 +528,10 @@ export default function HomeScreen({
           <section className="pt-4">
             <h2 className="mb-5 text-xl font-bold">
               {t.resultsFor} &ldquo;{query}&rdquo;{' '}
-              <span className="text-white/40">({filteredShows.length})</span>
+              <span className="text-[#8B92A3]">({filteredShows.length})</span>
             </h2>
             {filteredShows.length === 0 ? (
-              <p className="py-20 text-center text-white/40">{t.noResults}</p>
+              <p className="py-20 text-center text-[#8B92A3]">{t.noResults}</p>
             ) : (
               <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
                 {filteredShows.map((s) => (
@@ -647,10 +635,10 @@ export default function HomeScreen({
         )}
       </main>
 
-      <footer className="relative z-10 flex flex-col items-center gap-2 border-t border-white/5 px-4 pb-24 pt-8 text-center text-xs text-white/30 sm:px-8 sm:pb-8">
+      <footer className="relative z-10 flex flex-col items-center gap-2 border-t border-white/5 px-4 pb-24 pt-8 text-center text-xs text-[#6E7586] sm:px-8 sm:pb-8">
         <span>{t.footerTagline}</span>
         {onOpenLegal && (
-          <button onClick={onOpenLegal} className="underline decoration-white/20 underline-offset-2 transition hover:text-white/60">
+          <button onClick={onOpenLegal} className="underline decoration-white/20 underline-offset-2 transition hover:text-[#B9BFCC]">
             {t.legalLink ?? 'Terms & Privacy'}
           </button>
         )}
@@ -661,7 +649,7 @@ export default function HomeScreen({
       {searchOpen && (
         <div className="fixed inset-0 z-[60] bg-app md:hidden">
           <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
-            <Search className="h-5 w-5 text-white/40" />
+            <Search className="h-5 w-5 text-[#8B92A3]" />
             <input
               autoFocus
               value={query}
@@ -674,7 +662,7 @@ export default function HomeScreen({
                 setSearchOpen(false);
                 setQuery('');
               }}
-              className="rounded-full p-1.5 text-white/60 transition hover:text-white"
+              className="rounded-full p-1.5 text-[#B9BFCC] transition hover:text-white"
               aria-label="Close search"
             >
               <X className="h-5 w-5" />
@@ -683,7 +671,7 @@ export default function HomeScreen({
           <div className="h-[calc(100%-65px)] overflow-y-auto px-4 py-4">
             {query.trim() ? (
               filteredShows.length === 0 ? (
-                <p className="py-20 text-center text-white/40">{t.noResults}</p>
+                <p className="py-20 text-center text-[#8B92A3]">{t.noResults}</p>
               ) : (
                 <div className="grid grid-cols-3 gap-x-3 gap-y-5">
                   {filteredShows.map((s) => (
@@ -714,7 +702,7 @@ export default function HomeScreen({
             ) : (
               <div className="flex flex-col items-center gap-3 py-20 text-center">
                 <Search className="h-10 w-10 text-white/20" />
-                <p className="text-sm text-white/40">{t.searchHint}</p>
+                <p className="text-sm text-[#8B92A3]">{t.searchHint}</p>
               </div>
             )}
           </div>
@@ -971,7 +959,7 @@ function CoverflowHero({
           </h2>
 
           {heroGenre && (
-            <p className="mt-0.5 truncate text-[11px] font-semibold text-white/50 sm:text-xs">{heroGenre}</p>
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-[#A6ADBD] sm:text-xs">{heroGenre}</p>
           )}
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-white/70 sm:text-xs">
@@ -1185,7 +1173,7 @@ function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
     <button
       onClick={onClick}
       className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 transition ${
-        active ? 'text-[#FF6B7C]' : 'text-white/45 active:text-white/80'
+        active ? 'text-[#FF6B7C]' : 'text-[#9AA1B2] active:text-white/80'
       }`}
     >
       {active && (
@@ -1254,7 +1242,13 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
   }, []);
 
   return (
-    <section className={ranked ? 'relative mt-8 overflow-hidden rounded-xl' : 'mt-8'}>
+    <section className={ranked ? 'relative mt-8 overflow-hidden rounded-xl' : 'mt-9'}>
+      {!ranked && (
+        <div
+          className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
+          aria-hidden
+        />
+      )}
       {ranked ? (
         // Centered, Netflix-style row header — the "View All" link moves
         // to its own row underneath instead of crowding the centered
@@ -1275,7 +1269,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="text-xs font-semibold text-white/50 transition hover:text-[#FF2D46]"
+              className="text-xs font-semibold text-[#A6ADBD] transition hover:text-[#FF2D46]"
             >
               {viewAllLabel}
             </button>
@@ -1283,9 +1277,14 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
         </div>
       ) : (
         <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className="h-4 w-[3px] shrink-0 rounded-sm"
+              style={{ background: tag?.color ?? '#FF2D46' }}
+              aria-hidden
+            />
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-            <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+            <h2 className="truncate text-lg font-bold tracking-tight">{title}</h2>
             {tag && (
               <span
                 className="rounded-md px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
@@ -1298,7 +1297,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, onViewAll, viewAllLa
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="shrink-0 text-xs font-semibold text-white/50 transition hover:text-[#FF2D46]"
+              className="shrink-0 text-xs font-semibold text-[#A6ADBD] transition hover:text-[#FF2D46]"
             >
               {viewAllLabel}
             </button>
