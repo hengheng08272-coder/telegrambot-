@@ -8,8 +8,6 @@ import {
   VolumeX,
   Lock,
   Unlock,
-  SkipBack,
-  SkipForward,
   Loader2,
   RotateCcw,
   RotateCw,
@@ -17,6 +15,11 @@ import {
   X,
   ListVideo,
   Check,
+  Maximize,
+  Minimize,
+  Gauge,
+  Crop,
+  AlertTriangle,
 } from 'lucide-react';
 import type { Episode, ShowWithGenres } from '@/lib/types';
 import { fetchEpisodesByShow } from '@/lib/api';
@@ -37,16 +40,42 @@ interface VideoPlayerScreenProps {
 }
 
 const RESUME_KEY = (episodeId: string) => `nint_resume_${episodeId}`;
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 function fmtTime(sec: number) {
   if (!isFinite(sec) || sec < 0) return '0:00';
-  const m = Math.floor(sec / 60);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
   const s = Math.floor(sec % 60);
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 function isHls(url: string) {
   return /\.m3u8(\?|$)/i.test(url);
+}
+
+/* Vendor-prefixed halves of the Fullscreen API. Safari (desktop, and on
+   iOS the <video> element only) still ships the webkit spelling, which the
+   standard DOM typings don't know about — these narrow types keep the
+   fallbacks type-safe instead of casting to `any` at every call site. */
+type FsElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+  /** iOS Safari: the only fullscreen it allows, and only on <video>. */
+  webkitEnterFullscreen?: () => void;
+};
+type FsDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+};
+type OrientationLock = ScreenOrientation & {
+  lock?: (orientation: string) => Promise<void>;
+  unlock?: () => void;
+};
+
+function nativeFullscreenElement(): Element | null {
+  const d = document as FsDocument;
+  return document.fullscreenElement ?? d.webkitFullscreenElement ?? null;
 }
 
 export default function VideoPlayerScreen({
@@ -65,11 +94,18 @@ export default function VideoPlayerScreen({
   const tapRef = useRef<{ time: number; side: 'left' | 'right' | null }>({ time: 0, side: null });
   const tapTimeoutRef = useRef<number | null>(null);
   const autoAdvanceTimer = useRef<number | null>(null);
+  /* One-shot guard for the "first touch takes you fullscreen" behaviour
+     below, plus a note of whether the viewer left fullscreen deliberately —
+     in which case we never drag them back into it. */
+  const autoFsTriedRef = useRef(false);
+  const userExitedFsRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [buffered, setBuffered] = useState(0);
   const [buffering, setBuffering] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -81,17 +117,105 @@ export default function VideoPlayerScreen({
   const [autoAdvanceIn, setAutoAdvanceIn] = useState<number | null>(null);
   const [episodeListOpen, setEpisodeListOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [speedOpen, setSpeedOpen] = useState(false);
+  const [fillScreen, setFillScreen] = useState(false);
+  const [scrubbing, setScrubbing] = useState(false);
   const currentIdx = allEpisodes.findIndex((e) => e.id === episode.id);
   const nextEpisode = currentIdx >= 0 && currentIdx < allEpisodes.length - 1 ? allEpisodes[currentIdx + 1] : null;
 
-  // Keep isFullscreen (really "locked") in sync with reality — Telegram
-  // can exit its own expanded fullscreen on its own (Android back button,
-  // a swipe gesture), and without this the Lock/Unlock icon would drift
-  // out of sync with what's actually happening.
+  /* ── Fullscreen ──────────────────────────────────────────────────────
+     "Fullscreen" here is three mechanisms applied together, because no
+     single one covers every surface this app runs on:
+       1. Telegram's Mini-App fullscreen (Bot API 8.0+) — the only way out
+          from under Telegram's own header inside the client.
+       2. The browser Fullscreen API on the player container — what a plain
+          mobile/desktop browser tab responds to. iOS Safari refuses it on
+          anything but the <video> element, so that's the fallback there.
+       3. A landscape orientation lock, so a phone held upright still fills
+          the screen with picture instead of a letterboxed strip.
+     Each is wrapped separately: one being unsupported must never stop the
+     others from applying. */
+  const lockLandscape = () => {
+    try {
+      void (screen.orientation as OrientationLock | undefined)?.lock?.('landscape')?.catch?.(() => {});
+    } catch {
+      /* unsupported here (iOS Safari, Telegram WebView) — playback is fine without it */
+    }
+  };
+  const unlockOrientation = () => {
+    try {
+      (screen.orientation as OrientationLock | undefined)?.unlock?.();
+    } catch {
+      /* no-op */
+    }
+  };
+
+  const enterFullscreen = async () => {
+    if (isInTelegram() && hasTelegramFullscreenAPI()) {
+      try {
+        enterTelegramFullscreen();
+      } catch {
+        /* older Telegram client — the browser path below still applies */
+      }
+    }
+    const el = containerRef.current as FsElement | null;
+    try {
+      if (el?.requestFullscreen) {
+        await el.requestFullscreen({ navigationUI: 'hide' });
+      } else if (el?.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen();
+      } else {
+        (videoRef.current as FsElement | null)?.webkitEnterFullscreen?.();
+      }
+    } catch {
+      /* Denied — usually "not called from a user gesture", or a WebView
+         with fullscreen disabled. The Telegram expansion and the landscape
+         lock still give a full-bleed picture, so this is never fatal. */
+    }
+    lockLandscape();
+    setIsFullscreen(true);
+  };
+
+  const leaveFullscreen = async () => {
+    const d = document as FsDocument;
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if (d.webkitFullscreenElement && d.webkitExitFullscreen) {
+        await d.webkitExitFullscreen();
+      }
+    } catch {
+      /* no-op */
+    }
+    if (isInTelegram() && isTelegramFullscreen()) {
+      try {
+        exitTelegramFullscreen();
+      } catch {
+        /* no-op */
+      }
+    }
+    unlockOrientation();
+    setIsFullscreen(false);
+  };
+
+  const toggleFullscreen = () => {
+    if (isFullscreen) {
+      userExitedFsRef.current = true;
+      void leaveFullscreen();
+    } else {
+      userExitedFsRef.current = false;
+      void enterFullscreen();
+    }
+  };
+
+  // Keep isFullscreen in sync with reality — Telegram can collapse its own
+  // fullscreen (Android back button, a swipe) and a browser exits on Esc,
+  // neither of which routes through our button.
   useEffect(() => {
     const syncFullscreen = () => {
-      const nativeFs = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-      setIsFullscreen(nativeFs || isTelegramFullscreen());
+      setIsFullscreen(!!nativeFullscreenElement() || isTelegramFullscreen());
     };
     document.addEventListener('fullscreenchange', syncFullscreen);
     document.addEventListener('webkitfullscreenchange', syncFullscreen);
@@ -104,12 +228,10 @@ export default function VideoPlayerScreen({
     };
   }, []);
 
-  // Auto-expand over Telegram's own header the moment the player opens.
-  // Without this, Telegram's own back pill/menu stays on screen and
-  // visually overlaps our own back button in the top-left corner — the
-  // viewer had to notice and tap the lock button first just to clear it.
-  // The `fullscreenChanged` listener above picks up the resulting state
-  // change and updates the Lock icon, so no extra state juggling here.
+  // Auto-expand over Telegram's own header the moment the player opens, so
+  // Telegram's back pill/menu stops overlapping our own top bar. The
+  // browser Fullscreen API can't be requested here — there's been no user
+  // gesture yet — which is what the first-touch handler below is for.
   useEffect(() => {
     if (isInTelegram() && hasTelegramFullscreenAPI()) {
       try {
@@ -120,13 +242,36 @@ export default function VideoPlayerScreen({
     }
   }, []);
 
-  // If the viewer entered fullscreen (either Telegram's Mini-App-level
-  // fullscreen or the browser's own) from the toggle button, leaving this
-  // screen shouldn't leave the whole app stuck expanded over Telegram's
-  // header, or the browser stuck in fullscreen behind whatever screen
-  // comes next — collapse it all back on unmount. Each call is wrapped
-  // separately so one failing (e.g. exitFullscreen() rejecting because we
-  // were never actually in native fullscreen) never skips the others.
+  // Browsers only grant fullscreen from inside a user gesture, so the
+  // viewer's first touch on the player is what actually takes them there.
+  // It fires once; if they then leave fullscreen on purpose, that's
+  // remembered and we never pull them back in.
+  const maybeAutoFullscreen = () => {
+    if (autoFsTriedRef.current || userExitedFsRef.current) return;
+    autoFsTriedRef.current = true;
+    if (nativeFullscreenElement()) return;
+    void enterFullscreen();
+  };
+
+  // Rotating the phone to landscape while watching is an unambiguous "make
+  // this big" — worth one more fullscreen attempt (some browsers honour it
+  // during the resulting gesture window), and harmless where it's refused.
+  useEffect(() => {
+    const onOrientation = () => {
+      const landscape = window.innerWidth > window.innerHeight;
+      if (landscape && !userExitedFsRef.current && !nativeFullscreenElement()) {
+        void enterFullscreen();
+      }
+    };
+    window.addEventListener('orientationchange', onOrientation);
+    return () => window.removeEventListener('orientationchange', onOrientation);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Leaving this screen must never leave the app stuck expanded over
+  // Telegram's header, the browser stuck in fullscreen behind whatever
+  // screen comes next, or the phone pinned to landscape. Each call is
+  // wrapped separately so one failing never skips the others.
   useEffect(() => {
     return () => {
       try {
@@ -140,7 +285,7 @@ export default function VideoPlayerScreen({
         /* no-op */
       }
       try {
-        (screen as any).orientation?.unlock?.();
+        (screen.orientation as OrientationLock | undefined)?.unlock?.();
       } catch {
         /* no-op */
       }
@@ -253,10 +398,23 @@ export default function VideoPlayerScreen({
     }
   }, [playUrl]);
 
+  // Playback rate and volume live in React state (the controls read them)
+  // but belong to the media element — push them across whenever they
+  // change, including after a source switch resets the element.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v) v.playbackRate = speed;
+  }, [speed, playUrl]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v) v.volume = volume;
+  }, [volume, playUrl]);
+
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) v.play();
+    if (v.paused) void v.play().catch(() => {});
     else v.pause();
   };
 
@@ -267,18 +425,18 @@ export default function VideoPlayerScreen({
     setMuted(v.muted);
   };
 
-  const seek = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const seekTo = (time: number) => {
     const v = videoRef.current;
     if (!v) return;
-    const t = Number(e.target.value);
-    v.currentTime = t;
-    setCurrent(t);
+    const clamped = Math.min(Math.max(time, 0), v.duration || 0);
+    v.currentTime = clamped;
+    setCurrent(clamped);
   };
 
   const skip = (delta: number) => {
     const v = videoRef.current;
     if (!v) return;
-    v.currentTime = Math.min(Math.max(v.currentTime + delta, 0), v.duration || 0);
+    seekTo(v.currentTime + delta);
   };
 
   const handleZoneTap = (side: 'left' | 'right') => {
@@ -319,57 +477,6 @@ export default function VideoPlayerScreen({
     };
   }, [autoAdvanceIn, nextEpisode, onSwitchEpisode]);
 
-  // Best-effort landscape lock — only works while genuinely in fullscreen
-  // on browsers that support the Screen Orientation API (mainly Android
-  // Chrome). iOS Safari and Telegram's own WebView don't support it at
-  // all, so every call is wrapped and failures are silently ignored —
-  // this is a nice-to-have, never something worth crashing the player over.
-  const lockLandscape = () => {
-    try {
-      (screen as any).orientation?.lock?.('landscape')?.catch?.(() => {});
-    } catch {
-      /* not supported here — fine, playback still works in portrait */
-    }
-  };
-  const unlockOrientation = () => {
-    try {
-      (screen as any).orientation?.unlock?.();
-    } catch {
-      /* no-op */
-    }
-  };
-
-  // The screen-rotation lock button. Real cross-browser "fullscreen" (the
-  // Fullscreen API on iOS Safari especially) turned out unreliable — it
-  // would silently half-apply and leave the video rendering smaller than
-  // before instead of bigger. The player is already `fixed inset-0`, so
-  // it already fills the whole viewport (everything JS can control; a
-  // mobile browser's own address bar isn't something a page can hide).
-  // What's actually useful and reliable is locking the screen orientation
-  // to landscape so it doesn't flip back on its own — that's what this
-  // button does now. Inside a real Telegram Mini App we additionally ask
-  // Telegram to expand over its own header (Bot API 8.0+), which is a
-  // separate, reliable mechanism — harmless no-op everywhere else.
-  const toggleLock = () => {
-    try {
-      if (!isFullscreen) {
-        if (isInTelegram() && hasTelegramFullscreenAPI()) {
-          enterTelegramFullscreen();
-        }
-        lockLandscape();
-        setIsFullscreen(true);
-      } else {
-        if (isInTelegram() && isTelegramFullscreen()) {
-          exitTelegramFullscreen();
-        }
-        unlockOrientation();
-        setIsFullscreen(false);
-      }
-    } catch {
-      // Never let an orientation-lock quirk crash the player screen.
-    }
-  };
-
   // Unified handler for every "back" affordance in this screen (the
   // top-left arrow, and the error-state buttons). If we're in fullscreen,
   // the first press only backs out of fullscreen — matching what phones
@@ -378,16 +485,9 @@ export default function VideoPlayerScreen({
   // tear the video element out of the DOM while it's still the
   // fullscreen element, which is what left the player in a broken state.
   const handleBackPress = () => {
-    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
-      (document.exitFullscreen?.() ?? Promise.resolve()).catch(() => {});
-      unlockOrientation();
-      setIsFullscreen(false);
-      return;
-    }
-    if (isInTelegram() && isTelegramFullscreen()) {
-      exitTelegramFullscreen();
-      unlockOrientation();
-      setIsFullscreen(false);
+    if (nativeFullscreenElement() || (isInTelegram() && isTelegramFullscreen())) {
+      userExitedFsRef.current = true;
+      void leaveFullscreen();
       return;
     }
     if (!isInTelegram()) {
@@ -405,7 +505,7 @@ export default function VideoPlayerScreen({
   const revealControls = () => {
     setShowControls(true);
     if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    hideTimer.current = window.setTimeout(() => setShowControls(false), 3000);
+    hideTimer.current = window.setTimeout(() => setShowControls(false), 3400);
   };
 
   useEffect(() => {
@@ -414,6 +514,63 @@ export default function VideoPlayerScreen({
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
     };
   }, []);
+
+  // Anything open on top of the video (episode list, speed menu), or a
+  // paused/scrubbing player, keeps the chrome pinned — hiding controls out
+  // from under an open menu is the classic way to strand someone.
+  const chromeHidden = !showControls && playing && !episodeListOpen && !speedOpen && !scrubbing;
+
+  // Desktop keyboard shortcuts — the usual video-player set. Suspended
+  // while the controls are locked (except the unlock key itself), and
+  // skipped whenever a text field has focus so typing never seeks.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      const key = e.key.toLowerCase();
+      if (locked && key !== 'l') return;
+      switch (key) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          togglePlay();
+          revealControls();
+          break;
+        case 'arrowleft':
+          skip(-10);
+          revealControls();
+          break;
+        case 'arrowright':
+          skip(10);
+          revealControls();
+          break;
+        case 'arrowup':
+          setVolume((v) => Math.min(1, v + 0.1));
+          revealControls();
+          break;
+        case 'arrowdown':
+          setVolume((v) => Math.max(0, v - 0.1));
+          revealControls();
+          break;
+        case 'm':
+          toggleMute();
+          revealControls();
+          break;
+        case 'f':
+          toggleFullscreen();
+          break;
+        case 'l':
+          setLocked((l) => !l);
+          revealControls();
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked, isFullscreen]);
 
   // Outside Telegram (a plain mobile browser tab), there's no app-level
   // BackButton — so without this, a phone's swipe-back gesture or its
@@ -442,19 +599,26 @@ export default function VideoPlayerScreen({
   }, []);
 
   const progress = duration > 0 ? (current / duration) * 100 : 0;
+  const bufferedPct = duration > 0 ? Math.min(100, (buffered / duration) * 100) : 0;
+  const episodeTitle =
+    show.type === 'movie' ? show.title : `${t.episodeLabel} ${episode.episode_number}: ${episode.title}`;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black">
+    <div
+      className="player-root player-immersive"
+      data-hidden={chromeHidden}
+      onPointerDown={maybeAutoFullscreen}
+    >
       <div
         ref={containerRef}
-        className="relative h-full w-full"
+        className="player-stage relative h-full w-full"
         onMouseMove={revealControls}
         onClick={revealControls}
         onContextMenu={(e) => e.preventDefault()}
       >
         <video
           ref={videoRef}
-          className="h-full w-full object-contain"
+          className={`h-full w-full ${fillScreen ? 'object-cover' : 'object-contain'}`}
           autoPlay
           playsInline
           controlsList="nodownload noremoteplayback noplaybackrate"
@@ -464,9 +628,23 @@ export default function VideoPlayerScreen({
           onDragStart={(e) => e.preventDefault()}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
+          onVolumeChange={(e) => setMuted(e.currentTarget.muted)}
+          onProgress={(e) => {
+            // How far ahead of the playhead the network has actually
+            // buffered — drawn behind the played range so a stall reads as
+            // "still loading" instead of "the app froze".
+            const v = e.currentTarget;
+            const ranges = v.buffered;
+            for (let i = 0; i < ranges.length; i += 1) {
+              if (ranges.start(i) <= v.currentTime && ranges.end(i) >= v.currentTime) {
+                setBuffered(ranges.end(i));
+                break;
+              }
+            }
+          }}
           onTimeUpdate={(e) => {
             const time = e.currentTarget.currentTime;
-            setCurrent(time);
+            if (!scrubbing) setCurrent(time);
             // Save resume position at most once a second — cheap enough
             // that this never needs to be throttled harder than that.
             const now = Date.now();
@@ -483,6 +661,7 @@ export default function VideoPlayerScreen({
           }}
           onLoadedMetadata={(e) => {
             setDuration(e.currentTarget.duration);
+            e.currentTarget.playbackRate = speed;
             const saved = localStorage.getItem(RESUME_KEY(episode.id));
             const savedTime = saved ? Number(saved) : 0;
             if (savedTime > 5 && savedTime < e.currentTarget.duration - 8) {
@@ -503,19 +682,13 @@ export default function VideoPlayerScreen({
         {/* Double-tap left/right to skip ±10s, single tap to toggle play —
             plain onClick can't tell those apart on mobile, so this tracks
             tap timing/side by hand. Sits above the video but below the
-            paused-state center button and the top/bottom control bars. */}
-        {!resolving && !accessError && !loadError && (
+            paused-state center button and the top/bottom control bars.
+            Gone while the screen is locked, which is the entire point of
+            the lock: a resting palm can't seek or pause anything. */}
+        {!resolving && !accessError && !loadError && !locked && (
           <div className="absolute inset-0 z-[5] flex">
-            <div
-              className="h-full w-1/2"
-              onClick={() => handleZoneTap('left')}
-              aria-hidden
-            />
-            <div
-              className="h-full w-1/2"
-              onClick={() => handleZoneTap('right')}
-              aria-hidden
-            />
+            <div className="h-full w-1/2" onClick={() => handleZoneTap('left')} aria-hidden />
+            <div className="h-full w-1/2" onClick={() => handleZoneTap('right')} aria-hidden />
           </div>
         )}
 
@@ -523,8 +696,8 @@ export default function VideoPlayerScreen({
         {seekFlash && (
           <div
             key={seekFlash.key}
-            className={`pointer-events-none absolute top-1/2 z-[6] flex -translate-y-1/2 items-center gap-1 rounded-full bg-black/50 px-4 py-3 text-white seek-flash-pop ${
-              seekFlash.side === 'left' ? 'left-[12%]' : 'right-[12%]'
+            className={`pointer-events-none absolute top-1/2 z-[6] flex -translate-y-1/2 items-center gap-1.5 rounded-xl border border-white/15 bg-black/55 px-5 py-3.5 text-white backdrop-blur-md seek-flash-pop ${
+              seekFlash.side === 'left' ? 'left-[10%]' : 'right-[10%]'
             }`}
           >
             {seekFlash.side === 'left' ? (
@@ -539,17 +712,18 @@ export default function VideoPlayerScreen({
         {/* Resolving playback URL */}
         {resolving && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black">
-            <Loader2 className="h-8 w-8 animate-spin text-[#E6231F]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#FF2D46]" />
           </div>
         )}
 
         {/* Access denied (not subscribed, etc.) */}
         {!resolving && accessError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black text-center">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center">
+            <AlertTriangle className="h-8 w-8 text-[#FFC24D]" />
             <p className="max-w-xs text-sm font-semibold text-white">{accessError}</p>
             <button
               onClick={handleBackPress}
-              className="mt-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              className="mt-2 rounded-xl border border-white/15 bg-white/10 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               {t.goBack}
             </button>
@@ -559,91 +733,121 @@ export default function VideoPlayerScreen({
         {/* Buffering spinner */}
         {buffering && !loadError && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/20 border-t-[#E6231F]" />
+            <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#FF2D46]" />
           </div>
         )}
 
         {/* Load error */}
         {loadError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-            <Loader2 className="h-8 w-8 text-[#E6231F]" />
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/80 px-6 text-center backdrop-blur-sm">
+            <AlertTriangle className="h-9 w-9 text-[#FF6B7C]" />
             <p className="text-sm font-semibold text-white">{t.unableToLoadVideo}</p>
-            <p className="max-w-xs text-xs text-white/50">
-              {t.videoMissingHint}
-            </p>
+            <p className="max-w-xs text-xs text-white/50">{t.videoMissingHint}</p>
             <button
               onClick={handleBackPress}
-              className="mt-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              className="mt-2 rounded-xl border border-white/15 bg-white/10 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
               {t.goBack}
             </button>
           </div>
         )}
 
-        {/* Top gradient + back — the on-screen back pill only renders
-            outside Telegram now (plain browser testing); inside Telegram,
-            the native BackButton (registered in App.tsx) already handles
-            back navigation, and showing both was what caused the visual
-            overlap with Telegram's own back pill. */}
-        <div
-          className={`absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4 transition-opacity duration-300 sm:p-6 ${
-            showControls ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          {!isInTelegram() && (
-            <button
-              onClick={handleBackPress}
-              className="flex items-center gap-2 rounded-full bg-black/40 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition hover:bg-black/60"
-            >
-              <ArrowLeft className="h-4 w-4" /> {t.back}
-            </button>
-          )}
-        </div>
+        {/* ── Locked state ────────────────────────────────────────────
+            One button, nothing else: every other control and the tap zones
+            are gone, so a thumb resting on the phone during a long episode
+            can't pause or seek by accident. */}
+        {locked && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLocked(false);
+              revealControls();
+            }}
+            className="player-btn absolute right-4 top-1/2 z-30 h-12 w-12 -translate-y-1/2"
+            aria-label={t.unlockScreen}
+            title={t.screenLockedHint}
+          >
+            <Lock className="h-5 w-5" />
+          </button>
+        )}
 
-        {/* Title overlay */}
+        {/* ── Top bar: back, title, lock ─────────────────────────────── */}
         <div
-          className={`absolute left-4 top-16 z-10 max-w-lg transition-opacity duration-300 sm:left-6 ${
-            showControls ? 'opacity-100' : 'opacity-0'
+          className={`player-chrome player-safe-x absolute inset-x-0 top-0 z-10 player-scrim-top pb-10 pt-[max(env(safe-area-inset-top,0px),14px)] ${
+            locked ? 'pointer-events-none opacity-0' : ''
           }`}
+          data-hidden={chromeHidden}
         >
-          <p className="text-xs font-medium uppercase tracking-wider text-[#E6231F]">
-            {show.title}
-          </p>
-          <h2 className="mt-1 text-xl font-bold text-white">
-            {show.type === 'movie' ? show.title : `${t.episodeLabel} ${episode.episode_number}: ${episode.title}`}
-          </h2>
+          <div className="flex items-start gap-3">
+            {/* The on-screen back pill only renders outside Telegram;
+                inside Telegram the native BackButton (registered in
+                App.tsx) already handles back navigation, and showing both
+                is what used to overlap Telegram's own back pill. */}
+            {!isInTelegram() && (
+              <button
+                onClick={handleBackPress}
+                className="player-btn h-10 shrink-0 gap-2 px-4 text-sm font-medium"
+                aria-label={t.back}
+              >
+                <ArrowLeft className="h-4 w-4" /> {t.back}
+              </button>
+            )}
+            <div className="min-w-0 flex-1 pt-0.5">
+              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[#FF6B7C]">
+                {show.title}
+              </p>
+              <h2 className="truncate text-base font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] sm:text-xl">
+                {episodeTitle}
+              </h2>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLocked(true);
+                setSpeedOpen(false);
+              }}
+              className="player-btn h-10 w-10 shrink-0"
+              aria-label={t.lockScreen}
+              title={t.lockScreen}
+            >
+              <Unlock className="h-[18px] w-[18px]" />
+            </button>
+          </div>
         </div>
 
         {/* Center play/pause when paused */}
-        {!playing && !buffering && !loadError && (
+        {!playing && !buffering && !loadError && !accessError && !locked && (
           <button
             onClick={togglePlay}
             className="absolute inset-0 z-10 flex items-center justify-center"
             aria-label="Play"
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#E6231F]/90 shadow-[0_0_40px_rgba(230,35,31,0.5)] transition hover:scale-110">
-              <Play className="h-9 w-9 fill-white text-white" />
+            <div className="player-center-btn flex h-20 w-20 items-center justify-center rounded-full transition hover:scale-105">
+              <Play className="ml-1 h-9 w-9 fill-white text-white" />
             </div>
           </button>
         )}
 
-        {/* Bottom controls */}
+        {/* ── Bottom control bar ─────────────────────────────────────── */}
         <div
-          className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 to-transparent px-4 pb-4 pt-12 transition-opacity duration-300 sm:px-6 sm:pb-6 ${
-            showControls ? 'opacity-100' : 'opacity-0'
+          className={`player-chrome player-safe-x absolute inset-x-0 bottom-0 z-10 player-scrim-bottom pb-[max(env(safe-area-inset-bottom,0px),14px)] pt-16 ${
+            locked ? 'pointer-events-none opacity-0' : ''
           }`}
+          data-hidden={chromeHidden}
         >
-          {/* Seek bar */}
-          <div className="mb-3 flex items-center gap-3">
-            <span className="w-12 text-right font-mono text-xs text-white/70">
+          {/* Seek bar — the track thickens and grows a knob while it's
+              being dragged, and carries the buffered range behind the
+              played one. The transparent range input on top is what makes
+              it draggable with a finger and reachable by keyboard. */}
+          <div className="mb-2.5 flex items-center gap-3">
+            <span className="w-11 shrink-0 text-right font-mono text-[11px] tabular-nums text-white/75">
               {fmtTime(current)}
             </span>
-            <div className="group relative flex-1">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
-                <div
-                  className="h-full rounded-full bg-[#E6231F] transition-all"
-                  style={{ width: `${progress}%` }}
-                />
+            <div className="seek-wrap group relative flex-1 py-2" data-scrubbing={scrubbing}>
+              <div className="seek-track">
+                <div className="seek-buffered" style={{ width: `${bufferedPct}%` }} />
+                <div className="seek-played" style={{ width: `${progress}%` }} />
+                <div className="seek-knob" style={{ left: `${progress}%` }} />
               </div>
               <input
                 type="range"
@@ -651,71 +855,151 @@ export default function VideoPlayerScreen({
                 max={duration || 0}
                 step={0.1}
                 value={current}
-                onChange={seek}
+                onChange={(e) => seekTo(Number(e.target.value))}
+                onPointerDown={() => setScrubbing(true)}
+                onPointerUp={() => setScrubbing(false)}
+                onPointerCancel={() => setScrubbing(false)}
+                onBlur={() => setScrubbing(false)}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 aria-label="Seek"
               />
             </div>
-            <span className="w-12 font-mono text-xs text-white/70">
+            <span className="w-11 shrink-0 font-mono text-[11px] tabular-nums text-white/75">
               {fmtTime(duration)}
             </span>
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={togglePlay}
-              className="text-white transition hover:text-[#E6231F]"
-              aria-label={playing ? 'Pause' : 'Play'}
-            >
-              {playing ? <Pause className="h-6 w-6 fill-white" /> : <Play className="h-6 w-6 fill-white" />}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={togglePlay} className="player-btn h-11 w-11" aria-label={playing ? 'Pause' : 'Play'}>
+              {playing ? (
+                <Pause className="h-5 w-5 fill-white" />
+              ) : (
+                <Play className="ml-0.5 h-5 w-5 fill-white" />
+              )}
             </button>
-            <button
-              onClick={() => skip(-10)}
-              className="text-white/80 transition hover:text-[#E6231F]"
-              aria-label="Back 10s"
-            >
-              <SkipBack className="h-5 w-5" />
+            <button onClick={() => skip(-10)} className="player-btn h-10 w-10" aria-label="Back 10s">
+              <RotateCcw className="h-[18px] w-[18px]" />
             </button>
-            <button
-              onClick={() => skip(10)}
-              className="text-white/80 transition hover:text-[#E6231F]"
-              aria-label="Forward 10s"
-            >
-              <SkipForward className="h-5 w-5" />
+            <button onClick={() => skip(10)} className="player-btn h-10 w-10" aria-label="Forward 10s">
+              <RotateCw className="h-[18px] w-[18px]" />
             </button>
-            <button
-              onClick={toggleMute}
-              className="text-white/80 transition hover:text-[#E6231F]"
-              aria-label={muted ? 'Unmute' : 'Mute'}
-            >
-              {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-            </button>
-            <div className="ml-auto flex items-center gap-4">
+            <div className="group/vol flex items-center">
+              <button
+                onClick={toggleMute}
+                className="player-btn h-10 w-10"
+                aria-label={muted ? 'Unmute' : 'Mute'}
+              >
+                {muted || volume === 0 ? (
+                  <VolumeX className="h-[18px] w-[18px]" />
+                ) : (
+                  <Volume2 className="h-[18px] w-[18px]" />
+                )}
+              </button>
+              {/* Pointer-driven volume is a desktop affordance — phones have
+                  hardware keys for it, so this stays out of the way there. */}
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={muted ? 0 : volume}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setVolume(next);
+                  const v = videoRef.current;
+                  if (v && v.muted && next > 0) {
+                    v.muted = false;
+                    setMuted(false);
+                  }
+                }}
+                aria-label="Volume"
+                className="ml-1 hidden h-1 w-0 cursor-pointer appearance-none rounded-full bg-white/25 opacity-0 transition-all duration-200 group-hover/vol:w-20 group-hover/vol:opacity-100 sm:block"
+              />
+            </div>
+
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+              {/* Playback speed */}
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSpeedOpen((o) => !o);
+                  }}
+                  className={`player-btn h-10 gap-1.5 px-3 text-xs font-bold ${
+                    speed !== 1 ? 'text-[#FF6B7C]' : ''
+                  }`}
+                  aria-label={t.playbackSpeed}
+                  title={t.playbackSpeed}
+                >
+                  <Gauge className="h-[18px] w-[18px]" />
+                  {speed !== 1 && <span>{speed}×</span>}
+                </button>
+                {speedOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-12 right-0 z-30 w-32 overflow-hidden rounded-xl border border-white/[0.12] bg-black/85 py-1 backdrop-blur-xl sheet-in"
+                  >
+                    {SPEEDS.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          setSpeed(s);
+                          setSpeedOpen(false);
+                          revealControls();
+                        }}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-xs font-semibold transition ${
+                          s === speed ? 'bg-[#FF2D46]/15 text-[#FF6B7C]' : 'text-white/80 hover:bg-white/10'
+                        }`}
+                      >
+                        {s}× {s === speed && <Check className="h-3.5 w-3.5" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Fit ↔ fill. On a phone held sideways a 21:9 film leaves
+                  thick black bars; this crops it to fill the screen instead,
+                  which is exactly the trade-off the viewer should own. */}
+              <button
+                onClick={() => setFillScreen((f) => !f)}
+                className={`player-btn h-10 w-10 ${fillScreen ? 'text-[#FF6B7C]' : ''}`}
+                aria-label={fillScreen ? t.zoomFit : t.zoomFill}
+                title={fillScreen ? t.zoomFit : t.zoomFill}
+              >
+                <Crop className="h-[18px] w-[18px]" />
+              </button>
+
               {allEpisodes.length > 0 && onSwitchEpisode && (
                 <button
-                  onClick={() => setEpisodeListOpen(true)}
-                  className="text-white/80 transition hover:text-[#E6231F]"
-                  aria-label="Episode list"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEpisodeListOpen(true);
+                  }}
+                  className="player-btn h-10 w-10"
+                  aria-label={t.episodesHeading}
+                  title={t.episodesHeading}
                 >
-                  <ListVideo className="h-5 w-5" />
+                  <ListVideo className="h-[18px] w-[18px]" />
                 </button>
               )}
               {nextEpisode && onSwitchEpisode && (
                 <button
                   onClick={() => onSwitchEpisode(nextEpisode)}
-                  className="flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20"
+                  className="player-btn hidden h-10 gap-1 px-3.5 text-xs font-bold sm:inline-flex"
                   aria-label="Next episode"
                 >
                   {t.episodeLabel} {nextEpisode.episode_number} <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               )}
               <button
-                onClick={toggleLock}
-                className="-m-2 p-2 text-white/80 transition hover:text-[#E6231F]"
-                aria-label={isFullscreen ? 'Unlock screen rotation' : 'Lock screen rotation'}
+                onClick={toggleFullscreen}
+                className="player-btn h-11 w-11"
+                aria-label={isFullscreen ? t.fullscreenExit : t.fullscreenEnter}
+                title={isFullscreen ? t.fullscreenExit : t.fullscreenEnter}
               >
-                {isFullscreen ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
+                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
               </button>
             </div>
           </div>
@@ -723,23 +1007,22 @@ export default function VideoPlayerScreen({
 
         {/* End-of-episode auto-advance prompt */}
         {autoAdvanceIn !== null && nextEpisode && (
-          <div className="absolute bottom-24 right-4 z-20 flex w-64 items-center gap-3 rounded-2xl border border-white/10 bg-[#0F1116]/95 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.6)] backdrop-blur-md sm:right-6">
+          <div className="absolute bottom-28 right-4 z-20 flex w-64 items-center gap-3 rounded-xl border border-white/[0.12] bg-black/80 p-3 shadow-elevated backdrop-blur-xl sheet-in sm:right-6">
             <img
               src={nextEpisode.thumbnail_url ?? show.poster_url ?? ''}
               alt=""
-              className="h-14 w-14 shrink-0 rounded-lg object-cover"
+              className="h-14 w-14 shrink-0 rounded-xl object-cover"
             />
             <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#FF6B7C]">{t.upNext}</p>
               <p className="truncate text-xs font-semibold text-white">
                 {t.episodeLabel} {nextEpisode.episode_number}: {nextEpisode.title}
               </p>
-              <p className="text-[11px] text-white/50">
-                {t.upNext} · {autoAdvanceIn}s
-              </p>
+              <p className="text-[11px] text-white/50">{autoAdvanceIn}s</p>
             </div>
             <button
               onClick={() => setAutoAdvanceIn(null)}
-              className="shrink-0 rounded-full bg-white/10 p-1.5 text-white/60 transition hover:bg-white/20"
+              className="player-btn h-7 w-7 shrink-0"
               aria-label="Cancel"
             >
               <X className="h-3.5 w-3.5" />
@@ -748,21 +1031,27 @@ export default function VideoPlayerScreen({
         )}
 
         {/* In-player episode switcher — a bottom sheet so viewers never
-            have to leave the player (and lose their place) just to pick a
-            different episode. Reuses the same episode list fetched for
-            "next episode". */}
+            have to leave the player (and lose their place, and their
+            fullscreen) just to pick a different episode. Reuses the same
+            episode list fetched for "next episode". */}
         {episodeListOpen && (
           <div className="absolute inset-0 z-30 flex flex-col justify-end" onClick={() => setEpisodeListOpen(false)}>
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[70%] overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#0A0A0D] p-4 pb-6"
+              className="relative max-h-[72%] overflow-y-auto rounded-t-[18px] border-t border-white/10 bg-app-deep p-4 pb-6 shadow-elevated sheet-in"
             >
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/20" aria-hidden />
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">{show.title}</h3>
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-bold text-white">{show.title}</h3>
+                  <p className="text-[11px] text-white/45">
+                    {allEpisodes.length} {t.episodesHeading}
+                  </p>
+                </div>
                 <button
                   onClick={() => setEpisodeListOpen(false)}
-                  className="rounded-full bg-white/10 p-1.5 text-white/60 transition hover:bg-white/20"
+                  className="player-btn h-8 w-8 shrink-0"
                   aria-label="Close"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -780,24 +1069,22 @@ export default function VideoPlayerScreen({
                       }}
                       className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition ${
                         isCurrent
-                          ? 'border-[#E6231F]/40 bg-[#E6231F]/10'
-                          : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]'
+                          ? 'border-[#FF2D46]/45 bg-[#FF2D46]/[0.12] shadow-[0_0_22px_rgba(255,45,70,0.18)]'
+                          : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08]'
                       }`}
                     >
                       <img
                         src={ep.thumbnail_url ?? show.poster_url ?? ''}
                         alt=""
-                        className="h-12 w-20 shrink-0 rounded-lg object-cover"
+                        className="h-12 w-20 shrink-0 rounded-xl object-cover"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-semibold text-white">
                           {t.episodeLabel} {ep.episode_number}: {ep.title}
                         </p>
-                        {ep.duration && (
-                          <p className="text-[10px] text-white/40">{ep.duration} min</p>
-                        )}
+                        {ep.duration && <p className="text-[10px] text-white/40">{ep.duration} min</p>}
                       </div>
-                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#E6231F]" />}
+                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#FF2D46]" />}
                     </button>
                   );
                 })}

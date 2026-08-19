@@ -7,8 +7,8 @@ interface Props {
 // a shared link/deep-link from a member but never joined themselves.
 export default function NotMemberScreen({ groupLink }: Props) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0A0A0D] px-6 text-center text-white">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E6231F]/10">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-app px-6 text-center text-white">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FF2D46]/10">
         <span className="text-3xl">🔒</span>
       </div>
       <p className="text-lg font-bold">ខ្លឹមសារនេះសម្រាប់តែសមាជិក VIP</p>
@@ -19,7 +19,7 @@ export default function NotMemberScreen({ groupLink }: Props) {
       {groupLink && (
         <a
           href={groupLink}
-          className="rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] px-6 py-2.5 text-sm font-bold text-white transition active:scale-95"
+          className="btn-primary rounded-xl px-6 py-2.5 text-sm font-bold transition active:scale-95"
         >
           ចូលរួម VIP Group
         </a>

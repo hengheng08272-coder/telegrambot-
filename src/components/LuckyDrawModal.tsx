@@ -13,9 +13,9 @@ interface Props {
 // near-black, ember orange, chrome silver, with gold reserved for
 // whichever slice is the top prize in a given pool.
 const WEDGE_PALETTE = [
-  '#E6231F', '#E3B341', '#F0453A', '#7A0F0D', '#B2882F',
-  '#7B2D8B', '#1F8A70', '#2C5F8A', '#E6231F', '#E3B341',
-  '#A9782E', '#E3B341',
+  '#FF2D46', '#F5C563', '#FF6B7C', '#8F1020', '#C08F33',
+  '#7B2D8B', '#1F8A70', '#2C5F8A', '#FF2D46', '#F5C563',
+  '#B98430', '#F5C563',
 ];
 
 export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
@@ -81,14 +81,14 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="promo-card-glow relative w-full max-w-sm rounded-3xl"
+        className="promo-card-glow relative w-full max-w-sm rounded-2xl"
       >
-        <div className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-[#E3B341]/10 blur-3xl" />
+        <div className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-[#F5C563]/10 blur-3xl" />
 
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#0A0A0D] p-6 text-center shadow-[0_0_70px_rgba(227,179,65,0.2)]">
-          <Sparkles className="sparkle-twinkle pointer-events-none absolute left-5 top-5 h-3.5 w-3.5 text-[#E3B341]/50" />
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#07080C] p-6 text-center shadow-[0_0_70px_rgba(245,197,99,0.2)]">
+          <Sparkles className="sparkle-twinkle pointer-events-none absolute left-5 top-5 h-3.5 w-3.5 text-[#F5C563]/50" />
           <Sparkles
-            className="sparkle-twinkle pointer-events-none absolute right-14 top-8 h-2.5 w-2.5 text-[#E6231F]/60"
+            className="sparkle-twinkle pointer-events-none absolute right-14 top-8 h-2.5 w-2.5 text-[#FF2D46]/60"
             style={{ animationDelay: '0.5s' }}
           />
 
@@ -100,7 +100,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
             <X className="h-4 w-4" />
           </button>
 
-          <div className="mb-1 flex items-center justify-center gap-1.5 text-[#E3B341]">
+          <div className="mb-1 flex items-center justify-center gap-1.5 text-[#F5C563]">
             <Sparkles className="h-4 w-4" />
             <span className="text-xs font-bold uppercase tracking-[0.2em]">VIP BONUS SPIN</span>
             <Sparkles className="h-4 w-4" />
@@ -125,18 +125,18 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
             </div>
           ) : (
             <div className="relative mx-auto mb-5" style={{ height: wheelSize, width: wheelSize }}>
-              <div className="pointer-events-none absolute inset-[-14px] rounded-full bg-[#E3B341]/15 blur-2xl" />
+              <div className="pointer-events-none absolute inset-[-14px] rounded-full bg-[#F5C563]/15 blur-2xl" />
 
               <div className="absolute left-1/2 top-[-8px] z-10 h-7 w-7 -translate-x-1/2 rotate-180 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
                 <div
-                  className="h-0 w-0 border-x-[11px] border-t-[18px] border-x-transparent border-t-[#E3B341]"
+                  className="h-0 w-0 border-x-[11px] border-t-[18px] border-x-transparent border-t-[#F5C563]"
                   style={{ transform: 'rotate(180deg)' }}
                 />
               </div>
 
               <div
                 ref={wheelRef}
-                className="relative h-full w-full rounded-full border-4 border-[#E3B341]/60 shadow-[0_0_50px_rgba(227,179,65,0.25),0_0_40px_rgba(0,0,0,0.5)]"
+                className="relative h-full w-full rounded-full border-4 border-[#F5C563]/60 shadow-[0_0_50px_rgba(245,197,99,0.25),0_0_40px_rgba(0,0,0,0.5)]"
                 style={{
                   transform: `rotate(${rotation}deg)`,
                   transition: spinning ? 'transform 4.2s cubic-bezier(0.17,0.67,0.16,0.99)' : 'none',
@@ -173,8 +173,8 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
                 })}
               </div>
 
-              <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#0A0A0D] bg-gradient-to-br from-[#E3B341] to-[#A9782E] shadow-lg">
-                <Gift className={`h-6 w-6 text-[#0A0A0D] ${spinning ? '' : 'gift-float'}`} />
+              <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#07080C] bg-gradient-to-br from-[#F5C563] to-[#B98430] shadow-lg">
+                <Gift className={`h-6 w-6 text-[#07080C] ${spinning ? '' : 'gift-float'}`} />
               </div>
             </div>
           )}
@@ -185,15 +185,15 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
 
           {result ? (
             <div className="win-pop-in space-y-3">
-              <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-4 py-1.5">
-                <PartyPopper className="h-4 w-4 text-[#E3B341]" />
-                <p className="text-base font-bold text-[#E3B341]">
+              <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-4 py-1.5">
+                <PartyPopper className="h-4 w-4 text-[#F5C563]" />
+                <p className="text-base font-bold text-[#F5C563]">
                   {t.spinWonPrefix} {result.label} {t.spinWonSuffixVip}
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="w-full rounded-full bg-gradient-to-r from-[#E6231F] to-[#7A0F0D] py-3.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(230,35,31,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(230,35,31,0.5)] active:scale-[0.98]"
+                className="btn-primary w-full rounded-full py-3.5 text-sm font-bold shadow-[0_8px_24px_rgba(255,45,70,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(255,45,70,0.5)] active:scale-[0.98]"
               >
                 {t.spinCollect}
               </button>
@@ -209,7 +209,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
             <button
               onClick={spin}
               disabled={spinning || checking || !!error}
-              className="w-full rounded-full bg-gradient-to-r from-[#E3B341] to-[#A9782E] py-3.5 text-sm font-bold text-[#0A0A0D] shadow-[0_8px_24px_rgba(227,179,65,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(227,179,65,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full rounded-full bg-gradient-to-r from-[#F5C563] to-[#B98430] py-3.5 text-sm font-bold text-[#07080C] shadow-[0_8px_24px_rgba(245,197,99,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(245,197,99,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
             >
               {spinning ? t.spinSpinning : t.spinButton}
             </button>

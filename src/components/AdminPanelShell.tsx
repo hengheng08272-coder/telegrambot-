@@ -43,7 +43,7 @@ export default function AdminPanelShell({
   title,
   subtitle,
   icon,
-  accent = '#E3B341',
+  accent = '#F5C563',
   actions,
   toolbar,
   error,
@@ -69,12 +69,12 @@ export default function AdminPanelShell({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[90] flex flex-col bg-[#0A0A0D] text-white">
-      <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-[#0A0A0D]/95 backdrop-blur-md">
+    <div className="fixed inset-0 z-[90] flex flex-col bg-app text-white">
+      <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bar-blur">
         <div className={`mx-auto flex ${maxWidth} items-center gap-3 px-4 py-3.5 sm:px-8`}>
           <button
             onClick={onClose}
-            className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Back</span>
@@ -105,10 +105,10 @@ export default function AdminPanelShell({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className={`mx-auto ${maxWidth} px-4 py-5 sm:px-8 sm:py-6`}>
           {error && (
-            <div className="mb-4 flex items-start gap-2 rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 px-3.5 py-3 text-xs text-[#FCA5A5]">
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/10 px-3.5 py-3 text-xs text-[#FFB3BD]">
               <span className="flex-1 leading-relaxed">{error}</span>
               {onDismissError && (
-                <button onClick={onDismissError} className="shrink-0 text-[#FCA5A5]/70 hover:text-[#FCA5A5]">
+                <button onClick={onDismissError} className="shrink-0 text-[#FFB3BD]/70 hover:text-[#FFB3BD]">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -131,7 +131,7 @@ export function PanelTabs<T extends string>({
   tabs,
   active,
   onChange,
-  accent = '#E3B341',
+  accent = '#F5C563',
 }: {
   tabs: { key: T; label: string; icon?: ReactNode; badge?: number }[];
   active: T;
@@ -146,7 +146,7 @@ export function PanelTabs<T extends string>({
           <button
             key={tab.key}
             onClick={() => onChange(tab.key)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-bold transition ${
               isActive ? '' : 'border-white/10 bg-white/[0.04] text-white/55 hover:bg-white/[0.08] hover:text-white/80'
             }`}
             style={
@@ -158,7 +158,7 @@ export function PanelTabs<T extends string>({
             {tab.icon}
             {tab.label}
             {typeof tab.badge === 'number' && tab.badge > 0 && (
-              <span className="rounded-full bg-white/15 px-1.5 text-[10px] font-extrabold text-white/80">
+              <span className="rounded-md bg-white/15 px-1.5 text-[10px] font-extrabold text-white/80">
                 {tab.badge}
               </span>
             )}

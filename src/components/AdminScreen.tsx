@@ -621,22 +621,22 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     : 1;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0D] text-white">
+    <div className="min-h-screen bg-app text-white">
       {/* Header — split into a primary row (back / title / new show / search)
           and a horizontally-scrollable pill nav for the other admin
           sections below, instead of one long wrapping row of buttons. */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A0A0D]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-white/10 bar-blur">
         <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 pt-4 sm:px-8">
           <button
             onClick={onBack}
-            className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
           <h1 className="hidden text-lg font-bold sm:block">Admin</h1>
           <button
             onClick={() => setAddShowOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#34B37A] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#2B5CAD]"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#2FD98C] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#4C6FFF]"
           >
             <Plus className="h-4 w-4" /> New Show
           </button>
@@ -646,56 +646,56 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search shows…"
-              className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#34B37A]/50"
+              className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#2FD98C]/50"
             />
           </div>
         </div>
         <nav className="no-scrollbar mx-auto flex max-w-[1200px] items-center gap-2 overflow-x-auto px-4 py-3 sm:px-8">
           <button
             onClick={() => setAnnouncementsOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-3.5 py-1.5 text-xs font-bold text-[#E3B341] transition hover:bg-[#E3B341]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-3.5 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20"
           >
             <Megaphone className="h-3.5 w-3.5" /> Announcements
           </button>
           <button
             onClick={() => setPaymentsOpen(true)}
-            className="relative flex shrink-0 items-center gap-1.5 rounded-full border border-[#34B37A]/30 bg-[#34B37A]/10 px-3.5 py-1.5 text-xs font-bold text-[#34B37A] transition hover:bg-[#34B37A]/20"
+            className="relative flex shrink-0 items-center gap-1.5 rounded-xl border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3.5 py-1.5 text-xs font-bold text-[#2FD98C] transition hover:bg-[#2FD98C]/20"
           >
             <Wallet className="h-3.5 w-3.5" /> Payments
             {pendingPaymentsCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#E6231F] px-1 text-[10px] font-extrabold text-white">
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-md bg-[#FF2D46] px-1 text-[10px] font-extrabold text-white">
                 {pendingPaymentsCount}
               </span>
             )}
           </button>
           <button
             onClick={() => setSubscriptionsOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#34B37A]/30 bg-[#34B37A]/10 px-3.5 py-1.5 text-xs font-bold text-[#34B37A] transition hover:bg-[#34B37A]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3.5 py-1.5 text-xs font-bold text-[#2FD98C] transition hover:bg-[#2FD98C]/20"
           >
             <QrCode className="h-3.5 w-3.5" /> Subscriptions
           </button>
           <button
             onClick={() => setUsersOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#2B5CAD]/30 bg-[#2B5CAD]/10 px-3.5 py-1.5 text-xs font-bold text-[#2B5CAD] transition hover:bg-[#2B5CAD]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
           >
             <UsersIcon className="h-3.5 w-3.5" /> Users
           </button>
           <span className="mx-1 h-4 w-px shrink-0 bg-white/10" aria-hidden />
           <button
             onClick={() => setWatchLogOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-xs font-bold text-white/70 transition hover:bg-white/10"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-xs font-bold text-white/70 transition hover:bg-white/10"
           >
             <Eye className="h-3.5 w-3.5" /> Watch log
           </button>
           <button
             onClick={() => setSuspiciousOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#E3B341]/30 bg-[#E3B341]/10 px-3.5 py-1.5 text-xs font-bold text-[#E3B341] transition hover:bg-[#E3B341]/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-3.5 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20"
           >
             <AlertTriangle className="h-3.5 w-3.5" /> Suspicious
           </button>
           <button
             onClick={() => setBanLogOpen(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-red-500/25 bg-red-500/10 px-3.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/20"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/20"
           >
             <ShieldBan className="h-3.5 w-3.5" /> Ban log
           </button>
@@ -722,7 +722,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
 
       {error && (
         <div className="mx-auto max-w-[1200px] px-4 pt-4 sm:px-8">
-          <div className="flex items-center gap-2 rounded-xl border border-[#EF4444]/30 bg-[#EF4444]/10 px-4 py-3 text-sm text-[#EF4444]">
+          <div className="flex items-center gap-2 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/10 px-4 py-3 text-sm text-[#FF4D5E]">
             <X className="h-4 w-4 shrink-0" />
             {error}
             <button onClick={() => setError('')} className="ml-auto">
@@ -740,7 +740,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {!loading && !search.trim() && continuePostingShows.length > 0 && (
         <div className="mx-auto max-w-[1200px] px-4 pt-6 sm:px-8">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-white/70">
-            <Video className="h-4 w-4 text-[#E6231F]" /> Continue posting
+            <Video className="h-4 w-4 text-[#FF2D46]" /> Continue posting
           </h2>
           <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2">
             {continuePostingShows.map((show) => {
@@ -750,10 +750,10 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 <button
                   key={show.id}
                   onClick={() => openAddEpisodeFor(show)}
-                  className="flex shrink-0 items-center gap-3 rounded-xl border border-white/10 bg-[#0F1116] p-2.5 text-left transition hover:border-[#E6231F]/40 hover:bg-white/[0.03]"
+                  className="flex shrink-0 items-center gap-3 rounded-xl border border-white/10 bg-[#0E1017] p-2.5 text-left transition hover:border-[#FF2D46]/40 hover:bg-white/[0.03]"
                   style={{ width: 220 }}
                 >
-                  <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-[#151822]">
+                  <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-[#151926]">
                     {show.poster_url && (
                       <img src={show.poster_url} alt={show.title} className="h-full w-full object-cover" />
                     )}
@@ -763,7 +763,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     <p className="mt-0.5 text-[11px] text-white/40">
                       {show.episodes.length} ep{show.episodes.length === 1 ? '' : 's'} so far
                     </p>
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#E6231F]/15 px-2 py-[2px] text-[10px] font-bold text-[#F0453A]">
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-[#FF2D46]/15 px-2 py-[2px] text-[10px] font-bold text-[#FF6B7C]">
                       <Plus className="h-2.5 w-2.5" /> Ep {nextNumber}
                     </span>
                   </div>
@@ -778,7 +778,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       <main className="mx-auto max-w-[1200px] px-4 py-8 sm:px-8">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-[#34B37A]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#2FD98C]" />
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
@@ -791,9 +791,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 <button
                   key={show.id}
                   onClick={() => setFocusedShowId(show.id)}
-                  className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-[#0F1116] p-3.5 text-left transition hover:border-[#34B37A]/40 hover:bg-white/[0.03]"
+                  className="flex w-full items-center gap-4 rounded-xl border border-white/10 bg-[#0E1017] p-3.5 text-left transition hover:border-[#2FD98C]/40 hover:bg-white/[0.03]"
                 >
-                  <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151822]">
+                  <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151926]">
                     {show.poster_url && (
                       <img src={show.poster_url} alt={show.title} className="h-full w-full object-cover" />
                     )}
@@ -811,7 +811,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                       </span>
                       {show.episodes.length > 0 && (
                         <span className="flex items-center gap-1">
-                          <Crown className="h-3.5 w-3.5 text-[#E3B341]" />
+                          <Crown className="h-3.5 w-3.5 text-[#F5C563]" />
                           {unlocked}/{show.episodes.length} unlocked
                         </span>
                       )}
@@ -821,14 +821,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         listing that will not play. Surfaced on the card
                         so it is visible without opening the show. */}
                     {show.episodes.length > withVideo && (
-                      <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#E3B341]/12 px-2 py-[2px] text-[10px] font-bold text-[#E3B341]">
+                      <p className="mt-1 inline-flex items-center gap-1 rounded-md bg-[#F5C563]/12 px-2 py-[2px] text-[10px] font-bold text-[#F5C563]">
                         <Clock className="h-2.5 w-2.5" />
                         {show.episodes.length - withVideo} without video
                       </p>
                     )}
                   </div>
                   <div className="hidden shrink-0 items-center gap-2 sm:flex">
-                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-white/60">
+                    <span className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-white/60">
                       {show.type === 'movie' ? 'Open' : `Next: Ep ${nextNumber}`}
                     </span>
                     <ChevronRight className="h-4 w-4 text-white/30" />
@@ -847,8 +847,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           be buried inside an accordion row is now the whole page, so
           adding an episode is not a scrolling exercise. */}
       {focusedShow && (
-        <div className="fixed inset-0 z-[80] flex flex-col bg-[#0A0A0D]">
-          <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-[#0A0A0D]/95 backdrop-blur-md">
+        <div className="fixed inset-0 z-[80] flex flex-col bg-app">
+          <header className="sticky top-0 z-10 shrink-0 border-b border-white/10 bar-blur">
             <div className="mx-auto flex max-w-[1100px] items-center gap-3 px-4 py-3.5 sm:px-8">
               <button
                 onClick={() => {
@@ -856,12 +856,12 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   setAddEpOpen(null);
                   setPasteUrlFor(null);
                 }}
-                className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
+                className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">All shows</span>
               </button>
-              <div className="h-10 w-7 shrink-0 overflow-hidden rounded-md bg-[#151822]">
+              <div className="h-10 w-7 shrink-0 overflow-hidden rounded-md bg-[#151926]">
                 {focusedShow.poster_url && (
                   <img src={focusedShow.poster_url} alt="" className="h-full w-full object-cover" />
                 )}
@@ -875,7 +875,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               </div>
               <button
                 onClick={() => openEdit(focusedShow)}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10"
+                className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Edit show</span>
@@ -883,7 +883,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               {(focusedShow.type !== 'movie' || focusedShow.episodes.length === 0) && (
                 <button
                   onClick={() => openAddEpisodeFor(focusedShow)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#34B37A] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#2B9A67]"
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#2FD98C] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#2B9A67]"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">
@@ -905,12 +905,12 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   {
                     label: 'Video ready',
                     value: focusedShow.episodes.filter((ep) => ep.video_url).length,
-                    tone: 'text-[#34B37A]',
+                    tone: 'text-[#2FD98C]',
                   },
                   {
                     label: 'Missing video',
                     value: focusedShow.episodes.filter((ep) => !ep.video_url).length,
-                    tone: focusedShow.episodes.some((ep) => !ep.video_url) ? 'text-[#E3B341]' : 'text-white/40',
+                    tone: focusedShow.episodes.some((ep) => !ep.video_url) ? 'text-[#F5C563]' : 'text-white/40',
                   },
                   {
                     label: 'Unlocked (free)',
@@ -926,7 +926,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               </div>
 
               <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white/70">
-                <ListVideo className="h-4 w-4 text-[#34B37A]" /> Episodes &amp; video
+                <ListVideo className="h-4 w-4 text-[#2FD98C]" /> Episodes &amp; video
               </h3>
 
               <div ref={addEpisodeRef}>
@@ -936,7 +936,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             {focusedShow.episodes.length > 0 && (
               <div className="mb-3 flex items-center gap-2">
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-white/50">
-                  <Crown className="h-3.5 w-3.5 text-[#E3B341]" />
+                  <Crown className="h-3.5 w-3.5 text-[#F5C563]" />
                   {focusedShow.episodes.filter((ep) => ep.is_free_preview).length}/{focusedShow.episodes.length} unlocked
                 </span>
                 <button
@@ -948,7 +948,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     )
                   }
                   disabled={bulkLockBusyShowId === focusedShow.id}
-                  className="ml-auto flex items-center gap-1.5 rounded-lg border border-[#34B37A]/30 bg-[#34B37A]/10 px-3 py-1.5 text-xs font-semibold text-[#34B37A] transition hover:bg-[#34B37A]/20 disabled:opacity-50"
+                  className="ml-auto flex items-center gap-1.5 rounded-lg border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3 py-1.5 text-xs font-semibold text-[#2FD98C] transition hover:bg-[#2FD98C]/20 disabled:opacity-50"
                 >
                   {bulkLockBusyShowId === focusedShow.id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -980,7 +980,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 return (
                   <div
                     key={ep.id}
-                    className="rounded-xl border border-white/5 bg-[#151822] p-3"
+                    className="rounded-xl border border-white/5 bg-[#151926] p-3"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-white/60">
@@ -992,11 +992,11 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         </p>
                         <div className="mt-0.5 flex items-center gap-2 text-xs">
                           {hasVideo ? (
-                            <span className="flex items-center gap-1 text-[#34B37A]">
+                            <span className="flex items-center gap-1 text-[#2FD98C]">
                               <CheckCircle2 className="h-3 w-3" /> Video ready
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-[#E3B341]">
+                            <span className="flex items-center gap-1 text-[#F5C563]">
                               <Clock className="h-3 w-3" /> No video uploaded
                             </span>
                           )}
@@ -1009,7 +1009,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         {isUploading && (
                           <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/10">
                             <div
-                              className="h-full rounded-full bg-[#34B37A] transition-all"
+                              className="h-full rounded-full bg-[#2FD98C] transition-all"
                               style={{ width: `${uploadProgress}%` }}
                             />
                           </div>
@@ -1032,7 +1032,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         disabled={episodeLockBusyId === ep.id}
                         className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:opacity-50 ${
                           ep.is_free_preview
-                            ? 'border-[#34B37A]/40 bg-[#34B37A]/10 text-[#34B37A] hover:bg-[#34B37A]/20'
+                            ? 'border-[#2FD98C]/40 bg-[#2FD98C]/10 text-[#2FD98C] hover:bg-[#2FD98C]/20'
                             : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                         }`}
                         title={ep.is_free_preview ? 'Unlocked — tap to lock again' : 'Locked — tap to unlock (playable without VIP)'}
@@ -1074,7 +1074,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                       </button>
                       <button
                         onClick={() => handleDeleteEpisode(ep.id)}
-                        className="rounded-lg p-2 text-white/40 transition hover:bg-[#EF4444]/10 hover:text-[#EF4444]"
+                        className="rounded-lg p-2 text-white/40 transition hover:bg-[#FF4D5E]/10 hover:text-[#FF4D5E]"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -1092,7 +1092,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         <button
                           onClick={() => handleSaveVideoUrl(ep.id)}
                           disabled={savingUrlFor === ep.id || !pasteUrlValue.trim()}
-                          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#34B37A] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
+                          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#2FD98C] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#4C6FFF] disabled:opacity-50"
                         >
                           {savingUrlFor === ep.id ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1121,7 +1121,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             {(focusedShow.type !== 'movie' || focusedShow.episodes.length === 0) && (
               <div className="mt-4">
                 {addEpOpen === focusedShow.id ? (
-                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#151822] p-4">
+                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#151926] p-4">
                     {focusedShow.type !== 'movie' && (
                     <div className="grid grid-cols-3 gap-2">
                       <div>
@@ -1232,7 +1232,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                           }
                         }}
                         placeholder="https://…  (paste link, press Enter or Add to save + jump to next ep)"
-                        className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none focus:border-[#34B37A]/50"
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none focus:border-[#2FD98C]/50"
                         autoFocus
                       />
                     </div>
@@ -1245,7 +1245,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                           )
                         }
                         disabled={busy}
-                        className="flex items-center gap-1.5 rounded-lg bg-[#34B37A] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-lg bg-[#2FD98C] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#4C6FFF] disabled:opacity-50"
                       >
                         {busy ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1270,7 +1270,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 ) : (
                   <button
                     onClick={() => openAddEpisodeFor(focusedShow)}
-                    className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-4 py-2.5 text-xs font-semibold text-white/60 transition hover:border-[#34B37A]/40 hover:text-white"
+                    className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-4 py-2.5 text-xs font-semibold text-white/60 transition hover:border-[#2FD98C]/40 hover:text-white"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     {focusedShow.type === 'movie' ? 'Add Movie Video Slot' : 'Add Episode'}
@@ -1287,7 +1287,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {/* Add Show modal */}
       {addShowOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0F1116] p-5">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#0E1017] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">New Show / Movie</h2>
               <button
@@ -1306,7 +1306,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     onClick={() => setNewShow({ ...newShow, type: 'series' })}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
                       newShow.type === 'series'
-                        ? 'border-[#34B37A]/50 bg-[#34B37A]/10 text-white'
+                        ? 'border-[#2FD98C]/50 bg-[#2FD98C]/10 text-white'
                         : 'border-white/10 bg-white/5 text-white/60'
                     }`}
                   >
@@ -1316,7 +1316,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     onClick={() => setNewShow({ ...newShow, type: 'movie' })}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold ${
                       newShow.type === 'movie'
-                        ? 'border-[#34B37A]/50 bg-[#34B37A]/10 text-white'
+                        ? 'border-[#2FD98C]/50 bg-[#2FD98C]/10 text-white'
                         : 'border-white/10 bg-white/5 text-white/60'
                     }`}
                   >
@@ -1425,7 +1425,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 <button
                   onClick={handleCreateShow}
                   disabled={creatingShow}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#34B37A] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#2FD98C] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#4C6FFF] disabled:opacity-50"
                 >
                   {creatingShow ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   Create
@@ -1448,7 +1448,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {/* Edit Show modal */}
       {editShow && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0F1116] p-5">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#0E1017] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">Edit Show</h2>
               <button
@@ -1583,7 +1583,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 <button
                   onClick={handleSaveEdit}
                   disabled={savingEdit}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#34B37A] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#2B5CAD] disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#2FD98C] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#4C6FFF] disabled:opacity-50"
                 >
                   {editSuccess ? (
                     <CheckCircle2 className="h-4 w-4" />
@@ -1613,7 +1613,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           onClick={closePreview}
         >
           <div
-            className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-black"
+            className="relative w-full max-w-3xl overflow-hidden rounded-xl bg-black"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -1625,7 +1625,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             <div className="flex aspect-video items-center justify-center bg-black">
               {previewLoading && <Loader2 className="h-8 w-8 animate-spin text-white/60" />}
               {!previewLoading && previewError && (
-                <p className="px-6 text-center text-sm text-[#EF4444]">{previewError}</p>
+                <p className="px-6 text-center text-sm text-[#FF4D5E]">{previewError}</p>
               )}
               {!previewLoading && previewUrl && (
                 <video src={previewUrl} controls autoPlay className="h-full w-full" />

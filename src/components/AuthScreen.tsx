@@ -106,7 +106,7 @@ export default function AuthScreen({
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0A0A0D] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-app text-white">
       {/* Big background bleed from the catalog's own art */}
       {backdrop && (
         <div className="pointer-events-none absolute inset-0">
@@ -120,17 +120,17 @@ export default function AuthScreen({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle at 12% -5%, rgba(178,136,47,0.22) 0%, rgba(10,10,13,0) 48%), radial-gradient(circle at 88% 105%, rgba(230,35,31,0.18) 0%, rgba(10,10,13,0) 52%)',
+            'radial-gradient(circle at 12% -5%, rgba(192,143,51,0.22) 0%, rgba(7,8,12,0) 48%), radial-gradient(circle at 88% 105%, rgba(255,45,70,0.18) 0%, rgba(7,8,12,0) 52%)',
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0A0A0D]/55 via-[#0A0A0D]/80 to-[#0A0A0D]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#07080C]/55 via-[#07080C]/80 to-[#07080C]" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Top bar */}
         <div className="flex items-center justify-between px-5 py-4">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white"
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-sm transition hover:bg-white/[0.08] hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" /> {t.back}
           </button>
@@ -138,7 +138,7 @@ export default function AuthScreen({
             <img
               src="/assets/logo-transparent.png"
               alt="NINT ANIME"
-              className="h-8 w-8 drop-shadow-[0_0_14px_rgba(230,35,31,0.5)]"
+              className="h-8 w-8 drop-shadow-[0_0_14px_rgba(255,45,70,0.5)]"
             />
             <span
               className="text-lg font-black tracking-wider"
@@ -168,7 +168,7 @@ export default function AuthScreen({
                 {show.poster_url ? (
                   <img src={show.poster_url} alt={show.title} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-[#0F1116]">
+                  <div className="flex h-full w-full items-center justify-center bg-[#0E1017]">
                     <Film className="h-3.5 w-3.5 text-white/20" />
                   </div>
                 )}
@@ -181,9 +181,9 @@ export default function AuthScreen({
         <div className="flex flex-1 items-center justify-center px-5 py-8">
           <div className="w-full max-w-md">
             {kickedOut && (
-              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[#EF4444]/30 bg-[#EF4444]/[0.08] p-4 text-left">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#EF4444]/15">
-                  <AlertTriangle className="h-4 w-4 text-[#EF4444]" />
+              <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/[0.08] p-4 text-left">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#FF4D5E]/15">
+                  <AlertTriangle className="h-4 w-4 text-[#FF4D5E]" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white">{t.sessionKickedTitle}</p>
@@ -195,7 +195,7 @@ export default function AuthScreen({
             )}
 
             <div className="mb-7 text-center">
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#E3B341]/25 bg-[#E3B341]/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#E3B341]">
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-xl border border-[#F5C563]/25 bg-[#F5C563]/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#F5C563]">
                 <ShieldCheck className="h-3 w-3" /> Premium Access
               </div>
               <h1
@@ -210,15 +210,15 @@ export default function AuthScreen({
             </div>
 
             <div
-              className="rounded-[26px] p-[1px] shadow-[0_30px_70px_rgba(0,0,0,0.55)]"
+              className="rounded-[18px] p-[1px] shadow-[0_30px_70px_rgba(0,0,0,0.55)]"
               style={{
                 background:
-                  'linear-gradient(160deg, rgba(240,217,160,0.35), rgba(255,255,255,0.06) 30%, rgba(230,35,31,0.18) 100%)',
+                  'linear-gradient(160deg, rgba(255,231,176,0.35), rgba(255,255,255,0.06) 30%, rgba(255,45,70,0.18) 100%)',
               }}
             >
               <form
                 onSubmit={handleSubmit}
-                className="relative overflow-hidden rounded-[25px] border border-white/5 bg-[#0F1116]/90 p-6 backdrop-blur-xl"
+                className="relative overflow-hidden rounded-[25px] border border-white/5 bg-[#0E1017]/90 p-6 backdrop-blur-xl"
               >
                 {/* subtle top sheen */}
                 <div
@@ -283,7 +283,7 @@ export default function AuthScreen({
                 )}
 
                 {error && (
-                  <div className="mt-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/10 px-4 py-3 text-sm text-[#EF4444]">
+                  <div className="mt-4 rounded-lg border border-[#FF4D5E]/30 bg-[#FF4D5E]/10 px-4 py-3 text-sm text-[#FF4D5E]">
                     {error}
                   </div>
                 )}
@@ -291,8 +291,8 @@ export default function AuthScreen({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold text-black shadow-[0_10px_30px_rgba(178,136,47,0.3)] transition hover:shadow-[0_14px_40px_rgba(178,136,47,0.45)] active:scale-[0.98] disabled:opacity-60"
-                  style={{ background: 'linear-gradient(135deg, #E3B341, #F0453A)' }}
+                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold text-black shadow-[0_10px_30px_rgba(192,143,51,0.3)] transition hover:shadow-[0_14px_40px_rgba(192,143,51,0.45)] active:scale-[0.98] disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #F5C563, #FF6B7C)' }}
                 >
                   {loading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -315,7 +315,7 @@ export default function AuthScreen({
               {isSignUp ? t.haveAccount : t.noAccount}{' '}
               <button
                 onClick={() => onSwitch(isSignUp ? 'signin' : 'signup')}
-                className="font-semibold text-[#E3B341] transition hover:text-[#E9CC8E]"
+                className="font-semibold text-[#F5C563] transition hover:text-[#F8DCA0]"
               >
                 {isSignUp ? t.switchToSignIn : t.switchToSignUp}
               </button>
@@ -363,7 +363,7 @@ function Field({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           autoComplete={autoComplete}
-          className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-12 pr-11 text-sm text-white placeholder-white/30 outline-none transition focus:border-[#E3B341]/50 focus:bg-white/[0.07] focus:shadow-[0_0_0_3px_rgba(227,179,65,0.12)]"
+          className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-12 pr-11 text-sm text-white placeholder-white/30 outline-none transition focus:border-[#F5C563]/50 focus:bg-white/[0.07] focus:shadow-[0_0_0_3px_rgba(245,197,99,0.12)]"
         />
         {trailing && (
           <span className="absolute right-3.5 top-1/2 -translate-y-1/2">

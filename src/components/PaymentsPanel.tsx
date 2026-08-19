@@ -134,14 +134,14 @@ export default function PaymentsPanel({ onClose }: Props) {
   };
 
   const renderCard = (sub: Submission, actions: ReactNode) => (
-    <div key={sub.id} className="rounded-xl border border-[#E3B341]/20 bg-[#E3B341]/5 p-3">
+    <div key={sub.id} className="rounded-xl border border-[#F5C563]/20 bg-[#F5C563]/5 p-3">
       <div className="mb-2 flex items-center justify-between text-xs">
         <span className="font-semibold text-white">{sub.telegram_username ?? sub.telegram_user_id}</span>
         <span className="text-white/40">{new Date(sub.submitted_at).toLocaleString()}</span>
       </div>
       <div className="mb-2 flex items-center justify-between text-xs text-white/60">
         <span>Tier: {sub.tier}</span>
-        <span className="font-bold text-[#E3B341]">${sub.amount}</span>
+        <span className="font-bold text-[#F5C563]">${sub.amount}</span>
       </div>
       <a href={sub.screenshot_url} target="_blank" rel="noreferrer">
         <img src={sub.screenshot_url} alt="Payment proof" className="mb-3 max-h-56 w-full rounded-lg object-contain" />
@@ -155,7 +155,7 @@ export default function PaymentsPanel({ onClose }: Props) {
       title="Payments"
       subtitle="Approve, confirm or reject VIP payment submissions"
       icon={<Wallet className="h-4 w-4" />}
-      accent="#34B37A"
+      accent="#2FD98C"
       maxWidth="max-w-[1000px]"
       onClose={onClose}
     >
@@ -183,7 +183,7 @@ export default function PaymentsPanel({ onClose }: Props) {
                           <button
                             onClick={() => confirmAuto(sub)}
                             disabled={busyId === sub.id}
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#34B37A] py-2 text-xs font-bold text-black transition disabled:opacity-50"
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#2FD98C] py-2 text-xs font-bold text-black transition disabled:opacity-50"
                           >
                             {busyId === sub.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                             Confirm
@@ -216,7 +216,7 @@ export default function PaymentsPanel({ onClose }: Props) {
                           <button
                             onClick={() => approve(sub)}
                             disabled={busyId === sub.id}
-                            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#34B37A] py-2 text-xs font-bold text-black transition disabled:opacity-50"
+                            className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-[#2FD98C] py-2 text-xs font-bold text-black transition disabled:opacity-50"
                           >
                             {busyId === sub.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                             Approve

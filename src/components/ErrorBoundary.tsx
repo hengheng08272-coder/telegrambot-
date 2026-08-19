@@ -30,14 +30,14 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0A0A0D] px-6 text-center text-white">
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-app px-6 text-center text-white">
           <p className="text-lg font-bold">មានបញ្ហាបច្ចេកទេសកើតឡើង</p>
           <p className="max-w-xs text-sm text-white/50">
             សូមព្យាយាមបិទហើយបើក app ម្តងទៀត។ បើនៅតែមានបញ្ហា សូមទាក់ទង admin។
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="rounded-full bg-[#E6231F] px-6 py-2.5 text-sm font-bold text-white transition active:scale-95"
+            className="rounded-xl bg-[#FF2D46] px-6 py-2.5 text-sm font-bold text-white transition active:scale-95"
           >
             ព្យាយាមម្តងទៀត
           </button>

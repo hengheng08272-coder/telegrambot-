@@ -27,7 +27,7 @@ const ACTION_LABEL: Record<BanLogRow['action'], string> = {
 const ACTION_COLOR: Record<BanLogRow['action'], string> = {
   banned: 'border-red-500/25 bg-red-500/5 text-red-300',
   unbanned: 'border-emerald-500/25 bg-emerald-500/5 text-emerald-300',
-  kicked_auto: 'border-[#E3B341]/25 bg-[#E3B341]/5 text-[#E3B341]',
+  kicked_auto: 'border-[#F5C563]/25 bg-[#F5C563]/5 text-[#F5C563]',
 };
 
 // Read-only — every row here is written server-side by the
@@ -58,7 +58,7 @@ export default function BanLogPanel({ onClose }: Props) {
       title="Ban log"
       subtitle="Ban and kick events recorded from the Telegram group"
       icon={<ShieldBan className="h-4 w-4" />}
-      accent="#EF4444"
+      accent="#FF4D5E"
       maxWidth="max-w-[900px]"
       onClose={onClose}
     >

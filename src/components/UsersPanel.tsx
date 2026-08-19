@@ -122,7 +122,7 @@ export default function UsersPanel({ onClose }: Props) {
       title="Users"
       subtitle="Search by Telegram ID or @username — extend or revoke VIP"
       icon={<User className="h-4 w-4" />}
-      accent="#2B5CAD"
+      accent="#4C6FFF"
       maxWidth="max-w-[1000px]"
       onClose={onClose}
       error={error}
@@ -130,7 +130,7 @@ export default function UsersPanel({ onClose }: Props) {
       actions={
         <button
           onClick={load}
-          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/10"
+          className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/10"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
@@ -139,7 +139,7 @@ export default function UsersPanel({ onClose }: Props) {
         <PanelTabs<Filter>
           active={filter}
           onChange={setFilter}
-          accent="#2B5CAD"
+          accent="#4C6FFF"
           tabs={[
             { key: 'all', label: 'All', badge: counts.all },
             { key: 'active', label: 'Active VIP', badge: counts.active },
@@ -155,11 +155,11 @@ export default function UsersPanel({ onClose }: Props) {
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Total subscribers', value: counts.all, tone: 'text-white' },
-            { label: 'Active VIP', value: counts.active, tone: 'text-[#5FD9A0]' },
+            { label: 'Active VIP', value: counts.active, tone: 'text-[#86EEC0]' },
             {
               label: 'Expiring in 7 days',
               value: counts.expiring,
-              tone: counts.expiring > 0 ? 'text-[#FFB84D]' : 'text-white/40',
+              tone: counts.expiring > 0 ? 'text-[#FFC24D]' : 'text-white/40',
             },
             { label: 'Expired', value: counts.expired, tone: 'text-white/40' },
           ].map((stat) => (
@@ -180,7 +180,7 @@ export default function UsersPanel({ onClose }: Props) {
               .map(([tier, n]) => (
                 <span
                   key={tier}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/60"
+                  className="rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/60"
                 >
                   <span className="font-mono uppercase text-white/40">{tier}</span>{' '}
                   <span className="font-bold text-white">{n}</span>
@@ -195,7 +195,7 @@ export default function UsersPanel({ onClose }: Props) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by Telegram ID or @username…"
-            className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#2B5CAD]/50"
+            className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none focus:border-[#4C6FFF]/50"
           />
         </div>
 
@@ -223,15 +223,15 @@ export default function UsersPanel({ onClose }: Props) {
                       ID {row.telegram_user_id} · {row.tier} ·{' '}
                       {active ? 'expires' : 'expired'} {new Date(row.expires_at).toLocaleDateString()}
                       {active && (
-                        <span className={left <= 7 ? 'font-bold text-[#FFB84D]' : 'text-white/55'}>
+                        <span className={left <= 7 ? 'font-bold text-[#FFC24D]' : 'text-white/55'}>
                           {' '}· {left}d left
                         </span>
                       )}
                     </p>
                   </div>
                   <span
-                    className={`flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${
-                      active ? 'bg-[#2B5CAD]/15 text-[#2B5CAD]' : 'bg-white/10 text-white/40'
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold ${
+                      active ? 'bg-[#4C6FFF]/15 text-[#4C6FFF]' : 'bg-white/10 text-white/40'
                     }`}
                   >
                     {active ? <ShieldCheck className="h-3 w-3" /> : <ShieldX className="h-3 w-3" />}
@@ -240,21 +240,21 @@ export default function UsersPanel({ onClose }: Props) {
                   <button
                     onClick={() => extend(row, 7)}
                     disabled={busyId === row.telegram_user_id}
-                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-white/80 transition hover:bg-white/10 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-white/80 transition hover:bg-white/10 disabled:opacity-50"
                   >
                     <Plus className="h-3 w-3" /> 7d
                   </button>
                   <button
                     onClick={() => extend(row, 30)}
                     disabled={busyId === row.telegram_user_id}
-                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-white/80 transition hover:bg-white/10 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-white/80 transition hover:bg-white/10 disabled:opacity-50"
                   >
                     <Plus className="h-3 w-3" /> 30d
                   </button>
                   <button
                     onClick={() => revoke(row)}
                     disabled={busyId === row.telegram_user_id || !active}
-                    className="flex items-center gap-1 rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-300 transition hover:bg-red-500/20 disabled:opacity-30"
+                    className="flex items-center gap-1 rounded-xl border border-red-500/25 bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-300 transition hover:bg-red-500/20 disabled:opacity-30"
                   >
                     {busyId === row.telegram_user_id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Revoke'}
                   </button>

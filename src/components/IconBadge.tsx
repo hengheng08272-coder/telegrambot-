@@ -20,11 +20,11 @@ const SIZE_MAP: Record<IconSize, { container: number; icon: number; radius: numb
 };
 
 const TINT_MAP: Record<IconTint, { bg: string; color: string }> = {
-  gold: { bg: '#E6F1FB', color: '#185FA5' },
-  navy: { bg: '#E6F1FB', color: '#0C447C' },
+  gold: { bg: '#F0F3FF', color: '#185FA5' },
+  navy: { bg: '#F0F3FF', color: '#1E2A80' },
   success: { bg: '#E8F6F0', color: '#1F9D6B' },
-  danger: { bg: '#FDEDE9', color: '#E6231F' },
-  white: { bg: '#FFFFFF', color: '#0C447C' },
+  danger: { bg: '#FDEDE9', color: '#FF2D46' },
+  white: { bg: '#FFFFFF', color: '#1E2A80' },
   light: { bg: 'rgba(255,255,255,0.18)', color: '#FFFFFF' },
   stock: { bg: '#E1F5EE', color: '#0F6E56' },
   invoice: { bg: '#EAF3FB', color: '#2E86C1' },

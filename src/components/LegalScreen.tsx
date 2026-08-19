@@ -16,8 +16,8 @@ export default function LegalScreen({ onBack }: Props) {
   const isKh = lang === 'km';
 
   return (
-    <div className="min-h-screen bg-[#0A0A0D] text-white">
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/10 bg-[#0A0A0D]/95 px-4 py-4 backdrop-blur-md sm:px-8">
+    <div className="min-h-screen bg-app text-white">
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/10 bar-blur px-4 py-4 backdrop-blur-md sm:px-8">
         <button
           onClick={onBack}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 transition hover:bg-white/10"
@@ -34,16 +34,16 @@ export default function LegalScreen({ onBack }: Props) {
         <div className="mb-6 flex gap-2">
           <button
             onClick={() => setTab('terms')}
-            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
-              tab === 'terms' ? 'bg-[#E6231F] text-white' : 'border border-white/10 bg-white/5 text-white/60'
+            className={`rounded-xl px-4 py-1.5 text-xs font-bold transition ${
+              tab === 'terms' ? 'bg-[#FF2D46] text-white' : 'border border-white/10 bg-white/5 text-white/60'
             }`}
           >
             {isKh ? 'លក្ខខណ្ឌប្រើប្រាស់' : 'Terms of Service'}
           </button>
           <button
             onClick={() => setTab('privacy')}
-            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
-              tab === 'privacy' ? 'bg-[#E6231F] text-white' : 'border border-white/10 bg-white/5 text-white/60'
+            className={`rounded-xl px-4 py-1.5 text-xs font-bold transition ${
+              tab === 'privacy' ? 'bg-[#FF2D46] text-white' : 'border border-white/10 bg-white/5 text-white/60'
             }`}
           >
             {isKh ? 'គោលការណ៍ឯកជនភាព' : 'Privacy Policy'}
