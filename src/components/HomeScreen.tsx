@@ -343,21 +343,26 @@ export default function HomeScreen({
           heroVisible && !scrolled ? 'bg-transparent' : 'bar-blur border-b border-white/[0.06]'
         }`}
       >
-        <div className="mx-auto flex max-w-[1400px] items-center gap-1.5 px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
-          {/* Profile avatar + Telegram username. The app-icon button that
-              used to sit to the left of this was removed: Telegram already
-              prints "NINTANIME mini app" in its own title bar directly
-              above, so the icon was the third piece of branding in a
-              40px-tall strip and pushed the person's own name off-screen
-              on narrow phones. */}
+        <div className="no-scrollbar mx-auto flex max-w-[1400px] flex-nowrap items-center gap-1.5 overflow-x-auto px-2.5 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
+          {/* Profile avatar + Telegram username, styled as one "glass"
+              capsule — same border/blur language as the live-count pill
+              next to it and the .player-btn controls elsewhere in the
+              app, so every pill on a black background reads as part of
+              one system instead of a plain hover-only button standing
+              apart from its neighbour. The app-icon button that used to
+              sit to the left of this was removed: Telegram already prints
+              "NINTANIME mini app" in its own title bar directly above, so
+              the icon was the third piece of branding in a 40px-tall
+              strip and pushed the person's own name off-screen on narrow
+              phones. */}
           <button
             onClick={onOpenProfile}
             aria-label={t.navAccount}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl py-0.5 pl-0.5 pr-2 transition hover:bg-white/5 sm:gap-2 sm:pr-2.5"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] py-1 pl-1 pr-2.5 backdrop-blur-sm transition hover:border-white/20 hover:bg-white/[0.08] sm:gap-2 sm:pr-3"
           >
             <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ${
-                subscribed ? 'ring-[#F5C563]' : 'ring-white/15'
+              className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 sm:h-8 sm:w-8 ${
+                subscribed ? 'ring-[#F5C563]' : 'ring-white/20'
               }`}
             >
               {telegramProfile?.photoUrl ? (
@@ -379,26 +384,32 @@ export default function HomeScreen({
             {/* Shown on every screen size — this was `hidden sm:inline`,
                 which meant the one place the app addresses the viewer by
                 name was invisible on the phones nearly everyone uses it
-                on. Falls back to the real name when Telegram has no
-                @username set, so the slot is never silently empty. */}
+                on. A tighter cap on the smallest phones keeps a long
+                Telegram @username from ever pushing the live-count pill
+                or the VIP badge off the edge of the screen. Falls back to
+                the real name when Telegram has no @username set, so the
+                slot is never silently empty. */}
             {(telegramProfile?.username || telegramProfile?.fullName) && (
-              <span className="max-w-[92px] truncate text-xs font-bold text-white sm:max-w-[130px]">
+              <span className="max-w-[64px] truncate text-xs font-bold text-white xs:max-w-[92px] sm:max-w-[130px]">
                 {telegramProfile.username ? `@${telegramProfile.username}` : telegramProfile.fullName}
               </span>
             )}
           </button>
 
           {/* Live "watching now" count — a real Realtime Presence tally
-              (see src/lib/presence.ts), not a randomized/fake number.
-              Kept next to the profile chip, just tighter now that the
-              chip above takes some of the header's width. */}
-          <div className="flex shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-1.5 py-1 sm:gap-1.5 sm:px-2.5">
-            <span className="relative flex h-1.5 w-1.5">
+              (see src/lib/presence.ts), not a randomized/fake number. The
+              "watching now" label itself only ever renders from `md:`
+              (≥768px) up — comfortably past every phone's CSS viewport
+              width, even the largest — so on a real phone this pill is
+              always just the pulsing dot and the number, never full
+              English/Khmer text spilling across the row. */}
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 backdrop-blur-sm sm:gap-1.5 sm:px-2.5">
+            <span className="relative flex h-1.5 w-1.5 shrink-0">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF2D46]/70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FF2D46]" />
             </span>
             <span className="text-xs font-bold text-white">{watchingNow.toLocaleString()}</span>
-            <span className="hidden text-[10px] text-[#A6ADBD] sm:inline sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
+            <span className="hidden text-[10px] text-[#A6ADBD] md:inline md:text-xs">{t.watchingNow ?? 'watching now'}</span>
           </div>
 
           {/* Nav links — scrolls horizontally instead of wrapping/breaking
