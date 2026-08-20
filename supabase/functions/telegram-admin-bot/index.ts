@@ -211,6 +211,44 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      // movie_confirm / movie_revoke: same retroactive-review shape as
+      // pay_confirm/pay_revoke above, but for a standalone $1 movie
+      // purchase (movie_purchases table) instead of VIP. The unlock was
+      // already granted optimistically by confirm-movie-payment-proof;
+      // Confirm just marks it reviewed, Revoke actually takes the movie
+      // back (sets status to rejected, which is what hasPurchasedMovie
+      // checks against).
+      if ((action === "movie_confirm" || action === "movie_revoke") && submissionId) {
+        if (callbackChatId !== adminChatId) {
+          await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Not authorized.", show_alert: true });
+          return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const { data: sub } = await admin.from("movie_purchases").select("*").eq("id", submissionId).maybeSingle();
+
+        if (!sub) {
+          await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Purchase not found." });
+          return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        if (sub.admin_confirmed) {
+          await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Already reviewed." });
+          return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        if (action === "movie_confirm") {
+          await admin.from("movie_purchases").update({ admin_confirmed: true }).eq("id", submissionId);
+          await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Confirmed" });
+          await stampDecision("CONFIRMED");
+        } else {
+          await admin.from("movie_purchases").update({ status: "rejected", admin_confirmed: true, reviewed_at: new Date().toISOString() }).eq("id", submissionId);
+          await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Revoked — movie access removed." });
+          await stampDecision("REVOKED");
+        }
+
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
