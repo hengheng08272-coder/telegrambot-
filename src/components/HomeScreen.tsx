@@ -273,6 +273,37 @@ export default function HomeScreen({
     [shows],
   );
 
+  // "Recommended for You" — a light personalization pass using only what
+  // we already have on hand: the genre(s) of whatever's in Continue
+  // Watching. No separate taste-profile query, no cold-start UI to design
+  // — shows with no history simply don't get the row (handled below), and
+  // it recomputes for free every time continueItems does since it's a
+  // plain derived value, not its own effect.
+  const recommended = useMemo(() => {
+    if (continueItems.length === 0) return [];
+    const watchedIds = new Set(continueItems.map((c) => c.show.id));
+    const genreCounts = new Map<string, number>();
+    for (const item of continueItems) {
+      for (const g of showsById.get(item.show.id)?.genres ?? []) {
+        genreCounts.set(g.slug, (genreCounts.get(g.slug) ?? 0) + 1);
+      }
+    }
+    const topGenres = [...genreCounts.entries()].sort((a, b) => b[1] - a[1]).map(([slug]) => slug);
+    if (topGenres.length === 0) return [];
+    const seen = new Set<string>();
+    const picks: ShowWithGenres[] = [];
+    for (const slug of topGenres) {
+      for (const s of showsByGenre(slug)) {
+        if (watchedIds.has(s.id) || seen.has(s.id)) continue;
+        seen.add(s.id);
+        picks.push(s);
+        if (picks.length >= 10) break;
+      }
+      if (picks.length >= 10) break;
+    }
+    return picks;
+  }, [continueItems, showsById, showsByGenre]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-app text-white">
@@ -518,8 +549,6 @@ export default function HomeScreen({
           in-flow here means it can never land on top of them. */}
       <div className="relative z-10 pt-[52px] sm:pt-[60px]">
         <SupporterTicker
-          trendingTitle={trending[0]?.title}
-          trendingPrefix={t.trendingNowPrefix}
           staticMessage={tickerMessage}
         />
 
@@ -600,24 +629,31 @@ export default function HomeScreen({
                 members who left a show mid-episode get it surfaced right
                 at the top of home, easy to find and resume, instead of
                 having to dig for it in My List. */}
-            {continueItems.length > 0 && (
+            {continueItems.length > 0 ? (
               <ContinueWatchingRow
                 items={continueItems}
                 onResume={onResumeEpisode}
                 title={t.continueWatching}
                 epLabel={t.epShort}
               />
+            ) : (
+              trending[0] && (
+                <StartWatchingPrompt
+                  show={trending[0]}
+                  title={t.continueWatching}
+                  message={t.continueEmpty}
+                  cta={t.startWatching ?? 'Start Watching'}
+                  onSelectShow={onSelectShow}
+                />
+              )
             )}
-            {comingSoon.length > 0 && (
+            {recommended.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<Clock className="h-5 w-5 text-[#FF6B7C]" />}
-                title={t.comingSoonLabel}
-                shows={comingSoon}
+                icon={<Star className="h-5 w-5 text-[#F5C563]" />}
+                title={t.recommendedForYou ?? 'Recommended for You'}
+                shows={recommended}
                 onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.comingSoonLabel, shows: comingSoon })}
-                viewAllLabel={t.viewAll}
-                tag={{ label: t.freshTag ?? 'SOON', color: '#FF6B7C' }}
               />
             )}
             {freeShows.length > 0 && (
@@ -674,6 +710,23 @@ export default function HomeScreen({
                 />
               );
             })}
+
+            {/* Coming Soon moved to the bottom of the browse list — it's
+                not-yet-watchable content, so it now sits after everything
+                that's actually playable instead of competing for the top
+                of the page. */}
+            {comingSoon.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                icon={<Clock className="h-5 w-5 text-[#FF6B7C]" />}
+                title={t.comingSoonLabel}
+                shows={comingSoon}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.comingSoonLabel, shows: comingSoon })}
+                viewAllLabel={t.viewAll}
+                tag={{ label: t.freshTag ?? 'SOON', color: '#FF6B7C' }}
+              />
+            )}
 
             {/* Rewards entry — language + VIP subscribe moved to Account
                 screen per the person's request; this bar now only surfaces
@@ -1431,6 +1484,52 @@ function ContinueWatchingRow({ items, onResume, title, epLabel }: ContinueWatchi
           </button>
         ))}
       </div>
+    </section>
+  );
+}
+
+/* ---------- Continue watching — empty state ---------- */
+
+interface StartWatchingPromptProps {
+  show: Show;
+  title: string;
+  message: string;
+  cta: string;
+  onSelectShow: (s: Show) => void;
+}
+
+// Shown in place of the Continue Watching row for anyone with no watch
+// history yet — same section header and shelf height as the row it
+// replaces, so the page doesn't visibly jump once real history appears,
+// but the content invites a first tap instead of just being blank.
+function StartWatchingPrompt({ show, title, message, cta, onSelectShow }: StartWatchingPromptProps) {
+  return (
+    <section className="mt-9">
+      <div className="mb-3 flex items-center gap-2">
+        <Clock className="h-5 w-5 text-[#F5C563]" />
+        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+      </div>
+      <button
+        onClick={() => onSelectShow(show)}
+        className="group relative flex w-full items-center gap-4 overflow-hidden rounded-xl border border-dashed border-white/12 bg-white/[0.02] p-3 text-left transition hover:border-[#FF2D46]/40 hover:bg-white/[0.04]"
+      >
+        <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151926] ring-1 ring-white/5 sm:h-24 sm:w-16">
+          <img
+            src={show.poster_url ?? show.banner_url ?? ''}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white sm:text-base">{show.title}</p>
+          <p className="mt-0.5 text-xs text-[#8B92A3] sm:text-sm">{message}</p>
+          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#FF2D46] px-3 py-1.5 text-xs font-bold text-white shadow-[0_2px_10px_rgba(255,45,70,0.35)] transition group-active:scale-95">
+            <Play className="h-3 w-3 fill-white" />
+            {cta}
+          </span>
+        </div>
+      </button>
     </section>
   );
 }
