@@ -16,9 +16,11 @@ import AdminScreen from '@/components/AdminScreen';
 import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
 import SubscriptionModal from '@/components/SubscriptionModal';
+import MoviePurchaseModal from '@/components/MoviePurchaseModal';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { getSubscriptionStatus } from '@/lib/subscription';
+import { getMyMoviePurchases } from '@/lib/moviePurchase';
 import { getAvailableBonusSpin } from '@/lib/spin';
 import { recordReferralIfPresent } from '@/lib/referral';
 import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
@@ -51,6 +53,16 @@ function App() {
   const [showSpin, setShowSpin] = useState(false);
   const [showSubscribe, setShowSubscribe] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  // Standalone $1 movies — bought and unlocked independently of VIP, so
+  // this is tracked separately from `subscribed` rather than folded into
+  // it. `showBuyMovie` holds the show currently up for purchase (null =
+  // no purchase modal open); it's a `Show`, not just an id, so the modal
+  // has the poster/title without a second fetch.
+  const [purchasedMovies, setPurchasedMovies] = useState<Set<string>>(new Set());
+  const [showBuyMovie, setShowBuyMovie] = useState<Show | null>(null);
+  const refreshPurchasedMovies = () => {
+    getMyMoviePurchases().then(setPurchasedMovies);
+  };
   const [bonusSpinReady, setBonusSpinReady] = useState(false);
   const refreshSubscription = () => {
     getSubscriptionStatus().then((s) => setSubscribed(s.subscribed));
@@ -58,6 +70,8 @@ function App() {
   };
   useEffect(() => {
     refreshSubscription();
+    refreshPurchasedMovies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const isMobile = useIsMobile();
   const isAdmin = !!profile?.is_admin;
@@ -150,11 +164,29 @@ function App() {
   };
 
   // Episodes marked is_free_preview, or shows marked is_free, play for
-  // everyone. Everything else needs an active subscription — otherwise
-  // this opens the subscribe sheet instead of playing.
+  // everyone. A standalone movie that isn't free needs to have been
+  // BOUGHT ($1, see MoviePurchaseModal) — VIP does not cover it, by
+  // design, so this check never falls back to `subscribed` for a movie.
+  // Everything else (series) still needs an active subscription.
   const handlePlayEpisode = (episode: Episode, show: ShowWithGenres) => {
     const free = show.is_free || episode.is_free_preview;
-    if (!free && !subscribed) {
+    if (free) {
+      hapticTap();
+      addToContinueWatching(show, episode, episode.episode_number - 1);
+      setScreen({ name: 'player', episode, show });
+      return;
+    }
+    if (show.type === 'movie') {
+      if (!purchasedMovies.has(show.id)) {
+        setShowBuyMovie(show);
+        return;
+      }
+      hapticTap();
+      addToContinueWatching(show, episode, episode.episode_number - 1);
+      setScreen({ name: 'player', episode, show });
+      return;
+    }
+    if (!subscribed) {
       setShowSubscribe(true);
       return;
     }
@@ -301,7 +333,19 @@ function App() {
           onPlayEpisode={handlePlayEpisode}
           onSelectShow={(s) => setScreen({ name: 'detail', show: s })}
           subscribed={subscribed}
+          purchasedMovieIds={purchasedMovies}
+          onRequestPurchase={(s) => setShowBuyMovie(s)}
         />
+        {showBuyMovie && (
+          <MoviePurchaseModal
+            show={showBuyMovie}
+            onClose={() => setShowBuyMovie(null)}
+            onUnlocked={() => {
+              hapticSuccess();
+              refreshPurchasedMovies();
+            }}
+          />
+        )}
         {showSubscribe && (
           <SubscriptionModal
             onClose={() => setShowSubscribe(false)}
@@ -364,6 +408,16 @@ function App() {
         <LuckyDrawModal
           onClose={() => setShowSpin(false)}
           onClaimed={() => hapticSuccess()}
+        />
+      )}
+      {showBuyMovie && (
+        <MoviePurchaseModal
+          show={showBuyMovie}
+          onClose={() => setShowBuyMovie(null)}
+          onUnlocked={() => {
+            hapticSuccess();
+            refreshPurchasedMovies();
+          }}
         />
       )}
       {showSubscribe && (
