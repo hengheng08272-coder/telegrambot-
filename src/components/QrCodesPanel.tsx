@@ -18,6 +18,12 @@ const FALLBACK_QR_IMAGES: Record<string, string> = {
   '12m': '/assets/qr-12m.png',
 };
 
+// Not a real VIP plan — 'movie' is the tier key MoviePurchaseModal reads
+// for the flat $1 standalone-movie QR (see database/movie-purchases-
+// addition.sql). Listed here too so uploading it needs no separate
+// screen.
+const MOVIE_TIER = { key: 'movie', labelEn: 'Movie (pay-per-title)', price: 1 };
+
 export default function QrCodesPanel({ onClose }: Props) {
   const [images, setImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -105,7 +111,7 @@ export default function QrCodesPanel({ onClose }: Props) {
               <Loader2 className="h-5 w-5 animate-spin text-white/40" />
             </div>
           ) : (
-            PRICING_TIERS.map((tier) => (
+            [...PRICING_TIERS, MOVIE_TIER].map((tier) => (
               <div key={tier.key} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/30">
                   {images[tier.key] || FALLBACK_QR_IMAGES[tier.key] ? (

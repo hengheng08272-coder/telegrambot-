@@ -25,6 +25,12 @@ interface ShowDetailScreenProps {
   onPlayEpisode: (episode: Episode, show: ShowWithGenres) => void;
   onSelectShow?: (show: Show) => void;
   subscribed: boolean;
+  /** show_ids of standalone movies this viewer has already bought — VIP
+   *  does not cover these, purchase is the only way in (see App.tsx). */
+  purchasedMovieIds?: Set<string>;
+  /** Opens the $1 purchase modal for this show. Only relevant when
+   *  show.type === 'movie' && !show.is_free && not already purchased. */
+  onRequestPurchase?: (show: Show) => void;
 }
 
 export default function ShowDetailScreen({
@@ -33,6 +39,8 @@ export default function ShowDetailScreen({
   onPlayEpisode,
   onSelectShow,
   subscribed,
+  purchasedMovieIds,
+  onRequestPurchase,
 }: ShowDetailScreenProps) {
   const { lang } = useLang();
   const t = appText[lang];
@@ -95,6 +103,12 @@ export default function ShowDetailScreen({
 
   const fmtDuration = (mins: number | null) =>
     mins ? `${Math.floor(mins / 60) > 0 ? Math.floor(mins / 60) + 'h ' : ''}${mins % 60}m` : '';
+
+  // Standalone movies are gated on purchase only — never on `subscribed`,
+  // by design (VIP does not include pay-per-title movies). See App.tsx's
+  // handlePlayEpisode for the same rule enforced server-side of the tap.
+  const movieLocked =
+    show.type === 'movie' && !show.is_free && !purchasedMovieIds?.has(show.id);
 
   return (
     <div className="min-h-screen bg-app text-white">
@@ -171,6 +185,14 @@ export default function ShowDetailScreen({
               <span className="rounded border border-white/20 px-2 py-0.5 text-xs font-medium uppercase text-white/70">
                 {show.type === 'movie' ? t.movie : t.series}
               </span>
+              {movieLocked && (
+                <>
+                  <span className="h-1 w-1 rounded-full bg-white/30" />
+                  <span className="flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold text-[#211A0E]" style={{ background: 'linear-gradient(90deg,#F5C563,#C08F33)' }}>
+                    <Lock className="h-3 w-3" /> {t.lockedMovie ?? 'Buy to Watch'} · $1
+                  </span>
+                </>
+              )}
               <span className="h-1 w-1 rounded-full bg-white/30" />
               <span
                 className={`rounded px-2 py-0.5 text-xs font-semibold ${
@@ -208,15 +230,30 @@ export default function ShowDetailScreen({
             <div className="mt-6 flex items-center gap-3">
               <button
                 onClick={() => {
-                  if (!show.coming_soon && episodes.length > 0 && detail) onPlayEpisode(episodes[0], detail);
+                  if (show.coming_soon) return;
+                  if (movieLocked) {
+                    onRequestPurchase?.(show);
+                    return;
+                  }
+                  if (episodes.length > 0 && detail) onPlayEpisode(episodes[0], detail);
                 }}
                 disabled={show.coming_soon}
                 className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition active:scale-95 ${
-                  show.coming_soon ? 'cursor-not-allowed bg-white/10 text-[#A6ADBD]' : 'btn-primary'
+                  show.coming_soon
+                    ? 'cursor-not-allowed bg-white/10 text-[#A6ADBD]'
+                    : movieLocked
+                      ? 'bg-gradient-to-r from-[#F5C563] to-[#C08F33] text-[#211A0E] shadow-[0_8px_20px_-8px_rgba(245,197,99,0.5)]'
+                      : 'btn-primary'
                 }`}
               >
-                <Play className="h-5 w-5 fill-current" />
-                {show.coming_soon ? t.comingSoonLabel : show.type === 'movie' ? t.playMovie : t.playFirstEpisode}
+                {movieLocked ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
+                {show.coming_soon
+                  ? t.comingSoonLabel
+                  : movieLocked
+                    ? `${t.buyThisMovie ?? 'Buy This Movie'} — $1`
+                    : show.type === 'movie'
+                      ? t.playMovie
+                      : t.playFirstEpisode}
               </button>
               <button
                 onClick={handleInvite}
