@@ -21,7 +21,7 @@ interface KhqrCardProps {
  */
 export default function KhqrCard({ merchantName, amount, qrDataUrl }: KhqrCardProps) {
   return (
-    <div className="mx-auto mt-3.5 w-full max-w-[220px] overflow-hidden rounded-xl bg-white shadow-[0_10px_34px_rgba(0,0,0,0.55)]">
+    <div className="mx-auto w-full max-w-[220px] overflow-hidden rounded-xl bg-white shadow-[0_10px_34px_rgba(0,0,0,0.55)]">
       {/* Header band. The notch on the bottom-right is the KHQR ticket's
           own shape — a clipped corner, so it needs no artwork. */}
       <div

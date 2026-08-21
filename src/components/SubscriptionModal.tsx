@@ -904,7 +904,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             {/* Compact header: one gold eyebrow, one line of title, one
                 line of promise. The old hero spent a third of the screen
                 on a glowing logo before a single price was visible. */}
-            <div className="flex flex-col items-center pb-5 text-center">
+            <div className="flex flex-col items-center pb-4 text-center">
               <div className="mb-2.5 inline-flex items-center gap-1.5 rounded-md border border-gold/25 bg-gold/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
                 <Crown className="h-3 w-3" />
                 {t.subTicketEyebrow}
@@ -920,7 +920,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
 
             {/* Benefits, once, above the list — so the plan rows can be
                 pure price comparison instead of each repeating the pitch. */}
-            <div className="mb-4 grid grid-cols-3 gap-2">
+            <div className="mb-3.5 grid grid-cols-3 gap-2">
               {(
                 [
                   [ShieldCheck, t.subInstantUnlock, 'text-[#2FD98C]'],
@@ -930,7 +930,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
               ).map(([Icon, label, color]) => (
                 <div
                   key={label}
-                  className="flex flex-col items-center gap-1.5 rounded-card border border-white/[0.06] bg-white/[0.02] px-2 py-2.5 text-center"
+                  className="flex flex-col items-center gap-1 rounded-card border border-white/[0.06] bg-white/[0.02] px-2 py-2 text-center"
                 >
                   <Icon className={`h-3.5 w-3.5 ${color}`} />
                   <span className="text-[10px] leading-tight text-white/50">{label}</span>
@@ -966,59 +966,64 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       <Icon className={`h-4 w-4 ${selected ? 'text-gold' : 'text-white/55'}`} />
                     </div>
 
+                    {/* Two lines, each splitting left/right on its own,
+                        rather than one text column beside one number
+                        column. Sharing a column meant the widest thing on
+                        either line set the width for both, so the
+                        per-month figure was squeezing plan names into "3
+                        Mo…". Split per line, the name has the whole row
+                        minus the price, and every row still stands
+                        exactly two lines tall. */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="font-bold text-white">{planLabel(tr)}</span>
-                        {tr.badge === 'best' && (
-                          <span className="rounded-md bg-gold/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gold">
-                            {t.subBestValue}
-                          </span>
-                        )}
-                        {tr.badge === 'popular' && (
-                          <span className="rounded-md border border-brand/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand">
-                            {t.subPopular}
-                          </span>
-                        )}
-                        {/* What the longer plans are actually for, stated
-                            as a number rather than left to arithmetic. */}
-                        {savePct >= 5 && (
-                          <span className="rounded-md bg-[#2FD98C]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#2FD98C]">
-                            {t.subSaveBadge} {savePct}%
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="truncate font-bold text-white">{planLabel(tr)}</span>
+                          {tr.badge === 'best' && (
+                            <span className="shrink-0 rounded-md bg-gold/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gold">
+                              {t.subBestValue}
+                            </span>
+                          )}
+                          {tr.badge === 'popular' && (
+                            <span className="shrink-0 rounded-md border border-brand/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand">
+                              {t.subPopular}
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-lg font-extrabold leading-none tabular-nums text-white">
+                          ${tr.price}
+                        </span>
+                      </div>
+
+                      <div className="mt-1 flex items-baseline justify-between gap-2">
+                        {/* The admin's own pitch for this tier stays on
+                            the row — it is editable from Admin Panel ->
+                            Subscriptions, so dropping it in favour of a
+                            computed line would silently ignore what they
+                            wrote there. */}
+                        <span className="truncate text-[11px] text-white/40">{tr.pitchKm}</span>
+                        {perMonth && (
+                          <span className="shrink-0 text-[10px] tabular-nums text-white/35">
+                            ${perMonth}
+                            {t.subPerMonth}
+                            {savePct >= 5 && (
+                              <span className="ml-1 font-bold text-[#2FD98C]">−{savePct}%</span>
+                            )}
                           </span>
                         )}
                       </div>
-                      {/* The admin's own pitch for this tier stays on the
-                          row — it is editable from Admin Panel ->
-                          Subscriptions, so dropping it in favour of a
-                          computed line would silently ignore what they
-                          wrote there. */}
-                      <p className="mt-0.5 line-clamp-1 text-[11px] text-white/40">{tr.pitchKm}</p>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-2.5">
-                      <span className="text-right">
-                        <span className="block text-lg font-extrabold leading-none tabular-nums text-white">
-                          ${tr.price}
-                        </span>
-                        {perMonth && (
-                          <span className="mt-0.5 block text-[10px] tabular-nums text-white/35">
-                            ${perMonth}
-                            {t.subPerMonth}
-                          </span>
-                        )}
-                      </span>
-                      {/* Radio dot, not a tear-off stub: the row is a
-                          choice in a list, and a dot says "one of these"
-                          at a glance without adding a second row of
-                          chrome to whichever plan happens to be picked. */}
-                      <span
-                        className={`flex h-5 w-5 items-center justify-center rounded-full border transition ${
-                          selected ? 'border-gold bg-gold' : 'border-white/20'
-                        }`}
-                      >
-                        {selected && <Check className="h-3 w-3 text-[#1A1206]" strokeWidth={3.5} />}
-                      </span>
-                    </div>
+                    {/* Radio dot, not a tear-off stub: the row is a
+                        choice in a list, and a dot says "one of these" at
+                        a glance without adding a second row of chrome to
+                        whichever plan happens to be picked. */}
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
+                        selected ? 'border-gold bg-gold' : 'border-white/20'
+                      }`}
+                    >
+                      {selected && <Check className="h-3 w-3 text-[#1A1206]" strokeWidth={3.5} />}
+                    </span>
                   </button>
                 );
               })}
@@ -1247,51 +1252,49 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             {section(
               t.subOrderSummary,
               <Crown className="h-3 w-3 text-gold" />,
+              /* Deliberately compact: on a small phone this block is all
+                 that stands between opening the screen and seeing the QR,
+                 and the amount is printed on the KHQR ticket itself a few
+                 lines below — a second oversized copy of it here only
+                 pushed the thing being paid with off-screen. */
               <>
-                <div className="flex items-end justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-white">
                       {planLabel(payTier)}
                     </span>
-                    <span className="mt-0.5 block text-[11px] text-white/40">
-                      {t.subReceiptRef} · <span className="tabular-nums">{ticketRef}</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-white/40">
+                      <span className="flex items-center gap-1 font-semibold text-white/55">
+                        {payMode === 'auto' ? (
+                          <Zap className="h-3 w-3 text-[#A3B4FF]" />
+                        ) : (
+                          <QrCode className="h-3 w-3 text-white/50" />
+                        )}
+                        {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
+                      </span>
+                      <span className="tabular-nums">· {ticketRef}</span>
                     </span>
                   </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-[10px] uppercase tracking-[0.14em] text-white/35">
-                      {t.subTotalDue}
-                    </span>
-                    <span className="block text-2xl font-extrabold leading-none text-white">
-                      ${payTier.price}
-                    </span>
+                  <span className="shrink-0 text-xl font-extrabold leading-none text-white">
+                    ${payTier.price}
                   </span>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2.5">
-                  <span className="flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
-                    {payMode === 'auto' ? (
-                      <Zap className="h-3.5 w-3.5 text-[#A3B4FF]" />
-                    ) : (
-                      <QrCode className="h-3.5 w-3.5 text-white/50" />
-                    )}
-                    {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleChangeMethod}
-                      className="text-[11px] font-semibold text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70"
-                    >
-                      {t.subChangeMethod}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleChangePlan}
-                      className="text-[11px] font-semibold text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70"
-                    >
-                      {t.subChangePlan}
-                    </button>
-                  </span>
+                <div className="mt-2.5 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleChangeMethod}
+                    className="text-[11px] font-semibold text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70"
+                  >
+                    {t.subChangeMethod}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleChangePlan}
+                    className="text-[11px] font-semibold text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/70"
+                  >
+                    {t.subChangePlan}
+                  </button>
                 </div>
               </>,
             )}
@@ -1324,7 +1327,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   <img
                     src={qrSrc}
                     alt="KHQR"
-                    className="mx-auto mt-3.5 w-full max-w-[220px] rounded-xl border border-white/10 bg-white p-2 shadow-card"
+                    className="mx-auto w-full max-w-[220px] rounded-xl border border-white/10 bg-white p-2 shadow-card"
                   />
                 ) : (
                   <p className="rounded-xl border border-gold/25 bg-gold/[0.06] p-3.5 text-center text-xs leading-relaxed text-gold-light">
