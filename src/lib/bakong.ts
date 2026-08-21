@@ -52,6 +52,29 @@ export interface BakongConfig {
   accountInformation?: string;
   /** Bank name that goes with the above, e.g. `ABA Bank`. */
   acquiringBank?: string;
+  /**
+   * Registered merchant id, when the owner has a merchant account.
+   *
+   * This is what decides which KHQR shape gets built, and the difference
+   * is not cosmetic. Without it the payload describes an individual
+   * (tag 29); with it, a registered merchant (tag 30). ABA accepts a
+   * dynamic QR generated outside its own app only in the second form:
+   * the first displays correctly, names the right payee and the right
+   * amount, and is then refused at the moment of payment with "Invalid Qr
+   * Merchant Data".
+   *
+   * Found in the owner's own fixed-amount ABA QR as the 15 digits after
+   * `0115` (see QR_PAYMENT_SETUP_NOTE.md).
+   */
+  merchantId?: string;
+  /**
+   * Merchant category code — four digits describing the line of business,
+   * assigned by the bank when the merchant account was opened (a
+   * streaming service is usually 7832 or 5815). Defaults to the SDK's
+   * own value when unset; worth matching to what the bank issued, since
+   * that is what it will compare against.
+   */
+  merchantCategoryCode?: string;
 }
 
 const SETTING_KEYS = {
@@ -60,6 +83,8 @@ const SETTING_KEYS = {
   city: 'bakong_city',
   accountInformation: 'bakong_account_information',
   acquiringBank: 'bakong_acquiring_bank',
+  merchantId: 'bakong_merchant_id',
+  merchantCategoryCode: 'bakong_mcc',
 } as const;
 
 /**
@@ -95,6 +120,8 @@ export async function fetchBakongConfig(): Promise<BakongConfig | null> {
     city,
     accountInformation: accountInformation || undefined,
     acquiringBank: acquiringBank || undefined,
+    merchantId: (map.get(SETTING_KEYS.merchantId) ?? '').trim() || undefined,
+    merchantCategoryCode: (map.get(SETTING_KEYS.merchantCategoryCode) ?? '').trim() || undefined,
   };
 }
 
@@ -106,7 +133,10 @@ export async function fetchBakongConfig(): Promise<BakongConfig | null> {
  *
  * Used to warn the owner in the admin panel before a member ever scans it.
  */
-export function needsAccountInformation(accountId: string): boolean {
+export function needsAccountInformation(accountId: string, merchantId?: string): boolean {
+  // A merchant id identifies the account by itself, in tag 30's own
+  // sub-tag, so the individual-account field stops being relevant.
+  if (merchantId && merchantId.trim()) return false;
   return /^abaakhpp/i.test(accountId.trim());
 }
 
@@ -122,6 +152,12 @@ export async function saveBakongConfig(config: BakongConfig): Promise<void> {
       updated_at: now,
     },
     { key: SETTING_KEYS.acquiringBank, value: (config.acquiringBank ?? '').trim(), updated_at: now },
+    { key: SETTING_KEYS.merchantId, value: (config.merchantId ?? '').trim(), updated_at: now },
+    {
+      key: SETTING_KEYS.merchantCategoryCode,
+      value: (config.merchantCategoryCode ?? '').trim(),
+      updated_at: now,
+    },
   ]);
   if (error) throw error;
 }
@@ -230,21 +266,48 @@ export async function generateKhqrDetailed(
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, reason: 'bad-amount' };
 
   try {
-    const { BakongKHQR, IndividualInfo, khqrData } = await import('bakong-khqr');
+    const { BakongKHQR, IndividualInfo, MerchantInfo, khqrData } = await import('bakong-khqr');
     permitSdkImplicitGlobal();
 
-    const info = new IndividualInfo(config.accountId, config.merchantName, config.city, {
+    const optional = {
       currency: khqrData.currency.usd,
-      amount,
+      // Passed as a string so the cents survive: the SDK writes the value
+      // through verbatim, so 1 would emit `54011` where ABA itself emits
+      // `54041.00`. Matching the bank's own formatting costs nothing and
+      // removes one more way for it to disagree.
+      amount: amount.toFixed(2),
       billNumber: billNumber ?? undefined,
       storeLabel: storeLabel ?? undefined,
       expirationTimestamp: Date.now() + expiresInMs,
-      // Omitted when blank: passing an empty string would write an empty
-      // sub-tag into the payload rather than leaving it out.
-      accountInformation: config.accountInformation || undefined,
-      acquiringBank: config.acquiringBank || undefined,
-    });
-    const result = new BakongKHQR().generateIndividual(info);
+      merchantCategoryCode: config.merchantCategoryCode || undefined,
+    };
+
+    // Two genuinely different payloads, not two ways of writing one.
+    // A merchant id means the owner has a registered merchant account,
+    // and the QR must describe it as tag 30 — which is the only form ABA
+    // will accept from a QR its own app did not generate. Without one the
+    // payload describes an individual (tag 29), which is right for a
+    // personal Bakong account and refused by ABA for a dynamic QR.
+    const result = config.merchantId
+      ? new BakongKHQR().generateMerchant(
+          new MerchantInfo(
+            config.accountId,
+            config.merchantName,
+            config.city,
+            config.merchantId,
+            config.acquiringBank || '',
+            optional,
+          ),
+        )
+      : new BakongKHQR().generateIndividual(
+          new IndividualInfo(config.accountId, config.merchantName, config.city, {
+            ...optional,
+            // Omitted when blank: passing an empty string would write an
+            // empty sub-tag into the payload rather than leaving it out.
+            accountInformation: config.accountInformation || undefined,
+            acquiringBank: config.acquiringBank || undefined,
+          }),
+        );
 
     // The SDK reports failure through a status object instead of throwing.
     if (result?.status && result.status.code !== 0) {

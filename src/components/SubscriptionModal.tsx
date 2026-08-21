@@ -48,6 +48,7 @@ import {
   getKhqrStrings,
   createAbaCheckout,
   type AbaCheckoutResult,
+  checkBakongPayment,
   checkSubmissionStatus,
   getPaymentReceipt,
   type PaymentReceipt,
@@ -187,12 +188,26 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   useEffect(() => {
     if (step !== 'pay' || !pending || decision !== 'waiting') return;
 
+    // Bakong is asked every fourth tick (~12s) rather than every one. The
+    // bank's answer changes only when a real payment lands, so polling it
+    // at the same rate as our own table would burn the Open API's rate
+    // limit to learn nothing.
+    let tick = 0;
     const pollInterval = window.setInterval(async () => {
       if (recyclingRef.current) return;
       const status = await checkSubmissionStatus(pending.id);
       if (recyclingRef.current) return;
-      if (status === 'approved') setDecision('approved');
-      else if (status === 'rejected') setDecision('rejected');
+      if (status === 'approved') return setDecision('approved');
+      if (status === 'rejected') return setDecision('rejected');
+
+      // Nothing decided yet — ask the bank directly about this ticket's
+      // own QR. bakong-verify writes the same status column, so the tick
+      // above picks the result up either way.
+      tick += 1;
+      if (liveKhqr && tick % 4 === 0) {
+        const outcome = await checkBakongPayment(pending.id, liveKhqr.md5);
+        if (!recyclingRef.current && outcome === 'granted') setDecision('approved');
+      }
     }, 3000);
 
     const countdown = window.setInterval(() => {
@@ -203,7 +218,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
       window.clearInterval(pollInterval);
       window.clearInterval(countdown);
     };
-  }, [step, pending, decision]);
+  }, [step, pending, decision, liveKhqr]);
 
   // The 3-minute window ran out with no ABA match and no receipt photo:
   // close the stale ticket (server-side, so it can never grant anything)
