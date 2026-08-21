@@ -136,6 +136,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [bakongCity, setBakongCity] = useState('Phnom Penh');
   const [bakongAccountNumber, setBakongAccountNumber] = useState('');
   const [bakongBank, setBakongBank] = useState('');
+  const [bakongMerchantId, setBakongMerchantId] = useState('');
+  const [bakongMcc, setBakongMcc] = useState('');
   const [bakongSaving, setBakongSaving] = useState(false);
   const [bakongSaved, setBakongSaved] = useState(false);
   const [bakongPreview, setBakongPreview] = useState<string | null>(null);
@@ -151,6 +153,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongCity(cfg.city);
       setBakongAccountNumber(cfg.accountInformation ?? '');
       setBakongBank(cfg.acquiringBank ?? '');
+      setBakongMerchantId(cfg.merchantId ?? '');
+      setBakongMcc(cfg.merchantCategoryCode ?? '');
     });
     fetchAbaMerchantName().then((name) => {
       if (name) setAbaMerchantName(name);
@@ -171,6 +175,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       city: bakongCity.trim() || 'Phnom Penh',
       accountInformation: bakongAccountNumber.trim() || undefined,
       acquiringBank: bakongBank.trim() || undefined,
+      merchantId: bakongMerchantId.trim() || undefined,
+      merchantCategoryCode: bakongMcc.trim() || undefined,
     };
     if (!config.accountId || !config.merchantName) {
       setBakongPreviewError('ត្រូវការ Account ID និងឈ្មោះ');
@@ -180,7 +186,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     // anyway would produce a QR that scans cleanly and reaches nobody, so
     // this stops before the owner can mistake a valid-looking preview for
     // a working one.
-    if (needsAccountInformation(config.accountId) && !config.accountInformation) {
+    if (needsAccountInformation(config.accountId, config.merchantId) && !config.accountInformation) {
       setBakongPreviewError('ត្រូវការលេខគណនី (Account number) សម្រាប់ ABA');
       return;
     }
@@ -228,6 +234,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongCity('Phnom Penh');
       setBakongAccountNumber('');
       setBakongBank('');
+      setBakongMerchantId('');
+      setBakongMcc('');
       setBakongSaved(true);
       window.setTimeout(() => setBakongSaved(false), 2000);
     } catch (e: unknown) {
@@ -247,6 +255,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         city: bakongCity,
         accountInformation: bakongAccountNumber,
         acquiringBank: bakongBank,
+        merchantId: bakongMerchantId,
+        merchantCategoryCode: bakongMcc,
       });
       setBakongSaved(true);
       window.setTimeout(() => setBakongSaved(false), 2000);
@@ -580,7 +590,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             </div>
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
-                លេខគណនី {needsAccountInformation(bakongAccountId) && <span className="text-[#FF8494]">*</span>}
+                លេខគណនី {needsAccountInformation(bakongAccountId, bakongMerchantId) && <span className="text-[#FF8494]">*</span>}
               </label>
               <input
                 value={bakongAccountNumber}
@@ -601,11 +611,46 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                Merchant ID
+              </label>
+              <input
+                value={bakongMerchantId}
+                onChange={(e) => setBakongMerchantId(e.target.value)}
+                placeholder="ឧ. 126080203472538"
+                inputMode="numeric"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                MCC
+              </label>
+              <input
+                value={bakongMcc}
+                onChange={(e) => setBakongMcc(e.target.value)}
+                placeholder="ឧ. 7832"
+                inputMode="numeric"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
           </div>
+          {/* The one field that decides whether ABA will accept the QR at
+              all. Without it the payload describes an individual, which
+              ABA displays correctly and then refuses to pay. */}
+          {!bakongMerchantId.trim() && (
+            <p className="mt-2 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-[#FFC55A]">
+              បើគណនីរបស់អ្នកជា <b>ABA merchant</b> ត្រូវបំពេញ <b>Merchant ID</b> ជាដាច់ខាត។ បើគ្មានវាទេ
+              ABA នឹងបង្ហាញ QR ត្រឹមត្រូវ តែពេលចុចបង់ វានឹងបដិសេធថា{' '}
+              <code>Invalid Qr Merchant Data</code>។ រកលេខ ១៥ ខ្ទង់នោះបានពី KHQR ដែល ABA បង្កើតឲ្យអ្នក
+              (លេខបន្ទាប់ពី <code>0115</code>)។
+            </p>
+          )}
           {/* An ABA id is the bank's BIC, shared by every ABA customer, so
               on its own it reaches no account at all. Say so at the moment
               the owner pastes one, not after a member has paid. */}
-          {needsAccountInformation(bakongAccountId) && !bakongAccountNumber.trim() && (
+          {needsAccountInformation(bakongAccountId, bakongMerchantId) && !bakongAccountNumber.trim() && (
             <p className="mt-2 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-[#FFC55A]">
               Account ID របស់ ABA (<code>abaakhppxxx@abaa</code>) គឺជាឈ្មោះ<b>ធនាគារ</b> មិនមែនគណនីអ្នកទេ —
               អ្នកប្រើ ABA គ្រប់រូបមានលេខដូចគ្នា។ ត្រូវបំពេញ <b>លេខគណនី</b> ផង បើមិនដូច្នេះទេ QR ស្កេនចូល
@@ -628,7 +673,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 // Saving an ABA id with no account number would switch every
                 // tier over to a QR that reaches nobody, so it stays blocked
                 // rather than merely warned about.
-                (needsAccountInformation(bakongAccountId) && !bakongAccountNumber.trim())
+                (needsAccountInformation(bakongAccountId, bakongMerchantId) && !bakongAccountNumber.trim())
               }
               className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
             >

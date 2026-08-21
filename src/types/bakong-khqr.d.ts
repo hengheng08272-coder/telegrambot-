@@ -5,7 +5,12 @@
 declare module 'bakong-khqr' {
   export interface KHQRIndividualOptional {
     currency?: number;
-    amount?: number;
+    /**
+     * Number or string. A string is written through verbatim, which is
+     * how an amount keeps its cents: 1 becomes `54011`, '1.00' becomes
+     * `54041.00` — the latter being what ABA itself emits.
+     */
+    amount?: number | string;
     billNumber?: string;
     storeLabel?: string;
     terminalLabel?: string;
@@ -27,7 +32,21 @@ declare module 'bakong-khqr' {
     );
   }
 
-  export class MerchantInfo extends IndividualInfo {}
+  /**
+   * A registered merchant, written to tag 30 instead of tag 29. The
+   * merchant id is the part tag 29 has no room for, and the part a bank
+   * checks before it will accept a dynamic QR from outside its own app.
+   */
+  export class MerchantInfo {
+    constructor(
+      bakongAccountID: string,
+      merchantName: string,
+      merchantCity: string,
+      merchantID: string,
+      acquiringBank: string,
+      optional?: KHQRIndividualOptional,
+    );
+  }
 
   export interface KHQRStatus {
     code: number;
