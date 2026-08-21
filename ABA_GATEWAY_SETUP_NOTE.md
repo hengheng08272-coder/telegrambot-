@@ -30,16 +30,28 @@ account ដែលបើក API access) សុំ៖
 
 ## ជំហានទី១ — Deploy edge functions ថ្មី
 
-Project នេះមាន function ថ្មី ២ (ស្រាប់ក្នុង `supabase/functions/`)៖
-- `aba-create-transaction` — ហៅ ABA Create Transaction API ពេលអ្នកទស្សនាចុច "Pay Now"
-- `aba-payment-callback` — ទទួល callback ពី ABA + ផ្ទៀងផ្ទាត់ម្ដងទៀត + ផ្ដល់ VIP
+Project នេះមាន function ២ ក្នុង `supabase/functions/`៖
+
+| Function | តួនាទី |
+|---|---|
+| `aba-create-transaction` | ហៅ PayWay **generate-qr** ពេលអ្នកទស្សនាចុច "ទូទាត់" → ទទួល KHQR + deeplink |
+| `aba-payment-callback` | ទទួល callback ពី ABA + ផ្ទៀងផ្ទាត់ម្ដងទៀត (Check Transaction) + ផ្ដល់ VIP |
+
+**ហេតុអ្វី generate-qr ជាដំណោះស្រាយត្រឹមត្រូវ**៖ KHQR ដែលយើងសាងសង់ខ្លួនឯង ABA បដិសេធ
+ពេលបង់ (`Invalid Qr Merchant Data`) ព្រោះ QR របស់ ABA មាន tag 40 ផ្ទុកលេខយោងផ្ទាល់ខ្លួន
+ដែលគ្មាននរណាក្រៅពី ABA ដឹង។ តែ QR ដែល **ABA ខ្លួនវាចេញឲ្យ** គ្មានបញ្ហានេះទេ ហើយវាមក
+ក្រោម**ឈ្មោះ merchant ចុះឈ្មោះ**របស់អ្នក។
+
+វាក៏លែងត្រូវការ Bakong token ពី NBC ដែរ — ការទូទាត់តាមផ្លូវនេះបញ្ជាក់ដោយ callback។
 
 Deploy ដូចធម្មតា (Supabase CLI ឬ Dashboard).
 
 ## ជំហានទី២ — Run SQL migration
 
-Run `database/aba-gateway-addition.sql` ក្នុង SQL Editor (បន្ថែម column តាមដាន
-`aba_tran_id` លើតារាង `payment_submissions` ដែលមានស្រាប់)។
+Run **២ ឯកសារ** ក្នុង SQL Editor តាមលំដាប់៖
+1. `database/aba-gateway-addition.sql` — column `aba_tran_id`, `payment_method`
+2. `database/aba-generate-qr-addition.sql` — column `aba_qr_string`, `aba_deeplink`
+   + unique index លើ `aba_tran_id`
 
 ## ជំហានទី៣ — Set Secrets (Supabase Dashboard → Edge Functions → Secrets)
 
@@ -74,3 +86,30 @@ app នឹង**ធ្លាក់ត្រឡប់ទៅ QR/link ថេរដ�
 - ❌ កែ order នៃ field ក្នុង hash generation (`aba-create-transaction` /
   `aba-payment-callback`) — លំដាប់ត្រូវតែដូច ABA documentation បេះបិទ បើកែខុស hash នឹង
   ខុសហើយ ABA response នឹង "Wrong hash"
+
+
+---
+
+## ការរកមូលហេតុពេល ABA ឆ្លើយ "invalid hash"
+
+នេះជាកំហុសតែមួយគត់ដែលមើលពីខាងក្រៅមិនដឹងមូលហេតុ។ `aba-create-transaction` ទទួល
+`debug: true` ដែលត្រឡប់ **string ពិតដែលត្រូវបាន hash** មកវិញ (មិនរួម API key ទេ)៖
+
+```bash
+curl -X POST "https://<PROJECT-REF>.supabase.co/functions/v1/aba-create-transaction" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ANON-KEY>" \
+  -d '{"submission_id":"<ticket-uuid>","debug":true}'
+```
+
+យក `hashSource` នោះទៅប្រៀបធៀបនឹងឧទាហរណ៍ PHP ក្នុង Developer Suite។ លំដាប់វាល ១៩ គឺ៖
+
+```
+req_time · merchant_id · tran_id · amount · items · first_name · last_name ·
+email · phone · purchase_type · payment_option · callback_url ·
+return_deeplink · currency · custom_fields · return_params · payout ·
+lifetime · qr_image_template
+```
+
+វាលដែល app មិនផ្ញើ (items, first_name, ...) **នៅតែរាប់បញ្ចូល** ជា string ទទេ។ បើទម្លាក់
+ចោលមួយ អ្វីៗខាងក្រោយរអិល ហើយ hash លែងត្រូវ។
