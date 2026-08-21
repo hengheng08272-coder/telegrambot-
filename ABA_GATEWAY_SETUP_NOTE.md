@@ -30,9 +30,27 @@ account ដែលបើក API access) សុំ៖
 
 ## ជំហានទី១ — Deploy edge functions ថ្មី
 
-Project នេះមាន function ថ្មី ២ (ស្រាប់ក្នុង `supabase/functions/`)៖
-- `aba-create-transaction` — ហៅ ABA Create Transaction API ពេលអ្នកទស្សនាចុច "Pay Now"
-- `aba-payment-callback` — ទទួល callback ពី ABA + ផ្ទៀងផ្ទាត់ម្ដងទៀត + ផ្ដល់ VIP
+⚠️ **កំណត់សម្គាល់ (2026-08)** — ឯកសារនេះធ្លាប់សរសេរថាមាន function ២ ស្រាប់។ តាមពិត
+មានតែ **១** ប៉ុណ្ណោះ៖
+
+| Function | ស្ថានភាព |
+|---|---|
+| `aba-payment-callback` | ✅ មានស្រាប់ក្នុង `supabase/functions/` |
+| `aba-create-transaction` | ❌ **មិនមានទេ** — មិនដែលសរសេរ |
+
+Code ខាង client (`createAbaCheckout` ក្នុង `src/lib/subscription.ts`) ហៅ
+`aba-create-transaction` មែន ប៉ុន្តែដោយសារ function នោះមិនមាន វាត្រឡប់
+`configured: false` ជានិច្ច ហើយ app ធ្លាក់ទៅ QR ធម្មតាដោយស្ងាត់ៗ។ នេះជាមូលហេតុដែល
+"ចុចទូទាត់ភ្លាមៗ" មិនដែលដំណើរការ។
+
+ដូច្នេះមុននឹងធ្វើតាមជំហានខាងក្រោម **ត្រូវសរសេរ `aba-create-transaction` ជាមុនសិន**។
+វាគួរប្រើ endpoint `POST /api/payment-gateway/v1/payments/generate-qr`
+(payment_option = `abapay_khqr`) ដែលឆ្លើយត្រឡប់ជា KHQR + deeplink ក្រោមឈ្មោះ merchant
+ចុះឈ្មោះរបស់អ្នក — ហើយ ABA ទទួលស្គាល់ ១០០% ព្រោះខ្លួនវាបង្កើតដោយខ្លួនឯង។
+
+លំដាប់វាលក្នុង `hash` ត្រូវយកពី Developer Suite ដោយផ្ទាល់
+(`developer.payway.com.kh` → QR API → ប៉ារ៉ាម៉ែត្រ `hash`) — កុំទាយជាដាច់ខាត បើខុស
+មួយវាល ABA ឆ្លើយ "invalid hash"។
 
 Deploy ដូចធម្មតា (Supabase CLI ឬ Dashboard).
 
