@@ -159,6 +159,8 @@ export interface PayPageOptions {
   amount?: string | null;
   /** Short ticket reference, so a viewer can quote it in support chat. */
   ticket?: string | null;
+  /** Merchant name, so the page can draw the same KHQR ticket the app does. */
+  merchantName?: string | null;
   lang?: string;
 }
 
@@ -185,6 +187,7 @@ export function buildPayPageUrl(opts: PayPageOptions): string {
   if (opts.plan) params.set('plan', opts.plan);
   if (opts.amount) params.set('amount', opts.amount);
   if (opts.ticket) params.set('ticket', opts.ticket);
+  if (opts.merchantName) params.set('name', opts.merchantName);
   params.set('lang', opts.lang ?? 'km');
 
   // Where "back to the app" should point. Without a configured bot

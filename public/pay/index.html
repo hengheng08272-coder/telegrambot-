@@ -64,6 +64,28 @@
     background: #fff; padding: 8px; display: inline-block;
   }
   .hint { font-size: 12px; color: #a6adbd; margin: 10px 0 0; text-align: center; }
+  /* KHQR ticket drawn around a generated QR, so it carries the same
+     header, name and amount an uploaded ticket graphic would. Mirrors
+     src/components/KhqrCard.tsx. */
+  .khqr-ticket {
+    width: 100%; max-width: 260px; margin: 0 auto;
+    background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 10px 34px rgba(0,0,0,.55); text-align: left;
+  }
+  .khqr-ticket .band {
+    background: #E11B24; padding: 8px 12px;
+    clip-path: polygon(0 0, 100% 0, 100% 55%, 88% 100%, 0 100%);
+  }
+  .khqr-ticket .band p {
+    margin: 0; text-align: center; color: #fff;
+    font-size: 14px; font-weight: 900; letter-spacing: .12em;
+  }
+  .khqr-ticket .body { padding: 10px 12px 12px; }
+  .khqr-ticket .name { margin: 0; font-size: 13px; font-weight: 700; color: #1a1a1a; }
+  .khqr-ticket .price { margin: 0; font-size: 19px; font-weight: 800; color: #1a1a1a; line-height: 1.2; }
+  .khqr-ticket .price span { font-size: 12px; font-weight: 600; color: #6b6b6b; margin-left: 4px; }
+  .khqr-ticket hr { border: 0; border-top: 1px dashed #d8d8d8; margin: 10px 0; }
+  .khqr-ticket canvas { width: 100%; height: auto; display: block; background: #fff; padding: 0; border-radius: 0; }
   a.cta, button.cta {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%; border: 0; cursor: pointer;
@@ -126,7 +148,15 @@
 
   <div class="card qr-wrap" id="qr-card" hidden>
     <img id="qr" alt="KHQR" hidden />
-    <canvas id="qr-canvas" hidden></canvas>
+    <div class="khqr-ticket" id="qr-ticket" hidden>
+      <div class="band"><p>KHQR</p></div>
+      <div class="body">
+        <p class="name" id="qr-name"></p>
+        <p class="price" id="qr-price"></p>
+        <hr />
+        <canvas id="qr-canvas"></canvas>
+      </div>
+    </div>
     <p class="hint" id="qr-hint"></p>
   </div>
 
@@ -229,7 +259,15 @@
       if (!window.renderKhqrCanvas) return false;
       var canvas = document.getElementById('qr-canvas');
       window.renderKhqrCanvas(canvas, khqr).then(function () {
-        canvas.hidden = false;
+        var name = params.get('name');
+        if (name) document.getElementById('qr-name').textContent = name;
+        // `amount` arrives already formatted for display (e.g. "$2.00");
+        // the ticket prints it the way ABA does, as "2.00 USD".
+        if (amount) {
+          document.getElementById('qr-price').innerHTML =
+            amount.replace(/^\$/, '') + ' <span>USD</span>';
+        }
+        document.getElementById('qr-ticket').hidden = false;
         document.getElementById('qr-hint').textContent = t.qrHint;
         show(document.getElementById('qr-card'));
       }).catch(function () {

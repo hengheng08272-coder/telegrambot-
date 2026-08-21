@@ -32,6 +32,7 @@ import {
   renderQrDataUrl,
   type BakongConfig,
 } from '@/lib/bakong';
+import KhqrCard from '@/components/KhqrCard';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -303,6 +304,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
           amount: payTier ? `$${payTier.price}` : null,
           ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
+          merchantName: bakongConfig?.merchantName ?? null,
           lang,
         })
       : null;
@@ -975,7 +977,17 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   </span>
                 </p>
 
-                {qrSrc ? (
+                {liveKhqr && bakongConfig ? (
+                  /* A generated payload is a bare QR, so it gets the KHQR
+                     ticket drawn around it. An uploaded picture already is
+                     one and goes through untouched below — framing it twice
+                     would put two headers on the same card. */
+                  <KhqrCard
+                    merchantName={bakongConfig.merchantName}
+                    amount={payTier.price}
+                    qrDataUrl={liveKhqr.image}
+                  />
+                ) : qrSrc ? (
                   <img
                     src={qrSrc}
                     alt="KHQR"
