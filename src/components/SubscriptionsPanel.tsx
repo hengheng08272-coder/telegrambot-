@@ -25,10 +25,11 @@ import { getHiddenTierKeys, setHiddenTierKeys, PRICING_TIERS } from '@/lib/subsc
 import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
 import {
   fetchBakongConfig,
+  generateKhqrDetailed,
   needsAccountInformation,
   saveBakongConfig,
-  generateKhqr,
   renderQrDataUrl,
+  type KhqrFailure,
 } from '@/lib/bakong';
 
 interface Props {
@@ -183,9 +184,21 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongPreviewError('ត្រូវការលេខគណនី (Account number) សម្រាប់ ABA');
       return;
     }
-    const generated = await generateKhqr({ config, amount: 1, storeLabel: 'PREVIEW' });
-    if (!generated) {
-      setBakongPreviewError('Account ID មិនត្រឹមត្រូវ (ទម្រង់ត្រូវជា name@bank)');
+    const generated = await generateKhqrDetailed({ config, amount: 1, storeLabel: 'PREVIEW' });
+    if (!generated.ok) {
+      // Every branch says something the owner can act on. "Could not
+      // create QR" for all of them is what turned a one-line SDK bug into
+      // a setup screen nobody could get past.
+      const reasons: Record<KhqrFailure, string> = {
+        'bad-amount': 'តម្លៃមិនត្រឹមត្រូវ',
+        'sdk-rejected': 'ព័ត៌មានមិនត្រឹមត្រូវ — សូមពិនិត្យ Account ID (ទម្រង់ត្រូវជា name@bank)',
+        'sdk-broken': 'Bakong SDK មានបញ្ហា — សូមប្រាប់ dev',
+        'invalid-payload': 'QR ដែលបង្កើតខូច (CRC មិនត្រូវ) — សូមប្រាប់ dev',
+        'sdk-unavailable': 'ផ្ទុក Bakong SDK មិនបាន — សូមពិនិត្យ internet រួចព្យាយាមម្ដងទៀត',
+      };
+      setBakongPreviewError(
+        reasons[generated.reason] + (generated.detail ? ` (${generated.detail})` : ''),
+      );
       return;
     }
     const image = await renderQrDataUrl(generated.payload);
