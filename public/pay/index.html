@@ -29,6 +29,7 @@
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
   body {
     margin: 0;
     padding: 22px 16px calc(32px + env(safe-area-inset-bottom, 0px));
@@ -58,8 +59,8 @@
   .amount { font-size: 30px; font-weight: 900; letter-spacing: -.02em; margin: 2px 0 0; }
   .meta { font-size: 11px; color: #8b92a3; margin: 6px 0 0; }
   .qr-wrap { text-align: center; }
-  .qr-wrap img {
-    width: 100%; max-width: 260px; border-radius: 12px;
+  .qr-wrap img, .qr-wrap canvas {
+    width: 100%; max-width: 260px; height: auto; border-radius: 12px;
     background: #fff; padding: 8px; display: inline-block;
   }
   .hint { font-size: 12px; color: #a6adbd; margin: 10px 0 0; text-align: center; }
@@ -102,6 +103,16 @@
   .steps li { margin-bottom: 4px; }
   .err { font-size: 13px; color: #ff8494; text-align: center; }
 </style>
+<!--
+  qrcode-bundle.js is the `qrcode` npm package bundled to a standalone IIFE
+  (it ships no browser build), exposing window.renderKhqrCanvas. Rebuild with:
+    node_modules/.bin/esbuild <entry>.js --bundle --minify --format=iife \
+      --target=es2018 --outfile=public/pay/qrcode-bundle.js
+  where <entry>.js imports QRCode from 'qrcode' and assigns the helper.
+  It exists because this page has to draw a QR from a payload without a
+  bundler: a rendered data URL is far too long to pass in a query string.
+-->
+<script src="./qrcode-bundle.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -114,7 +125,8 @@
   </div>
 
   <div class="card qr-wrap" id="qr-card" hidden>
-    <img id="qr" alt="KHQR" />
+    <img id="qr" alt="KHQR" hidden />
+    <canvas id="qr-canvas" hidden></canvas>
     <p class="hint" id="qr-hint"></p>
   </div>
 
@@ -201,13 +213,31 @@
   }
 
   if (qr) {
+    // An uploaded QR image: show it as-is.
     var img = document.getElementById('qr');
     img.addEventListener('error', function () {
       document.getElementById('qr-card').hidden = true;
     });
     img.src = qr;
+    img.hidden = false;
     document.getElementById('qr-hint').textContent = t.qrHint;
     show(document.getElementById('qr-card'));
+  } else if (khqr) {
+    // A generated KHQR: draw it here from the payload. The encoder loads
+    // with `defer`, so it may not be ready yet on a slow connection.
+    var drawQr = function () {
+      if (!window.renderKhqrCanvas) return false;
+      var canvas = document.getElementById('qr-canvas');
+      window.renderKhqrCanvas(canvas, khqr).then(function () {
+        canvas.hidden = false;
+        document.getElementById('qr-hint').textContent = t.qrHint;
+        show(document.getElementById('qr-card'));
+      }).catch(function () {
+        // No QR to scan — the deeplink button below is still the main path.
+      });
+      return true;
+    };
+    if (!drawQr()) window.addEventListener('load', drawQr);
   }
 
   if (khqr) {

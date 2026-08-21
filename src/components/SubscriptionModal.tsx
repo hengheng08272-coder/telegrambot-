@@ -26,6 +26,12 @@ import {
   buildPayPageUrl,
   armDeeplinkFallback,
 } from '@/lib/khqr';
+import {
+  fetchBakongConfig,
+  generateKhqr,
+  renderQrDataUrl,
+  type BakongConfig,
+} from '@/lib/bakong';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -97,6 +103,14 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [khqrString, setKhqrString] = useState<string | null>(null);
   // Payloads stored at upload time — preferred over decoding the image.
   const [storedKhqr, setStoredKhqr] = useState<Record<string, string>>({});
+  // Bakong KHQR generated for THIS payment attempt, under the owner's own
+  // merchant name, with the tier's price and the ticket id baked in. Null
+  // whenever the owner hasn't configured Bakong, in which case everything
+  // below falls back to the QR image they uploaded.
+  const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
+  const [liveKhqr, setLiveKhqr] = useState<{ payload: string; md5: string; image: string } | null>(
+    null,
+  );
   const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
@@ -253,7 +267,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // account this app doesn't own, and auto-confirm could never match it,
   // so the payer lost the money AND got no VIP. With no QR configured the
   // viewer now gets the "contact the admin" message instead (subQrMissing).
-  const qrSrc = payTier ? qrImages[payTier.key] ?? null : null;
+  const qrSrc = liveKhqr?.image ?? (payTier ? qrImages[payTier.key] ?? null : null);
   // Real gateway (server-verified, opens ABA app directly) takes
   // priority over the static admin-pasted PayWay link, which in turn
   // is only shown when the gateway isn't configured/failed.
@@ -265,7 +279,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // Prefer the payload saved when the admin uploaded the QR; only fall
   // back to decoding the image in the browser when that is missing (old
   // uploads, or before the migration was run).
-  const effectiveKhqr = (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
+  const effectiveKhqr = liveKhqr?.payload ?? (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
   const abaDeeplink =
     !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
 
@@ -281,13 +295,63 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     isInTelegram() && isKhqrPayload(effectiveKhqr)
       ? buildPayPageUrl({
           khqr: effectiveKhqr,
-          qrSrc,
+          // A generated KHQR has no image URL to hand over (a rendered
+          // data URL is far too long for a query string), so the page
+          // draws that one from the payload itself. Only an uploaded
+          // image travels as a link.
+          qrSrc: liveKhqr ? null : qrSrc,
           plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
           amount: payTier ? `$${payTier.price}` : null,
           ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
           lang,
         })
       : null;
+
+  // The owner's Bakong details, read once when the sheet opens.
+  useEffect(() => {
+    let cancelled = false;
+    fetchBakongConfig().then((cfg) => {
+      if (!cancelled) setBakongConfig(cfg);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // One freshly-generated KHQR per payment attempt: the owner's merchant
+  // name, the tier's exact price, the ticket id as the bill number and an
+  // expiry matching the countdown. Regenerating when the ticket or tier
+  // changes is what keeps a QR tied to exactly one attempt — a viewer who
+  // lets the window lapse and starts again gets a new one, so a late
+  // payment can never be matched against the wrong ticket.
+  useEffect(() => {
+    let cancelled = false;
+    if (!bakongConfig || !payTier) {
+      setLiveKhqr(null);
+      return;
+    }
+    (async () => {
+      const generated = await generateKhqr({
+        config: bakongConfig,
+        amount: payTier.price,
+        billNumber: pending ? pending.id.slice(0, 8).toUpperCase() : null,
+        storeLabel: lang === 'km' ? payTier.labelKm : payTier.labelEn,
+        expiresInMs: WAIT_WINDOW_SECONDS * 1000,
+      });
+      if (cancelled || !generated) {
+        if (!cancelled) setLiveKhqr(null);
+        return;
+      }
+      const image = await renderQrDataUrl(generated.payload);
+      if (cancelled) return;
+      // Without an image there is nothing to show or scan, so this falls
+      // back to the uploaded QR rather than half-applying.
+      setLiveKhqr(image ? { payload: generated.payload, md5: generated.md5, image } : null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bakongConfig, payTier, pending, lang]);
 
   // Decode the tier's QR image once so the primary button can jump
   // straight into ABA. Cancelled on tier change so a slow decode can't
