@@ -41,15 +41,6 @@ const SECTION_SUBTITLE: Record<Section, string> = {
   auto: 'ឈ្មោះគណនី ABA និងតារាងផ្គូផ្គងតម្លៃ→គម្រោង',
 };
 
-// Real KHQR images bundled with the app on day one — the panel shows
-// these until the admin uploads a replacement.
-const FALLBACK_QR_IMAGES: Record<string, string> = {
-  '1m': '/assets/qr-1m.png',
-  '2m': '/assets/qr-1m-bonus.png',
-  '6m': '/assets/qr-6m.png',
-  '12m': '/assets/qr-12m.png',
-};
-
 interface TierEdits {
   price: string;
   months: string;
@@ -514,7 +505,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 bonus_enabled: tier.bonusEnabled,
               };
               const mismatch = labelMonthsMismatch(edit.label_km, edit.label_en, edit.months);
-              const qr = images[tier.key] || FALLBACK_QR_IMAGES[tier.key];
+              const qr = images[tier.key] ?? null;
               const khqrValue = khqrStrings[tier.key] ?? null;
               const hasKhqr = Boolean(khqrValue);
               const isEditingKhqr = khqrEditingTier === tier.key;

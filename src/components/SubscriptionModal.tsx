@@ -80,13 +80,6 @@ function tierIcon(months: number) {
 // Real KHQR images bundled with the app as the day-one default — the
 // admin can still override any of these later from Admin Panel -> QR
 // Codes (that upload always takes priority over this fallback).
-const FALLBACK_QR_IMAGES: Record<string, string> = {
-  '1m': '/assets/qr-1m.png',
-  '2m': '/assets/qr-1m-bonus.png',
-  '6m': '/assets/qr-6m.png',
-  '12m': '/assets/qr-12m.png',
-};
-
 export default function SubscriptionModal({ onClose, onSubmitted, onApproved, onGoSpin }: Props) {
   const { lang } = useLang();
   const t = appText[lang];
@@ -254,7 +247,13 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
 
   const tier = visibleTiers.find((tr) => tr.key === selectedKey) ?? null;
   const payTier = tiers.find((tr) => tr.key === (pending?.tier ?? selectedKey)) ?? null;
-  const qrSrc = payTier ? qrImages[payTier.key] || FALLBACK_QR_IMAGES[payTier.key] : null;
+  // Only ever the QR this owner uploaded. There used to be a bundled
+  // fallback image here, which meant a tier with no QR of its own quietly
+  // showed somebody else's KHQR — real money would have left for an
+  // account this app doesn't own, and auto-confirm could never match it,
+  // so the payer lost the money AND got no VIP. With no QR configured the
+  // viewer now gets the "contact the admin" message instead (subQrMissing).
+  const qrSrc = payTier ? qrImages[payTier.key] ?? null : null;
   // Real gateway (server-verified, opens ABA app directly) takes
   // priority over the static admin-pasted PayWay link, which in turn
   // is only shown when the gateway isn't configured/failed.

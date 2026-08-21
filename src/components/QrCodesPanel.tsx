@@ -8,16 +8,6 @@ interface Props {
   onClose: () => void;
 }
 
-// Real KHQR images bundled with the app on day one — shown here so the
-// admin knows a tier isn't actually blank even before they've uploaded
-// their own replacement.
-const FALLBACK_QR_IMAGES: Record<string, string> = {
-  '1m': '/assets/qr-1m.png',
-  '2m': '/assets/qr-1m-bonus.png',
-  '6m': '/assets/qr-6m.png',
-  '12m': '/assets/qr-12m.png',
-};
-
 // Not a real VIP plan — 'movie' is the tier key MoviePurchaseModal reads
 // for the flat $1 standalone-movie QR (see database/movie-purchases-
 // addition.sql). Listed here too so uploading it needs no separate
@@ -114,9 +104,9 @@ export default function QrCodesPanel({ onClose }: Props) {
             [...PRICING_TIERS, MOVIE_TIER].map((tier) => (
               <div key={tier.key} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/30">
-                  {images[tier.key] || FALLBACK_QR_IMAGES[tier.key] ? (
+                  {images[tier.key] ? (
                     <img
-                      src={images[tier.key] || FALLBACK_QR_IMAGES[tier.key]}
+                      src={images[tier.key]}
                       alt={tier.key}
                       className="h-full w-full object-contain"
                     />
@@ -129,9 +119,7 @@ export default function QrCodesPanel({ onClose }: Props) {
                   <p className="text-xs text-white/40">
                     {images[tier.key]
                       ? 'QR uploaded'
-                      : FALLBACK_QR_IMAGES[tier.key]
-                        ? 'Using default QR — upload to replace'
-                        : 'No QR yet — viewers see a contact-admin message'}
+                      : 'No QR yet — viewers see a contact-admin message'}
                   </p>
                 </div>
                 <button
@@ -144,7 +132,7 @@ export default function QrCodesPanel({ onClose }: Props) {
                   ) : (
                     <Upload className="h-3.5 w-3.5" />
                   )}
-                  {images[tier.key] || FALLBACK_QR_IMAGES[tier.key] ? 'Replace' : 'Upload'}
+                  {images[tier.key] ? 'Replace' : 'Upload'}
                 </button>
               </div>
             ))
