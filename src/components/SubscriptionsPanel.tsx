@@ -31,6 +31,16 @@ import {
   renderQrDataUrl,
   type KhqrFailure,
 } from '@/lib/bakong';
+import { readKhqrField, validateKhqrTemplate, type TemplateFailure } from '@/lib/khqrTemplate';
+
+// Said in the owner's own terms: each one names what to do about it, not
+// what the parser objected to.
+const TEMPLATE_ERRORS: Record<TemplateFailure, string> = {
+  unparseable: 'អានមិនបាន — ច្បាស់ជា copy មិនគ្រប់ សូម copy ម្ដងទៀតទាំងស្រុង',
+  'bad-checksum': 'អក្សរខ្វះ ឬលើស — សូម copy ទាំងមូលម្ដងទៀត កុំកែដោយដៃ',
+  'no-amount-field': 'QR នេះមិនមានចំនួនទឹកប្រាក់ទេ — ត្រូវបង្កើត QR ដែលដាក់ចំនួនស្រាប់',
+  'name-too-long': 'ឈ្មោះវែងពេក (លើសពី ២៥ តួ)',
+};
 
 interface Props {
   onClose: () => void;
@@ -138,6 +148,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [bakongBank, setBakongBank] = useState('');
   const [bakongMerchantId, setBakongMerchantId] = useState('');
   const [bakongMcc, setBakongMcc] = useState('');
+  const [bakongTemplate, setBakongTemplate] = useState('');
   const [bakongSaving, setBakongSaving] = useState(false);
   const [bakongSaved, setBakongSaved] = useState(false);
   const [bakongPreview, setBakongPreview] = useState<string | null>(null);
@@ -155,6 +166,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongBank(cfg.acquiringBank ?? '');
       setBakongMerchantId(cfg.merchantId ?? '');
       setBakongMcc(cfg.merchantCategoryCode ?? '');
+      setBakongTemplate(cfg.khqrTemplate ?? '');
     });
     fetchAbaMerchantName().then((name) => {
       if (name) setAbaMerchantName(name);
@@ -166,6 +178,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   // scan it with their own banking app and confirm two things before any
   // member ever sees it: the money lands in the right account, and the
   // name shown is the one they want.
+  const templateCheck = validateKhqrTemplate(bakongTemplate);
+
   const handlePreviewBakong = async () => {
     setBakongPreview(null);
     setBakongPreviewError('');
@@ -177,16 +191,21 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       acquiringBank: bakongBank.trim() || undefined,
       merchantId: bakongMerchantId.trim() || undefined,
       merchantCategoryCode: bakongMcc.trim() || undefined,
+      khqrTemplate: bakongTemplate.trim() || undefined,
     };
-    if (!config.accountId || !config.merchantName) {
-      setBakongPreviewError('ត្រូវការ Account ID និងឈ្មោះ');
+    if (!config.khqrTemplate && (!config.accountId || !config.merchantName)) {
+      setBakongPreviewError('ត្រូវការ Account ID និងឈ្មោះ (ឬបិទភ្ជាប់ KHQR ខាងលើ)');
       return;
     }
     // An ABA-style id names the bank, not an account inside it. Generating
     // anyway would produce a QR that scans cleanly and reaches nobody, so
     // this stops before the owner can mistake a valid-looking preview for
     // a working one.
-    if (needsAccountInformation(config.accountId, config.merchantId) && !config.accountInformation) {
+    if (
+      !config.khqrTemplate &&
+      needsAccountInformation(config.accountId, config.merchantId) &&
+      !config.accountInformation
+    ) {
       setBakongPreviewError('ត្រូវការលេខគណនី (Account number) សម្រាប់ ABA');
       return;
     }
@@ -201,6 +220,10 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         'sdk-broken': 'Bakong SDK មានបញ្ហា — សូមប្រាប់ dev',
         'invalid-payload': 'QR ដែលបង្កើតខូច (CRC មិនត្រូវ) — សូមប្រាប់ dev',
         'sdk-unavailable': 'ផ្ទុក Bakong SDK មិនបាន — សូមពិនិត្យ internet រួចព្យាយាមម្ដងទៀត',
+        'template-unparseable': TEMPLATE_ERRORS.unparseable,
+        'template-bad-checksum': TEMPLATE_ERRORS['bad-checksum'],
+        'template-static': TEMPLATE_ERRORS['no-amount-field'],
+        'template-name-too-long': TEMPLATE_ERRORS['name-too-long'],
       };
       setBakongPreviewError(
         reasons[generated.reason] + (generated.detail ? ` (${generated.detail})` : ''),
@@ -236,6 +259,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongBank('');
       setBakongMerchantId('');
       setBakongMcc('');
+      setBakongTemplate('');
       setBakongSaved(true);
       window.setTimeout(() => setBakongSaved(false), 2000);
     } catch (e: unknown) {
@@ -257,6 +281,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         acquiringBank: bakongBank,
         merchantId: bakongMerchantId,
         merchantCategoryCode: bakongMcc,
+        khqrTemplate: bakongTemplate,
       });
       setBakongSaved(true);
       window.setTimeout(() => setBakongSaved(false), 2000);
@@ -554,6 +579,40 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             ឈ្មោះនេះក្នុង App ធនាគាររបស់គេ ដែលធ្វើឲ្យគេជឿជាក់ថាបង់ត្រូវកន្លែង។ បើទុកទទេ
             កម្មវិធីប្រើរូប QR ដែលអ្នក upload ដូចធម្មតា។
           </p>
+          {/* Put first because it supersedes everything under it. A
+              payload the bank itself issued needs no reconstruction, and
+              reconstruction is where ABA rejects us. */}
+          <div className="mb-3 rounded-lg border border-white/10 bg-black/20 p-3">
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-[#2FD98C]">
+              ★ វិធីងាយបំផុត — បិទភ្ជាប់ KHQR ពីធនាគាររបស់អ្នក
+            </label>
+            <p className="mb-2 text-[11px] leading-relaxed text-white/50">
+              បង្កើត QR ណាមួយ<b className="text-white/70">ដែលមានចំនួនទឹកប្រាក់</b>ក្នុង App ធនាគាររបស់អ្នក →
+              ចុចឲ្យជាប់លើ QR → Copy → បិទភ្ជាប់ទីនេះ។ កម្មវិធីនឹងប្ដូរតែ
+              <b className="text-white/70">ចំនួនទឹកប្រាក់</b>ប៉ុណ្ណោះ រីឯផ្នែកឯទៀតរក្សាដដែលបេះបិទ —
+              ដូច្នេះធនាគារទទួលស្គាល់វាដូច QR ខ្លួនឯង។ បើបំពេញប្រអប់នេះ ប្រអប់ខាងក្រោមមិនប្រើទេ។
+            </p>
+            <textarea
+              value={bakongTemplate}
+              onChange={(e) => setBakongTemplate(e.target.value)}
+              placeholder="00020101021229450016..."
+              rows={3}
+              className="w-full resize-y rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-white outline-none focus:border-[#2FD98C]/50"
+            />
+            {bakongTemplate.trim() && (
+              <p className="mt-1.5 text-[11px] font-semibold">
+                {templateCheck.ok ? (
+                  <span className="text-[#2FD98C]">
+                    ✓ KHQR ត្រឹមត្រូវ — ឈ្មោះក្នុងវា៖{' '}
+                    <b>{readKhqrField(bakongTemplate.trim(), '59') ?? '—'}</b>
+                  </span>
+                ) : (
+                  <span className="text-[#FF8494]">{TEMPLATE_ERRORS[templateCheck.reason]}</span>
+                )}
+              </p>
+            )}
+          </div>
+
           <div className="grid gap-2 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
@@ -639,7 +698,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
           {/* The one field that decides whether ABA will accept the QR at
               all. Without it the payload describes an individual, which
               ABA displays correctly and then refuses to pay. */}
-          {!bakongMerchantId.trim() && (
+          {!bakongMerchantId.trim() && !bakongTemplate.trim() && (
             <p className="mt-2 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-[#FFC55A]">
               បើគណនីរបស់អ្នកជា <b>ABA merchant</b> ត្រូវបំពេញ <b>Merchant ID</b> ជាដាច់ខាត។ បើគ្មានវាទេ
               ABA នឹងបង្ហាញ QR ត្រឹមត្រូវ តែពេលចុចបង់ វានឹងបដិសេធថា{' '}
@@ -650,7 +709,9 @@ export default function SubscriptionsPanel({ onClose }: Props) {
           {/* An ABA id is the bank's BIC, shared by every ABA customer, so
               on its own it reaches no account at all. Say so at the moment
               the owner pastes one, not after a member has paid. */}
-          {needsAccountInformation(bakongAccountId, bakongMerchantId) && !bakongAccountNumber.trim() && (
+          {!bakongTemplate.trim() &&
+            needsAccountInformation(bakongAccountId, bakongMerchantId) &&
+            !bakongAccountNumber.trim() && (
             <p className="mt-2 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-[#FFC55A]">
               Account ID របស់ ABA (<code>abaakhppxxx@abaa</code>) គឺជាឈ្មោះ<b>ធនាគារ</b> មិនមែនគណនីអ្នកទេ —
               អ្នកប្រើ ABA គ្រប់រូបមានលេខដូចគ្នា។ ត្រូវបំពេញ <b>លេខគណនី</b> ផង បើមិនដូច្នេះទេ QR ស្កេនចូល
@@ -668,12 +729,19 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               onClick={handleSaveBakong}
               disabled={
                 bakongSaving ||
-                !bakongAccountId.trim() ||
-                !bakongName.trim() ||
-                // Saving an ABA id with no account number would switch every
-                // tier over to a QR that reaches nobody, so it stays blocked
-                // rather than merely warned about.
-                (needsAccountInformation(bakongAccountId, bakongMerchantId) && !bakongAccountNumber.trim())
+                // A pasted template carries the account and the payee name
+                // itself, so it is a complete configuration on its own —
+                // and it bypasses the SDK, so the account-number rule
+                // below cannot apply to it either. Everything else here
+                // only matters when there is no template.
+                (!bakongTemplate.trim() &&
+                  (!bakongAccountId.trim() ||
+                    !bakongName.trim() ||
+                    // Saving an ABA id with no account number would switch
+                    // every tier over to a QR that reaches nobody, so it
+                    // stays blocked rather than merely warned about.
+                    (needsAccountInformation(bakongAccountId, bakongMerchantId) &&
+                      !bakongAccountNumber.trim())))
               }
               className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
             >

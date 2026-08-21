@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase/supabaseClient';
+import { md5 } from '@/lib/md5';
+import { applyKhqrTemplate, readKhqrField, validateKhqrTemplate } from '@/lib/khqrTemplate';
 
 // =====================================================================
 // Bakong KHQR — generate this app's own payment QR
@@ -75,6 +77,21 @@ export interface BakongConfig {
    * that is what it will compare against.
    */
   merchantCategoryCode?: string;
+  /**
+   * A KHQR the owner's own banking app produced, reused verbatim.
+   *
+   * This exists because a spec-perfect payload is not always enough. ABA
+   * refuses one it did not issue — its QRs carry a proprietary tag 40
+   * holding a per-account reference nothing outside ABA can know — so a
+   * generated QR displays correctly and is then rejected at payment with
+   * "Invalid Qr Merchant Data". Pasting one real QR sidesteps the whole
+   * question: per payment only the amount changes, and every field the
+   * bank cared about travels through untouched.
+   *
+   * When set, this wins over every other field here: the SDK is not
+   * involved at all.
+   */
+  khqrTemplate?: string;
 }
 
 const SETTING_KEYS = {
@@ -85,6 +102,7 @@ const SETTING_KEYS = {
   acquiringBank: 'bakong_acquiring_bank',
   merchantId: 'bakong_merchant_id',
   merchantCategoryCode: 'bakong_mcc',
+  khqrTemplate: 'bakong_khqr_template',
 } as const;
 
 /**
@@ -110,14 +128,19 @@ export async function fetchBakongConfig(): Promise<BakongConfig | null> {
   const accountInformation = (map.get(SETTING_KEYS.accountInformation) ?? '').trim();
   const acquiringBank = (map.get(SETTING_KEYS.acquiringBank) ?? '').trim();
 
-  // An account id without a name (or the reverse) would produce a QR that
-  // either pays the wrong place or shows nothing recognisable, so both
-  // have to be present before this path turns on at all.
-  if (!accountId || !merchantName) return null;
+  const khqrTemplate = (map.get(SETTING_KEYS.khqrTemplate) ?? '').trim();
+
+  // Two ways to be configured. A pasted template stands on its own — it
+  // already contains the account and the payee name, so neither field is
+  // required alongside it. Without one, an account id and a name are
+  // both needed: an id with no name shows the payer nothing
+  // recognisable, and a name with no id pays nobody.
+  if (!khqrTemplate && (!accountId || !merchantName)) return null;
   return {
     accountId,
     merchantName,
     city,
+    khqrTemplate: khqrTemplate || undefined,
     accountInformation: accountInformation || undefined,
     acquiringBank: acquiringBank || undefined,
     merchantId: (map.get(SETTING_KEYS.merchantId) ?? '').trim() || undefined,
@@ -153,6 +176,7 @@ export async function saveBakongConfig(config: BakongConfig): Promise<void> {
     },
     { key: SETTING_KEYS.acquiringBank, value: (config.acquiringBank ?? '').trim(), updated_at: now },
     { key: SETTING_KEYS.merchantId, value: (config.merchantId ?? '').trim(), updated_at: now },
+    { key: SETTING_KEYS.khqrTemplate, value: (config.khqrTemplate ?? '').trim(), updated_at: now },
     {
       key: SETTING_KEYS.merchantCategoryCode,
       value: (config.merchantCategoryCode ?? '').trim(),
@@ -244,6 +268,10 @@ function hasValidCrc(payload: string): boolean {
 /** Why a generation attempt produced no QR — surfaced in the admin panel. */
 export type KhqrFailure =
   | 'bad-amount'
+  | 'template-unparseable'
+  | 'template-bad-checksum'
+  | 'template-static'
+  | 'template-name-too-long'
   | 'sdk-rejected'
   | 'sdk-broken'
   | 'invalid-payload'
@@ -264,6 +292,28 @@ export async function generateKhqrDetailed(
 ): Promise<GenerateKhqrResult> {
   const { config, amount, billNumber, storeLabel, expiresInMs = 3 * 60 * 1000 } = opts;
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, reason: 'bad-amount' };
+
+  // Reusing the bank's own payload beats rebuilding one, so it is tried
+  // first and the SDK never runs when a template is set.
+  if (config.khqrTemplate) {
+    const rewritten = applyKhqrTemplate(config.khqrTemplate, {
+      amount,
+      // Blank means "keep whatever name the bank wrote", which is the
+      // only name proven to be accepted until a payment with a replaced
+      // one has actually gone through.
+      merchantName: config.merchantName || null,
+    });
+    if (!rewritten.ok) {
+      const map = {
+        unparseable: 'template-unparseable',
+        'bad-checksum': 'template-bad-checksum',
+        'no-amount-field': 'template-static',
+        'name-too-long': 'template-name-too-long',
+      } as const;
+      return { ok: false, reason: map[rewritten.reason] };
+    }
+    return { ok: true, payload: rewritten.payload, md5: md5(rewritten.payload) };
+  }
 
   try {
     const { BakongKHQR, IndividualInfo, MerchantInfo, khqrData } = await import('bakong-khqr');
