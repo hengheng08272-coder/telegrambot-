@@ -25,6 +25,7 @@ import {
   buildAbaDeeplink,
   buildPayPageUrl,
   armDeeplinkFallback,
+  readKhqrMerchant,
 } from '@/lib/khqr';
 import {
   fetchBakongConfig,
@@ -296,6 +297,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // back to decoding the image in the browser when that is missing (old
   // uploads, or before the migration was run).
   const effectiveKhqr = liveKhqr?.payload ?? (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
+  // Read back out of the payload that is actually on screen, so it can
+  // never drift from what the payer's bank will show them.
+  const payeeName = readKhqrMerchant(effectiveKhqr);
   const abaDeeplink =
     !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
 
@@ -1011,6 +1015,26 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 ) : (
                   <p className="mt-4 rounded-xl border border-[#12E7C6]/25 bg-[#12E7C6]/5 p-4 text-xs text-[#12E7C6]">
                     {t.subQrMissing}
+                  </p>
+                )}
+
+                {/* The payee name a member is about to see in their banking
+                    app, said here first.
+
+                    A bank prints the name registered to the receiving
+                    account, and for a personal account that is a person,
+                    not this service. Meeting an unfamiliar person's name
+                    on the confirm screen is exactly what a careful payer
+                    treats as a scam — so it is named in advance, sourced
+                    from the payload actually being shown rather than
+                    typed in somewhere, which keeps it honest if the QR
+                    ever changes. */}
+                {payeeName && (
+                  <p className="mx-auto mt-2.5 max-w-[260px] text-[11px] leading-relaxed text-white/45">
+                    {t.subPayeeIntro}{' '}
+                    <b className="text-white/75">{payeeName}</b>
+                    {' — '}
+                    {t.subPayeeReassure}
                   </p>
                 )}
 

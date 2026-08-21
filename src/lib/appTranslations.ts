@@ -328,6 +328,8 @@ export const appText = {
     subFullAccess: 'Full access, every episode',
     subDrawAfterPay: 'Lucky draw after payment',
     subQrMissing: 'No QR for this plan yet — message the admin in the group.',
+    subPayeeIntro: 'Your bank will show the payee as',
+    subPayeeReassure: 'that is this service\u2019s official account.',
     subQrCaption:
       'Screenshot or save this QR to pay. Your VIP unlocks automatically once the payment lands. To make it faster, just add your receipt photo below.',
     subManualFlowNote:
@@ -709,6 +711,8 @@ export const appText = {
     subFullAccess: 'មើលបានគ្រប់ភាគ',
     subDrawAfterPay: 'ចាប់រង្វាន់ក្រោយទូទាត់',
     subQrMissing: 'មិនទាន់មាន QR សម្រាប់គម្រោងនេះទេ — សូមទាក់ទង admin ក្នុង group។',
+    subPayeeIntro: 'App ធនាគាររបស់អ្នកនឹងបង្ហាញឈ្មោះអ្នកទទួលថា',
+    subPayeeReassure: 'នេះជាគណនីផ្លូវការរបស់សេវាកម្មនេះ។',
     subQrCaption:
       'សូមថតអេក្រង់ (screenshot) ឬរក្សាទុក QR នេះ ដើម្បីទូទាត់បង់ប្រាក់ចូលជាសមាជិត VIP ដោយស្វ័យប្រវត្តិ។ ដើម្បីកាន់តែឆាប់រហ័ស លោកអ្នកគ្រាន់តែបញ្ចូលរូបភាពវិក្កយបត្របន្ថែម។',
     subManualFlowNote:
