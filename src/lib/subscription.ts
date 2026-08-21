@@ -248,14 +248,21 @@ export async function getPayLinks(): Promise<Record<string, string>> {
 // letting someone submit the same payment twice.
 export async function getPendingSubmission(): Promise<PaymentSubmission | null> {
   const { id } = getIdentity();
+  // `.limit(1)` and not `.maybeSingle()`: maybeSingle ERRORS when the
+  // query matches more than one row, and an account really can end up
+  // with two open tickets — cancel_payment_submission not being installed
+  // yet, or a cancel that lost a race with the insert, both leave the old
+  // row pending. That error came back as "no pending submission at all",
+  // so the modal forgot a live ticket and opened yet another one. Newest
+  // row wins instead.
   const { data } = await supabase
     .from('payment_submissions')
     .select('id, status, tier, amount, submitted_at, telegram_user_id, telegram_username')
     .eq('telegram_user_id', id)
     .eq('status', 'pending')
     .order('submitted_at', { ascending: false })
-    .maybeSingle();
-  return data ?? null;
+    .limit(1);
+  return data?.[0] ?? null;
 }
 
 // Polled every few seconds while the "waiting on admin" screen is up, so

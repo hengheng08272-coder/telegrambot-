@@ -311,6 +311,11 @@ export const appText = {
     subCopiedBtn: 'Copied!',
 
     // Subscription — full-screen redesign
+    subStepPlan: 'Plan',
+    subStepMethod: 'Method',
+    subStepPay: 'Pay',
+    subOrderSummary: 'Order summary',
+    subRecommended: 'Recommended',
     subChoosePlan: 'Choose your plan',
     subJoinVip: 'Join VIP',
     subJoinVipNote: 'Opens your secure payment ticket instantly',
@@ -353,6 +358,21 @@ export const appText = {
     subReceiptExpires: 'Valid until',
     subRejectedTitle: 'Payment not confirmed',
     subRejectedDesc: 'Message the admin in the group to find out why, or try again with your receipt photo.',
+
+    // Movie purchase / home rails — these were already read with an
+    // inline English fallback (`t.buyMovie ?? 'Buy Movie'`), so Khmer
+    // never arrived and `tsc` flagged every one of them.
+    recommendedForYou: 'Recommended for You',
+    startWatching: 'Start Watching',
+    lockedMovie: 'Buy to Watch',
+    buyThisMovie: 'Buy This Movie',
+    buyMovie: 'Buy Movie',
+    movieUnlockedTitle: 'Unlocked!',
+    movieUnlockedDesc: 'This movie is yours to watch now.',
+    movieUploadReceipt: 'Paid? Attach your receipt to unlock instantly.',
+    movieChangeScreenshot: 'Change',
+    movieConfirmPay: 'Confirm Payment',
+    subAbaFallbackHint: 'Nothing opened? Scan the QR instead.',
 
     // Locked episode row
     lockedVip: 'VIP',
@@ -694,6 +714,11 @@ export const appText = {
     subCopiedBtn: 'បានចម្លង!',
 
     // Subscription — full-screen redesign
+    subStepPlan: 'គម្រោង',
+    subStepMethod: 'វិធីទូទាត់',
+    subStepPay: 'ទូទាត់',
+    subOrderSummary: 'សេចក្ដីសង្ខេបការបញ្ជាទិញ',
+    subRecommended: 'ណែនាំ',
     subChoosePlan: 'ជ្រើសរើសគម្រោងរបស់អ្នក',
     subJoinVip: 'ចូលសមាជិត VIP',
     subJoinVipNote: 'បើកសំបុត្រទូទាត់របស់អ្នកភ្លាមៗ ដោយសុវត្ថិភាព',
@@ -736,6 +761,19 @@ export const appText = {
     subReceiptExpires: 'សុពលភាពដល់',
     subRejectedTitle: 'ការទូទាត់មិនត្រូវបានបញ្ជាក់',
     subRejectedDesc: 'សូមទាក់ទង admin ក្នុង group ដើម្បីដឹងមូលហេតុ ឬសាកល្បងម្ដងទៀតជាមួយរូបភាពវិក្កយបត្រ។',
+
+    // Movie purchase / home rails
+    recommendedForYou: 'ណែនាំសម្រាប់អ្នក',
+    startWatching: 'ចាប់ផ្ដើមមើល',
+    lockedMovie: 'ទិញដើម្បីមើល',
+    buyThisMovie: 'ទិញរឿងនេះ',
+    buyMovie: 'ទិញរឿង',
+    movieUnlockedTitle: 'បានដោះសោហើយ!',
+    movieUnlockedDesc: 'ឥឡូវអ្នកអាចមើលរឿងនេះបានហើយ។',
+    movieUploadReceipt: 'បង់រួចហើយ? បញ្ចូលវិក្កយបត្រ ដើម្បីដោះសោភ្លាមៗ។',
+    movieChangeScreenshot: 'ប្ដូររូបភាព',
+    movieConfirmPay: 'បញ្ជាក់ការទូទាត់',
+    subAbaFallbackHint: 'មិនបានបើកទេ? សូមស្កេន QR ជំនួសវិញ។',
 
     // Locked episode row
     lockedVip: 'VIP',
