@@ -23,6 +23,12 @@ import {
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { getHiddenTierKeys, setHiddenTierKeys, PRICING_TIERS } from '@/lib/subscription';
 import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
+import {
+  fetchBakongConfig,
+  saveBakongConfig,
+  generateKhqr,
+  renderQrDataUrl,
+} from '@/lib/bakong';
 
 interface Props {
   onClose: () => void;
@@ -39,15 +45,6 @@ const SECTION_SUBTITLE: Record<Section, string> = {
   plans: 'តម្លៃ · រយៈពេល (ខែ) · ឈ្មោះគម្រោង · ការពិពណ៌នា · Bonus spin',
   qr: 'រូប KHQR · KHQR text (Open ABA) · ABA PayWay link',
   auto: 'ឈ្មោះគណនី ABA និងតារាងផ្គូផ្គងតម្លៃ→គម្រោង',
-};
-
-// Real KHQR images bundled with the app on day one — the panel shows
-// these until the admin uploads a replacement.
-const FALLBACK_QR_IMAGES: Record<string, string> = {
-  '1m': '/assets/qr-1m.png',
-  '2m': '/assets/qr-1m-bonus.png',
-  '6m': '/assets/qr-6m.png',
-  '12m': '/assets/qr-12m.png',
 };
 
 interface TierEdits {
@@ -129,15 +126,78 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [hiddenBusyTier, setHiddenBusyTier] = useState<string | null>(null);
   const [abaMerchantName, setAbaMerchantName] = useState('');
   const [abaMerchantNameLoaded, setAbaMerchantNameLoaded] = useState(false);
+  // Bakong KHQR: the app generates its own payment QR from these, so the
+  // name a member sees while paying is this app's, not whoever's picture
+  // happened to be uploaded.
+  const [bakongAccountId, setBakongAccountId] = useState('');
+  const [bakongName, setBakongName] = useState('');
+  const [bakongCity, setBakongCity] = useState('Phnom Penh');
+  const [bakongSaving, setBakongSaving] = useState(false);
+  const [bakongSaved, setBakongSaved] = useState(false);
+  const [bakongPreview, setBakongPreview] = useState<string | null>(null);
+  const [bakongPreviewError, setBakongPreviewError] = useState('');
   const [abaSaving, setAbaSaving] = useState(false);
   const [abaSaved, setAbaSaved] = useState(false);
 
   useEffect(() => {
+    fetchBakongConfig().then((cfg) => {
+      if (!cfg) return;
+      setBakongAccountId(cfg.accountId);
+      setBakongName(cfg.merchantName);
+      setBakongCity(cfg.city);
+    });
     fetchAbaMerchantName().then((name) => {
       if (name) setAbaMerchantName(name);
       setAbaMerchantNameLoaded(true);
     });
   }, []);
+
+  // Renders a sample $1 QR from whatever is typed in, so the owner can
+  // scan it with their own banking app and confirm two things before any
+  // member ever sees it: the money lands in the right account, and the
+  // name shown is the one they want.
+  const handlePreviewBakong = async () => {
+    setBakongPreview(null);
+    setBakongPreviewError('');
+    const config = {
+      accountId: bakongAccountId.trim(),
+      merchantName: bakongName.trim(),
+      city: bakongCity.trim() || 'Phnom Penh',
+    };
+    if (!config.accountId || !config.merchantName) {
+      setBakongPreviewError('ត្រូវការ Account ID និងឈ្មោះ');
+      return;
+    }
+    const generated = await generateKhqr({ config, amount: 1, storeLabel: 'PREVIEW' });
+    if (!generated) {
+      setBakongPreviewError('Account ID មិនត្រឹមត្រូវ (ទម្រង់ត្រូវជា name@bank)');
+      return;
+    }
+    const image = await renderQrDataUrl(generated.payload);
+    if (!image) {
+      setBakongPreviewError('មិនអាចបង្កើតរូប QR បានទេ');
+      return;
+    }
+    setBakongPreview(image);
+  };
+
+  const handleSaveBakong = async () => {
+    setBakongSaving(true);
+    setBakongSaved(false);
+    try {
+      await saveBakongConfig({
+        accountId: bakongAccountId,
+        merchantName: bakongName,
+        city: bakongCity,
+      });
+      setBakongSaved(true);
+      window.setTimeout(() => setBakongSaved(false), 2000);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not save Bakong settings');
+    } finally {
+      setBakongSaving(false);
+    }
+  };
 
   const handleSaveAbaMerchantName = async () => {
     const value = abaMerchantName.trim();
@@ -415,6 +475,89 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         />
       }
     >
+      {section === 'qr' && (
+        <div className="mb-5 rounded-xl border border-[#2FD98C]/25 bg-[#2FD98C]/[0.04] p-4">
+          <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#2FD98C]">
+            <QrCode className="h-3.5 w-3.5" /> Bakong KHQR — បង្កើត QR ដោយស្វ័យប្រវត្តិ
+          </p>
+          <p className="mb-3 max-w-2xl text-[11px] leading-relaxed text-white/50">
+            ពេលបំពេញ ២ ប្រអប់ខាងក្រោម កម្មវិធីនឹង<b className="text-white/70">បង្កើត QR ថ្មីរៀងៗខ្លួន</b>សម្រាប់ការទូទាត់
+            និមួយៗ — ក្រោមឈ្មោះរបស់អ្នក ជាមួយតម្លៃគម្រោងជាប់ស្រាប់ និងផុតកំណត់ ៣ នាទី។ សមាជិកនឹងឃើញ
+            ឈ្មោះនេះក្នុង App ធនាគាររបស់គេ ដែលធ្វើឲ្យគេជឿជាក់ថាបង់ត្រូវកន្លែង។ បើទុកទទេ
+            កម្មវិធីប្រើរូប QR ដែលអ្នក upload ដូចធម្មតា។
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                Bakong Account ID
+              </label>
+              <input
+                value={bakongAccountId}
+                onChange={(e) => setBakongAccountId(e.target.value)}
+                placeholder="ឧ. nintanime@aba"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                ឈ្មោះបង្ហាញ
+              </label>
+              <input
+                value={bakongName}
+                onChange={(e) => setBakongName(e.target.value)}
+                placeholder="ឧ. NINT ANIME"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                ទីក្រុង
+              </label>
+              <input
+                value={bakongCity}
+                onChange={(e) => setBakongCity(e.target.value)}
+                placeholder="Phnom Penh"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              onClick={handlePreviewBakong}
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-bold text-white/80 transition hover:bg-white/10"
+            >
+              <QrCode className="h-3.5 w-3.5" /> សាកមើល ($1)
+            </button>
+            <button
+              onClick={handleSaveBakong}
+              disabled={bakongSaving || !bakongAccountId.trim() || !bakongName.trim()}
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
+            >
+              {bakongSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : bakongSaved ? (
+                <Check className="h-3.5 w-3.5 text-[#2FD98C]" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              {bakongSaved ? 'Saved' : 'Save'}
+            </button>
+            {bakongPreviewError && (
+              <span className="text-[11px] font-semibold text-[#FF8494]">{bakongPreviewError}</span>
+            )}
+          </div>
+          {bakongPreview && (
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 p-3">
+              <img src={bakongPreview} alt="KHQR preview" className="h-28 w-28 rounded-lg bg-white p-1" />
+              <p className="text-[11px] leading-relaxed text-white/60">
+                ស្កេន QR នេះដោយ App ធនាគាររបស់អ្នក ដើម្បីពិនិត្យថា <b className="text-white/80">ឈ្មោះ</b> និង
+                <b className="text-white/80"> គណនី</b> ត្រឹមត្រូវ។ នេះជា QR សាកល្បង $1 — កុំបង់ប្រាក់។
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {section === 'auto' && (
         <>
           <div className="mb-5 rounded-xl border border-[#4C6FFF]/20 bg-[#4C6FFF]/[0.04] p-4">
@@ -514,7 +657,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 bonus_enabled: tier.bonusEnabled,
               };
               const mismatch = labelMonthsMismatch(edit.label_km, edit.label_en, edit.months);
-              const qr = images[tier.key] || FALLBACK_QR_IMAGES[tier.key];
+              const qr = images[tier.key] ?? null;
               const khqrValue = khqrStrings[tier.key] ?? null;
               const hasKhqr = Boolean(khqrValue);
               const isEditingKhqr = khqrEditingTier === tier.key;

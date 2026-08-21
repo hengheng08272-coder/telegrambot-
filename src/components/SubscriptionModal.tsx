@@ -18,13 +18,21 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { openExternalLink } from '@/lib/telegram';
+import { openExternalLink, isInTelegram } from '@/lib/telegram';
 import {
   decodeKhqrFromImage,
   isKhqrPayload,
   buildAbaDeeplink,
+  buildPayPageUrl,
   armDeeplinkFallback,
 } from '@/lib/khqr';
+import {
+  fetchBakongConfig,
+  generateKhqr,
+  renderQrDataUrl,
+  type BakongConfig,
+} from '@/lib/bakong';
+import KhqrCard from '@/components/KhqrCard';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -79,13 +87,6 @@ function tierIcon(months: number) {
 // Real KHQR images bundled with the app as the day-one default — the
 // admin can still override any of these later from Admin Panel -> QR
 // Codes (that upload always takes priority over this fallback).
-const FALLBACK_QR_IMAGES: Record<string, string> = {
-  '1m': '/assets/qr-1m.png',
-  '2m': '/assets/qr-1m-bonus.png',
-  '6m': '/assets/qr-6m.png',
-  '12m': '/assets/qr-12m.png',
-};
-
 export default function SubscriptionModal({ onClose, onSubmitted, onApproved, onGoSpin }: Props) {
   const { lang } = useLang();
   const t = appText[lang];
@@ -103,6 +104,14 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const [khqrString, setKhqrString] = useState<string | null>(null);
   // Payloads stored at upload time — preferred over decoding the image.
   const [storedKhqr, setStoredKhqr] = useState<Record<string, string>>({});
+  // Bakong KHQR generated for THIS payment attempt, under the owner's own
+  // merchant name, with the tier's price and the ticket id baked in. Null
+  // whenever the owner hasn't configured Bakong, in which case everything
+  // below falls back to the QR image they uploaded.
+  const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
+  const [liveKhqr, setLiveKhqr] = useState<{ payload: string; md5: string; image: string } | null>(
+    null,
+  );
   const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
@@ -253,7 +262,13 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
 
   const tier = visibleTiers.find((tr) => tr.key === selectedKey) ?? null;
   const payTier = tiers.find((tr) => tr.key === (pending?.tier ?? selectedKey)) ?? null;
-  const qrSrc = payTier ? qrImages[payTier.key] || FALLBACK_QR_IMAGES[payTier.key] : null;
+  // Only ever the QR this owner uploaded. There used to be a bundled
+  // fallback image here, which meant a tier with no QR of its own quietly
+  // showed somebody else's KHQR — real money would have left for an
+  // account this app doesn't own, and auto-confirm could never match it,
+  // so the payer lost the money AND got no VIP. With no QR configured the
+  // viewer now gets the "contact the admin" message instead (subQrMissing).
+  const qrSrc = liveKhqr?.image ?? (payTier ? qrImages[payTier.key] ?? null : null);
   // Real gateway (server-verified, opens ABA app directly) takes
   // priority over the static admin-pasted PayWay link, which in turn
   // is only shown when the gateway isn't configured/failed.
@@ -265,9 +280,80 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // Prefer the payload saved when the admin uploaded the QR; only fall
   // back to decoding the image in the browser when that is missing (old
   // uploads, or before the migration was run).
-  const effectiveKhqr = (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
+  const effectiveKhqr = liveKhqr?.payload ?? (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
   const abaDeeplink =
     !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
+
+  // Inside Telegram the ABA deeplink can't be tapped straight from the
+  // Mini App: it runs in Telegram's WebView, which swallows non-http
+  // schemes, so the link does nothing at all. Telegram's openLink() does
+  // hand an https URL to the system browser, so there the button opens
+  // our own checkout page (public/pay/index.html) in Safari and the
+  // viewer taps the deeplink from there, where iOS honours it. Outside
+  // Telegram we are already in a real browser, so the direct deeplink
+  // stays — no extra page in the way.
+  const payPageUrl =
+    isInTelegram() && isKhqrPayload(effectiveKhqr)
+      ? buildPayPageUrl({
+          khqr: effectiveKhqr,
+          // A generated KHQR has no image URL to hand over (a rendered
+          // data URL is far too long for a query string), so the page
+          // draws that one from the payload itself. Only an uploaded
+          // image travels as a link.
+          qrSrc: liveKhqr ? null : qrSrc,
+          plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
+          amount: payTier ? `$${payTier.price}` : null,
+          ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
+          merchantName: bakongConfig?.merchantName ?? null,
+          lang,
+        })
+      : null;
+
+  // The owner's Bakong details, read once when the sheet opens.
+  useEffect(() => {
+    let cancelled = false;
+    fetchBakongConfig().then((cfg) => {
+      if (!cancelled) setBakongConfig(cfg);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // One freshly-generated KHQR per payment attempt: the owner's merchant
+  // name, the tier's exact price, the ticket id as the bill number and an
+  // expiry matching the countdown. Regenerating when the ticket or tier
+  // changes is what keeps a QR tied to exactly one attempt — a viewer who
+  // lets the window lapse and starts again gets a new one, so a late
+  // payment can never be matched against the wrong ticket.
+  useEffect(() => {
+    let cancelled = false;
+    if (!bakongConfig || !payTier) {
+      setLiveKhqr(null);
+      return;
+    }
+    (async () => {
+      const generated = await generateKhqr({
+        config: bakongConfig,
+        amount: payTier.price,
+        billNumber: pending ? pending.id.slice(0, 8).toUpperCase() : null,
+        storeLabel: lang === 'km' ? payTier.labelKm : payTier.labelEn,
+        expiresInMs: WAIT_WINDOW_SECONDS * 1000,
+      });
+      if (cancelled || !generated) {
+        if (!cancelled) setLiveKhqr(null);
+        return;
+      }
+      const image = await renderQrDataUrl(generated.payload);
+      if (cancelled) return;
+      // Without an image there is nothing to show or scan, so this falls
+      // back to the uploaded QR rather than half-applying.
+      setLiveKhqr(image ? { payload: generated.payload, md5: generated.md5, image } : null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bakongConfig, payTier, pending, lang]);
 
   // Decode the tier's QR image once so the primary button can jump
   // straight into ABA. Cancelled on tier change so a slow decode can't
@@ -891,7 +977,17 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   </span>
                 </p>
 
-                {qrSrc ? (
+                {liveKhqr && bakongConfig ? (
+                  /* A generated payload is a bare QR, so it gets the KHQR
+                     ticket drawn around it. An uploaded picture already is
+                     one and goes through untouched below — framing it twice
+                     would put two headers on the same card. */
+                  <KhqrCard
+                    merchantName={bakongConfig.merchantName}
+                    amount={payTier.price}
+                    qrDataUrl={liveKhqr.image}
+                  />
+                ) : qrSrc ? (
                   <img
                     src={qrSrc}
                     alt="KHQR"
@@ -925,7 +1021,18 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                           {t.subAbaScreenshotNote}
                         </p>
                         <div className="text-left">{receiptUploadUi}</div>
-                        {abaDeeplink ? (
+                        {payPageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAbaDidNotOpen(false);
+                              openExternalLink(payPageUrl);
+                            }}
+                            className="mx-auto block text-[10px] font-semibold text-white/35 underline decoration-white/20 underline-offset-2 transition hover:text-white/60"
+                          >
+                            {t.subOpenAbaAgain}
+                          </button>
+                        ) : abaDeeplink ? (
                           // Real <a href="abamobilebank://...">, same reason
                           // as the first tap above — a WebView routinely
                           // swallows a scripted navigation to a non-http
@@ -973,7 +1080,24 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                             fallback is only armed -- the navigation
                             itself belongs to the browser now. */}
                         <div className="flex justify-center">
-                          {abaDeeplink ? (
+                          {payPageUrl ? (
+                            // In Telegram: hand the checkout page to the
+                            // system browser. No armDeeplinkFallback here —
+                            // this hand-off is a plain https URL, and the
+                            // "ABA didn't open" fallback now lives on that
+                            // page, next to the QR it falls back to.
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAbaDidNotOpen(false);
+                                setAbaOpened(true);
+                                openExternalLink(payPageUrl);
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#A78BFA]/25 bg-[#A78BFA]/[0.16] px-5 py-2 text-[12px] font-bold text-[#CBD4FF] transition active:scale-[0.97] hover:bg-[#A78BFA]/[0.24] hover:text-[#E2E7FF]"
+                            >
+                              <Zap className="h-3.5 w-3.5 text-[#A3B4FF]" /> {t.subOpenAba}
+                            </button>
+                          ) : abaDeeplink ? (
                             <a
                               href={abaDeeplink}
                               rel="noreferrer"

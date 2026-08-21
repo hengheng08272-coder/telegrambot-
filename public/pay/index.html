@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#050609" />
+<meta name="robots" content="noindex" />
+<title>ទូទាត់ — NINT VIP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&display=swap" rel="stylesheet" />
+<!--
+  Standalone checkout page, opened in the SYSTEM browser (Safari), not in
+  Telegram's WebView.
+
+  Why it exists: inside Telegram the Mini App runs in Telegram's own
+  WebView, which routinely swallows a navigation to a non-http scheme. The
+  abamobilebank:// deeplink therefore behaves "like text, not a link"
+  there. Telegram's WebApp.openLink() does hand an https URL to the system
+  browser, so the Mini App opens THIS page with openLink(), and the viewer
+  taps the deeplink from Safari — where iOS honours it and launches ABA.
+
+  Plain HTML on purpose: it must work with no bundler, no framework and no
+  network call beyond its own assets. Everything it shows comes from the
+  query string, and all of it is data the QR already encodes publicly.
+
+  Params: khqr, qr, plan, amount, ticket, ret, lang
+-->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    padding: 22px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+    background: #050609;
+    color: #f4f5fa;
+    font-family: 'Battambang', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; }
+  .brand {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: #ff6b7c; margin-bottom: 14px;
+  }
+  .brand span.dot { width: 6px; height: 6px; border-radius: 999px; background: #ff2d46; }
+  .card {
+    background: #0c0e14;
+    background-image: linear-gradient(180deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 46%);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.55);
+  }
+  .plan { font-size: 15px; font-weight: 700; margin: 0; }
+  .amount { font-size: 30px; font-weight: 900; letter-spacing: -.02em; margin: 2px 0 0; }
+  .meta { font-size: 11px; color: #8b92a3; margin: 6px 0 0; }
+  .qr-wrap { text-align: center; }
+  .qr-wrap img, .qr-wrap canvas {
+    width: 100%; max-width: 260px; height: auto; border-radius: 12px;
+    background: #fff; padding: 8px; display: inline-block;
+  }
+  .hint { font-size: 12px; color: #a6adbd; margin: 10px 0 0; text-align: center; }
+  /* KHQR ticket drawn around a generated QR, so it carries the same
+     header, name and amount an uploaded ticket graphic would. Mirrors
+     src/components/KhqrCard.tsx. */
+  .khqr-ticket {
+    width: 100%; max-width: 260px; margin: 0 auto;
+    background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 10px 34px rgba(0,0,0,.55); text-align: left;
+  }
+  .khqr-ticket .band {
+    background: #E11B24; padding: 8px 12px;
+    clip-path: polygon(0 0, 100% 0, 100% 55%, 88% 100%, 0 100%);
+  }
+  .khqr-ticket .band p {
+    margin: 0; text-align: center; color: #fff;
+    font-size: 14px; font-weight: 900; letter-spacing: .12em;
+  }
+  .khqr-ticket .body { padding: 10px 12px 12px; }
+  .khqr-ticket .name { margin: 0; font-size: 13px; font-weight: 700; color: #1a1a1a; }
+  .khqr-ticket .price { margin: 0; font-size: 19px; font-weight: 800; color: #1a1a1a; line-height: 1.2; }
+  .khqr-ticket .price span { font-size: 12px; font-weight: 600; color: #6b6b6b; margin-left: 4px; }
+  .khqr-ticket hr { border: 0; border-top: 1px dashed #d8d8d8; margin: 10px 0; }
+  .khqr-ticket canvas { width: 100%; height: auto; display: block; background: #fff; padding: 0; border-radius: 0; }
+  a.cta, button.cta {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; border: 0; cursor: pointer;
+    border-radius: 12px; padding: 16px 14px;
+    font-family: inherit; font-size: 15px; font-weight: 800;
+    color: #fff; text-decoration: none;
+    background-image: linear-gradient(135deg, #ff445a 0%, #ff2d46 45%, #c4142c 100%);
+    box-shadow: 0 6px 18px rgba(255,45,70,.22);
+    margin-bottom: 10px;
+  }
+  a.cta:active, button.cta:active { transform: scale(.985); }
+  button.ghost {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; cursor: pointer;
+    border-radius: 12px; padding: 13px 14px;
+    font-family: inherit; font-size: 13px; font-weight: 700;
+    color: #b9bfcc; background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    margin-bottom: 10px;
+  }
+  a.back {
+    display: block; text-align: center; margin-top: 4px;
+    font-size: 13px; font-weight: 700; color: #a6adbd; text-decoration: none;
+    padding: 12px;
+  }
+  .note {
+    display: none; margin-top: 2px;
+    border: 1px solid rgba(255,194,77,.3); background: rgba(255,194,77,.08);
+    border-radius: 12px; padding: 12px; font-size: 12px; color: #ffda9b;
+  }
+  .note.show { display: block; }
+  .note code {
+    display: block; margin-top: 8px; word-break: break-all;
+    font-family: ui-monospace, Menlo, monospace; font-size: 10px; color: #b9bfcc;
+  }
+  .steps { margin: 0; padding-left: 18px; font-size: 12px; color: #a6adbd; }
+  .steps li { margin-bottom: 4px; }
+  .err { font-size: 13px; color: #ff8494; text-align: center; }
+</style>
+<!--
+  qrcode-bundle.js is the `qrcode` npm package bundled to a standalone IIFE
+  (it ships no browser build), exposing window.renderKhqrCanvas. Rebuild with:
+    node_modules/.bin/esbuild <entry>.js --bundle --minify --format=iife \
+      --target=es2018 --outfile=public/pay/qrcode-bundle.js
+  where <entry>.js imports QRCode from 'qrcode' and assigns the helper.
+  It exists because this page has to draw a QR from a payload without a
+  bundler: a rendered data URL is far too long to pass in a query string.
+-->
+<script src="./qrcode-bundle.js" defer></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="dot"></span><span id="brand-name">NINT VIP</span></div>
+
+  <div class="card" id="summary" hidden>
+    <p class="plan" id="plan"></p>
+    <p class="amount" id="amount"></p>
+    <p class="meta" id="ticket"></p>
+  </div>
+
+  <div class="card qr-wrap" id="qr-card" hidden>
+    <img id="qr" alt="KHQR" hidden />
+    <div class="khqr-ticket" id="qr-ticket" hidden>
+      <div class="band"><p>KHQR</p></div>
+      <div class="body">
+        <p class="name" id="qr-name"></p>
+        <p class="price" id="qr-price"></p>
+        <hr />
+        <canvas id="qr-canvas"></canvas>
+      </div>
+    </div>
+    <p class="hint" id="qr-hint"></p>
+  </div>
+
+  <a class="cta" id="open-aba" hidden rel="noreferrer">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+    <span id="open-aba-label"></span>
+  </a>
+
+  <button class="ghost" id="copy" hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    <span id="copy-label"></span>
+  </button>
+
+  <div class="note" id="not-open">
+    <span id="not-open-text"></span>
+    <code id="deeplink-text"></code>
+  </div>
+
+  <div class="card" id="steps-card" hidden>
+    <ol class="steps" id="steps"></ol>
+  </div>
+
+  <a class="back" id="back" hidden></a>
+
+  <p class="err" id="err" hidden></p>
+</div>
+
+<script>
+(function () {
+  var STRINGS = {
+    km: {
+      openAba: 'បើក ABA Mobile',
+      copy: 'ចម្លងលេខ KHQR',
+      copied: 'បានចម្លង!',
+      qrHint: 'ឬស្កេន QR នេះដោយកម្មវិធីធនាគារផ្សេង',
+      ticket: 'លេខយោង',
+      back: 'ត្រឡប់ទៅកម្មវិធី',
+      notOpen: 'ABA មិនបានបើកមែនទេ? សូមប្រាកដថាបានដំឡើង ABA Mobile រួច ឬស្កេន QR ខាងលើជំនួស។',
+      steps: [
+        'ចុច «បើក ABA Mobile» ខាងលើ',
+        'បញ្ជាក់ការទូទាត់ក្នុង App ABA',
+        'ថតរូបអេក្រង់បង្កាន់ដៃទុក',
+        'ត្រឡប់មកកម្មវិធីវិញ ដើម្បីផ្ទុករូបបង្កាន់ដៃ',
+      ],
+      missing: 'តំណទូទាត់មិនត្រឹមត្រូវ។ សូមត្រឡប់ទៅកម្មវិធី ហើយចាប់ផ្តើមឡើងវិញ។',
+    },
+    en: {
+      openAba: 'Open ABA Mobile',
+      copy: 'Copy KHQR code',
+      copied: 'Copied!',
+      qrHint: 'Or scan this QR with another banking app',
+      ticket: 'Reference',
+      back: 'Back to the app',
+      notOpen: 'ABA did not open? Make sure ABA Mobile is installed, or scan the QR above instead.',
+      steps: [
+        'Tap "Open ABA Mobile" above',
+        'Confirm the payment in the ABA app',
+        'Screenshot the receipt',
+        'Come back to the app and upload the receipt',
+      ],
+      missing: 'This payment link is incomplete. Please go back to the app and start again.',
+    },
+  };
+
+  var params = new URLSearchParams(window.location.search);
+  var lang = params.get('lang') === 'en' ? 'en' : 'km';
+  var t = STRINGS[lang];
+  document.documentElement.lang = lang;
+
+  var khqr = params.get('khqr');
+  var qr = params.get('qr');
+  var plan = params.get('plan');
+  var amount = params.get('amount');
+  var ticket = params.get('ticket');
+  var ret = params.get('ret');
+
+  function show(el) { el.hidden = false; }
+
+  if (plan || amount) {
+    document.getElementById('plan').textContent = plan || '';
+    document.getElementById('amount').textContent = amount || '';
+    if (ticket) document.getElementById('ticket').textContent = t.ticket + ': ' + ticket;
+    show(document.getElementById('summary'));
+  }
+
+  if (qr) {
+    // An uploaded QR image: show it as-is.
+    var img = document.getElementById('qr');
+    img.addEventListener('error', function () {
+      document.getElementById('qr-card').hidden = true;
+    });
+    img.src = qr;
+    img.hidden = false;
+    document.getElementById('qr-hint').textContent = t.qrHint;
+    show(document.getElementById('qr-card'));
+  } else if (khqr) {
+    // A generated KHQR: draw it here from the payload. The encoder loads
+    // with `defer`, so it may not be ready yet on a slow connection.
+    var drawQr = function () {
+      if (!window.renderKhqrCanvas) return false;
+      var canvas = document.getElementById('qr-canvas');
+      window.renderKhqrCanvas(canvas, khqr).then(function () {
+        var name = params.get('name');
+        if (name) document.getElementById('qr-name').textContent = name;
+        // `amount` arrives already formatted for display (e.g. "$2.00");
+        // the ticket prints it the way ABA does, as "2.00 USD".
+        if (amount) {
+          document.getElementById('qr-price').innerHTML =
+            amount.replace(/^\$/, '') + ' <span>USD</span>';
+        }
+        document.getElementById('qr-ticket').hidden = false;
+        document.getElementById('qr-hint').textContent = t.qrHint;
+        show(document.getElementById('qr-card'));
+      }).catch(function () {
+        // No QR to scan — the deeplink button below is still the main path.
+      });
+      return true;
+    };
+    if (!drawQr()) window.addEventListener('load', drawQr);
+  }
+
+  if (khqr) {
+    // Same formula as buildAbaDeeplink() in src/lib/khqr.ts.
+    var deeplink = 'abamobilebank://ababank.com?type=payway&qrcode=' + encodeURIComponent(khqr);
+
+    var link = document.getElementById('open-aba');
+    // A REAL anchor with a real href — never a scripted location.href.
+    // A browser hands a custom scheme to the OS on a genuine link tap;
+    // a scripted navigation to the same string is what gets swallowed.
+    link.href = deeplink;
+    document.getElementById('open-aba-label').textContent = t.openAba;
+    show(link);
+
+    document.getElementById('deeplink-text').textContent = deeplink;
+    document.getElementById('not-open-text').textContent = t.notOpen;
+
+    // There is no success callback for a scheme hand-off, so the only
+    // reliable signal is this page losing the foreground. Arm the
+    // watchers on the tap; if we are still visible after the grace
+    // period, nothing opened. The navigation itself belongs to the
+    // browser — this never navigates on its own, and never on load,
+    // because iOS only honours the scheme from a real user tap.
+    link.addEventListener('click', function () {
+      var handled = false;
+      var mark = function () { handled = true; };
+      document.addEventListener('visibilitychange', mark, { once: true });
+      window.addEventListener('pagehide', mark, { once: true });
+      window.addEventListener('blur', mark, { once: true });
+      window.setTimeout(function () {
+        document.removeEventListener('visibilitychange', mark);
+        window.removeEventListener('pagehide', mark);
+        window.removeEventListener('blur', mark);
+        if (!handled && document.visibilityState === 'visible') {
+          document.getElementById('not-open').classList.add('show');
+        }
+      }, 1800);
+    });
+
+    var copy = document.getElementById('copy');
+    document.getElementById('copy-label').textContent = t.copy;
+    show(copy);
+    copy.addEventListener('click', function () {
+      var done = function () {
+        document.getElementById('copy-label').textContent = t.copied;
+        window.setTimeout(function () {
+          document.getElementById('copy-label').textContent = t.copy;
+        }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(khqr).then(done, fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
+      function fallbackCopy() {
+        // Older in-app WebViews have no clipboard API.
+        var el = document.createElement('textarea');
+        el.value = khqr;
+        el.setAttribute('readonly', '');
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.select();
+        try { document.execCommand('copy'); done(); } catch (e) { /* nothing else to try */ }
+        document.body.removeChild(el);
+      }
+    });
+
+    var steps = document.getElementById('steps');
+    t.steps.forEach(function (line) {
+      var li = document.createElement('li');
+      li.textContent = line;
+      steps.appendChild(li);
+    });
+    show(document.getElementById('steps-card'));
+  } else if (!qr) {
+    var err = document.getElementById('err');
+    err.textContent = t.missing;
+    show(err);
+  }
+
+  if (ret) {
+    var back = document.getElementById('back');
+    back.href = ret;
+    back.textContent = '← ' + t.back;
+    show(back);
+  }
+})();
+</script>
+</body>
+</html>

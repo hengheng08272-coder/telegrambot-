@@ -149,6 +149,57 @@ export function buildAbaDeeplink(khqr: string): string {
   return `abamobilebank://ababank.com?type=payway&qrcode=${encodeURIComponent(khqr)}`;
 }
 
+export interface PayPageOptions {
+  /** KHQR payload — the page rebuilds the ABA deeplink from this. */
+  khqr: string;
+  /** Public URL of the tier's QR image, so the page can show it. */
+  qrSrc?: string | null;
+  /** Plan name and price, purely for what the page displays. */
+  plan?: string | null;
+  amount?: string | null;
+  /** Short ticket reference, so a viewer can quote it in support chat. */
+  ticket?: string | null;
+  /** Merchant name, so the page can draw the same KHQR ticket the app does. */
+  merchantName?: string | null;
+  lang?: string;
+}
+
+/**
+ * URL of the standalone checkout page (public/pay/index.html), which is
+ * what we hand to Safari.
+ *
+ * Inside Telegram the Mini App lives in Telegram's own WebView, and that
+ * WebView routinely swallows a navigation to a non-http scheme -- which
+ * is why tapping the ABA deeplink there behaves "like text, not a link"
+ * (see armDeeplinkFallback below for the full story). Telegram's
+ * openLink() will, however, hand an https URL to the system browser, so
+ * the way to reach ABA from inside Telegram is to open THIS page in
+ * Safari and let the viewer tap the deeplink from there, where iOS
+ * honours it.
+ *
+ * Everything in the query string is data the QR itself already encodes
+ * publicly, plus display labels -- nothing secret travels here.
+ */
+export function buildPayPageUrl(opts: PayPageOptions): string {
+  const params = new URLSearchParams();
+  params.set('khqr', opts.khqr);
+  if (opts.qrSrc) params.set('qr', opts.qrSrc);
+  if (opts.plan) params.set('plan', opts.plan);
+  if (opts.amount) params.set('amount', opts.amount);
+  if (opts.ticket) params.set('ticket', opts.ticket);
+  if (opts.merchantName) params.set('name', opts.merchantName);
+  params.set('lang', opts.lang ?? 'km');
+
+  // Where "back to the app" should point. Without a configured bot
+  // username there is no Mini App link to return to, so the page simply
+  // doesn't render that button.
+  const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
+  if (botUsername) params.set('ret', `https://t.me/${botUsername}/app`);
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}/pay/?${params.toString()}`;
+}
+
 /**
  * Watches for the hand-off to another app and runs `onFallback` if it
  * never happens.
