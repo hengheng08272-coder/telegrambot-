@@ -149,16 +149,90 @@ export interface GeneratedKhqr {
 }
 
 /**
- * Builds a fresh KHQR for one payment attempt. Returns null rather than
- * throwing when the SDK rejects the inputs: a failed generation must fall
- * back to the uploaded QR, never leave the viewer with no way to pay.
+ * Works around a bug in the SDK that only shows up once it is bundled.
+ *
+ * bakong-khqr's crc16 helper declares `var j, i` and then assigns to a
+ * third variable it forgot to declare:
+ *
+ *     for (i = 0; i < s.length; i++) { c = s[i]; ... }
+ *
+ * Under Node's CommonJS loader that runs in sloppy mode, so `c` silently
+ * becomes a global and everything works — which is why the SDK's own
+ * tests pass and why this looks fine from a script. Vite converts the
+ * package to an ES module, ES modules are always strict, and assigning to
+ * an undeclared name in strict mode throws ReferenceError. The SDK
+ * swallows that error and hands it back in place of the payload, so the
+ * caller receives an Error object where a string should be.
+ *
+ * Defining the property up front makes the reference resolvable, so the
+ * assignment is legal again and the SDK computes the CRC as intended.
+ * Only ever creates it when absent, so nothing else that happens to use a
+ * global `c` is disturbed, and it becomes a no-op the day the SDK is
+ * fixed upstream.
+ *
+ * The generated payload is CRC-checked below regardless — this makes the
+ * SDK work, and that proves it worked.
  */
-export async function generateKhqr(opts: GenerateKhqrOptions): Promise<GeneratedKhqr | null> {
+function permitSdkImplicitGlobal(): void {
+  const g = globalThis as unknown as Record<string, unknown>;
+  if (!('c' in g)) g.c = undefined;
+}
+
+/** CRC-16/CCITT-FALSE over the payload, the checksum KHQR ends with. */
+function crc16(input: string): string {
+  let crc = 0xffff;
+  for (let i = 0; i < input.length; i++) {
+    crc ^= input.charCodeAt(i) << 8;
+    for (let bit = 0; bit < 8; bit++) {
+      crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+/**
+ * True when `payload` ends in a checksum that matches its own contents.
+ *
+ * Computed here rather than taken on trust, because the one thing that
+ * must never happen is a payer scanning a QR that encodes something other
+ * than the intended payment. A payload that fails this is discarded and
+ * the uploaded image is used instead.
+ */
+function hasValidCrc(payload: string): boolean {
+  // ...6304XXXX — the last tag is always the 4-char CRC of everything
+  // before it, the "6304" header included.
+  if (payload.length < 8 || payload.slice(-8, -4) !== '6304') return false;
+  return crc16(payload.slice(0, -4)) === payload.slice(-4);
+}
+
+/** Why a generation attempt produced no QR — surfaced in the admin panel. */
+export type KhqrFailure =
+  | 'bad-amount'
+  | 'sdk-rejected'
+  | 'sdk-broken'
+  | 'invalid-payload'
+  | 'sdk-unavailable';
+
+export type GenerateKhqrResult =
+  | ({ ok: true } & GeneratedKhqr)
+  | { ok: false; reason: KhqrFailure; detail?: string };
+
+/**
+ * Builds a fresh KHQR for one payment attempt, reporting why when it
+ * cannot. Callers that only need the happy path should use generateKhqr;
+ * the admin panel uses this one so the owner is told what went wrong
+ * instead of being left with "could not create QR".
+ */
+export async function generateKhqrDetailed(
+  opts: GenerateKhqrOptions,
+): Promise<GenerateKhqrResult> {
   const { config, amount, billNumber, storeLabel, expiresInMs = 3 * 60 * 1000 } = opts;
-  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, reason: 'bad-amount' };
 
   try {
     const { BakongKHQR, IndividualInfo, khqrData } = await import('bakong-khqr');
+    permitSdkImplicitGlobal();
+
     const info = new IndividualInfo(config.accountId, config.merchantName, config.city, {
       currency: khqrData.currency.usd,
       amount,
@@ -171,12 +245,43 @@ export async function generateKhqr(opts: GenerateKhqrOptions): Promise<Generated
       acquiringBank: config.acquiringBank || undefined,
     });
     const result = new BakongKHQR().generateIndividual(info);
+
     // The SDK reports failure through a status object instead of throwing.
-    if (!result?.data?.qr || (result.status && result.status.code !== 0)) return null;
-    return { payload: result.data.qr, md5: result.data.md5 };
-  } catch {
-    return null;
+    if (result?.status && result.status.code !== 0) {
+      return { ok: false, reason: 'sdk-rejected', detail: result.status.message ?? undefined };
+    }
+    const qr: unknown = result?.data?.qr;
+    // Checked by type, not truthiness: the SDK returns its own internal
+    // errors here, and an Error object is perfectly truthy. That is
+    // exactly how a ReferenceError once reached the QR encoder as if it
+    // were a payment payload.
+    if (typeof qr !== 'string' || !qr) {
+      return {
+        ok: false,
+        reason: 'sdk-broken',
+        detail: qr instanceof Error ? qr.message : `payload was ${typeof qr}`,
+      };
+    }
+    if (!hasValidCrc(qr)) return { ok: false, reason: 'invalid-payload' };
+
+    return { ok: true, payload: qr, md5: String(result!.data!.md5) };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: 'sdk-unavailable',
+      detail: err instanceof Error ? err.message : undefined,
+    };
   }
+}
+
+/**
+ * Builds a fresh KHQR for one payment attempt. Returns null rather than
+ * throwing when the SDK rejects the inputs: a failed generation must fall
+ * back to the uploaded QR, never leave the viewer with no way to pay.
+ */
+export async function generateKhqr(opts: GenerateKhqrOptions): Promise<GeneratedKhqr | null> {
+  const result = await generateKhqrDetailed(opts);
+  return result.ok ? { payload: result.payload, md5: result.md5 } : null;
 }
 
 /**
@@ -185,6 +290,10 @@ export async function generateKhqr(opts: GenerateKhqrOptions): Promise<Generated
  * phone screen held by someone else's phone.
  */
 export async function renderQrDataUrl(payload: string): Promise<string | null> {
+  // Guarded because the encoder's own complaint about a non-string is
+  // "Invalid data", which says nothing about where the bad value came
+  // from. Callers upstream of this have the context; this just refuses.
+  if (typeof payload !== 'string' || !payload) return null;
   try {
     const QRCode = (await import('qrcode')).default;
     return await QRCode.toDataURL(payload, {
