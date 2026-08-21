@@ -355,7 +355,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
           amount: payTier ? `$${payTier.price}` : null,
           ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
-          merchantName: bakongConfig?.merchantName ?? null,
+          // The payload's own name first, the setting only as a fallback
+          // — see the KHQR card below for why the two can differ.
+          merchantName: payeeName ?? bakongConfig?.merchantName ?? null,
           lang,
         })
       : null;
@@ -1255,9 +1257,18 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   /* A generated payload is a bare QR, so it gets the KHQR
                      ticket drawn around it. An uploaded picture already is
                      one and goes through untouched below — framing it twice
-                     would put two headers on the same card. */
+                     would put two headers on the same card.
+
+                     The name is read back out of the payload, not taken
+                     from the setting. With a pasted bank template — the
+                     setup the notes actually recommend — "display name"
+                     is left blank so the QR keeps the name the bank
+                     wrote, and `bakongConfig.merchantName` is then the
+                     empty string. Printing that put a KHQR ticket on
+                     screen with a blank payee line, right above a
+                     sentence naming the payee correctly. */
                   <KhqrCard
-                    merchantName={bakongConfig.merchantName}
+                    merchantName={payeeName || bakongConfig.merchantName}
                     amount={payTier.price}
                     qrDataUrl={liveKhqr.image}
                   />
