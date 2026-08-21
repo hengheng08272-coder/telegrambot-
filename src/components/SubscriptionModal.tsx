@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
-  ArrowLeft,
   BadgeCheck,
   Check,
+  ChevronLeft,
   ChevronRight,
   Crown,
   Download,
@@ -13,12 +13,18 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
-  Smartphone,
   Sparkles,
   Star,
   X,
   Zap,
 } from 'lucide-react';
+import { openExternalLink } from '@/lib/telegram';
+import {
+  decodeKhqrFromImage,
+  isKhqrPayload,
+  buildAbaDeeplink,
+  armDeeplinkFallback,
+} from '@/lib/khqr';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -30,7 +36,10 @@ import {
   attachScreenshotToSubmission,
   getPendingSubmission,
   getQrCodes,
+  getPayLinks,
+  getKhqrStrings,
   createAbaCheckout,
+  type AbaCheckoutResult,
   checkSubmissionStatus,
   getPaymentReceipt,
   type PaymentReceipt,
@@ -46,13 +55,7 @@ interface Props {
   onGoSpin: () => void;
 }
 
-// 'pick'   — choose a plan
-// 'method' — plan is chosen, now pick how to pay (ABA vs. another bank's
-//            KHQR). Nothing is submitted yet — the payment ticket is only
-//            opened once a method is actually tapped.
-// 'pay'    — the QR + upload screen for whichever method was picked.
 type Step = 'pick' | 'method' | 'pay';
-type PayMethod = 'aba' | 'qr';
 
 // How long one payment ticket stays open while the ABA auto-confirm
 // webhook listens for a matching bank notification. When this hits zero
@@ -87,17 +90,20 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const { lang } = useLang();
   const t = appText[lang];
   const [step, setStep] = useState<Step>('pick');
-  // Which way the viewer chose to pay — picked on the 'method' sheet,
-  // used on 'pay' only to swap a bit of copy (the ABA screenshot note)
-  // and the download filename. Both methods share the exact same QR +
-  // upload-a-receipt UI underneath.
-  const [payMethod, setPayMethod] = useState<PayMethod | null>(null);
+  const [payMode, setPayMode] = useState<'auto' | 'manual'>('auto');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [pending, setPending] = useState<PaymentSubmission | null>(null);
   const [checkingPending, setCheckingPending] = useState(true);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
+  const [payLinks, setPayLinks] = useState<Record<string, string>>({});
+  // KHQR payload read back out of the tier's QR image -> lets the primary
+  // button jump straight into ABA instead of via PayWay's web page.
+  const [khqrString, setKhqrString] = useState<string | null>(null);
+  // Payloads stored at upload time — preferred over decoding the image.
+  const [storedKhqr, setStoredKhqr] = useState<Record<string, string>>({});
+  const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
   const [decision, setDecision] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
@@ -109,12 +115,20 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // admin is not messaged) until that Pay tap.
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
-  // Guards the live payment ticket from an accidental exit: the X button
-  // and the bottom Close button both route through requestClose(), which
-  // raises this instead of closing outright while a ticket is open and
-  // still waiting on a decision. Only confirming "Exit" here, or the
-  // ticket actually getting approved/rejected, is allowed to close the
-  // screen from that point on.
+  // Set when the ABA hand-off was tapped and this page was still in the
+  // foreground afterwards — i.e. nothing opened. Without this the tap
+  // silently does nothing and the viewer has no idea whether to wait,
+  // retry, or scan the QR instead.
+  const [abaDidNotOpen, setAbaDidNotOpen] = useState(false);
+  // Set the moment the viewer taps "Open ABA Mobile" — from then on the
+  // primary action on the Auto tab switches from "go open the app" to
+  // "upload the receipt", since they've already left once and the next
+  // thing they do is come back with a screenshot. Reset on Change Plan /
+  // a fresh ticket so a new payment starts on the open-app button again.
+  const [abaOpened, setAbaOpened] = useState(false);
+  // Guards the header X (and Telegram/system back) while a ticket is
+  // actively open — one accidental tap should never silently drop a
+  // payment in progress, so it asks first instead of closing right away.
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const notifiedApprovedRef = useRef(false);
   const recyclingRef = useRef(false);
@@ -137,15 +151,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
         // because the modal was reopened.
         const elapsedSec = Math.floor((Date.now() - new Date(p.submitted_at).getTime()) / 1000);
         setSecondsLeft(Math.max(0, WAIT_WINDOW_SECONDS - elapsedSec));
-        // A resumed ticket has no way to know which method the viewer
-        // picked last time (that choice only ever lived in this
-        // component's state) — 'qr' is the safer default since it never
-        // implies an ABA-specific flow that wasn't actually chosen.
-        setPayMethod((cur) => cur ?? 'qr');
         setStep('pay');
       }
     });
     getQrCodes().then(setQrImages);
+    getPayLinks().then(setPayLinks);
+    getKhqrStrings().then(setStoredKhqr);
     // Both are needed before a plan can be preselected, so they resolve
     // together rather than racing each other into setState.
     Promise.all([getEffectivePricingTiers(), getHiddenTierKeys()]).then(([rows, hidden]) => {
@@ -243,23 +254,56 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const tier = visibleTiers.find((tr) => tr.key === selectedKey) ?? null;
   const payTier = tiers.find((tr) => tr.key === (pending?.tier ?? selectedKey)) ?? null;
   const qrSrc = payTier ? qrImages[payTier.key] || FALLBACK_QR_IMAGES[payTier.key] : null;
+  // Real gateway (server-verified, opens ABA app directly) takes
+  // priority over the static admin-pasted PayWay link, which in turn
+  // is only shown when the gateway isn't configured/failed.
+  const gatewayLink = abaCheckout?.configured ? abaCheckout.deeplink || abaCheckout.checkoutUrl : null;
+  const payLinkSrc = payTier ? gatewayLink || payLinks[payTier.key] || null : null;
+  const isRealGateway = Boolean(gatewayLink);
+  // A real gateway already hands us its own deeplink, so only fall back to
+  // rebuilding one from the QR image when there isn't one.
+  // Prefer the payload saved when the admin uploaded the QR; only fall
+  // back to decoding the image in the browser when that is missing (old
+  // uploads, or before the migration was run).
+  const effectiveKhqr = (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
+  const abaDeeplink =
+    !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
 
-  // "Select Payment" on the picker just opens the method sheet — nothing
-  // is submitted yet. The actual ticket only opens once a method is
-  // tapped, in handleSelectMethod below.
-  const handleOpenMethodSheet = () => {
+  // Decode the tier's QR image once so the primary button can jump
+  // straight into ABA. Cancelled on tier change so a slow decode can't
+  // apply a stale plan's payload to the newly-selected one.
+  useEffect(() => {
+    let cancelled = false;
+    setKhqrString(null);
+    // Nothing to decode when the payload is already stored.
+    if (payTier && storedKhqr[payTier.key]) return;
+    if (!qrSrc) return;
+    decodeKhqrFromImage(qrSrc).then((value) => {
+      if (!cancelled) setKhqrString(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [qrSrc, payTier, storedKhqr]);
+
+  // Picking a plan now only advances to the payment-method sheet — the
+  // ticket itself isn't opened until the viewer actually picks ABA or
+  // Other Bank there, so nothing is submitted for a plan they might
+  // still change their mind about.
+  const handlePickPlan = () => {
     if (!tier) return;
     setError('');
     setStep('method');
   };
 
-  // A method was tapped on the sheet: open the payment ticket (QR +
-  // upload screen) for it. The admin is not messaged at this point any
-  // more — only once there's something for them to actually act on: an
-  // ABA webhook match, or the viewer submitting a receipt photo (see
-  // handleAttachProof / confirm-payment-proof, which sends the photo
-  // itself with Confirm/Revoke buttons).
-  const handleSelectMethod = async (method: PayMethod) => {
+  // Method sheet: ABA vs Other Bank / QR. Both open the same underlying
+  // payment ticket — this only decides which tab the Pay screen opens
+  // into. The admin is not messaged at this point either — only once
+  // there's something for them to actually act on: an ABA webhook match,
+  // or the viewer submitting a receipt photo (see handleAttachProof /
+  // confirm-payment-proof, which sends the photo itself with
+  // Confirm/Revoke buttons).
+  const handleSelectMethod = async (mode: 'auto' | 'manual') => {
     if (!tier) return;
     setError('');
     setSubmitting(true);
@@ -270,11 +314,10 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     setSubmitting(false);
     if (err || !id) {
       setError(err ?? t.subQrGenericError);
-      setStep('pick');
+      setStep('method');
       return;
     }
     onSubmitted();
-    setPayMethod(method);
     setSecondsLeft(WAIT_WINDOW_SECONDS);
     setDecision('waiting');
     setReceipt(null);
@@ -284,15 +327,13 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
+    setPayMode(mode);
+    setAbaOpened(false);
     recyclingRef.current = false;
     const fresh = await getPendingSubmission();
     if (fresh) {
       setPending(fresh);
-      // Fire-and-forget: still lets the ABA webhook auto-match this
-      // ticket in the background even though the app no longer shows a
-      // deeplink for it — the viewer's own path to unlock is now always
-      // the receipt upload below.
-      if (method === 'aba') createAbaCheckout(fresh.id);
+      if (mode === 'auto') setAbaCheckout(await createAbaCheckout(fresh.id));
     }
     setStep('pay');
   };
@@ -349,7 +390,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     if (pending) await cancelPaymentSubmission(pending.id);
     setStep('pick');
     setPending(null);
-    setPayMethod(null);
+    setAbaCheckout(null);
     setDecision('waiting');
     setSecondsLeft(WAIT_WINDOW_SECONDS);
     setReceipt(null);
@@ -357,17 +398,38 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
     setProofFile(null);
     setProofPreviewUrl(null);
+    setPayMode('auto');
+    setAbaOpened(false);
+    setShowExitConfirm(false);
     recyclingRef.current = false;
   };
 
-  // Both the header X and the bottom "Close" button funnel through here.
-  // While a ticket is genuinely open and still waiting, closing is never
-  // silent — the exit-confirm sheet is the only way out from there,
-  // short of the ticket itself getting approved or rejected. Outside that
-  // window (picking a plan, choosing a method, or once there's already a
-  // final decision) there's nothing at risk, so it closes right away.
-  const requestClose = () => {
-    if (step === 'pay' && decision === 'waiting') {
+  // "Change Method" on the Pay screen — same idea as Change Plan (cancel
+  // the open ticket right away, no 150s floor) but drops back to the
+  // method sheet instead of the plan picker, since the plan itself is
+  // still the right one.
+  const handleChangeMethod = async () => {
+    recyclingRef.current = true;
+    if (pending) await cancelPaymentSubmission(pending.id);
+    setStep('method');
+    setPending(null);
+    setAbaCheckout(null);
+    setDecision('waiting');
+    setSecondsLeft(WAIT_WINDOW_SECONDS);
+    setReceipt(null);
+    setProofSent(false);
+    if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    setProofFile(null);
+    setProofPreviewUrl(null);
+    setAbaOpened(false);
+    recyclingRef.current = false;
+  };
+
+  // Header X (and the confirm sheet's own "Exit"): while a ticket is
+  // open and still waiting, ask first instead of dropping straight out —
+  // that's the one moment a stray tap costs the viewer real progress.
+  const handleRequestClose = () => {
+    if (step === 'pay' && decision === 'waiting' && !showExitConfirm) {
       setShowExitConfirm(true);
       return;
     }
@@ -375,6 +437,63 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   };
 
   const mmss = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
+
+  // Shared receipt-upload widget: pick a screenshot, review it, tap Pay
+  // to actually submit (that's the only moment the admin gets pinged).
+  // Used on the Manual tab as-is, and on the Auto/ABA tab once the
+  // viewer has already tapped through to the ABA app once — from that
+  // point on it's the same auto-verify path as a manual payment.
+  const receiptUploadUi = proofSent ? (
+    <p className="flex items-center justify-center gap-1.5 rounded-xl border border-[#4FE3A3]/25 bg-[#4FE3A3]/[0.07] py-3 text-xs font-semibold text-[#4FE3A3]">
+      <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.subCheckingPayment}
+    </p>
+  ) : proofFile ? (
+    <div className="space-y-2.5">
+      <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black/20">
+        {proofPreviewUrl && (
+          <img src={proofPreviewUrl} alt="" className="max-h-48 w-full object-contain" />
+        )}
+        <button
+          type="button"
+          onClick={handleDiscardPickedProof}
+          disabled={attachingProof}
+          aria-label={t.subChangePhoto}
+          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white/80 transition active:scale-90 hover:bg-black/80 disabled:opacity-40"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={handleConfirmManualPay}
+        disabled={attachingProof}
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#E01E3C] py-3.5 text-sm font-extrabold text-white shadow-[0_10px_26px_-12px_rgba(240,188,85,0.75)] transition active:scale-[0.98] disabled:opacity-50"
+      >
+        {attachingProof ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        {attachingProof ? t.subUploadingProof : t.subPayNow}
+      </button>
+    </div>
+  ) : (
+    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#E01E3C]/40 bg-[#E01E3C]/[0.07] px-3.5 py-3 transition active:scale-[0.99] hover:border-[#E01E3C]/70">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E01E3C]/20">
+        <ImagePlus className="h-4 w-4 text-[#FF8F86]" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-xs font-bold text-white">{t.subUploadReceiptCta}</span>
+        <span className="block text-[10px] text-white/40">{t.subUploadReceiptHint}</span>
+      </span>
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handlePickProof(f);
+          e.target.value = '';
+        }}
+      />
+    </label>
+  );
 
   return (
     <div className="fixed inset-0 z-[95] flex flex-col bg-app-deep">
@@ -384,18 +503,28 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 90% 40% at 50% -5%, rgba(255,45,70,0.14) 0%, rgba(4,5,10,0) 62%), radial-gradient(ellipse 80% 45% at 12% 108%, rgba(240,188,85,0.16) 0%, rgba(4,5,10,0) 60%)',
+            'radial-gradient(ellipse 90% 40% at 50% -5%, rgba(18,231,198,0.14) 0%, rgba(4,5,10,0) 62%), radial-gradient(ellipse 80% 45% at 12% 108%, rgba(240,188,85,0.16) 0%, rgba(4,5,10,0) 60%)',
         }}
       />
 
       <header className="relative z-10 flex h-14 shrink-0 items-center justify-between px-3">
-        <button
-          onClick={() => (step === 'method' ? setStep('pick') : requestClose())}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white/60 transition active:scale-90 hover:bg-white/10 hover:text-white"
-          aria-label={step === 'method' ? t.subBackBtn : t.subCloseBtn}
-        >
-          {step === 'method' ? <ArrowLeft className="h-4 w-4" /> : <X className="h-4 w-4" />}
-        </button>
+        {step === 'method' ? (
+          <button
+            onClick={() => setStep('pick')}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white/60 transition active:scale-90 hover:bg-white/10 hover:text-white"
+            aria-label={t.back}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        ) : (
+          <button
+            onClick={handleRequestClose}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white/60 transition active:scale-90 hover:bg-white/10 hover:text-white"
+            aria-label={t.subCloseBtn}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
         <span className="text-[13px] font-bold tracking-wide text-white/75">{t.subGoPremium}</span>
         {step === 'pay' && decision === 'waiting' ? (
           <button
@@ -409,6 +538,40 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
         )}
       </header>
 
+      {/* Exit-confirm sheet — the header X (and the hardware/Telegram back
+          gesture, which also routes here) land on this instead of closing
+          straight away whenever a ticket is open and still waiting. One
+          accidental tap should never silently drop a payment in
+          progress; this makes the choice explicit either way. */}
+      {showExitConfirm && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm">
+          <div className="w-full max-w-[19rem] rounded-2xl border border-white/[0.08] bg-[#0B0C14] p-5 text-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)]">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#FFC24D]/10">
+              <AlertTriangle className="h-5 w-5 text-[#FFC24D]" />
+            </div>
+            <p className="text-sm font-bold text-white">{t.subExitConfirmTitle}</p>
+            <p className="mt-1.5 text-xs leading-relaxed text-white/50">{t.subExitConfirmDesc}</p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="btn-primary w-full rounded-full py-3 text-xs font-extrabold"
+              >
+                {t.subExitConfirmContinue}
+              </button>
+              <button
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  onClose();
+                }}
+                className="w-full rounded-full border border-white/[0.08] bg-white/[0.03] py-3 text-xs font-bold text-white/60 transition active:scale-[0.98] hover:bg-white/[0.07] hover:text-white"
+              >
+                {t.subExitConfirmExit}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="relative z-10 flex-1 overflow-y-auto px-4 pb-6">
         {checkingPending ? (
           <div className="flex h-full items-center justify-center">
@@ -419,14 +582,14 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           <>
             <div className="flex flex-col items-center pb-6 pt-2 text-center">
               <div className="relative mb-3">
-                <div className="pointer-events-none absolute inset-[-10px] rounded-2xl bg-[#FF2D46]/20 blur-2xl" />
+                <div className="pointer-events-none absolute inset-[-10px] rounded-2xl bg-[#12E7C6]/20 blur-2xl" />
                 <img
                   src="/assets/logo.png"
                   alt="NINT ANIME"
-                  className="relative h-[68px] w-[68px] rounded-xl ring-1 ring-[#FF2D46]/35"
+                  className="relative h-[68px] w-[68px] rounded-xl ring-1 ring-[#12E7C6]/35"
                 />
               </div>
-              <div className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-[#FF2D46]/25 bg-[#FF2D46]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#FF2D46]">
+              <div className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-[#12E7C6]/25 bg-[#12E7C6]/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#12E7C6]">
                 <Crown className="h-3 w-3" />
                 {t.subTicketEyebrow}
               </div>
@@ -450,7 +613,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                     onClick={() => setSelectedKey(tr.key)}
                     className={`relative w-full overflow-hidden rounded-card border px-3.5 pt-3.5 text-left transition-all active:scale-[0.99] ${
                       selected
-                        ? 'border-[#FF2D46]/45 bg-[#FF2D46]/[0.07] pb-0 shadow-[0_6px_20px_-12px_rgba(255,45,70,0.5)] ring-1 ring-inset ring-[#FF2D46]/20'
+                        ? 'border-[#12E7C6]/45 bg-[#12E7C6]/[0.07] pb-0 shadow-[0_6px_20px_-12px_rgba(18,231,198,0.5)] ring-1 ring-inset ring-[#12E7C6]/20'
                         : 'border-white/[0.08] bg-white/[0.025] pb-3.5 hover:border-white/20'
                     }`}
                   >
@@ -458,7 +621,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       <div
                         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition ${
                           selected
-                            ? 'bg-[#FF2D46]/15 ring-1 ring-[#FF2D46]/40'
+                            ? 'bg-[#12E7C6]/15 ring-1 ring-[#12E7C6]/40'
                             : 'bg-white/[0.07]'
                         }`}
                       >
@@ -469,12 +632,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-white">{lang === 'km' ? tr.labelKm : tr.labelEn}</span>
                           {tr.badge === 'best' && (
-                            <span className="rounded-md bg-[#FF2D46]/20 px-2 py-0.5 text-[10px] font-bold text-[#FF2D46]">
+                            <span className="rounded-md bg-[#12E7C6]/20 px-2 py-0.5 text-[10px] font-bold text-[#12E7C6]">
                               {t.subBestValue}
                             </span>
                           )}
                           {tr.badge === 'popular' && (
-                            <span className="rounded-md border border-[#FF2D46]/40 px-2 py-0.5 text-[10px] font-bold text-[#FF2D46]">
+                            <span className="rounded-md border border-[#12E7C6]/40 px-2 py-0.5 text-[10px] font-bold text-[#12E7C6]">
                               {t.subPopular}
                             </span>
                           )}
@@ -493,9 +656,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                         language the app already uses for membership. */}
                     {selected && (
                       <div className="relative mt-3">
-                        <span className="absolute -left-[21px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#04050A]" />
-                        <span className="absolute -right-[21px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#04050A]" />
-                        <div className="border-t border-dashed border-[#FF2D46]/25" />
+                        <span className="absolute -left-[21px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#03040A]" />
+                        <span className="absolute -right-[21px] top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#03040A]" />
+                        <div className="border-t border-dashed border-[#12E7C6]/25" />
                         <div className="flex items-center justify-between py-2">
                           <span className="flex items-center gap-1.5 text-[11px] font-semibold text-[#FFA8B2]">
                             <BadgeCheck className="h-3.5 w-3.5" />
@@ -515,7 +678,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 <ShieldCheck className="h-3 w-3 text-[#4FE3A3]" /> {t.subInstantUnlock}
               </span>
               <span className="flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-[#FF2D46]" /> {t.subDrawAfterPay}
+                <Sparkles className="h-3 w-3 text-[#12E7C6]" /> {t.subDrawAfterPay}
               </span>
             </div>
 
@@ -527,33 +690,35 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           </>
         ) : step === 'method' ? (
           /* ---------------------------- PAYMENT METHOD ---------------------------- */
-          <div className="flex h-full flex-col pt-2">
-            <div className="pb-5 text-center">
+          <div className="pt-2">
+            <div className="flex flex-col items-center pb-6 text-center">
               <h2
                 className="text-[22px] leading-tight text-white"
                 style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.015em' }}
               >
-                {t.subSelectMethodTitle}
+                {t.subSelectPayment}
               </h2>
-              <p className="mt-1 text-xs text-white/45">{t.subSelectMethodDesc}</p>
+              <p className="mt-1 text-xs text-white/45">
+                {tier ? `${lang === 'km' ? tier.labelKm : tier.labelEn} — $${tier.price}` : ''}
+              </p>
             </div>
 
             <div className="space-y-3">
               <button
                 type="button"
-                onClick={() => handleSelectMethod('aba')}
+                onClick={() => handleSelectMethod('auto')}
                 disabled={submitting}
-                className="flex w-full items-center gap-3 rounded-card border border-[#8098FF]/25 bg-[#8098FF]/[0.08] px-4 py-4 text-left transition active:scale-[0.99] hover:border-[#8098FF]/45 disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-card border border-[#A78BFA]/25 bg-[#A78BFA]/[0.08] px-4 py-4 text-left transition active:scale-[0.99] hover:border-[#A78BFA]/45 disabled:opacity-50"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#8098FF]/20 ring-1 ring-[#8098FF]/40">
-                  <Smartphone className="h-5 w-5 text-[#CBD4FF]" />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#A78BFA]/20 ring-1 ring-[#A78BFA]/30">
+                  <Zap className="h-5 w-5 text-[#A3B4FF]" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-white">{t.subMethodAba}</span>
-                  <span className="mt-0.5 block text-[11px] leading-relaxed text-white/45">{t.subMethodAbaDesc}</span>
+                  <span className="block text-sm font-bold text-white">{t.subMethodAbaTitle}</span>
+                  <span className="block text-[11px] text-white/45">{t.subMethodAbaDesc}</span>
                 </span>
                 {submitting ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/40" />
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/50" />
                 ) : (
                   <ChevronRight className="h-4 w-4 shrink-0 text-white/30" />
                 )}
@@ -561,7 +726,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
 
               <button
                 type="button"
-                onClick={() => handleSelectMethod('qr')}
+                onClick={() => handleSelectMethod('manual')}
                 disabled={submitting}
                 className="flex w-full items-center gap-3 rounded-card border border-white/[0.08] bg-white/[0.025] px-4 py-4 text-left transition active:scale-[0.99] hover:border-white/20 disabled:opacity-50"
               >
@@ -569,11 +734,11 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   <QrCode className="h-5 w-5 text-white/60" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-white">{t.subMethodQr}</span>
-                  <span className="mt-0.5 block text-[11px] leading-relaxed text-white/45">{t.subMethodQrDesc}</span>
+                  <span className="block text-sm font-bold text-white">{t.subMethodOtherTitle}</span>
+                  <span className="block text-[11px] text-white/45">{t.subMethodOtherDesc}</span>
                 </span>
                 {submitting ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/40" />
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/50" />
                 ) : (
                   <ChevronRight className="h-4 w-4 shrink-0 text-white/30" />
                 )}
@@ -585,13 +750,6 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 {error}
               </p>
             )}
-
-            <button
-              onClick={() => setStep('pick')}
-              className="mt-auto w-full rounded-full border border-white/[0.08] bg-white/[0.03] py-3.5 text-sm font-bold text-white/70 transition active:scale-[0.98] hover:bg-white/[0.07] hover:text-white"
-            >
-              {t.subBackBtn}
-            </button>
           </div>
         ) : decision === 'approved' ? (
           /* ---------------------------- PAID (RECEIPT) ---------------------------- */
@@ -679,7 +837,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
               onClick={() => {
                 setStep('pick');
                 setPending(null);
-                setPayMethod(null);
+                setAbaCheckout(null);
                 setDecision('waiting');
                 setReceipt(null);
                 setProofSent(false);
@@ -695,11 +853,36 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
         ) : (
           /* ---------------------------- PAY / WAIT ---------------------------- */
           <div className="space-y-4 pb-2">
+            {/* Method was already chosen on the previous sheet — this just
+                reflects it, with a way back if the viewer picked wrong.
+                No more toggle here: switching modes now goes through
+                Change Plan, which also correctly closes out the ticket
+                that was opened for the other method. */}
+            {decision === 'waiting' && (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5">
+                <span className="flex items-center gap-1.5 text-[12px] font-bold text-white/75">
+                  {payMode === 'auto' ? (
+                    <Zap className="h-3.5 w-3.5 text-[#A3B4FF]" />
+                  ) : (
+                    <QrCode className="h-3.5 w-3.5 text-white/60" />
+                  )}
+                  {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleChangeMethod}
+                  className="text-[11px] font-semibold text-white/40 underline decoration-white/20 underline-offset-2 transition hover:text-white/65"
+                >
+                  {t.subChangeMethod}
+                </button>
+              </div>
+            )}
+
             {/* QR card — stays on screen the whole time; the viewer may
                 not have paid yet when this first opens. Bigger amount +
                 bigger QR so it reads clearly at a glance. */}
             {payTier && (
-              <div className="relative overflow-hidden rounded-2xl border border-[#FF2D46]/20 bg-white/[0.03] p-4 text-center">
+              <div className="relative overflow-hidden rounded-2xl border border-[#12E7C6]/20 bg-white/[0.03] p-4 text-center">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-white/40">{t.subTotalDue}</p>
                 <p className="mt-1 text-[28px] font-extrabold leading-none text-white">
                   ${payTier.price}
@@ -715,25 +898,156 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                     className="mx-auto mt-3.5 w-full max-w-[220px] rounded-xl border border-white/10 bg-white p-2 shadow-[0_10px_34px_rgba(0,0,0,0.55)]"
                   />
                 ) : (
-                  <p className="mt-4 rounded-xl border border-[#FF2D46]/25 bg-[#FF2D46]/5 p-4 text-xs text-[#FF2D46]">
+                  <p className="mt-4 rounded-xl border border-[#12E7C6]/25 bg-[#12E7C6]/5 p-4 text-xs text-[#12E7C6]">
                     {t.subQrMissing}
                   </p>
                 )}
 
-                {/* Both payment methods land here — a countdown, the QR
-                    (still scannable by hand either way), and a
-                    stage-then-submit receipt upload. The only thing that
-                    changes between them is a bit of copy: the ABA path
-                    gets an extra reminder to screenshot the receipt after
-                    paying in the app, since there's no more deeplink
-                    button doing that hand-off automatically. */}
-                <div className="mt-4 space-y-3">
-                  <div className="mx-auto inline-flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-4 py-2 text-[13px] font-semibold tabular-nums text-white/75">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FF2D46]" />
-                    {t.subWaitingPayment} ({mmss})
-                  </div>
+                {payMode === 'auto' ? (
+                  /* AUTO — countdown pill + one big "open the ABA app"
+                      button. The admin's plan link (real gateway or the
+                      static PayWay link) drives where this goes. */
+                  <div className="mt-4 space-y-3">
+                    <div className="mx-auto inline-flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-4 py-2 text-[13px] font-semibold tabular-nums text-white/75">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#12E7C6]" />
+                      {t.subWaitingPayment} ({mmss})
+                    </div>
 
-                  <div className="space-y-3 text-left">
+                    {abaOpened ? (
+                      /* Already sent the viewer to ABA once — the next
+                         thing they do is come back with a screenshot, so
+                         the primary action switches straight to that
+                         instead of re-showing "Open ABA". Same
+                         auto-verify path as the Manual tab underneath. */
+                      <>
+                        <p className="flex items-start gap-1.5 rounded-xl border border-[#A78BFA]/20 bg-[#A78BFA]/[0.06] px-3 py-2.5 text-left text-[11px] leading-relaxed text-[#CBD4FF]">
+                          <ImagePlus className="mt-[1px] h-3.5 w-3.5 shrink-0 text-[#A3B4FF]" />
+                          {t.subAbaScreenshotNote}
+                        </p>
+                        <div className="text-left">{receiptUploadUi}</div>
+                        {abaDeeplink ? (
+                          // Real <a href="abamobilebank://...">, same reason
+                          // as the first tap above — a WebView routinely
+                          // swallows a scripted navigation to a non-http
+                          // scheme, so this stays an actual link.
+                          <a
+                            href={abaDeeplink}
+                            rel="noreferrer"
+                            onClick={() => {
+                              setAbaDidNotOpen(false);
+                              armDeeplinkFallback(() => {
+                                if (payLinkSrc) openExternalLink(payLinkSrc);
+                                else setAbaDidNotOpen(true);
+                              });
+                            }}
+                            className="mx-auto block text-center text-[10px] font-semibold text-white/35 underline decoration-white/20 underline-offset-2 transition hover:text-white/60"
+                          >
+                            {t.subOpenAbaAgain}
+                          </a>
+                        ) : payLinkSrc ? (
+                          <button
+                            type="button"
+                            onClick={() => openExternalLink(payLinkSrc)}
+                            className="mx-auto block text-[10px] font-semibold text-white/35 underline decoration-white/20 underline-offset-2 transition hover:text-white/60"
+                          >
+                            {t.subOpenAbaAgain}
+                          </button>
+                        ) : null}
+                      </>
+                    ) : payLinkSrc || abaDeeplink ? (
+                      <>
+                        {/* Light, compact "chip" rather than a full-width
+                            dark pill — this sits right under a QR the
+                            viewer might still scan by hand, so it reads as
+                            a fast shortcut next to it, not a second,
+                            competing full-size CTA. Squared-off rounded
+                            corners (not fully pill-shaped) and a light
+                            surface match ABA's own app-button convention. */}
+                        {/* A REAL <a href="abamobilebank://...">, not a
+                            button that assigns location.href. Every
+                            WebView hands a non-http scheme to the OS when
+                            the viewer taps an actual link; a scripted
+                            navigation to the same string is routinely
+                            swallowed without an error, which is why the
+                            deeplink "worked like text, not a link". The
+                            fallback is only armed -- the navigation
+                            itself belongs to the browser now. */}
+                        <div className="flex justify-center">
+                          {abaDeeplink ? (
+                            <a
+                              href={abaDeeplink}
+                              rel="noreferrer"
+                              onClick={() => {
+                                // Only fall back when there is somewhere to
+                                // fall back TO. Tiers with no PayWay link rely
+                                // on the deeplink alone; the QR above stays as
+                                // the manual route either way.
+                                setAbaDidNotOpen(false);
+                                setAbaOpened(true);
+                                armDeeplinkFallback(() => {
+                                  if (payLinkSrc) openExternalLink(payLinkSrc);
+                                  else setAbaDidNotOpen(true);
+                                });
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#A78BFA]/25 bg-[#A78BFA]/[0.16] px-5 py-2 text-[12px] font-bold text-[#CBD4FF] no-underline transition active:scale-[0.97] hover:bg-[#A78BFA]/[0.24] hover:text-[#E2E7FF]"
+                            >
+                              <Zap className="h-3.5 w-3.5 text-[#A3B4FF]" /> {t.subOpenAba}
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAbaOpened(true);
+                                if (payLinkSrc) openExternalLink(payLinkSrc);
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#A78BFA]/25 bg-[#A78BFA]/[0.16] px-5 py-2 text-[12px] font-bold text-[#CBD4FF] transition active:scale-[0.97] hover:bg-[#A78BFA]/[0.24] hover:text-[#E2E7FF]"
+                            >
+                              <Zap className="h-3.5 w-3.5 text-[#A3B4FF]" /> {t.subOpenAba}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* The same target as the button, but rendered as
+                            a plain visible link. Long-press gives "Open in
+                            ABA" / "Copy", which is the exact form the owner
+                            verified by hand in Notes — so if the styled
+                            button ever fails, the thing that is known to
+                            work is right there instead of nowhere. */}
+                        {abaDeeplink && abaDidNotOpen && (
+                          <div className="rounded-xl border border-[#FFC24D]/25 bg-[#FFC24D]/[0.07] px-3 py-2.5">
+                            <p className="flex items-start gap-1.5 text-[11px] font-semibold leading-relaxed text-[#FFC24D]">
+                              <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
+                              {t.subAbaDidNotOpen}
+                            </p>
+                            <a
+                              href={abaDeeplink}
+                              rel="noreferrer"
+                              className="mt-1.5 block break-all text-[10px] leading-relaxed text-[#B6C3FF] underline decoration-[#B6C3FF]/40 underline-offset-2"
+                            >
+                              {abaDeeplink}
+                            </a>
+                          </div>
+                        )}
+
+                        {/* Reassurance sits directly under the primary
+                            action, where the hesitation actually happens. */}
+                        <p className="flex items-start justify-center gap-1.5 px-1 text-center text-[10px] leading-relaxed text-white/45">
+                          <ShieldCheck className="mt-[1px] h-3 w-3 shrink-0 text-[#7FE3C0]/70" />
+                          <span>{isRealGateway ? t.subGatewayVerifiedNote : t.subGatewayManualNote}</span>
+                        </p>
+                      </>
+                    ) : (
+                      <p className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-white/40">
+                        {t.subQrCaption}
+                      </p>
+                    )}
+
+                  </div>
+                ) : (
+                  /* MANUAL — save the QR, pick a receipt, review it, then
+                     tap Pay to actually submit (that's the only moment
+                     the admin gets pinged on this tab). */
+                  <div className="mt-4 space-y-3 text-left">
                     {qrSrc && (
                       <a
                         href={qrSrc}
@@ -744,85 +1058,11 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                       </a>
                     )}
 
-                    {payMethod === 'aba' && (
-                      <p className="flex items-start gap-1.5 rounded-xl border border-[#8098FF]/25 bg-[#8098FF]/[0.08] px-3 py-2.5 text-[11px] leading-relaxed text-[#CBD4FF]">
-                        <Smartphone className="mt-[1px] h-3.5 w-3.5 shrink-0 text-[#A3B4FF]" />
-                        {t.subAbaScreenshotNote}
-                      </p>
-                    )}
-
                     <p className="text-[11px] leading-relaxed text-white/50">{t.subManualFlowNote}</p>
 
-                    {proofSent ? (
-                      <p className="flex items-center justify-center gap-1.5 rounded-xl border border-[#4FE3A3]/25 bg-[#4FE3A3]/[0.07] py-3 text-xs font-semibold text-[#4FE3A3]">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t.subCheckingPayment}
-                      </p>
-                    ) : proofFile ? (
-                      <div className="space-y-2.5">
-                        <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black/20">
-                          {proofPreviewUrl && (
-                            <img
-                              src={proofPreviewUrl}
-                              alt=""
-                              className="max-h-48 w-full object-contain"
-                            />
-                          )}
-                          <button
-                            type="button"
-                            onClick={handleDiscardPickedProof}
-                            disabled={attachingProof}
-                            aria-label={t.subChangePhoto}
-                            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white/80 transition active:scale-90 hover:bg-black/80 disabled:opacity-40"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleConfirmManualPay}
-                          disabled={attachingProof}
-                          className="flex w-full items-center justify-center gap-2 rounded-full bg-[#E01E3C] py-3.5 text-sm font-extrabold text-white shadow-[0_10px_26px_-12px_rgba(240,188,85,0.75)] transition active:scale-[0.98] disabled:opacity-50"
-                        >
-                          {attachingProof ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Send className="h-4 w-4" />
-                          )}
-                          {attachingProof ? t.subUploadingProof : t.subPayNow}
-                        </button>
-                      </div>
-                    ) : (
-                      <label
-                        className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#E01E3C]/40 bg-[#E01E3C]/[0.07] px-3.5 py-3 transition active:scale-[0.99] hover:border-[#E01E3C]/70"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E01E3C]/20">
-                          <ImagePlus className="h-4 w-4 text-[#FF8F86]" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-xs font-bold text-white">{t.subUploadReceiptCta}</span>
-                          <span className="block text-[10px] text-white/40">{t.subUploadReceiptHint}</span>
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handlePickProof(f);
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
-                    )}
+                    {receiptUploadUi}
                   </div>
-
-                  {/* Reassurance sits directly under the upload area,
-                      where the hesitation actually happens. */}
-                  <p className="flex items-start justify-center gap-1.5 px-1 text-center text-[10px] leading-relaxed text-white/45">
-                    <ShieldCheck className="mt-[1px] h-3 w-3 shrink-0 text-[#7FE3C0]/70" />
-                    <span>{t.subGatewayManualNote}</span>
-                  </p>
-                </div>
+                )}
               </div>
             )}
 
@@ -833,7 +1073,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             )}
 
             <button
-              onClick={requestClose}
+              onClick={onClose}
               className="w-full rounded-full border border-white/[0.08] bg-white/[0.03] py-3.5 text-sm font-bold text-white/70 transition active:scale-[0.98] hover:bg-white/[0.07] hover:text-white"
             >
               {t.subCloseBtn}
@@ -856,52 +1096,17 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
             <span className="text-xl font-extrabold text-white">{tier ? `$${tier.price}` : '—'}</span>
           </div>
           <button
-            onClick={handleOpenMethodSheet}
-            disabled={!tier || submitting}
+            onClick={handlePickPlan}
+            disabled={!tier}
             className="btn-primary flex w-full items-center justify-center gap-2 rounded-full py-4 text-sm font-extrabold disabled:opacity-40"
           >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
-            {submitting ? t.subSending : t.subJoinVip}
+            <Crown className="h-4 w-4" />
+            {t.subSelectPayment}
           </button>
           <p className="mt-2 flex items-center justify-center gap-1 text-[10px] text-white/28">
             <Send className="h-2.5 w-2.5" /> {t.subJoinVipNote}
           </p>
         </footer>
-      )}
-
-      {/* Exit confirm — the only thing that's allowed to actually close
-          this screen while a ticket is open and still waiting, short of
-          the ticket itself getting approved or rejected. Sits above
-          everything else in the modal, including the sticky footer. */}
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 px-6">
-          <div className="w-full max-w-[22rem] rounded-2xl border border-white/10 bg-[#0B0C14] p-5 text-center shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FFC24D]/12">
-              <AlertTriangle className="h-6 w-6 text-[#FFC24D]" />
-            </div>
-            <p className="mt-3 text-sm font-bold text-white">{t.subExitConfirmTitle}</p>
-            <p className="mt-1.5 text-xs leading-relaxed text-white/50">{t.subExitConfirmBody}</p>
-            <div className="mt-5 space-y-2.5">
-              <button
-                type="button"
-                onClick={() => setShowExitConfirm(false)}
-                className="btn-primary w-full rounded-full py-3 text-sm font-bold"
-              >
-                {t.subExitConfirmContinue}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowExitConfirm(false);
-                  onClose();
-                }}
-                className="w-full rounded-full border border-white/10 bg-white/5 py-3 text-sm font-bold text-white/70 transition active:scale-[0.98] hover:bg-white/10"
-              >
-                {t.subExitConfirmExit}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
