@@ -137,6 +137,15 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // thing they do is come back with a screenshot. Reset on Change Plan /
   // a fresh ticket so a new payment starts on the open-app button again.
   const [abaOpened, setAbaOpened] = useState(false);
+  // Armed when ABA is picked as the method from inside Telegram: the
+  // checkout page is handed to the system browser as soon as this
+  // ticket's KHQR exists, without waiting for a second tap. Telegram's
+  // WebView cannot open `abamobilebank://` at all, so the in-app "Open
+  // ABA" button was never the thing that opened the bank — it only ever
+  // handed off to that page, and making the viewer tap twice for one
+  // hand-off bought nothing. Cleared once it fires (or once it is clear
+  // there is no page to hand off to).
+  const [autoHandOff, setAutoHandOff] = useState(false);
   // True once the listening window lapsed and a replacement ticket was
   // opened in the background. The countdown silently restarting looked
   // like a glitch; this labels it instead (subTicketRenewed).
@@ -425,6 +434,38 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     };
   }, [qrSrc, payTier, storedKhqr]);
 
+  // Hands the checkout page to the system browser the moment this
+  // ticket's KHQR exists — the "2-in-1" step: one page carrying both the
+  // QR and a deeplink that actually opens ABA, because inside Telegram's
+  // WebView `abamobilebank://` is swallowed and nothing this app renders
+  // can open the bank itself.
+  //
+  // The payload is not ready when the method is picked (it is generated
+  // against the ticket id, one render later), which is why this waits on
+  // payPageUrl rather than firing from the tap. Telegram's openLink is a
+  // native bridge call, not window.open, so opening it a beat later is
+  // still honoured — that is only true inside Telegram, which is exactly
+  // where this is armed.
+  useEffect(() => {
+    if (!autoHandOff || step !== 'pay' || !pending) return;
+
+    if (payPageUrl) {
+      setAutoHandOff(false);
+      setAbaOpened(true);
+      setAbaDidNotOpen(false);
+      openExternalLink(payPageUrl);
+      return;
+    }
+
+    // No page to hand off to yet. Give the KHQR a few seconds to arrive,
+    // then disarm: a tier with no payload at all (no Bakong config, no
+    // stored KHQR, an undecodable image) must fall back to the ordinary
+    // in-app button instead of leaving a hand-off primed to fire minutes
+    // later, long after the viewer moved on.
+    const timer = window.setTimeout(() => setAutoHandOff(false), 8000);
+    return () => window.clearTimeout(timer);
+  }, [autoHandOff, step, pending, payPageUrl]);
+
   // Everything a fresh payment attempt has to forget. Every exit from an
   // open ticket (change plan, change method, retry after a rejection)
   // runs through this — the retry path used to reset only some of it and
@@ -443,6 +484,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     setProofPreviewUrl(null);
     setAbaOpened(false);
     setAbaDidNotOpen(false);
+    setAutoHandOff(false);
     setTicketRenewed(false);
     setShowExitConfirm(false);
     setError('');
@@ -484,6 +526,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     resetTicketState();
     setPayMode(mode);
     payModeRef.current = mode;
+    // Inside Telegram, picking ABA IS the hand-off: the checkout page
+    // opens in the system browser by itself once this ticket's KHQR is
+    // ready (see the hand-off effect). Outside Telegram nothing is armed
+    // — there the deeplink is a real link the viewer taps directly, and
+    // a browser would block a pop-up opened without a tap anyway.
+    if (mode === 'auto' && isInTelegram()) setAutoHandOff(true);
     recyclingRef.current = false;
     const fresh = await getPendingSubmission();
     if (fresh) {
@@ -594,10 +642,10 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const abaAction = (primary: boolean, label: string) => {
     const className = primary
       ? 'flex w-full items-center justify-center gap-2 rounded-xl border border-[#7B5CFF]/30 bg-[#7B5CFF]/[0.16] py-3.5 text-[13px] font-bold text-[#CBD4FF] no-underline transition active:scale-[0.98] hover:bg-[#7B5CFF]/[0.26] hover:text-[#E2E7FF]'
-      : 'mx-auto block text-center text-[10px] font-semibold text-white/35 underline decoration-white/20 underline-offset-2 transition hover:text-white/60';
+      : 'flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.03] py-3 text-[12px] font-bold text-white/65 no-underline transition active:scale-[0.98] hover:border-white/25 hover:text-white';
     const body = (
       <>
-        {primary && <Zap className="h-4 w-4 text-[#A3B4FF]" />}
+        <Zap className={primary ? 'h-4 w-4 text-[#A3B4FF]' : 'h-3.5 w-3.5 text-[#A3B4FF]'} />
         {label}
       </>
     );
@@ -1310,10 +1358,25 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                 {payMode === 'auto' ? (
                   <div className="mt-3.5 space-y-2.5">
                     {abaOpened ? (
-                      // Already sent the viewer to ABA once — the primary
-                      // action moved to the status block below, so all
-                      // that is left here is a quiet way back into the app.
-                      abaAction(false, t.subOpenAbaAgain)
+                      // The viewer has been handed off once already. The
+                      // primary action moved to the status block below, so
+                      // what stays here is the way back to the checkout
+                      // page — a bordered button rather than a small link,
+                      // because after an automatic hand-off a viewer who
+                      // lost that tab has nothing else to tap.
+                      <>
+                        <p className="flex items-start gap-1.5 rounded-xl border border-[#7B5CFF]/20 bg-[#7B5CFF]/[0.07] px-3 py-2.5 text-left text-[11px] leading-relaxed text-[#CBD4FF]">
+                          <ShieldCheck className="mt-[1px] h-3.5 w-3.5 shrink-0 text-[#A3B4FF]" />
+                          {t.subHandedOffNote}
+                        </p>
+                        {/* Inside Telegram this reopens our checkout
+                            page, not the bank — say which, so the button
+                            matches what appears. */}
+                        {abaAction(
+                          false,
+                          payPageUrl ? t.subOpenPayPageAgain : t.subOpenAbaAgain,
+                        )}
+                      </>
                     ) : (
                       <>
                         {abaAction(true, t.subOpenAba) ?? (

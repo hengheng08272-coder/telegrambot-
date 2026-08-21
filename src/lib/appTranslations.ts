@@ -219,6 +219,9 @@ export const appText = {
     subAndAnyKhqr: 'and any KHQR banking app',
     subOpenAba: 'Open ABA Mobile App',
     subOpenAbaAgain: 'Open ABA Mobile again',
+    subOpenPayPageAgain: 'Open the payment page again',
+    subHandedOffNote:
+      'The payment page opened in your browser — finish paying there, then come back to this screen.',
     subAbaScreenshotNote: 'Once you\'ve paid in the ABA app, come back here and add your receipt screenshot below so we can verify it.',
     subPayOneTap: 'Pay in one tap, no need to scan',
     subAutoTab: 'Auto Pay',
@@ -622,6 +625,9 @@ export const appText = {
     subAndAnyKhqr: 'និងកម្មវិធីធនាគារ KHQR ណាមួយ',
     subOpenAba: 'បើក App ABA Mobile',
     subOpenAbaAgain: 'បើក ABA Mobile ម្ដងទៀត',
+    subOpenPayPageAgain: 'បើកទំព័រទូទាត់ម្ដងទៀត',
+    subHandedOffNote:
+      'ទំព័រទូទាត់បានបើកក្នុង browser រួចហើយ — សូមបង់ប្រាក់នៅទីនោះ រួចត្រឡប់មកអេក្រង់នេះវិញ។',
     subAbaScreenshotNote: 'បន្ទាប់ពីទូទាត់ប្រាក់នៅក្នុង App ABA រួចរាល់ សូមត្រឡប់មកទីនេះវិញ ហើយបញ្ចូលរូបភាព screenshot វិក្កយបត្រខាងក្រោម ដើម្បីធ្វើការផ្ទៀងផ្ទាត់។',
     subPayOneTap: 'ទូទាត់ក្នុងមួយចុច មិនចាំបាច់ស្កេន',
     subAutoTab: 'ទូទាត់ស្វ័យប្រវត្តិ',
