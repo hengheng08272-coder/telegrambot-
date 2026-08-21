@@ -38,12 +38,28 @@ export interface BakongConfig {
   merchantName: string;
   /** Merchant city, required by the KHQR spec, e.g. `Phnom Penh`. */
   city: string;
+  /**
+   * Bank account number, when the account id alone does not identify the
+   * account. ABA is the case that matters here: every ABA customer's KHQR
+   * carries the SAME account id — `abaakhppxxx@abaa`, which is just ABA's
+   * BIC — and the account number sits in this field instead. A QR built
+   * from the account id alone would name ABA but no account within it, so
+   * for those ids this is the field that actually routes the money.
+   *
+   * Read it off the owner's own KHQR rather than guessing: long-press the
+   * QR in ABA Mobile, and this is the 9 digits after `0109`.
+   */
+  accountInformation?: string;
+  /** Bank name that goes with the above, e.g. `ABA Bank`. */
+  acquiringBank?: string;
 }
 
 const SETTING_KEYS = {
   accountId: 'bakong_account_id',
   merchantName: 'bakong_merchant_name',
   city: 'bakong_city',
+  accountInformation: 'bakong_account_information',
+  acquiringBank: 'bakong_acquiring_bank',
 } as const;
 
 /**
@@ -55,7 +71,7 @@ export async function fetchBakongConfig(): Promise<BakongConfig | null> {
   const { data, error } = await supabase
     .from('app_settings')
     .select('key, value')
-    .in('key', [SETTING_KEYS.accountId, SETTING_KEYS.merchantName, SETTING_KEYS.city]);
+    .in('key', Object.values(SETTING_KEYS));
   // The table/rows may not exist on older deploys — treat that as "not
   // configured" rather than an error, exactly like fetchTickerMessage.
   if (error || !data) return null;
@@ -66,12 +82,32 @@ export async function fetchBakongConfig(): Promise<BakongConfig | null> {
   // City is the one field with a sane default: the spec requires it, but
   // asking an owner to think about it adds nothing.
   const city = (map.get(SETTING_KEYS.city) ?? '').trim() || 'Phnom Penh';
+  const accountInformation = (map.get(SETTING_KEYS.accountInformation) ?? '').trim();
+  const acquiringBank = (map.get(SETTING_KEYS.acquiringBank) ?? '').trim();
 
   // An account id without a name (or the reverse) would produce a QR that
   // either pays the wrong place or shows nothing recognisable, so both
   // have to be present before this path turns on at all.
   if (!accountId || !merchantName) return null;
-  return { accountId, merchantName, city };
+  return {
+    accountId,
+    merchantName,
+    city,
+    accountInformation: accountInformation || undefined,
+    acquiringBank: acquiringBank || undefined,
+  };
+}
+
+/**
+ * True when `accountId` names a bank rather than one account inside it, so
+ * a QR built from it alone would not reach anybody. ABA is the case in
+ * practice: its ids are the bank's BIC (`abaakhppxxx@abaa`), shared by
+ * every ABA customer, with the account number carried separately.
+ *
+ * Used to warn the owner in the admin panel before a member ever scans it.
+ */
+export function needsAccountInformation(accountId: string): boolean {
+  return /^abaakhpp/i.test(accountId.trim());
 }
 
 export async function saveBakongConfig(config: BakongConfig): Promise<void> {
@@ -80,6 +116,12 @@ export async function saveBakongConfig(config: BakongConfig): Promise<void> {
     { key: SETTING_KEYS.accountId, value: config.accountId.trim(), updated_at: now },
     { key: SETTING_KEYS.merchantName, value: config.merchantName.trim(), updated_at: now },
     { key: SETTING_KEYS.city, value: config.city.trim() || 'Phnom Penh', updated_at: now },
+    {
+      key: SETTING_KEYS.accountInformation,
+      value: (config.accountInformation ?? '').trim(),
+      updated_at: now,
+    },
+    { key: SETTING_KEYS.acquiringBank, value: (config.acquiringBank ?? '').trim(), updated_at: now },
   ]);
   if (error) throw error;
 }
@@ -123,6 +165,10 @@ export async function generateKhqr(opts: GenerateKhqrOptions): Promise<Generated
       billNumber: billNumber ?? undefined,
       storeLabel: storeLabel ?? undefined,
       expirationTimestamp: Date.now() + expiresInMs,
+      // Omitted when blank: passing an empty string would write an empty
+      // sub-tag into the payload rather than leaving it out.
+      accountInformation: config.accountInformation || undefined,
+      acquiringBank: config.acquiringBank || undefined,
     });
     const result = new BakongKHQR().generateIndividual(info);
     // The SDK reports failure through a status object instead of throwing.
