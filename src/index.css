@@ -3,39 +3,40 @@
 @tailwind utilities;
 
 /* ─────────────────────────────────────────────────────────────────────
-   "Obsidian" dark theme tokens — the single CSS-side source of truth for
-   the app's palette, elevation and motion. Mirrors theme.ts. The app is
-   dark-only by design (it lives inside Telegram, over a dark client), so
-   these are declared once on :root rather than behind a media query, and
-   `color-scheme: dark` makes the browser's own chrome — form controls,
-   scrollbars, the tap-highlight — match instead of flashing white.
+   "Neon Streaming" dark theme tokens — the single CSS-side source of
+   truth for the app's palette, elevation and motion. Mirrors theme.ts.
+   The app is dark-only by design (it lives inside Telegram, over a dark
+   client), so these are declared once on :root rather than behind a
+   media query, and `color-scheme: dark` makes the browser's own chrome —
+   form controls, scrollbars, the tap-highlight — match instead of
+   flashing white.
    ───────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: dark;
 
   /* Base surfaces, from deepest to most raised */
   --nv-bg-deep: #000000;
-  --nv-bg: #050609;
-  --nv-surface: #0e1017;
-  --nv-surface-2: #151926;
-  --nv-surface-3: #1b2030;
-  --nv-border: #232838;
+  --nv-bg: #05070d;
+  --nv-surface: #0d1119;
+  --nv-surface-2: #141a28;
+  --nv-surface-3: #1a2233;
+  --nv-border: #232a3d;
   --nv-hairline: rgba(255, 255, 255, 0.08);
 
   /* Brand */
-  --nv-primary: #ff2d46;
-  --nv-primary-light: #ff6b7c;
-  --nv-primary-dark: #8f1020;
-  --nv-indigo: #4c6fff;
-  --nv-indigo-light: #8098ff;
+  --nv-primary: #12e7c6;
+  --nv-primary-light: #6dffe4;
+  --nv-primary-dark: #0b7f6d;
+  --nv-indigo: #7b5cff;
+  --nv-indigo-light: #a78bfa;
   --nv-gold: #f5c563;
   --nv-gold-light: #ffe7b0;
   --nv-gold-dark: #b98430;
 
   /* Text */
   --nv-text: #f4f5fa;
-  --nv-text-muted: #a0a5b8;
-  --nv-text-dim: #6c7185;
+  --nv-text-muted: #9ba3bc;
+  --nv-text-dim: #656e88;
 
   /* Status */
   --nv-success: #2fd98c;
@@ -45,7 +46,7 @@
   /* Elevation */
   --nv-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.55);
   --nv-shadow-elevated: 0 24px 60px rgba(0, 0, 0, 0.68);
-  --nv-glow-primary: 0 0 34px rgba(255, 45, 70, 0.38);
+  --nv-glow-primary: 0 0 34px rgba(18, 231, 198, 0.38);
   --nv-glow-gold: 0 0 28px rgba(245, 197, 99, 0.32);
 
   /* Safe-area insets, so bars can sit flush against the notch/home bar */
@@ -105,7 +106,7 @@ h3 {
 }
 
 ::selection {
-  background: rgba(255, 45, 70, 0.35);
+  background: rgba(18, 231, 198, 0.35);
   color: #fff;
 }
 
@@ -118,7 +119,7 @@ h3 {
      from the hero's own blurred poster, so artwork lights the screen and
      everything else stays out of its way. */
   .bg-app {
-    background-color: #050609;
+    background-color: #05070D;
   }
 
   /* Sheets and overlays that sit on top of .bg-app go a shade darker so
@@ -187,7 +188,7 @@ h3 {
   /* Text painted with the brand gradients — used for section eyebrows and
      the VIP wordmark. */
   .text-gradient-primary {
-    background-image: linear-gradient(120deg, #ff6b7c 0%, #ff2d46 55%, #8f1020 100%);
+    background-image: linear-gradient(120deg, #6dffe4 0%, #12e7c6 55%, #0b7f6d 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -202,14 +203,14 @@ h3 {
   /* Primary action surface — one class so every CTA in the app shares the
      same gradient, glow and press feedback instead of redefining it. */
   .btn-primary {
-    background-image: linear-gradient(135deg, #ff445a 0%, #ff2d46 45%, #c4142c 100%);
-    color: #fff;
-    box-shadow: 0 6px 18px rgba(255, 45, 70, 0.22);
+    background-image: linear-gradient(135deg, #3df0d4 0%, #12e7c6 50%, #0a9987 100%);
+    color: #04120f;
+    box-shadow: 0 6px 18px rgba(18, 231, 198, 0.28);
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
   }
   .btn-primary:hover {
     filter: brightness(1.06);
-    box-shadow: 0 8px 24px rgba(255, 45, 70, 0.3);
+    box-shadow: 0 8px 24px rgba(18, 231, 198, 0.38);
   }
   .btn-primary:active {
     transform: scale(0.97);
@@ -383,7 +384,7 @@ h3 {
   position: absolute;
   bottom: 6%;
   border-radius: 9999px;
-  background: radial-gradient(circle, #FFEFC8 0%, #F5C563 45%, #FF2D46 80%, transparent 100%);
+  background: radial-gradient(circle, #FFEFC8 0%, #F5C563 45%, #12E7C6 80%, transparent 100%);
   opacity: 0;
   animation-name: ember-rise;
   animation-timing-function: ease-in;
@@ -620,8 +621,8 @@ h3 {
     inset-block: 0;
     left: 0;
     border-radius: 9999px;
-    background: linear-gradient(90deg, #ff6b7c, #ff2d46);
-    box-shadow: 0 0 12px rgba(255, 45, 70, 0.55);
+    background: linear-gradient(90deg, #6dffe4, #12e7c6);
+    box-shadow: 0 0 12px rgba(18, 231, 198, 0.55);
   }
   .seek-knob {
     position: absolute;
@@ -631,7 +632,7 @@ h3 {
     transform: translate(-50%, -50%) scale(0.7);
     border-radius: 9999px;
     background: #fff;
-    box-shadow: 0 0 0 4px rgba(255, 45, 70, 0.35);
+    box-shadow: 0 0 0 4px rgba(18, 231, 198, 0.35);
     opacity: 0;
     transition: opacity 0.16s ease, transform 0.16s ease;
   }
@@ -645,7 +646,7 @@ h3 {
   /* Center play/pause pill shown while paused. */
   .player-center-btn {
     background: linear-gradient(135deg, rgba(255, 68, 90, 0.95) 0%, rgba(196, 20, 44, 0.95) 100%);
-    box-shadow: 0 0 46px rgba(255, 45, 70, 0.5), 0 12px 34px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 46px rgba(18, 231, 198, 0.5), 0 12px 34px rgba(0, 0, 0, 0.6);
   }
 
   /* Anything the player renders while genuinely inside the Fullscreen API
