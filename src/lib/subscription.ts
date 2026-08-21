@@ -398,6 +398,32 @@ export async function cancelPaymentSubmission(submissionId: string): Promise<boo
   return data === true;
 }
 
+// Asks Bakong whether the QR generated for this ticket has been paid.
+//
+// Unlike every other confirm path here, this one is a question put to the
+// bank rather than a claim made to the server: the edge function grants
+// nothing unless Bakong reports the payload as paid, for the ticket's
+// exact amount, to the owner's account, with a transaction id never used
+// before. See supabase/functions/bakong-verify for the full reasoning.
+//
+// Silent on failure by design — an unconfigured token, an offline
+// network or a payment that simply hasn't happened yet must all read as
+// "keep waiting", which is what the surrounding poll already does.
+export async function checkBakongPayment(
+  submissionId: string,
+  md5: string,
+): Promise<'granted' | 'waiting'> {
+  try {
+    const { data, error } = await supabase.functions.invoke('bakong-verify', {
+      body: { submission_id: submissionId, md5 },
+    });
+    if (error) return 'waiting';
+    return (data as { granted?: boolean } | null)?.granted ? 'granted' : 'waiting';
+  } catch {
+    return 'waiting';
+  }
+}
+
 // Pings the admin's Telegram for a submission that's already sitting in
 // the DB — called once the in-app listening window runs out (no
 // screenshot yet, asking the admin to check their own bank statement)

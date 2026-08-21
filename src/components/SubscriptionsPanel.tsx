@@ -209,6 +209,34 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     setBakongPreview(image);
   };
 
+  // Turning this OFF has to be as easy as turning it on. Save is
+  // deliberately blocked while the account id is empty (an id-less config
+  // generates QRs that reach nobody), which left no way back to the
+  // uploaded images once a config was stored — the setting could be
+  // enabled but not disabled. This clears all five keys, and
+  // fetchBakongConfig's "no account id means not configured" rule does
+  // the rest.
+  const handleDisableBakong = async () => {
+    setBakongSaving(true);
+    setBakongSaved(false);
+    setBakongPreview(null);
+    setBakongPreviewError('');
+    try {
+      await saveBakongConfig({ accountId: '', merchantName: '', city: '' });
+      setBakongAccountId('');
+      setBakongName('');
+      setBakongCity('Phnom Penh');
+      setBakongAccountNumber('');
+      setBakongBank('');
+      setBakongSaved(true);
+      window.setTimeout(() => setBakongSaved(false), 2000);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not clear Bakong settings');
+    } finally {
+      setBakongSaving(false);
+    }
+  };
+
   const handleSaveBakong = async () => {
     setBakongSaving(true);
     setBakongSaved(false);
@@ -612,6 +640,13 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 <Save className="h-3.5 w-3.5" />
               )}
               {bakongSaved ? 'Saved' : 'Save'}
+            </button>
+            <button
+              onClick={handleDisableBakong}
+              disabled={bakongSaving}
+              className="flex items-center gap-1.5 rounded-xl border border-[#FF8494]/25 bg-[#FF8494]/[0.06] px-3 py-1.5 text-xs font-bold text-[#FF8494] transition hover:bg-[#FF8494]/10 disabled:opacity-50"
+            >
+              បិទ / ត្រឡប់ទៅរូប QR upload
             </button>
             {bakongPreviewError && (
               <span className="text-[11px] font-semibold text-[#FF8494]">{bakongPreviewError}</span>
