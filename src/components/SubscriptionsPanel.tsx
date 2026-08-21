@@ -25,6 +25,7 @@ import { getHiddenTierKeys, setHiddenTierKeys, PRICING_TIERS } from '@/lib/subsc
 import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
 import {
   fetchBakongConfig,
+  needsAccountInformation,
   saveBakongConfig,
   generateKhqr,
   renderQrDataUrl,
@@ -132,6 +133,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [bakongAccountId, setBakongAccountId] = useState('');
   const [bakongName, setBakongName] = useState('');
   const [bakongCity, setBakongCity] = useState('Phnom Penh');
+  const [bakongAccountNumber, setBakongAccountNumber] = useState('');
+  const [bakongBank, setBakongBank] = useState('');
   const [bakongSaving, setBakongSaving] = useState(false);
   const [bakongSaved, setBakongSaved] = useState(false);
   const [bakongPreview, setBakongPreview] = useState<string | null>(null);
@@ -145,6 +148,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongAccountId(cfg.accountId);
       setBakongName(cfg.merchantName);
       setBakongCity(cfg.city);
+      setBakongAccountNumber(cfg.accountInformation ?? '');
+      setBakongBank(cfg.acquiringBank ?? '');
     });
     fetchAbaMerchantName().then((name) => {
       if (name) setAbaMerchantName(name);
@@ -163,9 +168,19 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       accountId: bakongAccountId.trim(),
       merchantName: bakongName.trim(),
       city: bakongCity.trim() || 'Phnom Penh',
+      accountInformation: bakongAccountNumber.trim() || undefined,
+      acquiringBank: bakongBank.trim() || undefined,
     };
     if (!config.accountId || !config.merchantName) {
       setBakongPreviewError('ត្រូវការ Account ID និងឈ្មោះ');
+      return;
+    }
+    // An ABA-style id names the bank, not an account inside it. Generating
+    // anyway would produce a QR that scans cleanly and reaches nobody, so
+    // this stops before the owner can mistake a valid-looking preview for
+    // a working one.
+    if (needsAccountInformation(config.accountId) && !config.accountInformation) {
+      setBakongPreviewError('ត្រូវការលេខគណនី (Account number) សម្រាប់ ABA');
       return;
     }
     const generated = await generateKhqr({ config, amount: 1, storeLabel: 'PREVIEW' });
@@ -189,6 +204,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         accountId: bakongAccountId,
         merchantName: bakongName,
         city: bakongCity,
+        accountInformation: bakongAccountNumber,
+        acquiringBank: bakongBank,
       });
       setBakongSaved(true);
       window.setTimeout(() => setBakongSaved(false), 2000);
@@ -481,7 +498,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             <QrCode className="h-3.5 w-3.5" /> Bakong KHQR — បង្កើត QR ដោយស្វ័យប្រវត្តិ
           </p>
           <p className="mb-3 max-w-2xl text-[11px] leading-relaxed text-white/50">
-            ពេលបំពេញ ២ ប្រអប់ខាងក្រោម កម្មវិធីនឹង<b className="text-white/70">បង្កើត QR ថ្មីរៀងៗខ្លួន</b>សម្រាប់ការទូទាត់
+            ពេលបំពេញប្រអប់ខាងក្រោម កម្មវិធីនឹង<b className="text-white/70">បង្កើត QR ថ្មីរៀងៗខ្លួន</b>សម្រាប់ការទូទាត់
             និមួយៗ — ក្រោមឈ្មោះរបស់អ្នក ជាមួយតម្លៃគម្រោងជាប់ស្រាប់ និងផុតកំណត់ ៣ នាទី។ សមាជិកនឹងឃើញ
             ឈ្មោះនេះក្នុង App ធនាគាររបស់គេ ដែលធ្វើឲ្យគេជឿជាក់ថាបង់ត្រូវកន្លែង។ បើទុកទទេ
             កម្មវិធីប្រើរូប QR ដែលអ្នក upload ដូចធម្មតា។
@@ -520,7 +537,40 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                លេខគណនី {needsAccountInformation(bakongAccountId) && <span className="text-[#FF8494]">*</span>}
+              </label>
+              <input
+                value={bakongAccountNumber}
+                onChange={(e) => setBakongAccountNumber(e.target.value)}
+                placeholder="ឧ. 001234567"
+                inputMode="numeric"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                ធនាគារ
+              </label>
+              <input
+                value={bakongBank}
+                onChange={(e) => setBakongBank(e.target.value)}
+                placeholder="ឧ. ABA Bank"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
           </div>
+          {/* An ABA id is the bank's BIC, shared by every ABA customer, so
+              on its own it reaches no account at all. Say so at the moment
+              the owner pastes one, not after a member has paid. */}
+          {needsAccountInformation(bakongAccountId) && !bakongAccountNumber.trim() && (
+            <p className="mt-2 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-[#FFC55A]">
+              Account ID របស់ ABA (<code>abaakhppxxx@abaa</code>) គឺជាឈ្មោះ<b>ធនាគារ</b> មិនមែនគណនីអ្នកទេ —
+              អ្នកប្រើ ABA គ្រប់រូបមានលេខដូចគ្នា។ ត្រូវបំពេញ <b>លេខគណនី</b> ផង បើមិនដូច្នេះទេ QR ស្កេនចូល
+              តែលុយមិនចូលគណនីណាឡើយ។ លេខនោះជាលេខ ៩ ខ្ទង់បន្ទាប់ពី <code>0109</code> ក្នុង KHQR របស់អ្នក។
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={handlePreviewBakong}
@@ -530,7 +580,15 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             </button>
             <button
               onClick={handleSaveBakong}
-              disabled={bakongSaving || !bakongAccountId.trim() || !bakongName.trim()}
+              disabled={
+                bakongSaving ||
+                !bakongAccountId.trim() ||
+                !bakongName.trim() ||
+                // Saving an ABA id with no account number would switch every
+                // tier over to a QR that reaches nobody, so it stays blocked
+                // rather than merely warned about.
+                (needsAccountInformation(bakongAccountId) && !bakongAccountNumber.trim())
+              }
               className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:opacity-50"
             >
               {bakongSaving ? (
