@@ -600,16 +600,42 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               className="w-full resize-y rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-white outline-none focus:border-[#2FD98C]/50"
             />
             {bakongTemplate.trim() && (
-              <p className="mt-1.5 text-[11px] font-semibold">
+              <div className="mt-1.5 text-[11px] font-semibold">
                 {templateCheck.ok ? (
-                  <span className="text-[#2FD98C]">
-                    ✓ KHQR ត្រឹមត្រូវ — ឈ្មោះក្នុងវា៖{' '}
-                    <b>{readKhqrField(bakongTemplate.trim(), '59') ?? '—'}</b>
-                  </span>
+                  <>
+                    <p className="text-[#2FD98C]">✓ KHQR ត្រឹមត្រូវ</p>
+                    {/* Two different names, and confusing them is easy: one
+                        is what the bank wrote in the paste, the other is
+                        what this app will actually put in the QR it hands
+                        a member. Showing only the first made an applied
+                        override look like it had done nothing. */}
+                    <p className="mt-1 font-normal text-white/45">
+                      ឈ្មោះក្នុង QR ដែល paste៖{' '}
+                      <b className="text-white/70">
+                        {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
+                      </b>
+                    </p>
+                    <p className="mt-0.5 font-normal text-white/45">
+                      ឈ្មោះដែលសមាជិកនឹងឃើញ៖{' '}
+                      {bakongName.trim() ? (
+                        <b className="text-[#2FD98C]">{bakongName.trim()}</b>
+                      ) : (
+                        <>
+                          <b className="text-white/70">
+                            {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
+                          </b>
+                          <span className="text-white/35">
+                            {' '}
+                            — បំពេញ «ឈ្មោះបង្ហាញ» ខាងក្រោម ដើម្បីប្ដូរ
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </>
                 ) : (
                   <span className="text-[#FF8494]">{TEMPLATE_ERRORS[templateCheck.reason]}</span>
                 )}
-              </p>
+              </div>
             )}
           </div>
 
@@ -628,6 +654,9 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
                 ឈ្មោះបង្ហាញ
+                {bakongTemplate.trim() && (
+                  <span className="ml-1 normal-case text-white/30">(ទុកទទេ = ឈ្មោះធនាគារ)</span>
+                )}
               </label>
               <input
                 value={bakongName}
