@@ -18,11 +18,12 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { openExternalLink } from '@/lib/telegram';
+import { openExternalLink, isInTelegram } from '@/lib/telegram';
 import {
   decodeKhqrFromImage,
   isKhqrPayload,
   buildAbaDeeplink,
+  buildPayPageUrl,
   armDeeplinkFallback,
 } from '@/lib/khqr';
 import { useLang } from '@/lib/useLang';
@@ -268,6 +269,26 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   const effectiveKhqr = (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
   const abaDeeplink =
     !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
+
+  // Inside Telegram the ABA deeplink can't be tapped straight from the
+  // Mini App: it runs in Telegram's WebView, which swallows non-http
+  // schemes, so the link does nothing at all. Telegram's openLink() does
+  // hand an https URL to the system browser, so there the button opens
+  // our own checkout page (public/pay/index.html) in Safari and the
+  // viewer taps the deeplink from there, where iOS honours it. Outside
+  // Telegram we are already in a real browser, so the direct deeplink
+  // stays — no extra page in the way.
+  const payPageUrl =
+    isInTelegram() && isKhqrPayload(effectiveKhqr)
+      ? buildPayPageUrl({
+          khqr: effectiveKhqr,
+          qrSrc,
+          plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
+          amount: payTier ? `$${payTier.price}` : null,
+          ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
+          lang,
+        })
+      : null;
 
   // Decode the tier's QR image once so the primary button can jump
   // straight into ABA. Cancelled on tier change so a slow decode can't
@@ -925,7 +946,18 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                           {t.subAbaScreenshotNote}
                         </p>
                         <div className="text-left">{receiptUploadUi}</div>
-                        {abaDeeplink ? (
+                        {payPageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAbaDidNotOpen(false);
+                              openExternalLink(payPageUrl);
+                            }}
+                            className="mx-auto block text-[10px] font-semibold text-white/35 underline decoration-white/20 underline-offset-2 transition hover:text-white/60"
+                          >
+                            {t.subOpenAbaAgain}
+                          </button>
+                        ) : abaDeeplink ? (
                           // Real <a href="abamobilebank://...">, same reason
                           // as the first tap above — a WebView routinely
                           // swallows a scripted navigation to a non-http
@@ -973,7 +1005,24 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                             fallback is only armed -- the navigation
                             itself belongs to the browser now. */}
                         <div className="flex justify-center">
-                          {abaDeeplink ? (
+                          {payPageUrl ? (
+                            // In Telegram: hand the checkout page to the
+                            // system browser. No armDeeplinkFallback here —
+                            // this hand-off is a plain https URL, and the
+                            // "ABA didn't open" fallback now lives on that
+                            // page, next to the QR it falls back to.
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAbaDidNotOpen(false);
+                                setAbaOpened(true);
+                                openExternalLink(payPageUrl);
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#A78BFA]/25 bg-[#A78BFA]/[0.16] px-5 py-2 text-[12px] font-bold text-[#CBD4FF] transition active:scale-[0.97] hover:bg-[#A78BFA]/[0.24] hover:text-[#E2E7FF]"
+                            >
+                              <Zap className="h-3.5 w-3.5 text-[#A3B4FF]" /> {t.subOpenAba}
+                            </button>
+                          ) : abaDeeplink ? (
                             <a
                               href={abaDeeplink}
                               rel="noreferrer"
