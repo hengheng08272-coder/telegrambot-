@@ -1,30 +1,21 @@
 // =====================================================================
-// KHQR payload surgery
+// KHQR payload surgery — server side.
 //
-// Some banks will not accept a payload that a third party assembled from
-// scratch, even a spec-perfect one. ABA is the case this was written
-// for: its own QRs carry a proprietary tag 40 (`abaP2P`, holding a
-// per-account reference the SDK has no way to know), and without it ABA
-// renders the QR correctly, names the right payee and the right amount,
-// and then refuses at the moment of payment with "Invalid Qr Merchant
-// Data".
+// A port of src/lib/khqrTemplate.ts and src/lib/md5.ts into the edge
+// runtime. Edge functions are bundled on their own and cannot reach the
+// Vite `@/` alias, so the logic lives twice rather than being imported
+// across that boundary. Keep the two in step: a divergence here shows up
+// as a QR the admin panel previewed one way and the member received
+// another, which is exactly the class of bug khqr-issue exists to end.
 //
-// So this stops trying to reproduce the bank's payload and reuses it
-// instead. The owner pastes ONE QR their own banking app generated; per
-// payment the amount is swapped and the checksum recomputed. Everything
-// the bank cared about — account template, proprietary tags, merchant
-// category, the lot — travels through untouched, byte for byte, because
-// it is never rebuilt.
-//
-// The happy side effect is that this is bank-agnostic: it never needs to
-// know what any particular bank puts in its payloads.
-//
-// KEEP IN STEP WITH supabase/functions/_shared/khqr.ts. The QR members
-// actually scan is issued there (the khqr-issue function); this copy is
-// the browser fallback for when that function is unreachable or has not
-// been deployed yet. A divergence between the two shows up as a QR that
-// differs depending on which path produced it — precisely what having a
-// single issuer was meant to end.
+// Why rewrite a bank's payload instead of building one: ABA refuses a
+// KHQR it did not issue. Its own QRs carry a proprietary tag 40
+// (`abaP2P`) holding a per-account reference nothing outside ABA can
+// know, so a spec-perfect payload built from scratch renders correctly,
+// names the right payee and amount, and is then rejected at the moment
+// of payment with "Invalid Qr Merchant Data". Reusing one real QR
+// sidesteps the question entirely: only the fields named below change,
+// everything the bank cared about travels through byte for byte.
 // =====================================================================
 
 export interface KhqrField {
@@ -36,8 +27,8 @@ export interface KhqrField {
  * Splits an EMVCo payload into its top-level tag/value pairs.
  *
  * Returns null on anything that does not parse cleanly rather than
- * throwing or half-reading it — a malformed template must be rejected at
- * setup time, not turned into a subtly wrong QR at payment time.
+ * half-reading it — a malformed template must be rejected at setup time,
+ * not turned into a subtly wrong QR at payment time.
  */
 export function parseKhqr(payload: string): KhqrField[] | null {
   const fields: KhqrField[] = [];
@@ -46,8 +37,9 @@ export function parseKhqr(payload: string): KhqrField[] | null {
     // Every field is 2-char tag + 2-digit length + value.
     if (i + 4 > payload.length) return null;
     const tag = payload.slice(i, i + 2);
-    const len = Number(payload.slice(i + 2, i + 4));
-    if (!/^\d{2}$/.test(payload.slice(i + 2, i + 4)) || !Number.isFinite(len)) return null;
+    const lengthText = payload.slice(i + 2, i + 4);
+    if (!/^\d{2}$/.test(lengthText)) return null;
+    const len = Number(lengthText);
     if (i + 4 + len > payload.length) return null;
     fields.push({ tag, value: payload.slice(i + 4, i + 4 + len) });
     i += 4 + len;
@@ -57,8 +49,8 @@ export function parseKhqr(payload: string): KhqrField[] | null {
 
 export function serialiseKhqr(fields: KhqrField[]): string {
   return fields
-    .map(({ tag, value }) => `${tag}${String(value.length).padStart(2, '0')}${value}`)
-    .join('');
+    .map(({ tag, value }) => `${tag}${String(value.length).padStart(2, "0")}${value}`)
+    .join("");
 }
 
 /** CRC-16/CCITT-FALSE — the checksum KHQR carries in tag 63. */
@@ -70,35 +62,35 @@ export function khqrCrc(input: string): string {
       crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
     }
   }
-  return crc.toString(16).toUpperCase().padStart(4, '0');
+  return crc.toString(16).toUpperCase().padStart(4, "0");
 }
 
 /** True when a payload's trailing checksum matches its own contents. */
 export function hasValidKhqrCrc(payload: string): boolean {
-  // ...6304XXXX — tag 63 is always last, always length 04, and its value
-  // is the CRC of everything before it, the "6304" header included.
-  if (payload.length < 8 || payload.slice(-8, -4) !== '6304') return false;
+  // ...6304XXXX — the last tag is always the 4-char CRC of everything
+  // before it, the "6304" header included.
+  if (payload.length < 8 || payload.slice(-8, -4) !== "6304") return false;
   return khqrCrc(payload.slice(0, -4)) === payload.slice(-4).toUpperCase();
 }
 
-const TAG_AMOUNT = '54';
-const TAG_MERCHANT_NAME = '59';
-const TAG_ADDITIONAL_DATA = '62';
-const TAG_CRC = '63';
-const TAG_POINT_OF_INITIATION = '01';
+const TAG_AMOUNT = "54";
+const TAG_MERCHANT_NAME = "59";
+const TAG_ADDITIONAL_DATA = "62";
+const TAG_CRC = "63";
+const TAG_POINT_OF_INITIATION = "01";
 /** Bill number, inside tag 62's own TLV. */
-const SUBTAG_BILL_NUMBER = '01';
+const SUBTAG_BILL_NUMBER = "01";
 
 /** The spec's cap on the merchant name, and on a bill number. */
 const MAX_MERCHANT_NAME = 25;
 const MAX_BILL_NUMBER = 25;
 
 export type TemplateFailure =
-  | 'unparseable'
-  | 'bad-checksum'
-  | 'no-amount-field'
-  | 'name-too-long'
-  | 'name-not-ascii';
+  | "unparseable"
+  | "bad-checksum"
+  | "no-amount-field"
+  | "name-too-long"
+  | "name-not-ascii";
 
 export type TemplateResult =
   | { ok: true; payload: string }
@@ -114,32 +106,29 @@ export type TemplateResult =
 export function validateKhqrTemplate(payload: string): TemplateResult {
   const trimmed = payload.trim();
   const fields = parseKhqr(trimmed);
-  if (!fields) return { ok: false, reason: 'unparseable' };
-  if (!hasValidKhqrCrc(trimmed)) return { ok: false, reason: 'bad-checksum' };
+  if (!fields) return { ok: false, reason: "unparseable" };
+  if (!hasValidKhqrCrc(trimmed)) return { ok: false, reason: "bad-checksum" };
   // A template without an amount field is a static QR — the payer types
   // the amount themselves, which is exactly what this app exists to stop.
-  if (!fields.some((f) => f.tag === TAG_AMOUNT)) return { ok: false, reason: 'no-amount-field' };
+  if (!fields.some((f) => f.tag === TAG_AMOUNT)) return { ok: false, reason: "no-amount-field" };
   return { ok: true, payload: trimmed };
 }
 
 /**
- * Whether a display name can be written into tag 59 at all.
+ * Whether a merchant name can be written into tag 59 at all.
  *
  * Checked before the payload is built rather than left to the bank,
  * because the bank's answer arrives as a failed payment in front of a
- * member. Non-ASCII is refused outright: tag 59 carries no character-set
- * declaration, so a Khmer or emoji name is at best drawn as boxes in the
- * payer's app and at worst rejected — neither is something to discover
- * during a real payment.
- *
- * Exported so the admin panel can say no while the owner is still
- * typing, rather than at preview time.
+ * member. Non-ASCII is refused outright: tag 59 has no character-set
+ * declaration, so a Khmer or emoji name is at best rendered as boxes in
+ * the payer's app and at worst rejected, and neither is something to
+ * discover during a real payment.
  */
 export function checkMerchantName(name: string): TemplateFailure | null {
   const trimmed = name.trim();
-  if (trimmed.length > MAX_MERCHANT_NAME) return 'name-too-long';
+  if (trimmed.length > MAX_MERCHANT_NAME) return "name-too-long";
   // Printable ASCII only, space included.
-  if (!/^[\x20-\x7E]+$/.test(trimmed)) return 'name-not-ascii';
+  if (!/^[\x20-\x7E]+$/.test(trimmed)) return "name-not-ascii";
   return null;
 }
 
@@ -158,15 +147,14 @@ export interface TemplateOverrides {
    *
    * This is what makes one ticket's payload differ from another's. Two
    * tickets for the same tier otherwise produce byte-identical payloads,
-   * hence one md5 — and md5 is what Bakong's check_transaction_by_md5
-   * answers about, so the second ticket ends up asking about the first
-   * ticket's payment and the replay guard (see
-   * database/bakong-md5-addition.sql) refuses it. Auto-confirm then
-   * fails silently for every repeat purchase.
+   * hence one md5, and Bakong's check_transaction_by_md5 answers about
+   * an md5 — so the second ticket asks about the first ticket's payment
+   * and the replay guard (database/bakong-md5-addition.sql) refuses it.
+   * Auto-confirm then fails silently for every repeat purchase.
    *
    * Off by default all the same: adding a field is a change to a payload
-   * the bank accepted as it was, and only a real payment proves the bank
-   * still accepts it.
+   * ABA accepted as it was, and only a real payment can prove ABA still
+   * accepts it.
    */
   billNumber?: string | null;
 }
@@ -192,12 +180,12 @@ export function applyKhqrTemplate(
   const valid = validateKhqrTemplate(template);
   if (!valid.ok) return valid;
 
-  const name = merchantName?.trim() ?? '';
+  const name = merchantName?.trim() ?? "";
   if (name) {
     const nameProblem = checkMerchantName(name);
     if (nameProblem) return { ok: false, reason: nameProblem };
   }
-  const bill = (billNumber ?? '').trim().slice(0, MAX_BILL_NUMBER);
+  const bill = (billNumber ?? "").trim().slice(0, MAX_BILL_NUMBER);
 
   const fields = parseKhqr(valid.payload)!;
   const out: KhqrField[] = [];
@@ -209,7 +197,7 @@ export function applyKhqrTemplate(
 
     // Tags run in ascending order, so 62 belongs before the first tag
     // above it. ABA's own payloads put a proprietary tag 99 after the
-    // city, which would otherwise leave 62 stranded out of order.
+    // city, which would otherwise leave 62 out of order at the end.
     if (bill && !billWritten && Number(field.tag) > Number(TAG_ADDITIONAL_DATA)) {
       out.push({ tag: TAG_ADDITIONAL_DATA, value: withBillNumber(undefined, bill) });
       billWritten = true;
@@ -232,7 +220,7 @@ export function applyKhqrTemplate(
     if (field.tag === TAG_POINT_OF_INITIATION) {
       // 11 = static (payer types the amount), 12 = dynamic. Carrying an
       // amount makes it dynamic by definition.
-      out.push({ tag: TAG_POINT_OF_INITIATION, value: '12' });
+      out.push({ tag: TAG_POINT_OF_INITIATION, value: "12" });
       continue;
     }
     out.push(field);

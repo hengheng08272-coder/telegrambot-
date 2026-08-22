@@ -49,6 +49,7 @@ import {
   getKhqrStrings,
   createAbaCheckout,
   type AbaCheckoutResult,
+  issueKhqr,
   checkBakongPayment,
   checkSubmissionStatus,
   getPaymentReceipt,
@@ -382,35 +383,63 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     };
   }, []);
 
-  // One freshly-generated KHQR per payment attempt: the owner's merchant
-  // name, the tier's exact price, the ticket id as the bill number and an
-  // expiry matching the countdown. Regenerating when the ticket or tier
-  // changes is what keeps a QR tied to exactly one attempt — a viewer who
-  // lets the window lapse and starts again gets a new one, so a late
-  // payment can never be matched against the wrong ticket.
+  // One KHQR per payment attempt: the owner's display name, the tier's
+  // exact price, the ticket id as the bill number and an expiry matching
+  // the countdown. Regenerating when the ticket or tier changes is what
+  // keeps a QR tied to exactly one attempt — a viewer who lets the window
+  // lapse and starts again gets a new one, so a late payment can never be
+  // matched against the wrong ticket.
+  //
+  // Issued by the khqr-issue edge function whenever there is a ticket to
+  // issue against: the amount then comes from the database rather than
+  // from this browser, and the payload is stored on the ticket so a
+  // re-render hands back the same bytes and the same md5. Building it
+  // here is the fallback for a deploy without that function — and the
+  // uploaded QR image is the fallback for that.
   useEffect(() => {
     let cancelled = false;
-    if (!bakongConfig || !payTier) {
+    if (!payTier) {
       setLiveKhqr(null);
       return;
     }
     (async () => {
-      const generated = await generateKhqr({
-        config: bakongConfig,
-        amount: payTier.price,
-        billNumber: pending ? pending.id.slice(0, 8).toUpperCase() : null,
-        storeLabel: lang === 'km' ? payTier.labelKm : payTier.labelEn,
-        expiresInMs: WAIT_WINDOW_SECONDS * 1000,
-      });
-      if (cancelled || !generated) {
-        if (!cancelled) setLiveKhqr(null);
-        return;
+      let payload: string | null = null;
+      let payloadMd5: string | null = null;
+
+      if (pending) {
+        const issued = await issueKhqr({ submissionId: pending.id });
+        if (cancelled) return;
+        if (issued.configured && issued.payload && issued.md5) {
+          payload = issued.payload;
+          payloadMd5 = issued.md5;
+        }
       }
-      const image = await renderQrDataUrl(generated.payload);
+
+      if (!payload) {
+        if (!bakongConfig) {
+          setLiveKhqr(null);
+          return;
+        }
+        const generated = await generateKhqr({
+          config: bakongConfig,
+          amount: payTier.price,
+          billNumber: pending ? pending.id.slice(0, 8).toUpperCase() : null,
+          storeLabel: lang === 'km' ? payTier.labelKm : payTier.labelEn,
+          expiresInMs: WAIT_WINDOW_SECONDS * 1000,
+        });
+        if (cancelled || !generated) {
+          if (!cancelled) setLiveKhqr(null);
+          return;
+        }
+        payload = generated.payload;
+        payloadMd5 = generated.md5;
+      }
+
+      const image = await renderQrDataUrl(payload);
       if (cancelled) return;
       // Without an image there is nothing to show or scan, so this falls
       // back to the uploaded QR rather than half-applying.
-      setLiveKhqr(image ? { payload: generated.payload, md5: generated.md5, image } : null);
+      setLiveKhqr(image && payloadMd5 ? { payload, md5: payloadMd5, image } : null);
     })();
     return () => {
       cancelled = true;
