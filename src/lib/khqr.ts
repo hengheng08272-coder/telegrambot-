@@ -209,8 +209,14 @@ export function buildPayPageUrl(opts: PayPageOptions): string {
   // Where "back to the app" should point. Without a configured bot
   // username there is no Mini App link to return to, so the page simply
   // doesn't render that button.
+  // Where the checkout page's "back to the app" button points. With the
+  // bot's username configured this reopens the Mini App itself; without
+  // it, `tg://` at least brings Telegram back to the front, where the
+  // Mini App is still sitting where they left it. Something is far
+  // better than nothing here: this button is the whole return path, and
+  // in Safari there is no history entry to go back to.
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
-  if (botUsername) params.set('ret', `https://t.me/${botUsername}/app`);
+  params.set('ret', botUsername ? `https://t.me/${botUsername}/app` : 'tg://');
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   return `${origin}/pay/?${params.toString()}`;

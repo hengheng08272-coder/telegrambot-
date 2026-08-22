@@ -885,6 +885,22 @@ h3 {
     right: -8px;
   }
 
+  /* Ticket leaders: label on the left, value on the right, joined by the
+     dotted rule a printed ticket uses. It makes a two-item row read as
+     one line of a stub instead of two things that happen to be near
+     each other, and it keeps long plan names from looking adrift. */
+  .co-leader {
+    display: flex;
+    align-items: baseline;
+    gap: var(--co-s2);
+  }
+  .co-leader-fill {
+    flex: 1;
+    min-width: 12px;
+    align-self: center;
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.16);
+  }
+
   /* Stamped labels — "HOT", "BEST", "PAID". Set slightly off-square, the
      way a rubber stamp lands. */
   /* Latin stamps ("BEST") want the wide tracking a rubber stamp has;

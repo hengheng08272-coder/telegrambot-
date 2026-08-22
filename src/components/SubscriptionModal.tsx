@@ -1540,32 +1540,49 @@ export default function SubscriptionModal({
                   printed one lists it. */}
               <div className="co-tear -mx-5 my-4" />
 
-              <div className="space-y-2">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
+              <div className="space-y-2.5">
+                <div className="co-leader">
+                  <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-[color:var(--co-text-dim)]">
                     {t.subReceiptPlan}
                   </span>
-                  <span className="truncate text-[12.5px] font-bold text-[color:var(--co-text)]">
+                  <span className="co-leader-fill" aria-hidden="true" />
+                  <span className="max-w-[60%] truncate text-[12.5px] font-bold text-[color:var(--co-text)]">
                     {planLabel(payTier)}
                   </span>
                 </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
+                <div className="co-leader">
+                  <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-[color:var(--co-text-dim)]">
                     {t.subMethodLabel}
                   </span>
-                  <span className="truncate text-[12.5px] font-bold text-[color:var(--co-text)]">
-                    {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
+                  <span className="co-leader-fill" aria-hidden="true" />
+                  <span className="flex max-w-[62%] shrink-0 items-center gap-1.5 truncate text-[12.5px] font-bold text-[color:var(--co-text)]">
+                    {payMode === 'auto' ? (
+                      <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--co-aba)' }} />
+                    ) : (
+                      <QrCode className="h-3.5 w-3.5 shrink-0 text-[color:var(--co-text-dim)]" />
+                    )}
+                    <span className="truncate">
+                      {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
+                    </span>
                   </span>
                 </div>
-                <div className="flex items-end justify-between gap-3 pt-0.5">
-                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
+
+                {/* The amount gets its own line, above the rule, the way
+                    a total sits at the bottom of a bill. */}
+                <div className="flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
+                  <span className="shrink-0 pb-1 text-[10px] uppercase tracking-[0.14em] text-[color:var(--co-text-dim)]">
                     {t.subAmountDue}
                   </span>
-                  <span
-                    className="leading-none tabular-nums text-[color:var(--co-text)]"
-                    style={{ fontFamily: 'var(--co-font-display)', fontSize: '28px' }}
-                  >
-                    ${payTier.price}
+                  <span className="flex items-baseline gap-1.5">
+                    <span
+                      className="leading-none tabular-nums text-[color:var(--co-text)]"
+                      style={{ fontFamily: 'var(--co-font-display)', fontSize: '30px' }}
+                    >
+                      ${payTier.price}
+                    </span>
+                    <span className="text-[10px] font-bold tracking-[0.1em] text-[color:var(--co-text-dim)]">
+                      USD
+                    </span>
                   </span>
                 </div>
               </div>
