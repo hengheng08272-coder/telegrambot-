@@ -28,6 +28,7 @@ import {
 } from '@/lib/khqr';
 import {
   fetchBakongConfig,
+  fetchDisplayLabel,
   generateKhqr,
   renderQrDataUrl,
   type BakongConfig,
@@ -111,6 +112,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // whenever the owner hasn't configured Bakong, in which case everything
   // below falls back to the QR image they uploaded.
   const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
+  // Display only — never written into the QR. See fetchDisplayLabel.
+  const [displayLabel, setDisplayLabel] = useState('');
   const [liveKhqr, setLiveKhqr] = useState<{ payload: string; md5: string; image: string } | null>(
     null,
   );
@@ -352,7 +355,12 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // set a display name the QR carries it, and showing it is both private
   // and true. When they have not, nothing is shown at all — a blank is
   // the one option that leaks nothing.
-  const displayPayee = bakongConfig?.merchantName?.trim() || null;
+  //
+  // The display label comes first because on an ABA account the override
+  // below has to stay empty — ABA resolves the payee from the merchant id
+  // and rejects a payload whose tag 59 disagrees with what it has on
+  // file, so the only name this app can offer is one it prints itself.
+  const displayPayee = displayLabel.trim() || bakongConfig?.merchantName?.trim() || null;
   const abaDeeplink =
     !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
 
@@ -389,6 +397,9 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     let cancelled = false;
     fetchBakongConfig().then((cfg) => {
       if (!cancelled) setBakongConfig(cfg);
+    });
+    fetchDisplayLabel().then((label) => {
+      if (!cancelled) setDisplayLabel(label);
     });
     return () => {
       cancelled = true;

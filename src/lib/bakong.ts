@@ -116,6 +116,41 @@ const SETTING_KEYS = {
  */
 const BILL_NUMBER_KEY = 'bakong_bill_number_enabled';
 
+/**
+ * The name this app prints beside the QR. Display only — it is never
+ * written into the payload.
+ *
+ * Separate from BakongConfig.merchantName, which rewrites tag 59, because
+ * the two answer different questions and one of them has a wrong answer.
+ * ABA resolves the payee from the merchant id and refuses a payload whose
+ * tag 59 disagrees with what it has on file, so on an ABA account tag 59
+ * must be left exactly as the bank wrote it. That leaves the app with a
+ * blank where the payee's name goes, and a blank KHQR ticket looks broken
+ * at the moment somebody is deciding whether to pay.
+ *
+ * This fills that blank. Nothing here reaches the bank, so it cannot
+ * break a payment — and it must never be used to name a payee other than
+ * the one the QR actually pays.
+ */
+const DISPLAY_LABEL_KEY = 'payment_display_label';
+
+export async function fetchDisplayLabel(): Promise<string> {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', DISPLAY_LABEL_KEY)
+    .maybeSingle();
+  if (error || !data) return '';
+  return String(data.value ?? '').trim();
+}
+
+export async function saveDisplayLabel(label: string): Promise<void> {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert([{ key: DISPLAY_LABEL_KEY, value: label.trim(), updated_at: new Date().toISOString() }]);
+  if (error) throw error;
+}
+
 export async function fetchBillNumberEnabled(): Promise<boolean> {
   const { data, error } = await supabase
     .from('app_settings')

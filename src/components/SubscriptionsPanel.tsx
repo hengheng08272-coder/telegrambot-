@@ -31,6 +31,8 @@ import {
   renderQrDataUrl,
   fetchBillNumberEnabled,
   saveBillNumberEnabled,
+  fetchDisplayLabel,
+  saveDisplayLabel,
   type KhqrFailure,
 } from '@/lib/bakong';
 import { readKhqrField, validateKhqrTemplate, type TemplateFailure } from '@/lib/khqrTemplate';
@@ -160,6 +162,10 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   // Writing the ticket id into tag 62. Off unless the owner turns it on
   // and has confirmed with a real payment that the bank still accepts it.
   const [bakongBillNumber, setBakongBillNumber] = useState(false);
+  // Printed by the app beside the QR. Never written into the payload —
+  // the field above it (ឈ្មោះបង្ហាញ) is the one that touches tag 59, and
+  // on an ABA account that one has to stay empty.
+  const [displayLabel, setDisplayLabel] = useState('');
   // What the khqr-issue function actually hands members, as opposed to
   // what the form above would produce. The two differ whenever the form
   // has unsaved edits, which is exactly when it is worth being able to
@@ -185,6 +191,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongTemplate(cfg.khqrTemplate ?? '');
     });
     fetchBillNumberEnabled().then(setBakongBillNumber);
+    fetchDisplayLabel().then(setDisplayLabel);
     fetchAbaMerchantName().then((name) => {
       if (name) setAbaMerchantName(name);
       setAbaMerchantNameLoaded(true);
@@ -347,6 +354,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         khqrTemplate: bakongTemplate,
       });
       await saveBillNumberEnabled(bakongBillNumber);
+      await saveDisplayLabel(displayLabel);
       setBakongSaved(true);
       // The saved config is what khqr-issue reads, so the server answer
       // shown below is stale the moment a save lands.
@@ -683,13 +691,13 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       </b>
                     </p>
                     <p className="mt-0.5 font-normal text-white/45">
-                      ឈ្មោះដែលសមាជិកនឹងឃើញ៖{' '}
-                      {bakongName.trim() ? (
-                        <b className="text-[#2FD98C]">{bakongName.trim()}</b>
+                      ឈ្មោះលើកាតក្នុង App៖{' '}
+                      {displayLabel.trim() || bakongName.trim() ? (
+                        <b className="text-[#2FD98C]">
+                          {displayLabel.trim() || bakongName.trim()}
+                        </b>
                       ) : (
-                        <span className="text-white/35">
-                          App មិនបង្ហាញឈ្មោះទេ (ទទេ)
-                        </span>
+                        <span className="text-white/35">ទទេ</span>
                       )}
                     </p>
                     {/* Filling the display name breaks ABA outright.
@@ -713,11 +721,12 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       </p>
                     ) : (
                       <p className="mt-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 font-normal leading-relaxed text-white/40">
-                        QR ផ្ទុកឈ្មោះ <b className="text-white/60">
+                        ✓ ត្រឹមត្រូវ។ QR ទុកឈ្មោះដែលធនាគារសរសេរ —{' '}
+                        <b className="text-white/60">
                           {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
                         </b>{' '}
-                        ដែលធនាគារបានសរសេរ។ App មិនបង្ហាញឈ្មោះនោះទេ តែ App ធនាគាររបស់សមាជិក
-                        បង្ហាញ។ ការលាក់វាទាំងស្រុង ត្រូវការគណនី merchant។
+                        — ហើយ App ធនាគារបង្ហាញឈ្មោះដែលចុះឈ្មោះនឹងគណនី។ ចង់ឲ្យកាតក្នុង App
+                        ដាក់ឈ្មោះផ្សេង សូមប្រើប្រអប់ «ឈ្មោះលើកាតក្នុង App» — វាមិនប៉ះ QR ទេ។
                       </p>
                     )}
                   </>
@@ -750,6 +759,18 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               <input
                 value={bakongName}
                 onChange={(e) => setBakongName(e.target.value)}
+                placeholder="ទុកទទេ"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                ឈ្មោះលើកាតក្នុង App
+                <span className="ml-1 normal-case text-[#2FD98C]/70">(មិនប៉ះ QR)</span>
+              </label>
+              <input
+                value={displayLabel}
+                onChange={(e) => setDisplayLabel(e.target.value)}
                 placeholder="ឧ. NINT ANIME"
                 className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
               />
