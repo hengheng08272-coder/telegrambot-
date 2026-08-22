@@ -21,7 +21,7 @@ import {
   readKhqrMerchant,
 } from '@/lib/khqr';
 import { supabase } from '@/lib/supabase/supabaseClient';
-import { getHiddenTierKeys, setHiddenTierKeys, PRICING_TIERS } from '@/lib/subscription';
+import { getHiddenTierKeys, setHiddenTierKeys, PRICING_TIERS, issueKhqr } from '@/lib/subscription';
 import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
 import {
   fetchBakongConfig,
@@ -29,6 +29,10 @@ import {
   needsAccountInformation,
   saveBakongConfig,
   renderQrDataUrl,
+  fetchBillNumberEnabled,
+  saveBillNumberEnabled,
+  fetchDisplayLabel,
+  saveDisplayLabel,
   type KhqrFailure,
 } from '@/lib/bakong';
 import { readKhqrField, validateKhqrTemplate, type TemplateFailure } from '@/lib/khqrTemplate';
@@ -40,6 +44,8 @@ const TEMPLATE_ERRORS: Record<TemplateFailure, string> = {
   'bad-checksum': 'អក្សរខ្វះ ឬលើស — សូម copy ទាំងមូលម្ដងទៀត កុំកែដោយដៃ',
   'no-amount-field': 'QR នេះមិនមានចំនួនទឹកប្រាក់ទេ — ត្រូវបង្កើត QR ដែលដាក់ចំនួនស្រាប់',
   'name-too-long': 'ឈ្មោះវែងពេក (លើសពី ២៥ តួ)',
+  'name-not-ascii':
+    'ឈ្មោះត្រូវតែជាអក្សរឡាតាំង (A-Z, 0-9) — អក្សរខ្មែរ ឬ emoji ធនាគារបង្ហាញមិនចេញ',
 };
 
 interface Props {
@@ -153,6 +159,22 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [bakongSaved, setBakongSaved] = useState(false);
   const [bakongPreview, setBakongPreview] = useState<string | null>(null);
   const [bakongPreviewError, setBakongPreviewError] = useState('');
+  // Writing the ticket id into tag 62. Off unless the owner turns it on
+  // and has confirmed with a real payment that the bank still accepts it.
+  const [bakongBillNumber, setBakongBillNumber] = useState(false);
+  // Printed by the app beside the QR. Never written into the payload —
+  // the field above it (ឈ្មោះបង្ហាញ) is the one that touches tag 59, and
+  // on an ABA account that one has to stay empty.
+  const [displayLabel, setDisplayLabel] = useState('');
+  // What the khqr-issue function actually hands members, as opposed to
+  // what the form above would produce. The two differ whenever the form
+  // has unsaved edits, which is exactly when it is worth being able to
+  // ask the server rather than guessing.
+  const [liveKhqr, setLiveKhqr] = useState<{ image: string; name: string; amount: string } | null>(
+    null,
+  );
+  const [liveKhqrError, setLiveKhqrError] = useState('');
+  const [liveKhqrBusy, setLiveKhqrBusy] = useState(false);
   const [abaSaving, setAbaSaving] = useState(false);
   const [abaSaved, setAbaSaved] = useState(false);
 
@@ -168,6 +190,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongMcc(cfg.merchantCategoryCode ?? '');
       setBakongTemplate(cfg.khqrTemplate ?? '');
     });
+    fetchBillNumberEnabled().then(setBakongBillNumber);
+    fetchDisplayLabel().then(setDisplayLabel);
     fetchAbaMerchantName().then((name) => {
       if (name) setAbaMerchantName(name);
       setAbaMerchantNameLoaded(true);
@@ -224,6 +248,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         'template-bad-checksum': TEMPLATE_ERRORS['bad-checksum'],
         'template-static': TEMPLATE_ERRORS['no-amount-field'],
         'template-name-too-long': TEMPLATE_ERRORS['name-too-long'],
+        'template-name-not-ascii': TEMPLATE_ERRORS['name-not-ascii'],
       };
       setBakongPreviewError(
         reasons[generated.reason] + (generated.detail ? ` (${generated.detail})` : ''),
@@ -236,6 +261,51 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       return;
     }
     setBakongPreview(image);
+  };
+
+  // Asks khqr-issue for the QR a member would actually be handed.
+  //
+  // The preview above renders whatever is typed into the form, which is
+  // the right thing while the owner is still editing and the wrong thing
+  // for answering "what are members getting right now?" — the answer to
+  // that is built from the SAVED settings, by the same code path that
+  // serves a real ticket. Reading the name back out of the returned
+  // payload rather than echoing the setting is the point: it is the
+  // field the payer's bank reads.
+  const handleVerifyLiveKhqr = async () => {
+    setLiveKhqr(null);
+    setLiveKhqrError('');
+    setLiveKhqrBusy(true);
+    try {
+      const issued = await issueKhqr({ preview: true, amount: 1 });
+      if (!issued.configured) {
+        setLiveKhqrError(
+          issued.error
+            ? `Server មិនឆ្លើយ (${issued.error}) — khqr-issue ប្រហែលមិនទាន់ deploy`
+            : 'Server មិនទាន់មាន KHQR template — ចុច Save ជាមុនសិន',
+        );
+        return;
+      }
+      if (!issued.payload) {
+        const reason = issued.error as TemplateFailure | undefined;
+        setLiveKhqrError(
+          (reason && TEMPLATE_ERRORS[reason]) || `Server បដិសេធ (${issued.error ?? 'unknown'})`,
+        );
+        return;
+      }
+      const image = await renderQrDataUrl(issued.payload);
+      if (!image) {
+        setLiveKhqrError('មិនអាចបង្កើតរូប QR បានទេ');
+        return;
+      }
+      setLiveKhqr({
+        image,
+        name: issued.payeeName || readKhqrField(issued.payload, '59') || '—',
+        amount: readKhqrField(issued.payload, '54') || String(issued.amount ?? ''),
+      });
+    } finally {
+      setLiveKhqrBusy(false);
+    }
   };
 
   // Turning this OFF has to be as easy as turning it on. Save is
@@ -283,7 +353,12 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         merchantCategoryCode: bakongMcc,
         khqrTemplate: bakongTemplate,
       });
+      await saveBillNumberEnabled(bakongBillNumber);
+      await saveDisplayLabel(displayLabel);
       setBakongSaved(true);
+      // The saved config is what khqr-issue reads, so the server answer
+      // shown below is stale the moment a save lands.
+      setLiveKhqr(null);
       window.setTimeout(() => setBakongSaved(false), 2000);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not save Bakong settings');
@@ -616,21 +691,44 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       </b>
                     </p>
                     <p className="mt-0.5 font-normal text-white/45">
-                      ឈ្មោះដែលសមាជិកនឹងឃើញ៖{' '}
-                      {bakongName.trim() ? (
-                        <b className="text-[#2FD98C]">{bakongName.trim()}</b>
+                      ឈ្មោះលើកាតក្នុង App៖{' '}
+                      {displayLabel.trim() || bakongName.trim() ? (
+                        <b className="text-[#2FD98C]">
+                          {displayLabel.trim() || bakongName.trim()}
+                        </b>
                       ) : (
-                        <>
-                          <b className="text-white/70">
-                            {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
-                          </b>
-                          <span className="text-white/35">
-                            {' '}
-                            — បំពេញ «ឈ្មោះបង្ហាញ» ខាងក្រោម ដើម្បីប្ដូរ
-                          </span>
-                        </>
+                        <span className="text-white/35">ទទេ</span>
                       )}
                     </p>
+                    {/* Filling the display name breaks ABA outright.
+                        Tested on a personal ABA account with a plain
+                        10-character Latin name: ABA refuses the QR at
+                        scan time with MAPP-QR-NAME-INV — QR NAME INVALID
+                        — so it checks tag 59 against the name registered
+                        to the account and rejects anything else. Nothing
+                        subtler is going on: the same template with the
+                        field left empty scans and pays.
+
+                        This is a red block and not a caution because the
+                        cost of getting it wrong is every ABA member being
+                        unable to pay, with no error the owner would ever
+                        see. */}
+                    {bakongName.trim() ? (
+                      <p className="mt-1 rounded-lg border border-[#FF8494]/30 bg-[#FF8494]/[0.08] px-2 py-1.5 font-normal leading-relaxed text-[#FF8494]">
+                        🚫 <b>ABA បដិសេធ QR ដែលប្ដូរឈ្មោះ</b> — សាកល្បងរួច ចេញកំហុស{' '}
+                        <code>MAPP-QR-NAME-INV</code>។ ដរាបណាប្រអប់នេះមានឈ្មោះ{' '}
+                        <b>សមាជិកដែលប្រើ ABA បង់ប្រាក់មិនបានទេ</b>។ សូមលុបវាឲ្យទទេ រួច Save។
+                      </p>
+                    ) : (
+                      <p className="mt-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 font-normal leading-relaxed text-white/40">
+                        ✓ ត្រឹមត្រូវ។ QR ទុកឈ្មោះដែលធនាគារសរសេរ —{' '}
+                        <b className="text-white/60">
+                          {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
+                        </b>{' '}
+                        — ហើយ App ធនាគារបង្ហាញឈ្មោះដែលចុះឈ្មោះនឹងគណនី។ ចង់ឲ្យកាតក្នុង App
+                        ដាក់ឈ្មោះផ្សេង សូមប្រើប្រអប់ «ឈ្មោះលើកាតក្នុង App» — វាមិនប៉ះ QR ទេ។
+                      </p>
+                    )}
                   </>
                 ) : (
                   <span className="text-[#FF8494]">{TEMPLATE_ERRORS[templateCheck.reason]}</span>
@@ -655,12 +753,24 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
                 ឈ្មោះបង្ហាញ
                 {bakongTemplate.trim() && (
-                  <span className="ml-1 normal-case text-white/30">(ទុកទទេ = ឈ្មោះធនាគារ)</span>
+                  <span className="ml-1 normal-case text-[#FF8494]/70">(ABA បដិសេធ — ទុកទទេ)</span>
                 )}
               </label>
               <input
                 value={bakongName}
                 onChange={(e) => setBakongName(e.target.value)}
+                placeholder="ទុកទទេ"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                ឈ្មោះលើកាតក្នុង App
+                <span className="ml-1 normal-case text-[#2FD98C]/70">(មិនប៉ះ QR)</span>
+              </label>
+              <input
+                value={displayLabel}
+                onChange={(e) => setDisplayLabel(e.target.value)}
                 placeholder="ឧ. NINT ANIME"
                 className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#2FD98C]/50"
               />
@@ -755,6 +865,18 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               <QrCode className="h-3.5 w-3.5" /> សាកមើល ($1)
             </button>
             <button
+              onClick={handleVerifyLiveKhqr}
+              disabled={liveKhqrBusy}
+              className="flex items-center gap-1.5 rounded-xl border border-[#12E7C6]/25 bg-[#12E7C6]/[0.06] px-3 py-1.5 text-xs font-bold text-[#12E7C6] transition hover:bg-[#12E7C6]/10 disabled:opacity-50"
+            >
+              {liveKhqrBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <QrCode className="h-3.5 w-3.5" />
+              )}
+              ពិនិត្យ QR ពិត (ពី server)
+            </button>
+            <button
               onClick={handleSaveBakong}
               disabled={
                 bakongSaving ||
@@ -801,6 +923,53 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 ស្កេន QR នេះដោយ App ធនាគាររបស់អ្នក ដើម្បីពិនិត្យថា <b className="text-white/80">ឈ្មោះ</b> និង
                 <b className="text-white/80"> គណនី</b> ត្រឹមត្រូវ។ នេះជា QR សាកល្បង $1 — កុំបង់ប្រាក់។
               </p>
+            </div>
+          )}
+          {/* Writing the ticket id into the QR. Its own paragraph rather
+              than a bare checkbox, because turning it on changes a payload
+              the bank already accepted — the owner needs to know that a
+              real payment is the only way to find out whether it still
+              does. */}
+          <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 bg-black/20 p-3">
+            <input
+              type="checkbox"
+              checked={bakongBillNumber}
+              onChange={(e) => setBakongBillNumber(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#12E7C6]"
+            />
+            <span className="text-[11px] leading-relaxed text-white/60">
+              <b className="text-white/80">ដាក់លេខសំបុត្រក្នុង QR (tag 62)</b> — ធ្វើឲ្យ QR របស់សំបុត្រនីមួយៗ
+              ខុសគ្នា ដូច្នេះ auto-confirm (Bakong) ដំណើរការសម្រាប់ការទិញម្ដងហើយម្ដងទៀត។ បើបិទ សំបុត្រ ២
+              នៃគម្រោងដូចគ្នាមាន QR ដូចគ្នាបេះបិទ ហើយការបញ្ជាក់ស្វ័យប្រវត្តិលើកទី២ត្រូវបានច្រានចោល។
+              <b className="text-[#FFC55A]"> ត្រូវសាកបង់ពិត $1 ក្រោយបើក</b> — វាបន្ថែមវាលថ្មីលើ payload
+              ដែលធនាគារធ្លាប់ទទួល។ ចុច Save ដើម្បីរក្សាទុក។
+            </span>
+          </label>
+          {liveKhqrError && (
+            <p className="mt-3 rounded-xl border border-[#FF8494]/25 bg-[#FF8494]/[0.06] px-3 py-2 text-[11px] font-semibold leading-relaxed text-[#FF8494]">
+              {liveKhqrError}
+            </p>
+          )}
+          {liveKhqr && (
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#12E7C6]/25 bg-[#12E7C6]/[0.04] p-3">
+              <img
+                src={liveKhqr.image}
+                alt="Live KHQR"
+                className="h-28 w-28 rounded-lg bg-white p-1"
+              />
+              <div className="min-w-0 text-[11px] leading-relaxed text-white/60">
+                <p className="mb-1 font-bold text-[#12E7C6]">នេះជា QR ដែលសមាជិកទទួលពិតៗ</p>
+                <p>
+                  ឈ្មោះក្នុង QR (tag 59): <b className="text-white/90">{liveKhqr.name}</b>
+                </p>
+                <p>
+                  ចំនួន (tag 54): <b className="text-white/90">{liveKhqr.amount}</b>
+                </p>
+                <p className="mt-1.5">
+                  បង្កើតដោយ server ពីការកំណត់ដែល <b className="text-white/80">បាន Save</b> — មិនមែនពីអ្វី
+                  ដែលវាយក្នុងប្រអប់ខាងលើទេ។ បើឈ្មោះមិនទាន់ប្ដូរ សូមចុច Save ជាមុនសិន។
+                </p>
+              </div>
             </div>
           )}
         </div>

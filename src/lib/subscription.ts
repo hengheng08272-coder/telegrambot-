@@ -200,6 +200,49 @@ export async function createAbaCheckout(submissionId: string): Promise<AbaChecko
   return data as AbaCheckoutResult;
 }
 
+// The KHQR for one payment ticket, issued by the khqr-issue edge
+// function rather than built in this browser.
+//
+// Three things move server-side by asking for it there. The AMOUNT comes
+// from pricing_tiers keyed by the ticket's own tier, so the QR asks for
+// what the owner set rather than what this client claimed. The PAYLOAD
+// is stored on the ticket, so a re-render or a second tab gets the same
+// bytes — and therefore the same md5, which is the handle
+// check_transaction_by_md5 answers about, so a ticket whose md5 drifted
+// is a payment nothing could confirm. And the ADMIN PREVIEW calls this
+// same function, so what the owner tested is what a member receives.
+//
+// `configured: false` means the owner has not pasted a KHQR template (or
+// the function is not deployed): the caller falls back to building one
+// locally with generateKhqrDetailed, and failing that to the uploaded QR
+// image. Nothing here is load-bearing on its own.
+export interface IssuedKhqr {
+  configured: boolean;
+  error?: string;
+  payload?: string;
+  md5?: string;
+  /** Read back out of the payload's tag 59 — the name the payer will see. */
+  payeeName?: string | null;
+  amount?: number;
+  expiresAt?: string;
+}
+
+export async function issueKhqr(
+  opts: { submissionId: string } | { preview: true; amount: number },
+): Promise<IssuedKhqr> {
+  const body =
+    'preview' in opts
+      ? { preview: true, amount: opts.amount }
+      : { submission_id: opts.submissionId };
+  const { data, error } = await supabase.functions.invoke('khqr-issue', { body });
+  // A transport-level failure is reported as "not configured" so the
+  // caller takes the same fallback it would if the owner had never set
+  // this up. Being unable to reach the issuer must never be the reason a
+  // member cannot pay.
+  if (error) return { configured: false, error: error.message };
+  return data as IssuedKhqr;
+}
+
 // Admin-editable QR images, one per tier — read by SubscriptionModal,
 // written by the Admin Panel's QR Codes panel. Falls back to null (the
 // modal shows a "contact admin" message) if a tier has no image yet.

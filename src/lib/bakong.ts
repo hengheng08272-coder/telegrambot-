@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { md5 } from '@/lib/md5';
-import { applyKhqrTemplate, readKhqrField, validateKhqrTemplate } from '@/lib/khqrTemplate';
+import { applyKhqrTemplate } from '@/lib/khqrTemplate';
 
 // =====================================================================
 // Bakong KHQR — generate this app's own payment QR
@@ -104,6 +104,71 @@ const SETTING_KEYS = {
   merchantCategoryCode: 'bakong_mcc',
   khqrTemplate: 'bakong_khqr_template',
 } as const;
+
+/**
+ * Whether the issuer writes the ticket id into the QR's bill-number field.
+ *
+ * Kept out of BakongConfig because it is not part of who gets paid — it
+ * is a per-deploy decision about how far to modify a payload the bank
+ * already accepted. See TemplateOverrides.billNumber for what it buys
+ * (auto-confirm that survives a repeat purchase) and what it risks (a
+ * field the bank did not put there).
+ */
+const BILL_NUMBER_KEY = 'bakong_bill_number_enabled';
+
+/**
+ * The name this app prints beside the QR. Display only — it is never
+ * written into the payload.
+ *
+ * Separate from BakongConfig.merchantName, which rewrites tag 59, because
+ * the two answer different questions and one of them has a wrong answer.
+ * ABA resolves the payee from the merchant id and refuses a payload whose
+ * tag 59 disagrees with what it has on file, so on an ABA account tag 59
+ * must be left exactly as the bank wrote it. That leaves the app with a
+ * blank where the payee's name goes, and a blank KHQR ticket looks broken
+ * at the moment somebody is deciding whether to pay.
+ *
+ * This fills that blank. Nothing here reaches the bank, so it cannot
+ * break a payment — and it must never be used to name a payee other than
+ * the one the QR actually pays.
+ */
+const DISPLAY_LABEL_KEY = 'payment_display_label';
+
+export async function fetchDisplayLabel(): Promise<string> {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', DISPLAY_LABEL_KEY)
+    .maybeSingle();
+  if (error || !data) return '';
+  return String(data.value ?? '').trim();
+}
+
+export async function saveDisplayLabel(label: string): Promise<void> {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert([{ key: DISPLAY_LABEL_KEY, value: label.trim(), updated_at: new Date().toISOString() }]);
+  if (error) throw error;
+}
+
+export async function fetchBillNumberEnabled(): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', BILL_NUMBER_KEY)
+    .maybeSingle();
+  // Missing table, missing row, older deploy — all mean "off", which is
+  // the setting that changes nothing about the payload.
+  if (error || !data) return false;
+  return String(data.value).trim() === 'true';
+}
+
+export async function saveBillNumberEnabled(enabled: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert([{ key: BILL_NUMBER_KEY, value: enabled ? 'true' : 'false', updated_at: new Date().toISOString() }]);
+  if (error) throw error;
+}
 
 /**
  * Reads the owner's Bakong details. Returns null when they haven't been
@@ -272,6 +337,7 @@ export type KhqrFailure =
   | 'template-bad-checksum'
   | 'template-static'
   | 'template-name-too-long'
+  | 'template-name-not-ascii'
   | 'sdk-rejected'
   | 'sdk-broken'
   | 'invalid-payload'
@@ -309,6 +375,7 @@ export async function generateKhqrDetailed(
         'bad-checksum': 'template-bad-checksum',
         'no-amount-field': 'template-static',
         'name-too-long': 'template-name-too-long',
+        'name-not-ascii': 'template-name-not-ascii',
       } as const;
       return { ok: false, reason: map[rewritten.reason] };
     }

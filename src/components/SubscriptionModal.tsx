@@ -25,10 +25,10 @@ import {
   buildAbaDeeplink,
   buildPayPageUrl,
   armDeeplinkFallback,
-  readKhqrMerchant,
 } from '@/lib/khqr';
 import {
   fetchBakongConfig,
+  fetchDisplayLabel,
   generateKhqr,
   renderQrDataUrl,
   type BakongConfig,
@@ -49,6 +49,7 @@ import {
   getKhqrStrings,
   createAbaCheckout,
   type AbaCheckoutResult,
+  issueKhqr,
   checkBakongPayment,
   checkSubmissionStatus,
   getPaymentReceipt,
@@ -111,6 +112,8 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // whenever the owner hasn't configured Bakong, in which case everything
   // below falls back to the QR image they uploaded.
   const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
+  // Display only — never written into the QR. See fetchDisplayLabel.
+  const [displayLabel, setDisplayLabel] = useState('');
   const [liveKhqr, setLiveKhqr] = useState<{ payload: string; md5: string; image: string } | null>(
     null,
   );
@@ -338,9 +341,26 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // back to decoding the image in the browser when that is missing (old
   // uploads, or before the migration was run).
   const effectiveKhqr = liveKhqr?.payload ?? (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
-  // Read back out of the payload that is actually on screen, so it can
-  // never drift from what the payer's bank will show them.
-  const payeeName = readKhqrMerchant(effectiveKhqr);
+  // The name this app is willing to put on screen — the owner's display
+  // name, and nothing else.
+  //
+  // This used to read tag 59 back out of the payload, on the reasoning
+  // that naming the payee in advance stops a member meeting an unfamiliar
+  // name on their bank's confirm screen and reading it as a scam. That
+  // reasoning is sound and it is not why this changed: on a personal
+  // account tag 59 is a private individual's name, and the owner is
+  // entitled not to publish it to every member who opens the pay screen.
+  //
+  // So the payload's own name never reaches the UI. When the owner has
+  // set a display name the QR carries it, and showing it is both private
+  // and true. When they have not, nothing is shown at all — a blank is
+  // the one option that leaks nothing.
+  //
+  // The display label comes first because on an ABA account the override
+  // below has to stay empty — ABA resolves the payee from the merchant id
+  // and rejects a payload whose tag 59 disagrees with what it has on
+  // file, so the only name this app can offer is one it prints itself.
+  const displayPayee = displayLabel.trim() || bakongConfig?.merchantName?.trim() || null;
   const abaDeeplink =
     !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
 
@@ -364,9 +384,10 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
           amount: payTier ? `$${payTier.price}` : null,
           ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
-          // The payload's own name first, the setting only as a fallback
-          // — see the KHQR card below for why the two can differ.
-          merchantName: payeeName ?? bakongConfig?.merchantName ?? null,
+          // Omitted when there is no display name: the checkout page
+          // leaves its name line empty rather than filling it from the
+          // payload, for the same reason as displayPayee above.
+          merchantName: displayPayee,
           lang,
         })
       : null;
@@ -377,40 +398,71 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
     fetchBakongConfig().then((cfg) => {
       if (!cancelled) setBakongConfig(cfg);
     });
+    fetchDisplayLabel().then((label) => {
+      if (!cancelled) setDisplayLabel(label);
+    });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // One freshly-generated KHQR per payment attempt: the owner's merchant
-  // name, the tier's exact price, the ticket id as the bill number and an
-  // expiry matching the countdown. Regenerating when the ticket or tier
-  // changes is what keeps a QR tied to exactly one attempt — a viewer who
-  // lets the window lapse and starts again gets a new one, so a late
-  // payment can never be matched against the wrong ticket.
+  // One KHQR per payment attempt: the owner's display name, the tier's
+  // exact price, the ticket id as the bill number and an expiry matching
+  // the countdown. Regenerating when the ticket or tier changes is what
+  // keeps a QR tied to exactly one attempt — a viewer who lets the window
+  // lapse and starts again gets a new one, so a late payment can never be
+  // matched against the wrong ticket.
+  //
+  // Issued by the khqr-issue edge function whenever there is a ticket to
+  // issue against: the amount then comes from the database rather than
+  // from this browser, and the payload is stored on the ticket so a
+  // re-render hands back the same bytes and the same md5. Building it
+  // here is the fallback for a deploy without that function — and the
+  // uploaded QR image is the fallback for that.
   useEffect(() => {
     let cancelled = false;
-    if (!bakongConfig || !payTier) {
+    if (!payTier) {
       setLiveKhqr(null);
       return;
     }
     (async () => {
-      const generated = await generateKhqr({
-        config: bakongConfig,
-        amount: payTier.price,
-        billNumber: pending ? pending.id.slice(0, 8).toUpperCase() : null,
-        storeLabel: lang === 'km' ? payTier.labelKm : payTier.labelEn,
-        expiresInMs: WAIT_WINDOW_SECONDS * 1000,
-      });
-      if (cancelled || !generated) {
-        if (!cancelled) setLiveKhqr(null);
-        return;
+      let payload: string | null = null;
+      let payloadMd5: string | null = null;
+
+      if (pending) {
+        const issued = await issueKhqr({ submissionId: pending.id });
+        if (cancelled) return;
+        if (issued.configured && issued.payload && issued.md5) {
+          payload = issued.payload;
+          payloadMd5 = issued.md5;
+        }
       }
-      const image = await renderQrDataUrl(generated.payload);
+
+      if (!payload) {
+        if (!bakongConfig) {
+          setLiveKhqr(null);
+          return;
+        }
+        const generated = await generateKhqr({
+          config: bakongConfig,
+          amount: payTier.price,
+          billNumber: pending ? pending.id.slice(0, 8).toUpperCase() : null,
+          storeLabel: lang === 'km' ? payTier.labelKm : payTier.labelEn,
+          expiresInMs: WAIT_WINDOW_SECONDS * 1000,
+        });
+        if (cancelled || !generated) {
+          if (!cancelled) setLiveKhqr(null);
+          return;
+        }
+        payload = generated.payload;
+        payloadMd5 = generated.md5;
+      }
+
+      const image = await renderQrDataUrl(payload);
       if (cancelled) return;
       // Without an image there is nothing to show or scan, so this falls
       // back to the uploaded QR rather than half-applying.
-      setLiveKhqr(image ? { payload: generated.payload, md5: generated.md5, image } : null);
+      setLiveKhqr(image && payloadMd5 ? { payload, md5: payloadMd5, image } : null);
     })();
     return () => {
       cancelled = true;
@@ -1319,7 +1371,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                      screen with a blank payee line, right above a
                      sentence naming the payee correctly. */
                   <KhqrCard
-                    merchantName={payeeName || bakongConfig.merchantName}
+                    merchantName={displayPayee ?? ''}
                     amount={payTier.price}
                     qrDataUrl={liveKhqr.image}
                   />
@@ -1339,20 +1391,19 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   <p className="mt-2.5 text-center text-[10px] text-white/35">{t.subScanHint}</p>
                 )}
 
-                {/* The payee name a member is about to see in their banking
-                    app, said here first.
+                {/* The payee name, said here first — the display name the
+                    QR carries, never the one the bank has on file.
 
-                    A bank prints the name registered to the receiving
-                    account, and for a personal account that is a person,
-                    not this service. Meeting an unfamiliar person's name
-                    on the confirm screen is exactly what a careful payer
-                    treats as a scam — so it is named in advance, sourced
-                    from the payload actually being shown rather than
-                    typed in somewhere, which keeps it honest if the QR
-                    ever changes. */}
-                {payeeName && (
+                    Shown at all because a member who meets a name they
+                    were not expecting on their bank's confirm screen
+                    reads it as a scam. Shown as the DISPLAY name because
+                    the alternative is publishing a private individual's
+                    name to everyone who opens this screen. Absent
+                    entirely when no display name is set: see
+                    displayPayee. */}
+                {displayPayee && (
                   <p className="mx-auto mt-2.5 max-w-[268px] text-center text-[11px] leading-relaxed text-white/45">
-                    {t.subPayeeIntro} <b className="text-white/75">{payeeName}</b>
+                    {t.subPayeeIntro} <b className="text-white/75">{displayPayee}</b>
                     {' — '}
                     {t.subPayeeReassure}
                   </p>
