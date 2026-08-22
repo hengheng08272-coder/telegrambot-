@@ -286,8 +286,22 @@ export function readKhqrAmount(payload: string | null | undefined): number | nul
   return Number.isFinite(value) ? value : null;
 }
 
-/** Merchant name baked into a KHQR payload (tag 59). Null if absent. */
+// Names a payload can carry that are not names. A PayWay SANDBOX
+// merchant record has no trading name, so the QR ABA issues against it
+// writes a literal "N/A" into tag 59 — and the screen that promises "your
+// bank will show the payee as ..." then filled that blank with "N/A",
+// which reads as broken at the exact moment a payer is deciding whether
+// to trust the transfer. Treated as absent, so the caller falls back to
+// the configured display name (or shows nothing) instead.
+const PLACEHOLDER_MERCHANT_NAMES = new Set(['n/a', 'na', 'null', 'undefined', '-', '--']);
+
+/**
+ * Merchant name baked into a KHQR payload (tag 59). Null if absent, or if
+ * the payload carries a placeholder rather than a real trading name.
+ */
 export function readKhqrMerchant(payload: string | null | undefined): string | null {
   if (!isKhqrPayload(payload)) return null;
-  return readTlv(payload).get('59')?.trim() || null;
+  const name = readTlv(payload).get('59')?.trim();
+  if (!name) return null;
+  return PLACEHOLDER_MERCHANT_NAMES.has(name.toLowerCase()) ? null : name;
 }
