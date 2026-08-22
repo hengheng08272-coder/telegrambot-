@@ -687,17 +687,24 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       {bakongName.trim() ? (
                         <b className="text-[#2FD98C]">{bakongName.trim()}</b>
                       ) : (
-                        <>
-                          <b className="text-white/70">
-                            {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
-                          </b>
-                          <span className="text-white/35">
-                            {' '}
-                            — បំពេញ «ឈ្មោះបង្ហាញ» ខាងក្រោម ដើម្បីប្ដូរ
-                          </span>
-                        </>
+                        <span className="text-white/35">
+                          App មិនបង្ហាញឈ្មោះទេ (ទទេ)
+                        </span>
                       )}
                     </p>
+                    {/* The owner's own name is a private individual's. The
+                        app stops showing it, but the payload still carries
+                        it until a display name replaces it, and a banking
+                        app may read it straight off the account. Saying so
+                        here is the difference between the owner choosing
+                        that and not knowing about it. */}
+                    {!bakongName.trim() && (
+                      <p className="mt-1 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2 py-1.5 font-normal leading-relaxed text-[#FFC55A]">
+                        ⚠️ QR នៅផ្ទុកឈ្មោះ{' '}
+                        <b>{readKhqrField(bakongTemplate.trim(), '59') ?? '—'}</b> ហើយ App ធនាគារ
+                        អាចបង្ហាញវាដល់សមាជិក។ បំពេញ «ឈ្មោះបង្ហាញ» ខាងក្រោម ដើម្បីជំនួសវា។
+                      </p>
+                    )}
                   </>
                 ) : (
                   <span className="text-[#FF8494]">{TEMPLATE_ERRORS[templateCheck.reason]}</span>
@@ -722,7 +729,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
                 ឈ្មោះបង្ហាញ
                 {bakongTemplate.trim() && (
-                  <span className="ml-1 normal-case text-white/30">(ទុកទទេ = ឈ្មោះធនាគារ)</span>
+                  <span className="ml-1 normal-case text-white/30">(ទុកទទេ = ឈ្មោះពិត)</span>
                 )}
               </label>
               <input

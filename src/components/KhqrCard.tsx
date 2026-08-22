@@ -14,10 +14,13 @@ interface KhqrCardProps {
  * KHQR band, their name, the amount — while a generated payload renders as
  * a bare black-and-white square. Same payment, but the bare version reads
  * as less trustworthy at exactly the moment somebody is handing over
- * money, which would undo the point of putting the owner's own name in the
- * payload. So generated QRs get the same chrome, drawn in CSS: no image
- * asset, and the name and amount come from the payload's own values rather
- * than from whatever a picture happened to have printed on it.
+ * money. So generated QRs get the same chrome, drawn in CSS: no image
+ * asset, and no picture's printed-on name to go stale.
+ *
+ * `merchantName` is the owner's DISPLAY name, not the name read out of
+ * the payload — on a personal account those differ, and the payload's is
+ * a private individual's. Empty is a valid value: the line renders blank
+ * rather than falling back to something the owner did not choose.
  */
 export default function KhqrCard({ merchantName, amount, qrDataUrl }: KhqrCardProps) {
   return (

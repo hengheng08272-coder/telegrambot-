@@ -25,7 +25,6 @@ import {
   buildAbaDeeplink,
   buildPayPageUrl,
   armDeeplinkFallback,
-  readKhqrMerchant,
 } from '@/lib/khqr';
 import {
   fetchBakongConfig,
@@ -339,9 +338,21 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
   // back to decoding the image in the browser when that is missing (old
   // uploads, or before the migration was run).
   const effectiveKhqr = liveKhqr?.payload ?? (payTier ? storedKhqr[payTier.key] : null) ?? khqrString;
-  // Read back out of the payload that is actually on screen, so it can
-  // never drift from what the payer's bank will show them.
-  const payeeName = readKhqrMerchant(effectiveKhqr);
+  // The name this app is willing to put on screen — the owner's display
+  // name, and nothing else.
+  //
+  // This used to read tag 59 back out of the payload, on the reasoning
+  // that naming the payee in advance stops a member meeting an unfamiliar
+  // name on their bank's confirm screen and reading it as a scam. That
+  // reasoning is sound and it is not why this changed: on a personal
+  // account tag 59 is a private individual's name, and the owner is
+  // entitled not to publish it to every member who opens the pay screen.
+  //
+  // So the payload's own name never reaches the UI. When the owner has
+  // set a display name the QR carries it, and showing it is both private
+  // and true. When they have not, nothing is shown at all — a blank is
+  // the one option that leaks nothing.
+  const displayPayee = bakongConfig?.merchantName?.trim() || null;
   const abaDeeplink =
     !isRealGateway && isKhqrPayload(effectiveKhqr) ? buildAbaDeeplink(effectiveKhqr) : null;
 
@@ -365,9 +376,10 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
           plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
           amount: payTier ? `$${payTier.price}` : null,
           ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
-          // The payload's own name first, the setting only as a fallback
-          // — see the KHQR card below for why the two can differ.
-          merchantName: payeeName ?? bakongConfig?.merchantName ?? null,
+          // Omitted when there is no display name: the checkout page
+          // leaves its name line empty rather than filling it from the
+          // payload, for the same reason as displayPayee above.
+          merchantName: displayPayee,
           lang,
         })
       : null;
@@ -1348,7 +1360,7 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                      screen with a blank payee line, right above a
                      sentence naming the payee correctly. */
                   <KhqrCard
-                    merchantName={payeeName || bakongConfig.merchantName}
+                    merchantName={displayPayee ?? ''}
                     amount={payTier.price}
                     qrDataUrl={liveKhqr.image}
                   />
@@ -1368,20 +1380,19 @@ export default function SubscriptionModal({ onClose, onSubmitted, onApproved, on
                   <p className="mt-2.5 text-center text-[10px] text-white/35">{t.subScanHint}</p>
                 )}
 
-                {/* The payee name a member is about to see in their banking
-                    app, said here first.
+                {/* The payee name, said here first — the display name the
+                    QR carries, never the one the bank has on file.
 
-                    A bank prints the name registered to the receiving
-                    account, and for a personal account that is a person,
-                    not this service. Meeting an unfamiliar person's name
-                    on the confirm screen is exactly what a careful payer
-                    treats as a scam — so it is named in advance, sourced
-                    from the payload actually being shown rather than
-                    typed in somewhere, which keeps it honest if the QR
-                    ever changes. */}
-                {payeeName && (
+                    Shown at all because a member who meets a name they
+                    were not expecting on their bank's confirm screen
+                    reads it as a scam. Shown as the DISPLAY name because
+                    the alternative is publishing a private individual's
+                    name to everyone who opens this screen. Absent
+                    entirely when no display name is set: see
+                    displayPayee. */}
+                {displayPayee && (
                   <p className="mx-auto mt-2.5 max-w-[268px] text-center text-[11px] leading-relaxed text-white/45">
-                    {t.subPayeeIntro} <b className="text-white/75">{payeeName}</b>
+                    {t.subPayeeIntro} <b className="text-white/75">{displayPayee}</b>
                     {' — '}
                     {t.subPayeeReassure}
                   </p>
