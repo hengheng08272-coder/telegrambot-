@@ -363,6 +363,13 @@ export const appText = {
     subRejectedDesc: 'Message the admin in the group to find out why, or try again with your receipt photo.',
 
     // ── Checkout v29 — new subscription / payment flow ──────────────
+    subReadyTitle: 'Ready to pay',
+    subReadyDesc: 'Your payment page opens in the browser — confirm it there, then come back.',
+    subReadyQrTitle: 'Ready to scan',
+    subReadyQrDesc: 'The QR opens in the browser. Screenshot it, then scan it from your bank app.',
+    subWaitingTitle: 'Waiting for your payment',
+    subWaitingDesc: 'It unlocks by itself the moment the bank confirms. Paid already? Send the receipt below.',
+    subOpenQrPage: 'Open the QR page',
     subOpenInSafari: 'Open in Safari to pay',
     subSendReceipt: 'Send receipt',
     subPaidSendReceipt: 'Paid already? Send the receipt',
@@ -797,6 +804,13 @@ export const appText = {
     subRejectedDesc: 'សូមទាក់ទង admin ក្នុង group ដើម្បីដឹងមូលហេតុ ឬសាកល្បងម្ដងទៀតជាមួយរូបភាពវិក្កយបត្រ។',
 
     // ── Checkout v29 — លំហូរទូទាត់ថ្មី ──────────────────────────────
+    subReadyTitle: 'ត្រៀមទូទាត់',
+    subReadyDesc: 'ទំព័រទូទាត់នឹងបើកក្នុង browser — បញ្ជាក់នៅទីនោះ រួចត្រឡប់មកវិញ។',
+    subReadyQrTitle: 'ត្រៀមស្កេន QR',
+    subReadyQrDesc: 'QR បើកក្នុង browser។ ថតអេក្រង់ទុក រួចស្កេនពី App ធនាគាររបស់អ្នក។',
+    subWaitingTitle: 'កំពុងរង់ចាំការទូទាត់',
+    subWaitingDesc: 'វាដោះសោដោយខ្លួនឯង ពេលធនាគារបញ្ជាក់។ បង់រួចហើយ? ផ្ញើវិក្កយបត្រខាងក្រោម។',
+    subOpenQrPage: 'បើកទំព័រ QR',
     subOpenInSafari: 'បើកក្នុង Safari ដើម្បីទូទាត់',
     subSendReceipt: 'ផ្ញើវិក្កយបត្រ',
     subPaidSendReceipt: 'បានទូទាត់រួចហើយ? ផ្ញើវិក្កយបត្រ',

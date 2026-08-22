@@ -36,21 +36,32 @@
   html { background: var(--co-bg); }
   body {
     margin: 0;
-    padding: 20px 16px calc(32px + env(safe-area-inset-bottom, 0px));
-    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
     background: var(--co-bg);
     background-image: var(--co-backdrop);
     background-repeat: no-repeat;
+    background-attachment: fixed;
     color: var(--co-text);
     font-family: var(--co-font-body);
-    line-height: 1.6;
+    line-height: 1.45;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 420px; margin: 0 auto; }
+  /* One screen, no scrolling: the whole point of this page is a single
+     tap, and a payment page that has to be scrolled to find its button
+     is a payment that does not happen. Everything below is sized off the
+     viewport rather than off fixed pixels. */
+  .wrap {
+    width: 100%; max-width: 400px; margin: auto;
+    display: flex; flex-direction: column;
+  }
 
   /* Header — the same logo, at the same size, as the sheet the viewer
      was just looking at. */
-  .brand { display: flex; align-items: center; gap: var(--co-s2); margin-bottom: var(--co-s4); }
+  .brand { display: flex; align-items: center; gap: var(--co-s2); margin-bottom: var(--co-s3); order: 0; }
   .brand img { width: 32px; height: 32px; object-fit: contain; }
   .brand span { font-size: 13px; font-weight: 700; color: var(--co-text); }
 
@@ -58,29 +69,29 @@
     background: var(--co-card);
     border: 1px solid var(--co-line);
     border-radius: var(--co-r-card);
-    padding: var(--co-s4);
-    margin-bottom: var(--co-s3);
+    padding: var(--co-s3);
+    margin-bottom: var(--co-s2);
   }
   .label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--co-text-dim); margin: 0; }
   .plan { font-size: 15px; font-weight: 700; margin: 2px 0 0; }
   .amount {
     font-family: var(--co-font-display);
-    font-size: 44px; line-height: 1; letter-spacing: .01em;
-    margin: var(--co-s2) 0 0;
+    font-size: clamp(28px, 8vw, 36px); line-height: 1; letter-spacing: .01em;
+    margin: 0;
   }
-  .meta { font-size: 11px; color: var(--co-text-dim); margin: var(--co-s2) 0 0; }
+  .meta { font-size: 10px; color: var(--co-text-dim); margin: 4px 0 0; }
 
   .qr-wrap { text-align: center; }
   .qr-wrap img.qr-img {
-    width: 100%; max-width: 240px; height: auto; border-radius: var(--co-r-btn);
+    width: min(52vw, 23vh); height: auto; border-radius: var(--co-r-btn);
     background: #fff; padding: 8px; display: inline-block;
   }
-  .hint { font-size: 12px; color: var(--co-text-muted); margin: var(--co-s3) 0 0; text-align: center; }
+  .hint { font-size: 11px; color: var(--co-text-muted); margin: var(--co-s2) 0 0; text-align: center; }
   .desktop-hint { display: none; }
 
   /* KHQR ticket drawn around a generated QR — mirrors KhqrCard.tsx. */
   .khqr-ticket {
-    width: 100%; max-width: 240px; margin: 0 auto;
+    width: min(54vw, 23vh); min-width: 160px; margin: 0 auto;
     background: #fff; border-radius: var(--co-r-btn); overflow: hidden; text-align: left;
   }
   .khqr-ticket .band {
@@ -88,7 +99,7 @@
     clip-path: polygon(0 0, 100% 0, 100% 55%, 88% 100%, 0 100%);
   }
   .khqr-ticket .band p { margin: 0; text-align: center; color: #fff; font-size: 14px; font-weight: 900; letter-spacing: .12em; }
-  .khqr-ticket .body { padding: 10px 12px 12px; }
+  .khqr-ticket .body { padding: 8px 10px 10px; }
   .khqr-ticket .name { margin: 0; font-size: 13px; font-weight: 700; color: #1a1a1a; }
   .khqr-ticket .price { margin: 0; font-size: 19px; font-weight: 800; color: #1a1a1a; line-height: 1.2; }
   .khqr-ticket .price span { font-size: 12px; font-weight: 600; color: #6b6b6b; margin-left: 4px; }
@@ -98,7 +109,7 @@
   a.btn, button.btn {
     display: flex; align-items: center; justify-content: center; gap: var(--co-s2);
     width: 100%; min-height: 44px; border: 0; cursor: pointer;
-    border-radius: var(--co-r-btn); padding: 15px 14px;
+    border-radius: var(--co-r-btn); padding: 14px 14px;
     font-family: inherit; font-size: 15px; font-weight: 800;
     text-decoration: none; margin-bottom: var(--co-s2);
     transition: filter 180ms ease, transform 180ms ease;
@@ -119,8 +130,15 @@
     border: 1px solid var(--co-aba-line); font-size: 13px;
   }
 
-  .steps { margin: 0; padding-left: 20px; font-size: 12px; color: var(--co-text-muted); }
-  .steps li { margin-bottom: var(--co-s1); }
+  /* Three steps, one line: on a page whose whole job is a single tap,
+     a numbered list in its own card was buying instructions with the
+     space the button needed. */
+  .steps {
+    margin: 2px 0 var(--co-s2); text-align: center;
+    font-size: 11px; line-height: 1.5; color: var(--co-text-dim);
+  }
+  .summary-row { display: flex; align-items: center; justify-content: space-between; gap: var(--co-s3); }
+  .summary-text { min-width: 0; }
 
   /* Warnings are amber, never red: red is the pay button on this page. */
   .note {
@@ -135,7 +153,7 @@
   details.help summary {
     list-style: none; cursor: pointer; text-align: center;
     font-size: 12px; font-weight: 700; color: var(--co-text-dim);
-    padding: var(--co-s3);
+    padding: var(--co-s2);
   }
   details.help summary::-webkit-details-marker { display: none; }
   details.help .panel {
@@ -147,12 +165,30 @@
     font-family: ui-monospace, Menlo, monospace; font-size: 10px; color: var(--co-text-dim);
   }
   .err { font-size: 13px; color: var(--co-amber); text-align: center; }
-  .foot { margin-top: var(--co-s4); text-align: center; font-size: 10px; color: var(--co-text-faint); }
+  .foot { margin-top: var(--co-s2); text-align: center; font-size: 9px; color: var(--co-text-faint); }
+
+  /* Which half leads. Paying by ABA, the tap is the whole page and the
+     QR is the fallback underneath it; paying from another bank's app,
+     the QR IS the page and the ABA button drops to a quiet alternative. */
+  #summary { order: 1; }
+  #open-aba { order: 2; }
+  #qr-card { order: 3; }
+  #payway { order: 4; }
+  #not-open { order: 5; }
+  #steps-card { order: 6; }
+  #back { order: 7; }
+  #help { order: 8; }
+  #err, .foot { order: 9; }
+  .wrap.mode-qr #qr-card { order: 2; }
+  .wrap.mode-qr #open-aba { order: 3; }
+  /* Nobody reads three steps while holding a QR up to another phone. */
+  .wrap.mode-qr #steps-card { display: none; }
 
   /* Opened on a laptop: the deeplink is useless there, so the QR becomes
      the whole point and grows to something a phone can actually scan. */
   @media (min-width: 720px) and (pointer: fine) {
-    .qr-wrap img.qr-img, .khqr-ticket { max-width: 340px; }
+    .qr-wrap img.qr-img { width: 300px; }
+    .khqr-ticket { width: 320px; }
     .desktop-hint { display: block; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -177,11 +213,13 @@
     <span id="brand-name">NINT ANIME VIP</span>
   </div>
 
-  <div class="card" id="summary" hidden>
-    <p class="label" id="plan-label"></p>
-    <p class="plan" id="plan"></p>
+  <div class="card summary-row" id="summary" hidden>
+    <div class="summary-text">
+      <p class="label" id="plan-label"></p>
+      <p class="plan" id="plan"></p>
+      <p class="meta" id="ticket"></p>
+    </div>
     <p class="amount" id="amount"></p>
-    <p class="meta" id="ticket"></p>
   </div>
 
   <div class="card qr-wrap" id="qr-card" hidden>
@@ -214,9 +252,7 @@
     <span id="payway-label"></span>
   </a>
 
-  <div class="card" id="steps-card" hidden>
-    <ol class="steps" id="steps"></ol>
-  </div>
+  <p class="steps" id="steps-card" hidden><span id="steps"></span></p>
 
   <a class="btn btn-ghost" id="back" hidden>
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
@@ -249,17 +285,15 @@
       copy: 'ចម្លងលេខ KHQR',
       copied: 'បានចម្លង!',
       qrHint: 'ឬស្កេន QR នេះដោយ App ធនាគាររបស់អ្នក',
+      qrHintScan: 'ថតអេក្រង់ QR នេះទុក រួចស្កេនវាពី App ធនាគាររបស់អ្នក',
+      openAbaAlt: 'ប្រើ ABA Mobile ជំនួស',
       qrDesktopHint: 'បើកលើកុំព្យូទ័រ? សូមស្កេន QR នេះដោយទូរស័ព្ទ។',
       ticket: 'លេខយោង',
       back: 'ខ្ញុំបានទូទាត់រួច — ត្រឡប់ទៅ App',
       notOpen: 'ABA មិនបានបើកទេ។ សូមប្រើជម្រើសខាងក្រោម ឬស្កេន QR ខាងលើ។',
       help: 'ABA មិនបើកទេ?',
       helpText: 'សូមប្រាកដថាបានដំឡើង App ABA Mobile រួច។ អ្នកអាចចម្លងលេខ KHQR ទៅបិទភ្ជាប់ក្នុង App ធនាគារ ឬស្កេន QR ខាងលើ។',
-      steps: [
-        'ចុច «បើក ABA Mobile» ខាងលើ',
-        'បញ្ជាក់ការទូទាត់ក្នុង App ABA',
-        'ត្រឡប់មក App ហើយផ្ញើរូបវិក្កយបត្រ',
-      ],
+      steps: ['បើក ABA', 'បញ្ជាក់ការទូទាត់', 'ត្រឡប់មកផ្ញើវិក្កយបត្រ'],
       missing: 'តំណទូទាត់មិនត្រឹមត្រូវ។ សូមត្រឡប់ទៅ App ហើយចាប់ផ្តើមឡើងវិញ។',
       foot: 'ការទូទាត់ដោយសុវត្ថិភាព · ដំណើរការដោយ ABA PayWay KHQR',
     },
@@ -270,17 +304,15 @@
       copy: 'Copy KHQR code',
       copied: 'Copied!',
       qrHint: 'Or scan this QR with your own banking app',
+      qrHintScan: 'Screenshot this QR, then scan it from your banking app',
+      openAbaAlt: 'Use ABA Mobile instead',
       qrDesktopHint: 'On a computer? Scan this QR with your phone.',
       ticket: 'Reference',
       back: "I've paid — back to the app",
       notOpen: 'ABA did not open. Use the option below, or scan the QR above.',
       help: "ABA didn't open?",
       helpText: 'Make sure ABA Mobile is installed. You can copy the KHQR code and paste it into your bank app, or scan the QR above.',
-      steps: [
-        'Tap "Open ABA Mobile" above',
-        'Confirm the payment in the ABA app',
-        'Come back to the app and send your receipt',
-      ],
+      steps: ['Open ABA', 'Confirm the payment', 'Come back and send the receipt'],
       missing: 'This payment link is incomplete. Please go back to the app and start again.',
       foot: 'Secured checkout · Powered by ABA PayWay KHQR',
     },
@@ -298,9 +330,16 @@
   var ticket = params.get('ticket');
   var payLink = params.get('pay');
   var ret = params.get('ret');
+  // 'qr' = someone paying from another bank's app: the QR leads and the
+  // ABA button steps down to a quiet alternative. Anything else is the
+  // ABA route, where the tap is the whole page.
+  var mode = params.get('mode') === 'qr' ? 'qr' : 'aba';
 
   function el(id) { return document.getElementById(id); }
   function show(node) { node.hidden = false; }
+
+  var wrap = document.querySelector('.wrap');
+  wrap.className = 'wrap mode-' + mode;
 
   el('foot').textContent = t.foot;
 
@@ -318,7 +357,7 @@
     img.addEventListener('error', function () { el('qr-card').hidden = true; });
     img.src = qr;
     img.hidden = false;
-    el('qr-hint').textContent = t.qrHint;
+    el('qr-hint').textContent = mode === 'qr' ? t.qrHintScan : t.qrHint;
     el('qr-desktop-hint').textContent = t.qrDesktopHint;
     show(el('qr-card'));
   } else if (khqr) {
@@ -326,7 +365,15 @@
     // with `defer`, so it may not be ready yet on a slow connection.
     var drawQr = function () {
       if (!window.renderKhqrCanvas) return false;
-      window.renderKhqrCanvas(el('qr-canvas'), khqr).then(function () {
+      var canvas = el('qr-canvas');
+      window.renderKhqrCanvas(canvas, khqr).then(function () {
+        // The encoder writes its own inline width/height on the canvas
+        // (408px, whatever the payload needs), and an inline style beats
+        // the stylesheet — which is why the ticket used to burst out of
+        // its card and push the pay button off the screen. Hand the
+        // sizing back to CSS now that the pixels are drawn.
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
         var name = params.get('name');
         if (name) el('qr-name').textContent = name;
         // `amount` arrives already formatted for display (e.g. "$2.00");
@@ -335,7 +382,7 @@
           el('qr-price').innerHTML = amount.replace(/^\$/, '') + ' <span>USD</span>';
         }
         el('qr-ticket').hidden = false;
-        el('qr-hint').textContent = t.qrHint;
+        el('qr-hint').textContent = mode === 'qr' ? t.qrHintScan : t.qrHint;
         el('qr-desktop-hint').textContent = t.qrDesktopHint;
         show(el('qr-card'));
       }).catch(function () {
@@ -355,7 +402,14 @@
     // A browser hands a custom scheme to the OS on a genuine link tap;
     // a scripted navigation to the same string is what gets swallowed.
     link.href = deeplink;
-    el('open-aba-label').textContent = t.openAba;
+    // On the QR route the bank hand-off is still offered — some people
+    // scan, some tap — but it must not look like the main event.
+    if (mode === 'qr') {
+      link.className = 'btn btn-aba';
+      el('open-aba-label').textContent = t.openAbaAlt;
+    } else {
+      el('open-aba-label').textContent = t.openAba;
+    }
     show(link);
 
     el('deeplink-text').textContent = deeplink;
@@ -426,12 +480,9 @@
       }
     });
 
-    var steps = el('steps');
-    t.steps.forEach(function (line) {
-      var li = document.createElement('li');
-      li.textContent = line;
-      steps.appendChild(li);
-    });
+    el('steps').textContent = t.steps
+      .map(function (line, i) { return String(i + 1) + '. ' + line; })
+      .join('  ·  ');
     show(el('steps-card'));
   } else if (!qr) {
     var err = el('err');

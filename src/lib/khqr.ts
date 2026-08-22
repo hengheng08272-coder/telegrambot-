@@ -168,6 +168,13 @@ export interface PayPageOptions {
    * moved to where the failure actually happens.
    */
   payLink?: string | null;
+  /**
+   * Which half of the checkout page leads: 'aba' puts the hand-off to the
+   * bank first, 'qr' puts the QR first for someone paying from another
+   * bank's app. Same page either way — KHQR is one standard, so there is
+   * exactly one QR and only ABA publishes a scheme worth linking to.
+   */
+  mode?: 'aba' | 'qr';
   lang?: string;
 }
 
@@ -196,6 +203,7 @@ export function buildPayPageUrl(opts: PayPageOptions): string {
   if (opts.ticket) params.set('ticket', opts.ticket);
   if (opts.merchantName) params.set('name', opts.merchantName);
   if (opts.payLink) params.set('pay', opts.payLink);
+  if (opts.mode) params.set('mode', opts.mode);
   params.set('lang', opts.lang ?? 'km');
 
   // Where "back to the app" should point. Without a configured bot

@@ -7,13 +7,13 @@ import {
   ChevronRight,
   Clock,
   Crown,
-  Download,
   ImagePlus,
   Loader2,
   MessageCircle,
   QrCode,
   RefreshCw,
   Send,
+  Wallet,
   ShieldCheck,
   Sparkles,
   Star,
@@ -36,7 +36,6 @@ import {
   renderQrDataUrl,
   type BakongConfig,
 } from '@/lib/bakong';
-import KhqrCard from '@/components/KhqrCard';
 import { compressReceipt } from '@/lib/imageCompress';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
@@ -166,7 +165,13 @@ export default function SubscriptionModal({
   // "upload the receipt", since they've already left once and the next
   // thing they do is come back with a screenshot. Reset on Change Plan /
   // a fresh ticket so a new payment starts on the open-app button again.
-  const [abaOpened, setAbaOpened] = useState(false);
+  const [handedOff, setHandedOff] = useState(false);
+  // The sheet opened straight onto a ticket that was already running —
+  // Telegram reloads the Mini App every time it is opened, so this is
+  // the ordinary case for someone coming back from their bank. They may
+  // well have paid already, so the receipt box has to be there even
+  // though this session never saw the hand-off happen.
+  const [resumedTicket, setResumedTicket] = useState(false);
   // True from the moment the viewer comes back to this sheet after being
   // handed off — the copy on the upload block changes from "optional"
   // to "you paid, send the receipt", which is the step people forget.
@@ -230,6 +235,7 @@ export default function SubscriptionModal({
       setCheckingPending(false);
       if (p) {
         setSelectedKey(p.tier);
+        setResumedTicket(true);
         // Resume the countdown from where it actually should be, based
         // on when the row was created — not a fresh 3 minutes just
         // because the modal was reopened.
@@ -406,16 +412,15 @@ export default function SubscriptionModal({
       ? buildAbaDeeplink(effectiveKhqr)
       : null;
 
-  // Inside Telegram the ABA deeplink can't be tapped straight from the
-  // Mini App: it runs in Telegram's WebView, which swallows non-http
-  // schemes, so the link does nothing at all. Telegram's openLink() does
-  // hand an https URL to the system browser, so there the button opens
-  // our own checkout page (public/pay/index.html) in Safari and the
-  // viewer taps the deeplink from there, where iOS honours it. Outside
-  // Telegram we are already in a real browser, so the direct deeplink
-  // stays — no extra page in the way.
+  // The browser checkout page (public/pay/index.html) — now the only
+  // place a QR is ever shown. Keeping it out of the Mini App is not a
+  // cosmetic choice: inside Telegram's WebView `abamobilebank://` is
+  // swallowed, so the sheet could never open the bank itself, and a QR
+  // rendered on the same phone that is meant to scan it is useless. One
+  // page in the system browser does both jobs — it shows the QR big
+  // enough to screenshot, and its deeplink actually launches ABA.
   const payPageUrl =
-    isInTelegram() && isKhqrPayload(effectiveKhqr) && !amountMismatch
+    isKhqrPayload(effectiveKhqr) && !amountMismatch
       ? buildPayPageUrl({
           khqr: effectiveKhqr,
           // A generated KHQR has no image URL to hand over (a rendered
@@ -426,16 +431,23 @@ export default function SubscriptionModal({
           plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
           amount: payTier ? `$${payTier.price}` : null,
           ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
-          // The payload's own name first, the setting only as a fallback
-          // — see the KHQR card below for why the two can differ.
+          // The payload's own name, so the KHQR ticket on that page
+          // carries the name the payer's bank will show them.
           merchantName: payeeName ?? bakongConfig?.merchantName ?? null,
           // Handed over so the page can offer PayWay by itself if the
           // deeplink doesn't open ABA — the fallback belongs where the
           // failure happens, not back here where nobody is looking.
           payLink: payLinkSrc,
+          // Which half of the page leads: the bank hand-off, or the QR.
+          mode: payMode === 'manual' ? 'qr' : 'aba',
           lang,
         })
       : null;
+
+  // Inside Telegram the page IS the hand-off, for both methods. Outside
+  // it we are already in a real browser, so the ABA route uses the
+  // deeplink directly and no extra page gets in the way.
+  const handOffUrl = isInTelegram() ? payPageUrl : null;
 
   // The owner's Bakong details, read once when the sheet opens.
   useEffect(() => {
@@ -524,7 +536,7 @@ export default function SubscriptionModal({
 
     if (payPageUrl) {
       setAutoHandOff(false);
-      setAbaOpened(true);
+      setHandedOff(true);
       setAbaDidNotOpen(false);
       openExternalLink(payPageUrl);
       return;
@@ -546,7 +558,7 @@ export default function SubscriptionModal({
   // upload block is scrolled to and lit for two seconds, and its wording
   // changes from "optional" to "you paid, now send it".
   useEffect(() => {
-    if (step !== 'pay' || !abaOpened || proofSent || decision !== 'waiting') return;
+    if (step !== 'pay' || !handedOff || proofSent || decision !== 'waiting') return;
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
@@ -560,12 +572,12 @@ export default function SubscriptionModal({
 
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [step, abaOpened, proofSent, decision]);
+  }, [step, handedOff, proofSent, decision]);
 
   // Everything a fresh payment attempt has to forget. Every exit from an
   // open ticket (change plan, change method, retry after a rejection)
   // runs through this — the retry path used to reset only some of it and
-  // carried `abaOpened` over, which is why a second attempt opened on the
+  // carried `handedOff` over, which is why a second attempt opened on the
   // "upload your receipt" step for a payment that had never been started.
   const resetTicketState = () => {
     setPending(null);
@@ -578,7 +590,8 @@ export default function SubscriptionModal({
     if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
     setProofFile(null);
     setProofPreviewUrl(null);
-    setAbaOpened(false);
+    setHandedOff(false);
+    setResumedTicket(false);
     setAbaDidNotOpen(false);
     setAutoHandOff(false);
     setTicketRenewed(false);
@@ -624,12 +637,14 @@ export default function SubscriptionModal({
     resetTicketState();
     setPayMode(mode);
     payModeRef.current = mode;
-    // Inside Telegram, picking ABA IS the hand-off: the checkout page
-    // opens in the system browser by itself once this ticket's KHQR is
-    // ready (see the hand-off effect). Outside Telegram nothing is armed
-    // — there the deeplink is a real link the viewer taps directly, and
-    // a browser would block a pop-up opened without a tap anyway.
-    if (mode === 'auto' && isInTelegram()) setAutoHandOff(true);
+    // Inside Telegram, picking a method IS the hand-off: the checkout
+    // page opens in the system browser by itself once this ticket's KHQR
+    // is ready (see the hand-off effect) — that page carries both the QR
+    // and the deeplink, so it serves the bank route and the scan route
+    // alike. Outside Telegram nothing is armed: there the deeplink is a
+    // real link the viewer taps, and a browser would block a pop-up
+    // opened without a tap anyway.
+    if (isInTelegram()) setAutoHandOff(true);
     recyclingRef.current = false;
     const fresh = await getPendingSubmission();
     if (fresh) {
@@ -758,56 +773,62 @@ export default function SubscriptionModal({
     tr ? (lang === 'km' ? tr.labelKm : tr.labelEn) : '—';
   const supportLink = getSupportLink();
 
-  // Progress rail: which of the three checkout steps we are on. Terminal
-  // states (paid / rejected) drop it — there is nothing left to step
-  // through at that point.
-  const stepIndex = step === 'pick' ? 0 : step === 'method' ? 1 : 2;
-  const showStepRail = !checkingPending && (step !== 'pay' || decision === 'waiting');
-
   // The last half-minute of the window, with nothing sent yet: rather
   // than resetting the screen out from under someone who is still typing
   // their PIN in ABA, ask, and let them buy another three minutes.
   const showKeepWaiting =
     decision === 'waiting' && !proofSent && secondsLeft > 0 && secondsLeft <= NUDGE_AT_SECONDS;
 
-  // One hand-off to ABA, rendered three different ways depending on what
-  // this tier actually has: our own checkout page (inside Telegram, where
-  // a WebView swallows non-http schemes), a real `abamobilebank://`
-  // deeplink, or the admin's plain PayWay link. `primary` is the big
-  // button shown before the viewer has left for ABA once; the quiet text
-  // link afterwards uses the same targets, so the two can never drift.
-  const abaAction = (primary: boolean, label: string) => {
+  // The one primary action on the pay dialog. What it points at depends
+  // on the route and on where we are running, but it is always a single
+  // button, and it always ends up somewhere the viewer can actually pay:
+  //
+  //   QR route          -> our checkout page (the QR lives there now)
+  //   ABA in Telegram   -> our checkout page (the WebView eats the scheme)
+  //   ABA in a browser  -> the real abamobilebank:// link
+  //   no deeplink at all-> the admin's PayWay link
+  const payPageAction = () => {
     if (amountMismatch) return null;
 
-    const className = primary
-      ? 'co-btn co-btn-primary px-4 py-4 text-[14px]'
-      : 'inline-flex items-center justify-center gap-1.5 text-[12px] font-bold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]';
-    const body = (
-      <>
-        <Zap className={primary ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
-        {label}
-      </>
-    );
-    const tapped = () => {
+    const className = 'co-btn co-btn-primary px-4 py-4 text-[14px]';
+    const opened = () => {
       setAbaDidNotOpen(false);
-      if (primary) setAbaOpened(true);
+      setHandedOff(true);
     };
+
+    if (payMode === 'manual') {
+      if (!payPageUrl) return null;
+      return (
+        <button
+          type="button"
+          onClick={() => {
+            opened();
+            openExternalLink(payPageUrl);
+          }}
+          className={className}
+        >
+          <QrCode className="h-4 w-4" />
+          {t.subOpenQrPage}
+        </button>
+      );
+    }
 
     // In Telegram: hand the checkout page to the system browser. No
     // armDeeplinkFallback here — this hand-off is a plain https URL, and
     // the "ABA didn't open" fallback now lives on that page, next to the
     // QR it falls back to.
-    if (payPageUrl) {
+    if (handOffUrl) {
       return (
         <button
           type="button"
           onClick={() => {
-            tapped();
-            openExternalLink(payPageUrl);
+            opened();
+            openExternalLink(handOffUrl);
           }}
           className={className}
         >
-          {body}
+          <Zap className="h-4 w-4" />
+          {t.subOpenInSafari}
         </button>
       );
     }
@@ -824,10 +845,8 @@ export default function SubscriptionModal({
           href={abaDeeplink}
           rel="noreferrer"
           onClick={() => {
-            tapped();
+            opened();
             // Only fall back when there is somewhere to fall back TO.
-            // Tiers with no PayWay link rely on the deeplink alone; the
-            // QR above stays as the manual route either way.
             armDeeplinkFallback(() => {
               if (payLinkSrc) openExternalLink(payLinkSrc);
               else setAbaDidNotOpen(true);
@@ -835,7 +854,8 @@ export default function SubscriptionModal({
           }}
           className={className}
         >
-          {body}
+          <Zap className="h-4 w-4" />
+          {t.subOpenAba}
         </a>
       );
     }
@@ -845,12 +865,13 @@ export default function SubscriptionModal({
         <button
           type="button"
           onClick={() => {
-            tapped();
+            opened();
             openExternalLink(payLinkSrc);
           }}
           className={className}
         >
-          {body}
+          <Zap className="h-4 w-4" />
+          {t.subOpenAba}
         </button>
       );
     }
@@ -927,22 +948,6 @@ export default function SubscriptionModal({
     </label>
   );
 
-  // Section shell — every block on the pay screen is one of these, so the
-  // screen reads as a short list of labelled steps instead of one tall
-  // card with everything crammed inside it.
-  const section = (label: string, icon: ReactNode, body: ReactNode, action?: ReactNode) => (
-    <section className="co-card overflow-hidden">
-      <div className="flex items-center justify-between gap-2 border-b border-[color:var(--co-line-soft)] px-4 py-3">
-        <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--co-text-dim)]">
-          {icon}
-          {label}
-        </span>
-        {action}
-      </div>
-      <div className="px-4 py-4">{body}</div>
-    </section>
-  );
-
   // The amount, printed the way a checkout prints it: the largest thing
   // on the screen it belongs to.
   const heroAmount = (value: string, size = 40) => (
@@ -1007,37 +1012,6 @@ export default function SubscriptionModal({
         <span className="h-10 w-10" />
       </header>
 
-      {/* Step rail — three equal segments that fill in as the viewer moves
-          Plan -> Method -> Pay. A checkout that opens a bank app and waits
-          on a countdown needs to say where in the process you are. */}
-      {showStepRail && (
-        <nav className="relative z-10 flex shrink-0 gap-2 px-4 pb-4" aria-label={t.subGoPremium}>
-          {[t.subStepPlan, t.subStepMethod, t.subStepPay].map((label, i) => (
-            <div key={label} className="flex flex-1 flex-col gap-1.5">
-              <span
-                className="h-[3px] rounded-full transition-colors"
-                style={{
-                  backgroundColor:
-                    i <= stepIndex ? 'var(--co-brand)' : 'var(--co-line)',
-                }}
-              />
-              <span
-                className="truncate text-[10px] font-semibold"
-                style={{
-                  color:
-                    i === stepIndex
-                      ? 'var(--co-brand)'
-                      : i < stepIndex
-                        ? 'var(--co-text-dim)'
-                        : 'var(--co-text-faint)',
-                }}
-              >
-                {i + 1}. {label}
-              </span>
-            </div>
-          ))}
-        </nav>
-      )}
 
       {/* Exit-confirm sheet — the header X (and the hardware/Telegram back
           gesture, which also routes here) land on this instead of closing
@@ -1088,7 +1062,7 @@ export default function SubscriptionModal({
         ) : step === 'pick' ? (
           /* ---------------------------- PLAN PICKER ---------------------------- */
           <div key="pick" className="co-enter">
-            <div className="flex flex-col items-center pb-5 text-center">
+            <div className="flex flex-col items-center pb-5 pt-1 text-center">
               <h2
                 className="text-[26px] leading-tight text-[color:var(--co-text)]"
                 style={{ fontFamily: 'var(--co-font-display)', letterSpacing: '0.015em' }}
@@ -1344,7 +1318,7 @@ export default function SubscriptionModal({
           </div>
         ) : decision === 'approved' ? (
           /* ---------------------------- PAID (RECEIPT) ---------------------------- */
-          <div key="paid" className="co-enter flex h-full flex-col justify-center gap-5 py-4">
+          <div key="paid" className="co-enter mx-auto flex h-full max-w-[21rem] flex-col justify-center gap-5 py-4">
             <div className="flex flex-col items-center text-center">
               <div
                 className="flex h-16 w-16 items-center justify-center rounded-full"
@@ -1414,7 +1388,7 @@ export default function SubscriptionModal({
           </div>
         ) : decision === 'rejected' ? (
           /* ---------------------------- REJECTED ---------------------------- */
-          <div key="rejected" className="co-enter flex h-full flex-col items-center justify-center gap-5 text-center">
+          <div key="rejected" className="co-enter mx-auto flex h-full max-w-[21rem] flex-col items-center justify-center gap-5 text-center">
             <div
               className="flex h-16 w-16 items-center justify-center rounded-full"
               style={{ backgroundColor: 'var(--co-amber-soft)' }}
@@ -1459,7 +1433,7 @@ export default function SubscriptionModal({
         ) : !payTier ? (
           /* The plan behind this ticket no longer exists (deleted or
              renamed in the admin panel while the sheet was open). */
-          <div key="noplan" className="co-enter flex h-full flex-col items-center justify-center gap-4 text-center">
+          <div key="noplan" className="co-enter mx-auto flex h-full max-w-[21rem] flex-col items-center justify-center gap-4 text-center">
             <AlertTriangle className="h-8 w-8" style={{ color: 'var(--co-amber)' }} />
             <p className="max-w-[17rem] text-sm leading-relaxed text-[color:var(--co-text-muted)]">
               {t.subQrMissing}
@@ -1470,106 +1444,125 @@ export default function SubscriptionModal({
           </div>
         ) : (
           /* ---------------------------- PAY / WAIT ---------------------------- */
-          <div key="pay" className="co-enter space-y-3">
-            {ticketRenewed && (
-              <p className="flex items-center gap-2 rounded-[var(--co-r-btn)] border border-[color:var(--co-line-soft)] bg-white/[0.03] px-3 py-2.5 text-[11px] text-[color:var(--co-text-dim)]">
-                <RefreshCw className="h-3 w-3 shrink-0" style={{ color: 'var(--co-brand)' }} />
-                {t.subTicketRenewed}
-              </p>
-            )}
+          /* One small dialog, the way a checkout normally says "we are
+             waiting on your bank" — not a screen full of blocks. The QR
+             and the hand-off to ABA both live on the browser page now, so
+             in here there is exactly one thing to do at a time. */
+          <div key="pay" className="co-enter flex min-h-full items-center justify-center py-2">
+            <div className="co-card w-full max-w-[21rem] p-5">
+              {ticketRenewed && (
+                <p className="mb-3 flex items-center justify-center gap-1.5 text-center text-[10px] text-[color:var(--co-text-dim)]">
+                  <RefreshCw className="h-3 w-3 shrink-0" />
+                  {t.subTicketRenewed}
+                </p>
+              )}
 
-            {/* ── What is being paid, with the amount as the hero ─────── */}
-            <div className="co-card px-4 py-4">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col items-center text-center">
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-full"
+                  style={{
+                    backgroundColor: proofSent
+                      ? 'var(--co-green-soft)'
+                      : amountMismatch
+                        ? 'var(--co-amber-soft)'
+                        : 'rgba(255,255,255,0.05)',
+                  }}
+                >
+                  {proofSent ? (
+                    <Check className="h-6 w-6" style={{ color: 'var(--co-green)' }} />
+                  ) : amountMismatch ? (
+                    <AlertTriangle className="h-5 w-5" style={{ color: 'var(--co-amber)' }} />
+                  ) : handedOff ? (
+                    <Loader2
+                      className="h-5 w-5 animate-spin"
+                      style={{ color: 'var(--co-text-muted)' }}
+                    />
+                  ) : (
+                    <Wallet className="h-5 w-5" style={{ color: 'var(--co-text-muted)' }} />
+                  )}
+                </span>
+                <p className="mt-3 text-[15px] font-bold text-[color:var(--co-text)]">
+                  {proofSent
+                    ? t.subVerifyingTitle
+                    : amountMismatch
+                      ? t.subAmountMismatchTitle
+                      : handedOff
+                        ? t.subWaitingTitle
+                        : payMode === 'manual'
+                          ? t.subReadyQrTitle
+                          : t.subReadyTitle}
+                </p>
+                {!amountMismatch && (
+                  <p className="mt-1.5 max-w-[17rem] text-[11.5px] leading-relaxed text-[color:var(--co-text-dim)]">
+                    {proofSent
+                      ? t.subVerifyingFree
+                      : handedOff
+                        ? t.subWaitingDesc
+                        : payMode === 'manual'
+                          ? t.subReadyQrDesc
+                          : t.subReadyDesc}
+                  </p>
+                )}
+              </div>
+
+              {/* What is being paid — one line, price included, so the
+                  dialog never has to be scrolled to check the amount. */}
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-[var(--co-r-btn)] border border-[color:var(--co-line-soft)] bg-white/[0.02] px-3.5 py-3">
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold text-[color:var(--co-text)]">
+                  <span className="block truncate text-[13px] font-bold text-[color:var(--co-text)]">
                     {planLabel(payTier)}
                   </span>
-                  <span className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-[color:var(--co-text-dim)]">
-                    <span className="flex items-center gap-1 font-semibold">
-                      {payMode === 'auto' ? (
-                        <Zap className="h-3 w-3" style={{ color: 'var(--co-aba)' }} />
-                      ) : (
-                        <QrCode className="h-3 w-3" />
-                      )}
-                      {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
-                    </span>
-                    <span className="tabular-nums">· {ticketRef}</span>
+                  <span className="mt-0.5 block truncate text-[10px] tabular-nums text-[color:var(--co-text-dim)]">
+                    {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle} · {ticketRef}
                   </span>
                 </span>
-                <span className="shrink-0 text-right">{heroAmount(`$${payTier.price}`, 34)}</span>
+                <span className="shrink-0 text-[22px] font-extrabold leading-none tabular-nums text-[color:var(--co-text)]">
+                  ${payTier.price}
+                </span>
               </div>
 
-              <div className="mt-3 flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={handleChangeMethod}
-                  className="text-[11px] font-semibold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
-                >
-                  {t.subChangeMethod}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleChangePlan}
-                  className="text-[11px] font-semibold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
-                >
-                  {t.subChangePlan}
-                </button>
-              </div>
-
-              {/* The window draining, drawn as one thin line rather than a
-                  big countdown ring: the wait is information, not a
-                  threat. It stops entirely once a receipt is sent. */}
-              {!proofSent && (
-                <div className="mt-4">
-                  <div className="mb-1.5 flex items-center justify-between text-[10px] text-[color:var(--co-text-faint)]">
+              {/* The window draining, drawn as one thin line: the wait is
+                  information, not a threat. It stops once a receipt is sent. */}
+              {!proofSent && !amountMismatch && (
+                <div className="mt-3">
+                  <div className="h-[3px] overflow-hidden rounded-full bg-white/[0.07]">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-1000 ease-linear"
+                      style={{ width: `${waitPct}%`, backgroundColor: 'var(--co-brand)' }}
+                    />
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-[color:var(--co-text-faint)]">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {t.subCooldownNote}
                     </span>
                     <span className="tabular-nums">{mmss}</span>
                   </div>
-                  <div className="h-[3px] overflow-hidden rounded-full bg-white/[0.08]">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-                      style={{ width: `${waitPct}%`, backgroundColor: 'var(--co-brand)' }}
-                    />
-                  </div>
                 </div>
               )}
-            </div>
 
-            {/* Half a minute left and nothing sent: ask before resetting.
-                People are slow inside ABA, and a screen that wipes itself
-                is what makes them give up. */}
-            {showKeepWaiting && (
-              <div className="flex items-center justify-between gap-3 rounded-[var(--co-r-card)] border border-[color:var(--co-amber-line)] bg-[color:var(--co-amber-soft)] px-4 py-3">
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-bold text-[color:var(--co-amber)]">
+              {/* Half a minute left and nothing sent: ask before the ticket
+                  is recycled. People are slow inside ABA, and a screen that
+                  wipes itself is what makes them give up. */}
+              {showKeepWaiting && !amountMismatch && (
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--co-r-btn)] border border-[color:var(--co-amber-line)] bg-[color:var(--co-amber-soft)] px-3.5 py-2.5">
+                  <span className="min-w-0 text-[11px] font-bold" style={{ color: 'var(--co-amber)' }}>
                     {t.subStillHereTitle}
                   </span>
-                  <span className="block text-[11px] text-[color:var(--co-text-muted)]">
-                    {t.subStillHereDesc}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSecondsLeft((s) => s + WAIT_WINDOW_SECONDS)}
-                  className="shrink-0 rounded-[var(--co-r-btn)] border border-[color:var(--co-amber-line)] px-3.5 py-2.5 text-[12px] font-bold"
-                  style={{ color: 'var(--co-amber)' }}
-                >
-                  {t.subKeepWaiting}
-                </button>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => setSecondsLeft((s) => s + WAIT_WINDOW_SECONDS)}
+                    className="shrink-0 rounded-[var(--co-r-btn)] border border-[color:var(--co-amber-line)] px-3 py-2 text-[11px] font-bold"
+                    style={{ color: 'var(--co-amber)' }}
+                  >
+                    {t.subKeepWaiting}
+                  </button>
+                </div>
+              )}
 
-            {/* ── The QR itself, plus the amount baked into it ────────── */}
-            {section(
-              t.subPayTitle,
-              <QrCode className="h-3 w-3" style={{ color: 'var(--co-brand)' }} />,
-              <>
-                {amountMismatch ? (
-                  amberNote(
+              {amountMismatch ? (
+                <div className="mt-4">
+                  {amberNote(
                     t.subAmountMismatchTitle,
                     <>
                       {t.subAmountMismatchDesc
@@ -1577,199 +1570,115 @@ export default function SubscriptionModal({
                         .replace('{plan}', `$${payTier.price.toFixed(2)}`)}
                       {contactAdminLink}
                     </>,
-                  )
-                ) : (
-                  <>
-                    {liveKhqr && bakongConfig ? (
-                      /* A generated payload is a bare QR, so it gets the
-                         KHQR ticket drawn around it. An uploaded picture
-                         already is one and goes through untouched below.
-                         The name is read back out of the payload, not
-                         taken from the setting. */
-                      <KhqrCard
-                        merchantName={payeeName || bakongConfig.merchantName}
-                        amount={payTier.price}
-                        qrDataUrl={liveKhqr.image}
-                      />
-                    ) : qrSrc ? (
-                      <img
-                        src={qrSrc}
-                        alt="KHQR"
-                        className="mx-auto w-full max-w-[220px] rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white p-2"
-                      />
-                    ) : (
-                      amberNote(t.subQrMissing, <>{t.subQrMissingDesc}{contactAdminLink}</>)
-                    )}
-
-                    {qrSrc && (
-                      <p className="mt-3 text-center text-[11px] text-[color:var(--co-text-dim)]">
-                        {payMode === 'manual' ? t.subScanWithYourBank : t.subScanHint}
+                  )}
+                </div>
+              ) : proofSent ? (
+                <button onClick={onClose} className="co-btn co-btn-primary mt-4 py-3.5 text-[13px]">
+                  {t.subCloseAndWatch}
+                </button>
+              ) : (
+                <div className="mt-4 space-y-2.5">
+                  {/* Before the hand-off there is one button. After it,
+                      the only thing left to do is send the receipt, so
+                      the upload takes the primary slot. */}
+                  {!handedOff &&
+                    (payPageAction() ?? (
+                      <p className="rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white/[0.03] p-3 text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
+                        {t.subQrMissing}
                       </p>
-                    )}
+                    ))}
 
-                    {/* The payee name a member is about to see in their
-                        banking app, said here first: a bank prints the
-                        name registered to the receiving account, and
-                        meeting an unfamiliar name on the confirm screen
-                        is exactly what a careful payer treats as a scam. */}
-                    {payeeName && (
-                      <p className="mx-auto mt-3 max-w-[268px] text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
-                        {t.subPayeeIntro}{' '}
-                        <b className="text-[color:var(--co-text)]">{payeeName}</b>
-                        {' — '}
-                        {t.subPayeeReassure}
-                      </p>
-                    )}
-
-                    {payMode === 'auto' ? (
-                      <div className="mt-4 space-y-3">
-                        {abaOpened ? (
-                          <p
-                            className="flex items-start gap-2 rounded-[var(--co-r-btn)] px-3 py-3 text-left text-[11px] leading-relaxed"
-                            style={{
-                              backgroundColor: 'var(--co-aba-soft)',
-                              border: '1px solid var(--co-aba-line)',
-                              color: '#cfdcf8',
-                            }}
-                          >
-                            <ShieldCheck
-                              className="mt-[1px] h-3.5 w-3.5 shrink-0"
-                              style={{ color: 'var(--co-aba)' }}
-                            />
-                            {t.subHandedOffNote}
-                          </p>
-                        ) : (
-                          <>
-                            {abaAction(true, payPageUrl ? t.subOpenInSafari : t.subOpenAba) ?? (
-                              <p className="rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white/[0.03] p-3 text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
-                                {t.subQrCaption}
-                              </p>
-                            )}
-
-                            {/* The same target as the button, rendered as
-                                a plain visible link. Long-press gives
-                                "Open in ABA" / "Copy" — the form known to
-                                work if the styled button ever fails. */}
-                            {abaDeeplink && abaDidNotOpen && (
-                              <div className="rounded-[var(--co-r-btn)] border border-[color:var(--co-amber-line)] bg-[color:var(--co-amber-soft)] px-3 py-3">
-                                <p
-                                  className="flex items-start gap-2 text-[11px] font-semibold leading-relaxed"
-                                  style={{ color: 'var(--co-amber)' }}
-                                >
-                                  <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-                                  {t.subAbaDidNotOpen}
-                                </p>
-                                <a
-                                  href={abaDeeplink}
-                                  rel="noreferrer"
-                                  className="mt-2 block break-all text-[10px] leading-relaxed underline underline-offset-2"
-                                  style={{ color: 'var(--co-aba)' }}
-                                >
-                                  {abaDeeplink}
-                                </a>
-                              </div>
-                            )}
-
-                            <p className="flex items-start justify-center gap-1.5 px-1 text-center text-[10px] leading-relaxed text-[color:var(--co-text-dim)]">
-                              <ShieldCheck
-                                className="mt-[1px] h-3 w-3 shrink-0"
-                                style={{ color: 'var(--co-green)' }}
-                              />
-                              <span>
-                                {isRealGateway ? t.subGatewayVerifiedNote : t.subGatewayManualNote}
-                              </span>
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      qrSrc && (
-                        <div className="mt-4 space-y-3">
-                          <a
-                            href={qrSrc}
-                            download={`nintanime-vip-${payTier.key}.png`}
-                            className="co-btn co-btn-ghost py-3.5 text-xs"
-                          >
-                            <Download className="h-3.5 w-3.5" /> {t.subSaveQr}
-                          </a>
-                          <p className="text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
-                            {t.subManualFlowNote}
-                          </p>
-                        </div>
-                      )
-                    )}
-                  </>
-                )}
-              </>,
-            )}
-
-            {/* ── Proving it ─────────────────────────────────────────── */}
-            <div ref={uploadBlockRef} className={highlightUpload ? 'co-focus-ring rounded-[var(--co-r-card)]' : 'rounded-[var(--co-r-card)]'}>
-              {section(
-                proofSent ? t.subVerifyingTitle : t.subVerifyTitle,
-                proofSent ? (
-                  <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'var(--co-green)' }} />
-                ) : (
-                  <ImagePlus className="h-3 w-3" style={{ color: 'var(--co-brand)' }} />
-                ),
-                proofSent ? (
-                  <>
-                    <p
-                      className="flex items-center gap-2 rounded-[var(--co-r-btn)] px-3 py-3 text-[12px] font-semibold"
-                      style={{
-                        backgroundColor: 'var(--co-green-soft)',
-                        border: '1px solid var(--co-green-line)',
-                        color: 'var(--co-green)',
-                      }}
+                  {(handedOff || resumedTicket) && (
+                    <div
+                      ref={uploadBlockRef}
+                      className={highlightUpload ? 'co-focus-ring rounded-[var(--co-r-btn)]' : ''}
                     >
-                      <Check className="h-4 w-4 shrink-0" />
-                      {t.subCheckingPayment}
-                    </p>
-                    <p className="mt-3 text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
-                      {t.subVerifyingFree}
-                    </p>
-                    <button onClick={onClose} className="co-btn co-btn-primary mt-3 py-3.5 text-[13px]">
-                      {t.subCloseAndWatch}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p className="mb-3 text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
-                      {returnedFromPay ? t.subPaidSendReceiptDesc : t.subVerifyDesc}
-                    </p>
-                    {receiptUploadUi}
-                    {error && (
-                      <div className="mt-3">
-                        {amberNote(
-                          t.subUploadFailedTitle,
-                          <>
-                            {error}
-                            <span className="mt-2 block text-[11px]">{t.subUploadFailedDesc}</span>
-                            {contactAdminLink}
-                          </>,
-                        )}
-                      </div>
-                    )}
-                  </>
-                ),
+                      {receiptUploadUi}
+                    </div>
+                  )}
+
+                  {/* The plain visible deeplink, kept for the one case it
+                      is needed: the styled button did nothing. Long-press
+                      gives "Open in ABA" / "Copy". */}
+                  {abaDeeplink && abaDidNotOpen && (
+                    <div className="rounded-[var(--co-r-btn)] border border-[color:var(--co-amber-line)] bg-[color:var(--co-amber-soft)] px-3 py-2.5">
+                      <p
+                        className="flex items-start gap-2 text-[11px] font-semibold leading-relaxed"
+                        style={{ color: 'var(--co-amber)' }}
+                      >
+                        <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
+                        {t.subAbaDidNotOpen}
+                      </p>
+                      <a
+                        href={abaDeeplink}
+                        rel="noreferrer"
+                        className="mt-2 block break-all text-[10px] leading-relaxed underline underline-offset-2"
+                        style={{ color: 'var(--co-aba)' }}
+                      >
+                        {abaDeeplink}
+                      </a>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div>
+                      {amberNote(
+                        t.subUploadFailedTitle,
+                        <>
+                          {error}
+                          <span className="mt-2 block text-[11px]">{t.subUploadFailedDesc}</span>
+                          {contactAdminLink}
+                        </>,
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
 
-            {/* Quiet text link, not a second big button: the way back to
-                the checkout page for anyone who lost that browser tab. */}
-            {payMode === 'auto' && abaOpened && !proofSent && (
-              <div className="pt-1 text-center">
-                {abaAction(false, payPageUrl ? t.subOpenPayPageAgain : t.subOpenAbaAgain)}
+              {/* Quiet text links, not buttons: everything below is a way
+                  out, and none of it competes with the action above. */}
+              <div className="mt-5 flex flex-col items-center gap-3 border-t border-[color:var(--co-line-soft)] pt-4">
+                {handedOff && !proofSent && payPageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAbaDidNotOpen(false);
+                      openExternalLink(payPageUrl);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    {t.subOpenPayPageAgain}
+                  </button>
+                )}
+
+                {!proofSent && (
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={handleChangeMethod}
+                      className="text-[11px] font-semibold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
+                    >
+                      {t.subChangeMethod}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleChangePlan}
+                      className="text-[11px] font-semibold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
+                    >
+                      {t.subChangePlan}
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleRequestClose}
+                  className="text-[11px] font-semibold text-[color:var(--co-text-faint)] transition hover:text-[color:var(--co-text-muted)]"
+                >
+                  {t.subCloseBtn}
+                </button>
               </div>
-            )}
-
-            <button onClick={handleRequestClose} className="co-btn co-btn-ghost py-3.5 text-sm">
-              {t.subCloseBtn}
-            </button>
-
-            <p className="pb-2 text-center text-[10px] text-[color:var(--co-text-faint)]">
-              {t.subSecuredCheckout}
-            </p>
+            </div>
           </div>
         )}
       </main>

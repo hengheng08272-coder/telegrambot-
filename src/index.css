@@ -721,8 +721,7 @@ h3 {
   }
   .co-row-selected {
     border-color: var(--co-brand-ring);
-    background-color: var(--co-brand-soft);
-    box-shadow: inset 0 0 0 1px var(--co-brand-ring);
+    background-color: rgba(230, 35, 31, 0.07);
   }
 
   /* The one primary action per screen. */
