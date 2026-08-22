@@ -692,17 +692,32 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         </span>
                       )}
                     </p>
-                    {/* The owner's own name is a private individual's. The
-                        app stops showing it, but the payload still carries
-                        it until a display name replaces it, and a banking
-                        app may read it straight off the account. Saying so
-                        here is the difference between the owner choosing
-                        that and not knowing about it. */}
-                    {!bakongName.trim() && (
-                      <p className="mt-1 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2 py-1.5 font-normal leading-relaxed text-[#FFC55A]">
-                        ⚠️ QR នៅផ្ទុកឈ្មោះ{' '}
-                        <b>{readKhqrField(bakongTemplate.trim(), '59') ?? '—'}</b> ហើយ App ធនាគារ
-                        អាចបង្ហាញវាដល់សមាជិក។ បំពេញ «ឈ្មោះបង្ហាញ» ខាងក្រោម ដើម្បីជំនួសវា។
+                    {/* Filling the display name breaks ABA outright.
+                        Tested on a personal ABA account with a plain
+                        10-character Latin name: ABA refuses the QR at
+                        scan time with MAPP-QR-NAME-INV — QR NAME INVALID
+                        — so it checks tag 59 against the name registered
+                        to the account and rejects anything else. Nothing
+                        subtler is going on: the same template with the
+                        field left empty scans and pays.
+
+                        This is a red block and not a caution because the
+                        cost of getting it wrong is every ABA member being
+                        unable to pay, with no error the owner would ever
+                        see. */}
+                    {bakongName.trim() ? (
+                      <p className="mt-1 rounded-lg border border-[#FF8494]/30 bg-[#FF8494]/[0.08] px-2 py-1.5 font-normal leading-relaxed text-[#FF8494]">
+                        🚫 <b>ABA បដិសេធ QR ដែលប្ដូរឈ្មោះ</b> — សាកល្បងរួច ចេញកំហុស{' '}
+                        <code>MAPP-QR-NAME-INV</code>។ ដរាបណាប្រអប់នេះមានឈ្មោះ{' '}
+                        <b>សមាជិកដែលប្រើ ABA បង់ប្រាក់មិនបានទេ</b>។ សូមលុបវាឲ្យទទេ រួច Save។
+                      </p>
+                    ) : (
+                      <p className="mt-1 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 font-normal leading-relaxed text-white/40">
+                        QR ផ្ទុកឈ្មោះ <b className="text-white/60">
+                          {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
+                        </b>{' '}
+                        ដែលធនាគារបានសរសេរ។ App មិនបង្ហាញឈ្មោះនោះទេ តែ App ធនាគាររបស់សមាជិក
+                        បង្ហាញ។ ការលាក់វាទាំងស្រុង ត្រូវការគណនី merchant។
                       </p>
                     )}
                   </>
@@ -729,7 +744,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
                 ឈ្មោះបង្ហាញ
                 {bakongTemplate.trim() && (
-                  <span className="ml-1 normal-case text-white/30">(ទុកទទេ = ឈ្មោះពិត)</span>
+                  <span className="ml-1 normal-case text-[#FF8494]/70">(ABA បដិសេធ — ទុកទទេ)</span>
                 )}
               </label>
               <input

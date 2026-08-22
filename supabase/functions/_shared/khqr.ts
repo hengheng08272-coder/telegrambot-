@@ -140,6 +140,14 @@ export interface TemplateOverrides {
    * name for the account is the safest default, and the only one proven
    * to be accepted until a payment with a replaced name has gone
    * through.
+   *
+   * TESTED AND REJECTED ON ABA. A personal ABA account, a plain
+   * ten-character Latin name, and ABA refuses the QR at scan time with
+   * MAPP-QR-NAME-INV (QR NAME INVALID). The same template with this left
+   * blank scans and pays, so ABA is checking tag 59 against the name
+   * registered to the account rather than objecting to the characters.
+   * Leave it unset for an ABA account. It stays here because the check is
+   * the bank's, not the spec's, and another bank may well allow it.
    */
   merchantName?: string | null;
   /**
