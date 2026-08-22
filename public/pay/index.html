@@ -81,7 +81,7 @@
   }
   .meta { font-size: 10px; color: var(--co-text-dim); margin: 4px 0 0; }
 
-  .qr-wrap { text-align: center; }
+  .qr-wrap { text-align: center; padding: var(--co-s4) var(--co-s3); }
   .qr-wrap img.qr-img {
     width: min(52vw, 23vh); height: auto; border-radius: var(--co-r-btn);
     background: #fff; padding: 8px; display: inline-block;
@@ -108,10 +108,11 @@
 
   a.btn, button.btn {
     display: flex; align-items: center; justify-content: center; gap: var(--co-s2);
-    width: 100%; min-height: 44px; border: 0; cursor: pointer;
-    border-radius: var(--co-r-btn); padding: 14px 14px;
-    font-family: inherit; font-size: 15px; font-weight: 800;
-    text-decoration: none; margin-bottom: var(--co-s2);
+    width: 100%; max-width: 264px; margin: 0 auto var(--co-s2);
+    min-height: 44px; border: 0; cursor: pointer;
+    border-radius: var(--co-r-btn); padding: 13px 16px;
+    font-family: inherit; font-size: 14px; font-weight: 800;
+    text-decoration: none;
     transition: filter 180ms ease, transform 180ms ease;
   }
   a.btn:active, button.btn:active { transform: scale(.985); }
@@ -149,21 +150,6 @@
   }
   .note.show { display: block; }
 
-  details.help { margin-top: var(--co-s2); }
-  details.help summary {
-    list-style: none; cursor: pointer; text-align: center;
-    font-size: 12px; font-weight: 700; color: var(--co-text-dim);
-    padding: var(--co-s2);
-  }
-  details.help summary::-webkit-details-marker { display: none; }
-  details.help .panel {
-    border: 1px solid var(--co-line); border-radius: var(--co-r-card);
-    padding: var(--co-s4); font-size: 12px; color: var(--co-text-muted);
-  }
-  code.deeplink {
-    display: block; margin-top: var(--co-s2); word-break: break-all;
-    font-family: ui-monospace, Menlo, monospace; font-size: 10px; color: var(--co-text-dim);
-  }
   .err { font-size: 13px; color: var(--co-amber); text-align: center; }
   .foot { margin-top: var(--co-s2); text-align: center; font-size: 9px; color: var(--co-text-faint); }
 
@@ -171,16 +157,25 @@
      QR is the fallback underneath it; paying from another bank's app,
      the QR IS the page and the ABA button drops to a quiet alternative. */
   #summary { order: 1; }
-  #open-aba { order: 2; }
-  #qr-card { order: 3; }
-  #payway { order: 4; }
+  #qr-card { order: 2; }
+  #orline { order: 3; }
+  #open-aba { order: 4; }
   #not-open { order: 5; }
-  #steps-card { order: 6; }
-  #back { order: 7; }
-  #help { order: 8; }
+  #payway { order: 6; }
+  #steps-card { order: 7; }
+  #back { order: 8; }
   #err, .foot { order: 9; }
-  .wrap.mode-qr #qr-card { order: 2; }
-  .wrap.mode-qr #open-aba { order: 3; }
+
+  /* Scanning and tapping are two ways to do the same thing, so the page
+     says so out loud instead of stacking two buttons. */
+  #orline {
+    display: flex; align-items: center; gap: var(--co-s3);
+    margin: 2px auto var(--co-s2); max-width: 264px;
+    font-size: 10px; letter-spacing: .12em; color: var(--co-text-faint);
+  }
+  #orline::before, #orline::after {
+    content: ''; flex: 1; height: 1px; background: var(--co-line);
+  }
   /* Nobody reads three steps while holding a QR up to another phone. */
   .wrap.mode-qr #steps-card { display: none; }
 
@@ -241,8 +236,10 @@
     <span id="not-open-text"></span>
   </div>
 
+  <div id="orline" hidden><span id="or-label"></span></div>
+
   <a class="btn btn-primary" id="open-aba" hidden rel="noreferrer">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10.5 5.2h3"/><circle cx="12" cy="18.4" r="1.2"/></svg>
     <span id="open-aba-label"></span>
   </a>
 
@@ -259,17 +256,6 @@
     <span id="back-label"></span>
   </a>
 
-  <details class="help" id="help" hidden>
-    <summary id="help-summary"></summary>
-    <div class="panel">
-      <p style="margin:0" id="help-text"></p>
-      <button class="btn btn-ghost" id="copy" style="margin-top:12px">
-        <span id="copy-label"></span>
-      </button>
-      <a id="payway-alt" hidden style="display:block;font-size:12px;font-weight:700;color:var(--co-aba);text-decoration:underline;text-underline-offset:3px" rel="noreferrer" target="_blank"></a>
-      <code class="deeplink" id="deeplink-text"></code>
-    </div>
-  </details>
 
   <p class="err" id="err" hidden></p>
   <p class="foot" id="foot"></p>
@@ -280,38 +266,32 @@
   var STRINGS = {
     km: {
       planLabel: 'គម្រោង',
-      openAba: 'បើក ABA Mobile',
+      openAba: 'បើក App ABA',
+      or: 'ឬ',
       payway: 'បើកទំព័រ ABA PayWay ជំនួស',
-      copy: 'ចម្លងលេខ KHQR',
-      copied: 'បានចម្លង!',
       qrHint: 'ឬស្កេន QR នេះដោយ App ធនាគាររបស់អ្នក',
       qrHintScan: 'ថតអេក្រង់ QR នេះទុក រួចស្កេនវាពី App ធនាគាររបស់អ្នក',
       openAbaAlt: 'ប្រើ ABA Mobile ជំនួស',
       qrDesktopHint: 'បើកលើកុំព្យូទ័រ? សូមស្កេន QR នេះដោយទូរស័ព្ទ។',
       ticket: 'លេខយោង',
-      back: 'ខ្ញុំបានទូទាត់រួច — ត្រឡប់ទៅ App',
+      back: 'ត្រឡប់ទៅ App',
       notOpen: 'ABA មិនបានបើកទេ។ សូមប្រើជម្រើសខាងក្រោម ឬស្កេន QR ខាងលើ។',
-      help: 'ABA មិនបើកទេ?',
-      helpText: 'សូមប្រាកដថាបានដំឡើង App ABA Mobile រួច។ អ្នកអាចចម្លងលេខ KHQR ទៅបិទភ្ជាប់ក្នុង App ធនាគារ ឬស្កេន QR ខាងលើ។',
       steps: ['បើក ABA', 'បញ្ជាក់ការទូទាត់', 'ត្រឡប់មកផ្ញើវិក្កយបត្រ'],
       missing: 'តំណទូទាត់មិនត្រឹមត្រូវ។ សូមត្រឡប់ទៅ App ហើយចាប់ផ្តើមឡើងវិញ។',
       foot: 'ការទូទាត់ដោយសុវត្ថិភាព · ដំណើរការដោយ ABA PayWay KHQR',
     },
     en: {
       planLabel: 'Plan',
-      openAba: 'Open ABA Mobile',
+      openAba: 'Open the ABA app',
+      or: 'OR',
       payway: 'Open the ABA PayWay page instead',
-      copy: 'Copy KHQR code',
-      copied: 'Copied!',
       qrHint: 'Or scan this QR with your own banking app',
       qrHintScan: 'Screenshot this QR, then scan it from your banking app',
       openAbaAlt: 'Use ABA Mobile instead',
       qrDesktopHint: 'On a computer? Scan this QR with your phone.',
       ticket: 'Reference',
-      back: "I've paid — back to the app",
+      back: 'Back to the app',
       notOpen: 'ABA did not open. Use the option below, or scan the QR above.',
-      help: "ABA didn't open?",
-      helpText: 'Make sure ABA Mobile is installed. You can copy the KHQR code and paste it into your bank app, or scan the QR above.',
       steps: ['Open ABA', 'Confirm the payment', 'Come back and send the receipt'],
       missing: 'This payment link is incomplete. Please go back to the app and start again.',
       foot: 'Secured checkout · Powered by ABA PayWay KHQR',
@@ -411,21 +391,14 @@
       el('open-aba-label').textContent = t.openAba;
     }
     show(link);
+    el('or-label').textContent = t.or;
+    show(el('orline'));
 
-    el('deeplink-text').textContent = deeplink;
     el('not-open-text').textContent = t.notOpen;
-    el('help-summary').textContent = t.help;
-    el('help-text').textContent = t.helpText;
-    show(el('help'));
 
     if (payLink) {
       el('payway-label').textContent = t.payway;
       el('payway').href = payLink;
-      var alt = el('payway-alt');
-      alt.href = payLink;
-      alt.textContent = t.payway;
-      alt.hidden = false;
-      alt.style.display = 'block';
     }
 
     // There is no success callback for a scheme hand-off, so the only
@@ -449,36 +422,10 @@
         if (!handled && document.visibilityState === 'visible') {
           el('not-open').classList.add('show');
           if (payLink) show(el('payway'));
-          el('help').open = true;
         }
       }, 2000);
     });
 
-    var copy = el('copy');
-    el('copy-label').textContent = t.copy;
-    copy.addEventListener('click', function () {
-      var done = function () {
-        el('copy-label').textContent = t.copied;
-        window.setTimeout(function () { el('copy-label').textContent = t.copy; }, 1600);
-      };
-      function fallbackCopy() {
-        // Older in-app WebViews have no clipboard API.
-        var box = document.createElement('textarea');
-        box.value = khqr;
-        box.setAttribute('readonly', '');
-        box.style.position = 'fixed';
-        box.style.opacity = '0';
-        document.body.appendChild(box);
-        box.select();
-        try { document.execCommand('copy'); done(); } catch (e) { /* nothing else to try */ }
-        document.body.removeChild(box);
-      }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(khqr).then(done, fallbackCopy);
-      } else {
-        fallbackCopy();
-      }
-    });
 
     el('steps').textContent = t.steps
       .map(function (line, i) { return String(i + 1) + '. ' + line; })

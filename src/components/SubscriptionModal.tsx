@@ -185,14 +185,15 @@ export default function SubscriptionModal({
   // hand-off bought nothing. Cleared once it fires (or once it is clear
   // there is no page to hand off to).
   const [autoHandOff, setAutoHandOff] = useState(false);
-  // True once the listening window lapsed and a replacement ticket was
-  // opened in the background. The countdown silently restarting looked
-  // like a glitch; this labels it instead (subTicketRenewed).
-  const [ticketRenewed, setTicketRenewed] = useState(false);
   // Guards the header X (and Telegram/system back) while a ticket is
   // actively open — one accidental tap should never silently drop a
   // payment in progress, so it asks first instead of closing right away.
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  // The KHQR route draws its code right in the sheet. Tapping it blows
+  // it up to fill the screen — that is the moment someone screenshots
+  // it, and a QR at 150px with a phone's own UI around it is not what
+  // another bank's scanner wants to read.
+  const [qrZoom, setQrZoom] = useState(false);
   const notifiedApprovedRef = useRef(false);
   const recyclingRef = useRef(false);
   const uploadBlockRef = useRef<HTMLDivElement | null>(null);
@@ -234,12 +235,19 @@ export default function SubscriptionModal({
       setCheckingPending(false);
       if (p) {
         setSelectedKey(p.tier);
-        setResumedTicket(true);
         // Resume the countdown from where it actually should be, based
         // on when the row was created — not a fresh 3 minutes just
         // because the modal was reopened.
         const elapsedSec = Math.floor((Date.now() - new Date(p.submitted_at).getTime()) / 1000);
-        setSecondsLeft(Math.max(0, WAIT_WINDOW_SECONDS - elapsedSec));
+        if (elapsedSec >= WAIT_WINDOW_SECONDS) {
+          // Long gone. Close it out and open on the plan picker, rather
+          // than resuming a dead window just to shut it a second later.
+          cancelPaymentSubmission(p.id);
+          setPending(null);
+          return;
+        }
+        setResumedTicket(true);
+        setSecondsLeft(WAIT_WINDOW_SECONDS - elapsedSec);
         setStep('pay');
       }
     });
@@ -306,19 +314,19 @@ export default function SubscriptionModal({
     };
   }, [step, pending, decision, liveKhqr, proofSent]);
 
-  // The 3-minute window ran out with no ABA match and no receipt photo:
-  // close the stale ticket (server-side, so it can never grant anything)
-  // and open a fresh one for the same plan. Keeping stale pending rows
-  // around would let the ABA matcher attach a later, unrelated payment
-  // to an abandoned ticket — closing them keeps matching honest, and the
-  // viewer keeps a live ticket without having to start over by hand.
+  // The 3-minute window ran out with no ABA match and no receipt photo.
+  // The ticket is closed out server-side (so the ABA matcher can never
+  // attach a later, unrelated payment to an abandoned one) and the sheet
+  // simply closes: the viewer lands back where they started and picks a
+  // plan again. Opening a replacement ticket behind their back, which is
+  // what used to happen, kept a live payment window running for someone
+  // who had already walked away.
   useEffect(() => {
     if (step !== 'pay' || !pending || decision !== 'waiting') return;
     if (secondsLeft > 0 || proofSent || attachingProof || recyclingRef.current) return;
 
     recyclingRef.current = true;
     (async () => {
-      const tier = tiers.find((tr) => tr.key === pending.tier);
       const closed = await expireStaleSubmission(pending.id);
       // A false return means two different things — the SQL helper isn't
       // installed, or the row no longer qualifies because something else
@@ -332,26 +340,17 @@ export default function SubscriptionModal({
         recyclingRef.current = false;
         return;
       }
-      if (status === 'pending' || !tier) {
-        recyclingRef.current = false;
-        setSecondsLeft(WAIT_WINDOW_SECONDS);
-        return;
-      }
 
-      const { id } = await submitPaymentIntent({ tierKey: tier.key, amount: tier.price });
-      const fresh = await getPendingSubmission();
-      if (id && fresh) {
-        setPending(fresh);
-        setTicketRenewed(true);
-        // Only the ABA tab ever uses a gateway transaction. Creating one
-        // for a viewer paying by QR would open a PayWay transaction every
-        // three minutes that nobody is ever going to complete.
-        if (payModeRef.current === 'auto') setAbaCheckout(await createAbaCheckout(fresh.id));
-      }
-      setSecondsLeft(WAIT_WINDOW_SECONDS);
+      // Still open because the expire helper isn't installed: cancel it
+      // by the ordinary route instead, or the next time this sheet opens
+      // it would resume a ticket whose clock ran out and close itself
+      // again straight away.
+      if (status === 'pending') await cancelPaymentSubmission(pending.id);
+
       recyclingRef.current = false;
+      onClose();
     })();
-  }, [secondsLeft, step, pending, decision, proofSent, attachingProof, tiers]);
+  }, [secondsLeft, step, pending, decision, proofSent, attachingProof, onClose]);
 
   // Confirmation is now the ONLY thing that ends the wait — there is no
   // "I have paid" button to press any more, because a button like that
@@ -593,7 +592,6 @@ export default function SubscriptionModal({
     setResumedTicket(false);
     setAbaDidNotOpen(false);
     setAutoHandOff(false);
-    setTicketRenewed(false);
     setShowExitConfirm(false);
     setReturnedFromPay(false);
     setHighlightUpload(false);
@@ -636,14 +634,15 @@ export default function SubscriptionModal({
     resetTicketState();
     setPayMode(mode);
     payModeRef.current = mode;
-    // Inside Telegram, picking a method IS the hand-off: the checkout
-    // page opens in the system browser by itself once this ticket's KHQR
-    // is ready (see the hand-off effect) — that page carries both the QR
-    // and the deeplink, so it serves the bank route and the scan route
-    // alike. Outside Telegram nothing is armed: there the deeplink is a
-    // real link the viewer taps, and a browser would block a pop-up
-    // opened without a tap anyway.
-    if (isInTelegram()) setAutoHandOff(true);
+    // Inside Telegram, picking ABA IS the hand-off: the checkout page
+    // opens in the system browser by itself once this ticket's KHQR is
+    // ready (see the hand-off effect), because Telegram's WebView cannot
+    // open `abamobilebank://` at all. The QR route stays here — its code
+    // is drawn in the sheet, where it can be screenshotted. Outside
+    // Telegram nothing is armed: there the deeplink is a real link the
+    // viewer taps, and a browser would block a pop-up opened without a
+    // tap anyway.
+    if (mode === 'auto' && isInTelegram()) setAutoHandOff(true);
     recyclingRef.current = false;
     const fresh = await getPendingSubmission();
     if (fresh) {
@@ -752,6 +751,16 @@ export default function SubscriptionModal({
     recyclingRef.current = false;
   };
 
+  // Confirmed exit: the ticket goes with them. Leaving it open would
+  // keep a payment window alive for someone who is no longer looking at
+  // it, and the next visit should start from a clean plan choice.
+  const handleExitAndDrop = async () => {
+    recyclingRef.current = true;
+    setShowExitConfirm(false);
+    if (pending) await cancelPaymentSubmission(pending.id);
+    onClose();
+  };
+
   // Header X (and the confirm sheet's own "Exit"): while a ticket is
   // open and still waiting, ask first instead of dropping straight out —
   // that's the one moment a stray tap costs the viewer real progress.
@@ -796,22 +805,10 @@ export default function SubscriptionModal({
       setHandedOff(true);
     };
 
-    if (payMode === 'manual') {
-      if (!payPageUrl) return null;
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            opened();
-            openExternalLink(payPageUrl);
-          }}
-          className={className}
-        >
-          <QrCode className="h-4 w-4" />
-          {t.subOpenQrPage}
-        </button>
-      );
-    }
+    // The QR route has no button at all: its code is drawn in the sheet
+    // a few lines above, and a second way to reach the same code would
+    // only make the viewer wonder which one is the real one.
+    if (payMode === 'manual') return null;
 
     // In Telegram: hand the checkout page to the system browser. No
     // armDeeplinkFallback here — this hand-off is a plain https URL, and
@@ -1013,6 +1010,29 @@ export default function SubscriptionModal({
       </header>
 
 
+      {/* Tapped QR: as big as the screen allows, on white, with nothing
+          else on it — a clean thing to screenshot and hand to a bank
+          app. Tapping anywhere puts it back. */}
+      {qrZoom && qrSrc && (
+        <button
+          type="button"
+          onClick={() => setQrZoom(false)}
+          aria-label={t.subClose}
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 bg-black/90 px-6"
+        >
+          <span className="rounded-[18px] bg-white p-4">
+            <img
+              src={qrSrc}
+              alt="KHQR"
+              className="block h-auto w-[min(74vw,340px)] object-contain"
+            />
+          </span>
+          <span className="text-center text-[12px] leading-relaxed text-white/70">
+            {t.subQrZoomHint}
+          </span>
+        </button>
+      )}
+
       {/* Exit-confirm sheet — the header X (and the hardware/Telegram back
           gesture, which also routes here) land on this instead of closing
           straight away whenever a ticket is open and nothing has been
@@ -1036,10 +1056,7 @@ export default function SubscriptionModal({
                 {t.subExitConfirmContinue}
               </button>
               <button
-                onClick={() => {
-                  setShowExitConfirm(false);
-                  onClose();
-                }}
+                onClick={handleExitAndDrop}
                 className="co-btn co-btn-ghost py-3.5 text-xs"
               >
                 {t.subExitConfirmExit}
@@ -1471,13 +1488,6 @@ export default function SubscriptionModal({
               </div>
 
               <div className="p-5">
-              {ticketRenewed && (
-                <p className="mb-3 flex items-center justify-center gap-1.5 text-center text-[10px] text-[color:var(--co-text-dim)]">
-                  <RefreshCw className="h-3 w-3 shrink-0" />
-                  {t.subTicketRenewed}
-                </p>
-              )}
-
               <div className="flex flex-col items-center text-center">
                 <span
                   className="flex h-12 w-12 items-center justify-center rounded-full"
@@ -1560,6 +1570,37 @@ export default function SubscriptionModal({
                 </div>
               </div>
 
+              {/* The code itself, for anyone paying from another bank's
+                  app. No save button: on a phone, "save" means a
+                  screenshot, and every phone already has that gesture —
+                  a button that downloads a PNG into a folder they then
+                  have to find is a worse version of it. */}
+              {payMode === 'manual' && !amountMismatch && !proofSent && (
+                <div className="mt-4">
+                  {qrSrc ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setQrZoom(true)}
+                        aria-label={t.subQrTapHint}
+                        className="mx-auto block rounded-[var(--co-r-btn)] bg-white p-2 transition active:scale-[0.98]"
+                      >
+                        <img
+                          src={qrSrc}
+                          alt="KHQR"
+                          className="h-[148px] w-[148px] object-contain"
+                        />
+                      </button>
+                      <p className="mx-auto mt-2.5 max-w-[16rem] text-center text-[10.5px] leading-relaxed text-[color:var(--co-text-dim)]">
+                        {t.subQrTapHint}
+                      </p>
+                    </>
+                  ) : (
+                    amberNote(t.subQrMissing, <>{t.subQrMissingDesc}{contactAdminLink}</>)
+                  )}
+                </div>
+              )}
+
               {/* The window draining, drawn as one thin line: the wait is
                   information, not a threat. It stops once a receipt is sent. */}
               {!proofSent && !amountMismatch && (
@@ -1620,14 +1661,18 @@ export default function SubscriptionModal({
                   {/* Before the hand-off there is one button. After it,
                       the only thing left to do is send the receipt, so
                       the upload takes the primary slot. */}
+                  {/* The QR route has its own block above, including its
+                      own "no QR for this plan" message — this fallback is
+                      only for the bank route with nothing to open. */}
                   {!handedOff &&
+                    payMode !== 'manual' &&
                     (payPageAction() ?? (
                       <p className="rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white/[0.03] p-3 text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
                         {t.subQrMissing}
                       </p>
                     ))}
 
-                  {(handedOff || resumedTicket) && (
+                  {(handedOff || resumedTicket || payMode === 'manual') && (
                     <div
                       ref={uploadBlockRef}
                       className={highlightUpload ? 'co-focus-ring rounded-[var(--co-r-btn)]' : ''}
