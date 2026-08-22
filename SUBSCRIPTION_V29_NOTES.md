@@ -1,0 +1,134 @@
+# Subscription v29 — រចនាបទថ្មីទាំងស្រុង (UI/UX only)
+
+ការងារនេះ **ប្ដូរតែរូបរាង និងលំហូរអេក្រង់** នៃការជាវ VIP។ មុខងារខាងក្រោយដដែល ១០០%៖
+upload វិក្កយបត្រ → `confirm-payment-proof` → ជូនដំណឹង admin ក្នុង Telegram (Approve/Reject)
+→ Admin Panel។ **គ្មាន SQL ថ្មី គ្មាន edge function ថ្មី គ្មាន dependency ថ្មី** — deploy ធម្មតា។
+
+---
+
+## ១. Design system នៅឯកសារតែមួយ
+
+`public/checkout-theme.css` — token ទាំងអស់ (`--co-*`) សម្រាប់ផ្ទាំងទូទាត់៖
+
+| Token | តម្លៃ | ប្រើនៅឯណា |
+|---|---|---|
+| `--co-bg` / `--co-card` | `#0A0A0D` / `#121218` | ផ្ទៃ និងកាតទាំងអស់ |
+| `--co-brand` → `--co-brand-deep` | `#E6231F` → `#7A0F0D` | ប៊ូតុងចម្បង តែមួយក្នុងមួយអេក្រង់ |
+| `--co-aba` | `#5C82CE` | **តែលើផ្លូវ ABA ប៉ុណ្ណោះ** |
+| `--co-amber` | `#FFB84D` | សារព្រមាន និង error ទាំងអស់ (ហាមក្រហម) |
+| `--co-green` | `#34D399` | ជោគជ័យ / ស្ថានភាពផ្ទៀងផ្ទាត់ |
+| `--co-r-card` / `--co-r-btn` | `18px` / `12px` | រូបរាង |
+| `--co-s1..s5` | 4/8/12/16/24 | គម្លាត |
+| `--co-font-display` / `--co-font-body` | Anton / Battambang | លេខ / អក្សរខ្មែរ |
+
+ឯកសារនេះដាក់ក្នុង `public/` ព្រោះ **អេក្រង់ពីរផ្ទុកវាដូចគ្នាបេះបិទ**៖ `index.html` (Mini App)
+និង `public/pay/index.html` (ទំព័រ Safari)។ ដូច្នេះវាមិនអាចញែកចេញពីគ្នាបានទេ។
+`src/index.css` បន្ថែម class `.co-*` (card, btn, row, step animation) ដែលសង់លើ token ទាំងនោះ —
+គ្មាន hex ខ្ចាត់ខ្ចាយក្នុង component ទេ។
+
+**ពណ៌មាសត្រូវដកចេញទាំងស្រុងពីផ្ទាំងទូទាត់។** ផ្នែកផ្សេងទៀតនៃ app នៅរក្សា theme ចាស់ (`--nv-*`)។
+
+---
+
+## ២. លំហូរ ៣ ផ្ទាំង
+
+1. **គម្រោង** — logo 32px នៅ header · ចំណងជើង Anton · chip អត្ថប្រយោជន៍ ៣ · ជួរគម្រោងផ្ដេក
+   (icon ឆ្វេង · ឈ្មោះ+pitch កណ្ដាល · តម្លៃស្ដាំ) · ស្លាក **សន្សំ %** គណនាស្វ័យប្រវត្តិ ·
+   ប៊ូតុង sticky "ជ្រើសរើសការទូទាត់" (disabled បើមិនទាន់ជ្រើស)។
+2. **វិធីទូទាត់** — strip សង្ខេប (ចុចដើម្បីត្រឡប់) ជាមួយ **តម្លៃជា hero (Anton 40px)** ·
+   "ទូទាត់តាម ABA Mobile" (ខៀវ ABA) · "ធនាគារផ្សេងទៀត (KHQR)" ជាមួយ logo KHQR។
+   **គ្មាន deeplink ដាច់ដោយឡែកតាមធនាគារ** — KHQR ជាស្តង់ដារតែមួយ ផ្លូវនេះទៅផ្ទាំងទី ៣ ដដែល
+   គ្រាន់តែប្ដូរអត្ថបទណែនាំទៅជា "ស្កេន QR ដោយ App ធនាគាររបស់អ្នក"។
+3. **ទូទាត់** — សង្ខេប + បន្ទាត់ progress ស្ដើង · QR (KHQR ticket) + ឈ្មោះឈ្មួញអានចេញពី payload ·
+   ប៊ូតុងចម្បង "បើកក្នុង Safari ដើម្បីទូទាត់" · ប្លុកផ្ទៀងផ្ទាត់ (upload) · តំណអក្សរតូច
+   "បើកទំព័រទូទាត់ម្តងទៀត" · ប៊ូតុងបិទ។
+
+---
+
+## ៣. UX ដែលបានធ្វើ
+
+1. **ត្រឡប់ពី Safari → ភ្នែកទៅ upload ភ្លាម** — `visibilitychange` scroll ទៅប្លុក upload,
+   បំភ្លឺ ring ២ វិនាទី, ប្ដូរអត្ថបទទៅ "បានទូទាត់រួចហើយ? ផ្ញើវិក្កយបត្រ"។
+2. **ស្ដារស្ថានភាពពេល reload** — `getPendingSubmission()` នៅតែបើកមកផ្ទាំងទី ៣ នៃសំបុត្រដែលកំពុងចាំ
+   ហើយរាប់ម៉ោងបន្តពី `submitted_at` (មិនចាប់ ៣ នាទីថ្មី)។
+3. **ម៉ោង ៣ នាទីមិន reset ស្ងាត់ៗ** — នៅសល់ ៣០ វិនាទី បង្ហាញ "នៅទីនេះទេ?" + ប៊ូតុង
+   "បន្តរង់ចាំ" (+៣ នាទី)។
+4. **ចំនួនក្នុង QR មិនត្រូវ → បិទផ្លូវទូទាត់ទាំងស្រុង** — `readKhqrAmount()` ធៀបនឹងតម្លៃគម្រោង៖
+   បើខុស នោះ QR, ប៊ូតុង Safari, deeplink និង auto hand-off ត្រូវបិទទាំងអស់ ហើយបង្ហាញសារ amber
+   ជាមួយប៊ូតុងទាក់ទងអភិបាល។
+5. **ស្លាកបញ្ចុះតម្លៃស្វ័យប្រវត្តិ** — ធៀបនឹងតម្លៃ/ខែ ថ្លៃបំផុតដែលកំពុងលក់ (មិនចង nឹង `1m`)។
+6. **មិនចាក់សោ app ពេលរង់ចាំ** — ផ្ញើវិក្កយបត្ររួច ប៊ូតុង "បិទ ហើយទៅមើលរឿង" បិទភ្លាម
+   (គ្មានសំណួរបញ្ជាក់ទៀត) ហើយ pill "កំពុងផ្ទៀងផ្ទាត់" លេចនៅកំពូល app — ចុចហើយបើកសំបុត្រនោះមកវិញ
+   (`src/components/VerifyingPill.tsx`)។
+7. **គ្រប់ស្ថានភាពមានផ្ទាំង** — skeleton ពេលទាញគម្រោង · គ្មានគម្រោងលក់ · គ្មាន QR · upload បរាជ័យ
+   + ព្យាយាមម្ដងទៀត + ទាក់ទងអភិបាល · បដិសេធ (លេខយោង + សាកម្ដងទៀត + ទាក់ទងអភិបាល) ·
+   អនុម័ត (វិក្កយបត្រ + ថ្ងៃផុតកំណត់)។
+8. **Upload ងាយ** — `accept="image/*"` (កាមេរ៉ា/Photos/Files) · **paste ពី clipboard**
+   (`src/lib/imageCompress.ts` បង្រួមរូបលើស ~2MB ទៅ JPEG ១៦០០px មុន stage) · thumbnail + ប៊ូតុងលុប។
+9. **ម៉ោងឈប់រាប់ពេលផ្ញើវិក្កយបត្ររួច** — សំបុត្រដែលមានរូបភាព មិនត្រូវអស់ម៉ោងទៀតទេ។
+
+---
+
+## ៤. ទំព័រ Safari (`public/pay/`)
+
+- ប្រើ `checkout-theme.css` ដដែល + logo 32px + តម្លៃ Anton 44px → មើលទៅដូច app ពិត។
+- ប៊ូតុងចម្បងជា **`<a href="abamobilebank://…">` ពិត** (មិនមែន `location.href`)។
+- **PayWay ជាជម្រើសបម្រុង** — `buildPayPageUrl()` បញ្ជូន `pay=<pay_link>` មកជាមួយ ហើយទំព័រនេះ
+  បង្ហាញវា **តែពេល deeplink បើក ABA មិនកើត** ក្នុង ២ វិនាទី (លំនាំ `armDeeplinkFallback`)។
+- ការណែនាំ ៣ ជំហាន · ប៊ូតុង "ខ្ញុំបានទូទាត់រួច — ត្រឡប់ទៅ App" (`t.me`) ·
+  disclosure "ABA មិនបើកទេ?" (ចម្លងលេខ KHQR + តំណ PayWay + deeplink ជាអក្សរ) ·
+  លើកុំព្យូទ័រ QR ធំជាង + សារណែនាំឲ្យស្កេនដោយទូរស័ព្ទ។
+
+---
+
+## ៥. ការសម្រេចចិត្តដែលខ្ញុំធ្វើជំនួស (សូមពិនិត្យ)
+
+1. **ទំព័រ Safari នៅតែទទួល param ពេញ (khqr/amount/plan) មិនមែន `?tier=1m`។** ទំព័រនេះត្រូវការ
+   KHQR payload ដើម្បីសង់ deeplink ជាដាច់ខាត ហើយវាបើកចេញពី sheet ផ្ទាល់រៀងរាល់ដង —
+   ដូច្នេះតម្លៃមិនអាចចាស់បានទេ។ ការឲ្យវាទាញទិន្នន័យខ្លួនឯងតម្រូវឲ្យដាក់ Supabase key ក្នុងទំព័រ
+   static មួយទៀត ដែលខ្ញុំមិនចង់បន្ថែម។ បើបងចង់បាន `?tier=` មែន ប្រាប់ខ្ញុំ ខ្ញុំកែបាន។
+2. **រូប icon ធនាគារក្នុង `public/icons/banks/` ខ្ញុំមិនបានបង្កើតទេ។** logo ធនាគារជាពាណិជ្ជសញ្ញា
+   របស់គេ ហើយ repo គ្មានឯកសារទាំងនោះ — ខ្ញុំមិនគួរបង្កើតឡើងដោយខ្លួនឯង។ ជំនួសវិញ ខ្ញុំប្រើ
+   logo KHQR ដែលមានស្រាប់ (`public/assets/khqr-logo.png`) + អត្ថបទ "ស្កេនបានគ្រប់ App ធនាគារ
+   ដែលប្រើ KHQR"។ បើបងផ្ញើ icon ធនាគារមក ខ្ញុំដាក់ជាជួរបាន។
+3. **Auto hand-off នៅរក្សាទុក។** ក្នុង Telegram ការជ្រើស ABA នៅតែបើកទំព័រទូទាត់ដោយស្វ័យប្រវត្តិ
+   (ការសម្រេចចិត្តពី v28) តែឥឡូវវាត្រូវបានបិទពេលចំនួនក្នុង QR ខុស។ ប៊ូតុង
+   "បើកក្នុង Safari ដើម្បីទូទាត់" នៅតែមានសម្រាប់ករណីដែល hand-off មិនកើត និងក្រៅ Telegram។
+4. **Font នៅតែទាញពី Google Fonts** ព្រោះ repo គ្មានឯកសារ font ក្នុងខ្លួន (Battambang/Anton
+   ត្រូវបានទាញពី CDN តាំងពីមុនមក)។
+
+---
+
+## ៦. Bug ចាស់ដែលឃើញ (មិនបានកែ — សូមសម្រេច)
+
+`npm run lint` មាន error ៩ **ចាស់ស្រាប់ តាំងពីមុនការងារនេះ** (ខ្ញុំមិនបានបន្ថែមថ្មីទេ)៖
+
+- `src/components/HomeScreen.tsx` — `formatCount`, `avatarUrl`, `activeTab`, `setLang`,
+  `EmberParticles` មិនបានប្រើ (៥)
+- `src/lib/bakong.ts` — import `readKhqrField`, `validateKhqrTemplate` មិនបានប្រើ (២)
+- `supabase/functions/aba-payment-callback/index.ts` និង `aba-payment-webhook /index.ts` —
+  `any` (២)
+
+ទាំងអស់នេះជា import/variable មិនប្រើ ឬ type — មិនប៉ះមុខងារទេ តែធ្វើឲ្យ `eslint` មិនស្អាត។
+ខ្ញុំមិនកែស្ងាត់ៗទេ ព្រោះវាក្រៅវិសាលភាពការងារនេះ។ ប្រាប់មក ខ្ញុំសម្អាតឲ្យក្នុង commit ដាច់ដោយឡែក។
+
+> កត់សម្គាល់៖ ឈ្មោះ folder `supabase/functions/aba-payment-webhook /index.ts` មានតួអក្សរ
+> មើលមិនឃើញ (zero-width) នៅក្នុងឈ្មោះ — ជាបញ្ហាចាស់ដែរ។
+
+---
+
+## ៧. លទ្ធផលពិនិត្យ
+
+| ពិនិត្យ | លទ្ធផល |
+|---|---|
+| `tsc -p tsconfig.app.json` | ស្អាត (០ error) |
+| `npm run lint` | ៩ error ចាស់ស្រាប់ · **០ error ថ្មី** ពីឯកសារដែលកែ |
+| `npm run build` | ជោគជ័យ |
+| Render ពិត (headless Chromium) | ផ្ទាំង ១/២/៣ + ករណីចំនួនខុស + ទំព័រ Safari — ត្រឹមត្រូវ |
+
+## ៨. ឯកសារដែលកែ
+
+- ថ្មី៖ `public/checkout-theme.css`, `src/lib/imageCompress.ts`, `src/components/VerifyingPill.tsx`
+- កែ៖ `src/components/SubscriptionModal.tsx`, `public/pay/index.html`, `src/index.css`,
+  `src/App.tsx`, `src/lib/appTranslations.ts` (key ថ្មី KM+EN), `src/lib/khqr.ts` (param `payLink`),
+  `src/lib/telegram.ts` (`getSupportLink()`), `index.html` (link theme)

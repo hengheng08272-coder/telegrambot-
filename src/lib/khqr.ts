@@ -161,6 +161,13 @@ export interface PayPageOptions {
   ticket?: string | null;
   /** Merchant name, so the page can draw the same KHQR ticket the app does. */
   merchantName?: string | null;
+  /**
+   * The admin's PayWay link for this tier, if there is one. The page
+   * keeps it in reserve and only offers it once the deeplink has
+   * demonstrably failed to open ABA — the same fallback the app does,
+   * moved to where the failure actually happens.
+   */
+  payLink?: string | null;
   lang?: string;
 }
 
@@ -188,6 +195,7 @@ export function buildPayPageUrl(opts: PayPageOptions): string {
   if (opts.amount) params.set('amount', opts.amount);
   if (opts.ticket) params.set('ticket', opts.ticket);
   if (opts.merchantName) params.set('name', opts.merchantName);
+  if (opts.payLink) params.set('pay', opts.payLink);
   params.set('lang', opts.lang ?? 'km');
 
   // Where "back to the app" should point. Without a configured bot
