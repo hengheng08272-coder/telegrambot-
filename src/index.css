@@ -677,3 +677,268 @@ h3 {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+   CHECKOUT (v29) — subscription / payment surface only
+   ---------------------------------------------------------------------
+   Every value below comes from public/checkout-theme.css (--co-*), which
+   the standalone Safari page loads too. Nothing here hardcodes a colour,
+   so the in-app sheet and the browser page stay one product. The rest of
+   the app keeps the --nv-* palette; these classes are namespaced `co-`
+   and only ever applied inside the subscription sheet.
+   ───────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* Root of the payment sheet: flat base + the single radial glow. */
+  .co-scope {
+    background-color: var(--co-bg);
+    color: var(--co-text);
+    font-family: var(--co-font-body);
+  }
+  .co-scope::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--co-backdrop);
+    pointer-events: none;
+  }
+
+  .co-card {
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line);
+    border-radius: var(--co-r-card);
+  }
+
+  /* A row the viewer chooses between (plan rows, method rows). */
+  .co-row {
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line-soft);
+    border-radius: var(--co-r-card);
+    transition: border-color var(--co-motion), background-color var(--co-motion),
+      transform var(--co-motion);
+  }
+  .co-row:active {
+    transform: scale(0.99);
+  }
+  .co-row-selected {
+    border-color: var(--co-brand-ring);
+    background-color: rgba(230, 35, 31, 0.07);
+  }
+
+  /* The one primary action per screen. */
+  .co-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--co-s2);
+    width: 100%;
+    min-height: 44px;
+    border-radius: var(--co-r-btn);
+    font-family: var(--co-font-body);
+    font-weight: 800;
+    text-decoration: none;
+    transition: filter var(--co-motion), transform var(--co-motion), opacity var(--co-motion);
+  }
+  .co-btn:active {
+    transform: scale(0.985);
+  }
+  .co-btn:disabled {
+    opacity: 0.45;
+    transform: none;
+  }
+
+  .co-btn-primary {
+    background-image: linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%);
+    color: #fff;
+    box-shadow: var(--co-shadow-btn);
+  }
+  .co-btn-primary:hover {
+    filter: brightness(1.06);
+  }
+
+  /* ABA blue — used on nothing except the hand-off to ABA Mobile. */
+  .co-btn-aba {
+    background-color: var(--co-aba-soft);
+    border: 1px solid var(--co-aba-line);
+    color: #cfdcf8;
+  }
+  .co-btn-aba:hover {
+    background-color: rgba(92, 130, 206, 0.2);
+  }
+
+  .co-btn-ghost {
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--co-line);
+    color: var(--co-text-muted);
+  }
+  .co-btn-ghost:hover {
+    color: var(--co-text);
+    border-color: var(--co-line-strong);
+  }
+
+  /* Step transition — the only motion in the flow (fade + 6px slide). */
+  .co-enter {
+    animation: co-enter 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+
+  /* Two seconds of attention on the upload block when the viewer comes
+     back from the bank — the single moment people forget the last step. */
+  .co-focus-ring {
+    animation: co-focus-ring 2s cubic-bezier(0.22, 0.61, 0.36, 1) 1;
+  }
+
+  /* ── Ticket motif ────────────────────────────────────────────────────
+     A VIP plan is a pass, so the checkout is drawn as one: a stub with
+     the duration on it, a perforated spine, and the price on the main
+     half. The notches are half-circles in the PAGE colour clipped by the
+     card's own overflow, which is why nothing here needs an image. */
+  .co-ticket {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line-soft);
+    border-radius: var(--co-r-card);
+    transition: border-color var(--co-motion), background-color var(--co-motion),
+      transform var(--co-motion);
+  }
+  .co-ticket:active {
+    transform: scale(0.99);
+  }
+  .co-ticket-selected {
+    border-color: var(--co-brand-ring);
+    background-image: linear-gradient(90deg, rgba(230, 35, 31, 0.13) 0%, rgba(230, 35, 31, 0) 58%);
+  }
+
+  .co-ticket-stub {
+    width: 62px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 14px 0;
+  }
+
+  /* The perforation. Two half-circles bitten out of the card, top and
+     bottom, plus the dashed line between them. */
+  .co-ticket-spine {
+    position: relative;
+    width: 1px;
+    flex-shrink: 0;
+    border-left: 1px dashed rgba(255, 255, 255, 0.2);
+  }
+  .co-ticket-spine::before,
+  .co-ticket-spine::after {
+    content: '';
+    position: absolute;
+    left: -6px;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--co-r-pill);
+    background-color: var(--co-bg);
+  }
+  .co-ticket-spine::before {
+    top: -7px;
+  }
+  .co-ticket-spine::after {
+    bottom: -7px;
+  }
+
+  /* The pass itself, on the pay screen: a red header band carrying the
+     reference, then the details below a tear line. */
+  .co-pass {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line);
+    border-radius: var(--co-r-card);
+  }
+  .co-pass-band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--co-s3);
+    padding: 9px 14px;
+    background-image: linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%);
+    color: #fff;
+  }
+  .co-tear {
+    position: relative;
+    border-top: 1px dashed rgba(255, 255, 255, 0.22);
+  }
+  .co-tear::before,
+  .co-tear::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--co-r-pill);
+    background-color: var(--co-bg);
+  }
+  .co-tear::before {
+    left: -8px;
+  }
+  .co-tear::after {
+    right: -8px;
+  }
+
+  /* Stamped labels — "HOT", "BEST", "PAID". Set slightly off-square, the
+     way a rubber stamp lands. */
+  /* Latin stamps ("BEST") want the wide tracking a rubber stamp has;
+     Khmer words do not — the marks stop sitting on their consonants. So
+     the tracking here is small enough to be safe in both. */
+  .co-stamp {
+    display: inline-block;
+    padding: 2px 6px;
+    border: 1px solid var(--co-brand-ring);
+    border-radius: 3px;
+    color: var(--co-brand);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    transform: rotate(-4deg);
+  }
+  .co-stamp-quiet {
+    border-color: var(--co-line-strong);
+    color: var(--co-text-muted);
+  }
+
+  .co-skeleton {
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line-soft);
+    border-radius: var(--co-r-card);
+  }
+}
+
+@keyframes co-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes co-focus-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(230, 35, 31, 0);
+  }
+  15%,
+  70% {
+    box-shadow: 0 0 0 3px var(--co-brand-ring);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .co-enter,
+  .co-focus-ring {
+    animation: none;
+  }
+}

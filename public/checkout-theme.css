@@ -1,0 +1,95 @@
+/* =====================================================================
+   NINT ANIME — Checkout design tokens (v29)
+   ---------------------------------------------------------------------
+   THE single source of truth for every colour, font, radius and spacing
+   step used by the payment flow. Two very different surfaces read it:
+
+     1. the in-app subscription sheet (React/Tailwind) — index.html links
+        this file, and src/index.css builds the `.co-*` component classes
+        on top of these variables;
+     2. the standalone Safari checkout page (public/pay/index.html),
+        which has no bundler and links this file directly.
+
+   That is the whole point of keeping it here in /public rather than in
+   src/: both surfaces load the exact same bytes, so the app sheet and
+   the browser page cannot drift into looking like two products.
+
+   Nothing else in the app is themed from here — the rest of NINT keeps
+   its own "Neon Streaming" palette (src/index.css --nv-*). These tokens
+   are scoped to checkout on purpose.
+   ===================================================================== */
+:root {
+  /* ── Surfaces ─────────────────────────────────────────────────────── */
+  --co-bg: #0a0a0d;          /* page base */
+  --co-bg-deep: #050507;     /* behind the base — scrims, sheets */
+  --co-card: #121218;        /* every card and row */
+  --co-card-raised: #17171e; /* input / pressed row */
+  --co-line: rgba(255, 255, 255, 0.1);   /* default hairline (10%) */
+  --co-line-soft: rgba(255, 255, 255, 0.06);
+  --co-line-strong: rgba(255, 255, 255, 0.16);
+
+  /* ── Brand ────────────────────────────────────────────────────────── */
+  --co-brand: #e6231f;       /* primary action — one red, used sparingly */
+  --co-brand-deep: #7a0f0d;  /* gradient end */
+  --co-brand-soft: rgba(230, 35, 31, 0.12);
+  --co-brand-ring: rgba(230, 35, 31, 0.42);
+
+  /* ABA blue. Reserved STRICTLY for the "open ABA" affordance so the
+     bank's own colour never competes with the primary action. */
+  --co-aba: #5c82ce;
+  --co-aba-soft: rgba(92, 130, 206, 0.12);
+  --co-aba-line: rgba(92, 130, 206, 0.32);
+
+  /* ── Status ───────────────────────────────────────────────────────── */
+  /* Warnings and errors are amber, never red: red is the primary button
+     here, so a red error would read as something to tap. */
+  --co-amber: #ffb84d;
+  --co-amber-soft: rgba(255, 184, 77, 0.1);
+  --co-amber-line: rgba(255, 184, 77, 0.32);
+  --co-green: #34d399;
+  --co-green-soft: rgba(52, 211, 153, 0.1);
+  --co-green-line: rgba(52, 211, 153, 0.3);
+
+  /* ── Text ─────────────────────────────────────────────────────────── */
+  --co-text: #f5f5f7;
+  --co-text-muted: rgba(245, 245, 247, 0.62);
+  --co-text-dim: rgba(245, 245, 247, 0.38);
+  --co-text-faint: rgba(245, 245, 247, 0.24);
+
+  /* ── Type ─────────────────────────────────────────────────────────── */
+  --co-font-display: 'Anton', 'Battambang', system-ui, sans-serif;
+  --co-font-body: 'Battambang', 'Poppins', system-ui, -apple-system, sans-serif;
+
+  /* ── Shape ────────────────────────────────────────────────────────── */
+  --co-r-card: 18px;
+  --co-r-btn: 12px;
+  --co-r-chip: 10px;
+  --co-r-pill: 9999px;
+
+  /* ── Spacing scale (4 / 8 / 12 / 16 / 24) ─────────────────────────── */
+  --co-s1: 4px;
+  --co-s2: 8px;
+  --co-s3: 12px;
+  --co-s4: 16px;
+  --co-s5: 24px;
+
+  /* ── Elevation ────────────────────────────────────────────────────── */
+  --co-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.5);
+  /* Depth, not a halo. A coloured glow around the pay button reads as a
+     screen that is trying to sell, which is the last thing wanted on the
+     screen where money leaves. */
+  --co-shadow-btn: 0 6px 16px rgba(0, 0, 0, 0.45);
+
+  /* ── Background ───────────────────────────────────────────────────────
+     Almost nothing: a barely-there neutral light at the very top so the
+     page has a direction, and a soft vignette at the edges. No coloured
+     glow — a red wash behind a checkout makes the whole screen feel lit
+     up and cheap, and it fought with the one red thing that matters
+     (the pay button). Attention belongs on the amount. */
+  --co-backdrop:
+    radial-gradient(ellipse 120% 38% at 50% -8%, rgba(255, 255, 255, 0.035) 0%, rgba(10, 10, 13, 0) 60%),
+    radial-gradient(ellipse 130% 75% at 50% 55%, rgba(10, 10, 13, 0) 45%, rgba(0, 0, 0, 0.5) 100%);
+
+  /* ── Motion ───────────────────────────────────────────────────────── */
+  --co-motion: 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}

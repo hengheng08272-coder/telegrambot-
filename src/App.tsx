@@ -16,6 +16,7 @@ import AdminScreen from '@/components/AdminScreen';
 import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
 import SubscriptionModal from '@/components/SubscriptionModal';
+import VerifyingPill from '@/components/VerifyingPill';
 import MoviePurchaseModal from '@/components/MoviePurchaseModal';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -52,6 +53,11 @@ function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showSpin, setShowSpin] = useState(false);
   const [showSubscribe, setShowSubscribe] = useState(false);
+  // A receipt is with the admin and no decision has come back yet. The
+  // payment sheet raises this, then the viewer is free to close it and
+  // go watch something — see VerifyingPill, which brings them back to
+  // the same ticket.
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   // Standalone $1 movies — bought and unlocked independently of VIP, so
   // this is tracked separately from `subscribed` rather than folded into
@@ -65,7 +71,12 @@ function App() {
   };
   const [bonusSpinReady, setBonusSpinReady] = useState(false);
   const refreshSubscription = () => {
-    getSubscriptionStatus().then((s) => setSubscribed(s.subscribed));
+    getSubscriptionStatus().then((s) => {
+      setSubscribed(s.subscribed);
+      // VIP landed — whatever was being verified is settled, so the
+      // pill has nothing left to point at.
+      if (s.subscribed) setVerifyingPayment(false);
+    });
     getAvailableBonusSpin().then((info) => setBonusSpinReady(!!info));
   };
   useEffect(() => {
@@ -73,6 +84,45 @@ function App() {
     refreshPurchasedMovies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The sheet does the real polling; this only exists so a viewer who
+  // closed it while a receipt was in flight still sees VIP switch on by
+  // itself, and the pill disappear, without reopening anything.
+  useEffect(() => {
+    if (!verifyingPayment || showSubscribe) return;
+    const timer = window.setInterval(refreshSubscription, 20000);
+    return () => window.clearInterval(timer);
+  }, [verifyingPayment, showSubscribe]);
+  // The payment sheet is mounted from three screens (home, detail,
+  // account) with identical wiring, so it is described once here. The
+  // pill takes its place while a receipt is with the admin, so waiting
+  // never costs the viewer the app.
+  const subscriptionSheet = (
+    <>
+      {showSubscribe && (
+        <SubscriptionModal
+          onClose={() => setShowSubscribe(false)}
+          onSubmitted={() => {
+            hapticSuccess();
+            refreshSubscription();
+          }}
+          onApproved={() => {
+            hapticSuccess();
+            refreshSubscription();
+          }}
+          onGoSpin={() => {
+            setShowSubscribe(false);
+            setShowSpin(true);
+          }}
+          onVerifyingChange={setVerifyingPayment}
+        />
+      )}
+      {verifyingPayment && !showSubscribe && (
+        <VerifyingPill onClick={() => setShowSubscribe(true)} />
+      )}
+    </>
+  );
+
   const isMobile = useIsMobile();
   const isAdmin = !!profile?.is_admin;
   // Testing override: ?admin=1 forces the admin gate on regardless of screen
@@ -303,23 +353,7 @@ function App() {
             onClaimed={() => hapticSuccess()}
           />
         )}
-        {showSubscribe && (
-          <SubscriptionModal
-            onClose={() => setShowSubscribe(false)}
-            onSubmitted={() => {
-              hapticSuccess();
-              refreshSubscription();
-            }}
-            onApproved={() => {
-              hapticSuccess();
-              refreshSubscription();
-            }}
-            onGoSpin={() => {
-              setShowSubscribe(false);
-              setShowSpin(true);
-            }}
-          />
-        )}
+        {subscriptionSheet}
       </>
     );
   }
@@ -346,23 +380,7 @@ function App() {
             }}
           />
         )}
-        {showSubscribe && (
-          <SubscriptionModal
-            onClose={() => setShowSubscribe(false)}
-            onSubmitted={() => {
-              hapticSuccess();
-              refreshSubscription();
-            }}
-            onApproved={() => {
-              hapticSuccess();
-              refreshSubscription();
-            }}
-            onGoSpin={() => {
-              setShowSubscribe(false);
-              setShowSpin(true);
-            }}
-          />
-        )}
+        {subscriptionSheet}
       </>
     );
   }
@@ -420,23 +438,7 @@ function App() {
           }}
         />
       )}
-      {showSubscribe && (
-        <SubscriptionModal
-          onClose={() => setShowSubscribe(false)}
-          onSubmitted={() => {
-            hapticSuccess();
-            refreshSubscription();
-          }}
-          onApproved={() => {
-            hapticSuccess();
-            refreshSubscription();
-          }}
-          onGoSpin={() => {
-            setShowSubscribe(false);
-            setShowSpin(true);
-          }}
-        />
-      )}
+      {subscriptionSheet}
     </>
   );
 }
