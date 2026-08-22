@@ -16,7 +16,6 @@ import {
   Wallet,
   ShieldCheck,
   Sparkles,
-  Star,
   X,
   Zap,
 } from 'lucide-react';
@@ -94,16 +93,16 @@ const WAIT_WINDOW_SECONDS = 180;
 // becomes something worth asking about — see the "still there?" prompt.
 const NUDGE_AT_SECONDS = 30;
 
-// Keyed by DURATION, not by tier key. Keying on the key is how the
-// '2m' slot ended up showing a one-month icon after it was re-priced
-// to three months — the key is an immutable internal id and says
-// nothing about what the plan currently sells. Months is the fact the
-// icon is actually illustrating, so it can never drift.
-function tierIcon(months: number) {
-  if (months >= 12) return Crown;   // the full year — the top tier
-  if (months >= 6) return Star;
-  if (months >= 3) return Sparkles;
-  return Zap;                        // short, quick start
+// Khmer digits, so the number on the ticket stub is written the same way
+// the rest of the sheet writes numbers. Latin digits stay Latin for the
+// English UI, and prices stay Latin everywhere — that is how they are
+// printed on the bank's own screens.
+const KH_DIGITS = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+function toKhmerDigits(value: number): string {
+  return String(value)
+    .split('')
+    .map((ch) => KH_DIGITS[Number(ch)] ?? ch)
+    .join('');
 }
 
 export default function SubscriptionModal({
@@ -771,6 +770,7 @@ export default function SubscriptionModal({
   const ticketRef = pending ? pending.id.slice(0, 8).toUpperCase() : '—';
   const planLabel = (tr: PricingTier | null) =>
     tr ? (lang === 'km' ? tr.labelKm : tr.labelEn) : '—';
+  const localNum = (value: number) => (lang === 'km' ? toKhmerDigits(value) : String(value));
   const supportLink = getSupportLink();
 
   // The last half-minute of the window, with nothing sent yet: rather
@@ -1063,6 +1063,12 @@ export default function SubscriptionModal({
           /* ---------------------------- PLAN PICKER ---------------------------- */
           <div key="pick" className="co-enter">
             <div className="flex flex-col items-center pb-5 pt-1 text-center">
+              <span
+                className="mb-1.5 text-[10px] tracking-[0.3em]"
+                style={{ fontFamily: 'var(--co-font-display)', color: 'var(--co-brand)' }}
+              >
+                {t.subAccessPass}
+              </span>
               <h2
                 className="text-[26px] leading-tight text-[color:var(--co-text)]"
                 style={{ fontFamily: 'var(--co-font-display)', letterSpacing: '0.015em' }}
@@ -1105,9 +1111,8 @@ export default function SubscriptionModal({
             ) : (
               <div className="space-y-3">
                 {visibleTiers.map((tr) => {
-                  const Icon = tierIcon(tr.months);
                   const selected = tr.key === selectedKey;
-                  const perMonth = tr.months > 1 ? (tr.price / tr.months).toFixed(2) : null;
+                  const perMonth = (tr.price / Math.max(1, tr.months)).toFixed(2);
                   // Computed, never typed by hand: re-pricing a plan can
                   // not leave a stale "save 38%" behind.
                   const savePct =
@@ -1119,80 +1124,62 @@ export default function SubscriptionModal({
                       key={tr.key}
                       onClick={() => setSelectedKey(tr.key)}
                       aria-pressed={selected}
-                      className={`co-row relative flex w-full items-center gap-3 overflow-hidden px-4 py-3.5 text-left ${
-                        selected ? 'co-row-selected' : ''
-                      }`}
+                      aria-label={`${planLabel(tr)} — $${tr.price}`}
+                      className={`co-ticket w-full text-left ${selected ? 'co-ticket-selected' : ''}`}
                     >
-                      <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--co-r-chip)]"
-                        style={{
-                          backgroundColor: selected
-                            ? 'var(--co-brand-soft)'
-                            : 'rgba(255,255,255,0.06)',
-                        }}
-                      >
-                        <Icon
-                          className="h-4 w-4"
-                          style={{ color: selected ? 'var(--co-brand)' : 'var(--co-text-dim)' }}
-                        />
-                      </div>
+                      {/* The stub: how long the pass runs, in the numerals
+                          the viewer reads prices in. */}
+                      <span className="co-ticket-stub">
+                        <span
+                          className="leading-none"
+                          style={{
+                            fontFamily: 'var(--co-font-display)',
+                            fontSize: '22px',
+                            color: selected ? 'var(--co-brand)' : 'var(--co-text)',
+                          }}
+                        >
+                          {localNum(tr.months)}
+                        </span>
+                        <span className="text-[9px] tracking-[0.16em] text-[color:var(--co-text-dim)]">
+                          {t.subMonthsUnit}
+                        </span>
+                      </span>
+                      <span className="co-ticket-spine" aria-hidden="true" />
 
-                      {/* Two lines, each splitting left/right on its own,
-                          so the plan name gets the whole row minus the
-                          price and every row stands exactly two lines tall. */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span className="truncate font-bold text-[color:var(--co-text)]">
-                              {planLabel(tr)}
-                            </span>
-                            {tr.badge === 'best' && (
-                              <span className="shrink-0 rounded-md border border-[color:var(--co-brand-ring)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[color:var(--co-brand)]">
-                                {t.subBestValue}
+                      <span className="flex min-w-0 flex-1 items-center gap-2 px-3.5 py-3">
+                        <span className="min-w-0 flex-1">
+                          {/* The admin's own pitch leads — the duration is
+                              already on the stub, so repeating the plan
+                              name here would say it twice. */}
+                          <span className="block truncate text-[13.5px] font-bold text-[color:var(--co-text)]">
+                            {tr.pitchKm || planLabel(tr)}
+                          </span>
+                          {/* Always the per-month rate, even on the
+                              single-month plan: it is the number every
+                              other row is compared against, and the plan
+                              name is already on the stub beside it. */}
+                          <span className="mt-0.5 block truncate text-[10.5px] tabular-nums text-[color:var(--co-text-dim)]">
+                            ${perMonth}
+                            {t.subPerMonth}
+                            {savePct >= 5 && (
+                              <span className="ml-1.5 font-bold" style={{ color: 'var(--co-green)' }}>
+                                · {t.subSaveBadge} {savePct}%
                               </span>
                             )}
-                            {tr.badge === 'popular' && (
-                              <span className="shrink-0 rounded-md border border-[color:var(--co-line-strong)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[color:var(--co-text-muted)]">
-                                {t.subPopular}
-                              </span>
-                            )}
                           </span>
-                          <span className="shrink-0 text-[19px] font-extrabold leading-none tabular-nums text-[color:var(--co-text)]">
-                            ${tr.price}
-                          </span>
-                        </div>
+                        </span>
 
-                        <div className="mt-1.5 flex items-baseline justify-between gap-2">
-                          {/* The admin's own pitch for this tier, editable
-                              from Admin Panel -> Subscriptions. */}
-                          <span className="truncate text-[11px] text-[color:var(--co-text-dim)]">
-                            {tr.pitchKm}
-                          </span>
-                          {perMonth && (
-                            <span className="shrink-0 text-[10px] tabular-nums text-[color:var(--co-text-faint)]">
-                              ${perMonth}
-                              {t.subPerMonth}
-                              {savePct >= 5 && (
-                                <span
-                                  className="ml-1.5 font-bold"
-                                  style={{ color: 'var(--co-green)' }}
-                                >
-                                  {t.subSaveBadge} {savePct}%
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                        {tr.badge === 'best' && <span className="co-stamp shrink-0">{t.subBestValue}</span>}
+                        {tr.badge === 'popular' && (
+                          <span className="co-stamp co-stamp-quiet shrink-0">{t.subPopular}</span>
+                        )}
 
-                      <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition"
-                        style={{
-                          borderColor: selected ? 'var(--co-brand)' : 'var(--co-line-strong)',
-                          backgroundColor: selected ? 'var(--co-brand)' : 'transparent',
-                        }}
-                      >
-                        {selected && <Check className="h-3 w-3 text-white" strokeWidth={3.5} />}
+                        <span
+                          className="shrink-0 leading-none tabular-nums"
+                          style={{ fontFamily: 'var(--co-font-display)', fontSize: '22px' }}
+                        >
+                          ${tr.price}
+                        </span>
                       </span>
                     </button>
                   );
@@ -1337,9 +1324,26 @@ export default function SubscriptionModal({
               </p>
             </div>
 
-            {/* Receipt — what they bought, what it cost, the bank's own
-                reference (ABA's "Trx. ID") and when it expires. */}
-            <div className="co-card px-4 py-1">
+            {/* The pass, stamped. Same object as the one they were
+                waiting on a minute ago — what they bought, what it cost,
+                the bank's own reference (ABA's "Trx. ID") and when it
+                runs out. */}
+            <div className="co-pass">
+              <div className="co-pass-band">
+                <span
+                  className="text-[12px] tracking-[0.22em]"
+                  style={{ fontFamily: 'var(--co-font-display)' }}
+                >
+                  {t.subVipPass}
+                </span>
+                <span
+                  className="rounded-[3px] border border-white/45 px-1.5 py-0.5 text-[9px] tracking-[0.16em]"
+                  style={{ fontFamily: 'var(--co-font-display)', transform: 'rotate(-4deg)' }}
+                >
+                  {t.subPaidStamp}
+                </span>
+              </div>
+              <div className="px-4 py-1">
               {(
                 [
                   [t.subReceiptPlan, planLabel(payTier)],
@@ -1374,6 +1378,7 @@ export default function SubscriptionModal({
                   </span>
                 </div>
               ))}
+              </div>
             </div>
 
             <div className="space-y-2.5">
@@ -1449,7 +1454,23 @@ export default function SubscriptionModal({
              and the hand-off to ABA both live on the browser page now, so
              in here there is exactly one thing to do at a time. */
           <div key="pay" className="co-enter flex min-h-full items-center justify-center py-2">
-            <div className="co-card w-full max-w-[21rem] p-5">
+            {/* The pass itself. The band carries the one number a payer
+                may need to quote in a support chat, printed the way a
+                ticket prints it. */}
+            <div className="co-pass w-full max-w-[21rem]">
+              <div className="co-pass-band">
+                <span
+                  className="text-[12px] tracking-[0.22em]"
+                  style={{ fontFamily: 'var(--co-font-display)' }}
+                >
+                  {t.subVipPass}
+                </span>
+                <span className="font-mono text-[10px] tracking-[0.06em] text-white/85">
+                  {ticketRef}
+                </span>
+              </div>
+
+              <div className="p-5">
               {ticketRenewed && (
                 <p className="mb-3 flex items-center justify-center gap-1.5 text-center text-[10px] text-[color:var(--co-text-dim)]">
                   <RefreshCw className="h-3 w-3 shrink-0" />
@@ -1505,26 +1526,44 @@ export default function SubscriptionModal({
                 )}
               </div>
 
-              {/* What is being paid — one line, price included, so the
-                  dialog never has to be scrolled to check the amount. */}
-              <div className="mt-4 flex items-center justify-between gap-3 rounded-[var(--co-r-btn)] border border-[color:var(--co-line-soft)] bg-white/[0.02] px-3.5 py-3">
-                <span className="min-w-0">
-                  <span className="block truncate text-[13px] font-bold text-[color:var(--co-text)]">
+              {/* Below the tear: what the pass is for, the way a
+                  printed one lists it. */}
+              <div className="co-tear -mx-5 my-4" />
+
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
+                    {t.subReceiptPlan}
+                  </span>
+                  <span className="truncate text-[12.5px] font-bold text-[color:var(--co-text)]">
                     {planLabel(payTier)}
                   </span>
-                  <span className="mt-0.5 block truncate text-[10px] tabular-nums text-[color:var(--co-text-dim)]">
-                    {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle} · {ticketRef}
+                </div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
+                    {t.subMethodLabel}
                   </span>
-                </span>
-                <span className="shrink-0 text-[22px] font-extrabold leading-none tabular-nums text-[color:var(--co-text)]">
-                  ${payTier.price}
-                </span>
+                  <span className="truncate text-[12.5px] font-bold text-[color:var(--co-text)]">
+                    {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
+                  </span>
+                </div>
+                <div className="flex items-end justify-between gap-3 pt-0.5">
+                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
+                    {t.subAmountDue}
+                  </span>
+                  <span
+                    className="leading-none tabular-nums text-[color:var(--co-text)]"
+                    style={{ fontFamily: 'var(--co-font-display)', fontSize: '28px' }}
+                  >
+                    ${payTier.price}
+                  </span>
+                </div>
               </div>
 
               {/* The window draining, drawn as one thin line: the wait is
                   information, not a threat. It stops once a receipt is sent. */}
               {!proofSent && !amountMismatch && (
-                <div className="mt-3">
+                <div className="mt-4">
                   <div className="h-[3px] overflow-hidden rounded-full bg-white/[0.07]">
                     <div
                       className="h-full rounded-full transition-[width] duration-1000 ease-linear"
@@ -1677,6 +1716,7 @@ export default function SubscriptionModal({
                 >
                   {t.subCloseBtn}
                 </button>
+              </div>
               </div>
             </div>
           </div>

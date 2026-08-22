@@ -363,6 +363,12 @@ export const appText = {
     subRejectedDesc: 'Message the admin in the group to find out why, or try again with your receipt photo.',
 
     // ── Checkout v29 — new subscription / payment flow ──────────────
+    subMonthsUnit: 'MO',
+    subAccessPass: 'VIP ACCESS PASS',
+    subVipPass: 'VIP PASS',
+    subMethodLabel: 'Method',
+    subAmountDue: 'Amount due',
+    subPaidStamp: 'PAID',
     subReadyTitle: 'Ready to pay',
     subReadyDesc: 'Your payment page opens in the browser — confirm it there, then come back.',
     subReadyQrTitle: 'Ready to scan',
@@ -804,6 +810,12 @@ export const appText = {
     subRejectedDesc: 'សូមទាក់ទង admin ក្នុង group ដើម្បីដឹងមូលហេតុ ឬសាកល្បងម្ដងទៀតជាមួយរូបភាពវិក្កយបត្រ។',
 
     // ── Checkout v29 — លំហូរទូទាត់ថ្មី ──────────────────────────────
+    subMonthsUnit: 'ខែ',
+    subAccessPass: 'VIP ACCESS PASS',
+    subVipPass: 'VIP PASS',
+    subMethodLabel: 'វិធីទូទាត់',
+    subAmountDue: 'ត្រូវបង់',
+    subPaidStamp: 'បានទូទាត់',
     subReadyTitle: 'ត្រៀមទូទាត់',
     subReadyDesc: 'ទំព័រទូទាត់នឹងបើកក្នុង browser — បញ្ជាក់នៅទីនោះ រួចត្រឡប់មកវិញ។',
     subReadyQrTitle: 'ត្រៀមស្កេន QR',
