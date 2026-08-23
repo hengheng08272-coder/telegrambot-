@@ -178,7 +178,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           {status?.subscribed && (
             <span
               className="absolute right-3 top-3 flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#0A101E]"
-              style={{ background: 'linear-gradient(135deg, #FFE7B0, #E6231F 45%, #C08F33)' }}
+              style={{ background: 'linear-gradient(135deg, #FFE7B0, #2050D8 45%, #C08F33)' }}
             >
               <Crown className="h-2.5 w-2.5" /> VIP
             </span>
@@ -189,7 +189,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             style={
               status?.subscribed
                 ? {
-                    background: 'linear-gradient(135deg, #FFE7B0, #E6231F 45%, #C08F33)',
+                    background: 'linear-gradient(135deg, #FFE7B0, #2050D8 45%, #C08F33)',
                     padding: 2,
                     boxShadow: '0 0 20px rgba(245,197,99,0.35)',
                   }
@@ -218,7 +218,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             )}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {status?.subscribed ? (
-                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#E6231F]">
+                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#2050D8]">
                   សមាជិក VIP
                 </span>
               ) : (
@@ -253,9 +253,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             "when does my VIP run out" is the #1 thing people open this
             screen to check. */}
         {status?.subscribed ? (
-          <div className="mb-4 overflow-hidden rounded-card border border-[#E6231F]/25 bg-gradient-to-br from-[#E6231F]/12 via-transparent to-[#4C6FFF]/8 p-4 shadow-card">
+          <div className="mb-4 overflow-hidden rounded-card border border-[#2050D8]/25 bg-gradient-to-br from-[#2050D8]/12 via-transparent to-[#4C6FFF]/8 p-4 shadow-card">
             <div className="mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-[#E6231F]" />
+              <ShieldCheck className="h-4 w-4 text-[#2050D8]" />
               <p className="text-sm font-bold text-white">VIP កំពុងសកម្ម</p>
               {tierLabel && (
                 <span className="ml-auto rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#B7C0D4]">
@@ -287,8 +287,8 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                       style={{
                         width: `${100 - usedPercent}%`,
                         background: expiringSoon
-                          ? 'linear-gradient(90deg,#FFC24D,#E6231F)'
-                          : 'linear-gradient(90deg,#E6231F,#86EEC0)',
+                          ? 'linear-gradient(90deg,#FFC24D,#2050D8)'
+                          : 'linear-gradient(90deg,#2050D8,#86EEC0)',
                       }}
                     />
                   </div>
@@ -327,9 +327,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               )}
               {status.expiresAt && (
                 <div className="flex items-center gap-2 px-3 py-2.5">
-                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#E6231F]" />
+                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#2050D8]" />
                   <span className="text-[11px] text-[#9AA1B2]">ផុតកំណត់</span>
-                  <span className="ml-auto text-xs font-semibold text-[#E6231F]">
+                  <span className="ml-auto text-xs font-semibold text-[#2050D8]">
                     {fmtDate(status.expiresAt)}
                   </span>
                 </div>
@@ -338,7 +338,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
 
             <button
               onClick={onOpenSubscription}
-              className="w-full rounded-full border border-[#E6231F]/30 bg-[#E6231F]/10 py-2 text-xs font-bold text-[#E6231F] transition hover:bg-[#E6231F]/20"
+              className="w-full rounded-full border border-[#2050D8]/30 bg-[#2050D8]/10 py-2 text-xs font-bold text-[#2050D8] transition hover:bg-[#2050D8]/20"
             >
               បន្តគម្រោង / ប្តូរគម្រោង
             </button>
@@ -368,14 +368,14 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             onClick={onOpenSpin}
             className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#4C6FFF]/30 bg-gradient-to-r from-[#4C6FFF]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#4C6FFF]/60 hover:from-[#4C6FFF]/20 active:scale-[0.99]"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E6231F] to-[#B98430]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#2050D8] to-[#B98430]">
               <Gift className="h-5 w-5 text-[#0A101E]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white">មាន Bonus Spin រង់ចាំ!</p>
               <p className="text-xs text-[#A3ADC4]">ការទិញ VIP លើកនេះឲ្យអ្នកនូវការចាប់រង្វាន់ថ្ងៃបន្ថែម ១ដង — ចុចដើម្បីចាប់</p>
             </div>
-            <Sparkles className="h-4 w-4 text-[#E6231F]" />
+            <Sparkles className="h-4 w-4 text-[#2050D8]" />
           </button>
         )}
 
@@ -389,9 +389,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             promise in copy. */}
         <button
           onClick={handleInviteReferral}
-          className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#E6231F]/25 bg-gradient-to-r from-[#E6231F]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#E6231F]/50 hover:from-[#E6231F]/20 active:scale-[0.99]"
+          className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#2050D8]/25 bg-gradient-to-r from-[#2050D8]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#2050D8]/50 hover:from-[#2050D8]/20 active:scale-[0.99]"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E6231F] to-[#8F1020]">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#2050D8] to-[#0E2560]">
             <UserPlus className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">

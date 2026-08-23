@@ -739,7 +739,7 @@ export default function VideoPlayerScreen({
         {/* Resolving playback URL */}
         {resolving && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black">
-            <Loader2 className="h-8 w-8 animate-spin text-[#E6231F]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#2050D8]" />
           </div>
         )}
 
@@ -760,14 +760,14 @@ export default function VideoPlayerScreen({
         {/* Buffering spinner */}
         {buffering && !loadError && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#E6231F]" />
+            <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#2050D8]" />
           </div>
         )}
 
         {/* Load error */}
         {loadError && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/80 px-6 text-center backdrop-blur-sm">
-            <AlertTriangle className="h-9 w-9 text-[#FF6B7C]" />
+            <AlertTriangle className="h-9 w-9 text-[#FF6B60]" />
             <p className="text-sm font-semibold text-white">{t.unableToLoadVideo}</p>
             <p className="max-w-xs text-xs text-white/50">{t.videoMissingHint}</p>
             <button
@@ -824,7 +824,7 @@ export default function VideoPlayerScreen({
               </button>
             )}
             <div className="min-w-0 flex-1 pt-0.5">
-              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[#FF6B7C]">
+              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4E86FF]">
                 {show.title}
               </p>
               <h2 className="truncate text-base font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] sm:text-xl">
@@ -951,14 +951,14 @@ export default function VideoPlayerScreen({
                     setMoreOpen((o) => !o);
                   }}
                   className={`player-btn relative h-10 w-10 ${
-                    speed !== 1 || fillScreen ? 'text-[#FF6B7C]' : ''
+                    speed !== 1 || fillScreen ? 'text-[#4E86FF]' : ''
                   }`}
                   aria-label={t.moreOptions}
                   title={t.moreOptions}
                 >
                   <MoreVertical className="h-[18px] w-[18px]" />
                   {(speed !== 1 || fillScreen) && (
-                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#E6231F]" />
+                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#2050D8]" />
                   )}
                 </button>
                 {moreOpen && (
@@ -991,7 +991,7 @@ export default function VideoPlayerScreen({
                             }}
                             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
                               s === speed
-                                ? 'bg-[#E6231F]/15 text-[#FF6B7C]'
+                                ? 'bg-[#2050D8]/15 text-[#93B2FF]'
                                 : 'bg-white/[0.06] text-white/75 hover:bg-white/10'
                             }`}
                           >
@@ -1057,7 +1057,7 @@ export default function VideoPlayerScreen({
               className="h-14 w-14 shrink-0 rounded-xl object-cover"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#FF6B7C]">{t.upNext}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#4E86FF]">{t.upNext}</p>
               <p className="truncate text-xs font-semibold text-white">
                 {t.episodeLabel} {nextEpisode.episode_number}: {nextEpisode.title}
               </p>
@@ -1112,7 +1112,7 @@ export default function VideoPlayerScreen({
                       }}
                       className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition ${
                         isCurrent
-                          ? 'border-[#E6231F]/45 bg-[#E6231F]/[0.12] shadow-[0_0_22px_rgba(230,35,31,0.18)]'
+                          ? 'border-[#2050D8]/45 bg-[#2050D8]/[0.12] shadow-[0_0_22px_rgba(32,80,216,0.18)]'
                           : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08]'
                       }`}
                     >
@@ -1127,7 +1127,7 @@ export default function VideoPlayerScreen({
                         </p>
                         {ep.duration && <p className="text-[10px] text-white/40">{ep.duration} min</p>}
                       </div>
-                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#E6231F]" />}
+                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#2050D8]" />}
                     </button>
                   );
                 })}

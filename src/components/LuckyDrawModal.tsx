@@ -13,8 +13,8 @@ interface Props {
 // near-black, ember orange, chrome silver, with gold reserved for
 // whichever slice is the top prize in a given pool.
 const WEDGE_PALETTE = [
-  '#E6231F', '#F5C563', '#FF6B7C', '#8F1020', '#C08F33',
-  '#7B2D8B', '#1F8A70', '#2C5F8A', '#E6231F', '#F5C563',
+  '#2050D8', '#F5C563', '#FF6B7C', '#0E2560', '#C08F33',
+  '#7B2D8B', '#1F8A70', '#2C5F8A', '#2050D8', '#F5C563',
   '#B98430', '#F5C563',
 ];
 
@@ -88,7 +88,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#0A101E] p-6 text-center shadow-[0_0_70px_rgba(245,197,99,0.2)]">
           <Sparkles className="sparkle-twinkle pointer-events-none absolute left-5 top-5 h-3.5 w-3.5 text-[#F5C563]/50" />
           <Sparkles
-            className="sparkle-twinkle pointer-events-none absolute right-14 top-8 h-2.5 w-2.5 text-[#E6231F]/60"
+            className="sparkle-twinkle pointer-events-none absolute right-14 top-8 h-2.5 w-2.5 text-[#2050D8]/60"
             style={{ animationDelay: '0.5s' }}
           />
 
@@ -193,7 +193,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
               </div>
               <button
                 onClick={onClose}
-                className="btn-primary w-full rounded-full py-3.5 text-sm font-bold shadow-[0_8px_24px_rgba(230,35,31,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(230,35,31,0.5)] active:scale-[0.98]"
+                className="btn-primary w-full rounded-full py-3.5 text-sm font-bold shadow-[0_8px_24px_rgba(32,80,216,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(32,80,216,0.5)] active:scale-[0.98]"
               >
                 {t.spinCollect}
               </button>

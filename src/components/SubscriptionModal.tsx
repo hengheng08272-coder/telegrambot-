@@ -1246,7 +1246,10 @@ export default function SubscriptionModal({
               >
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--co-r-chip)]"
-                  style={{ backgroundColor: 'rgba(92,130,206,0.22)' }}
+                  style={{
+                    backgroundColor: 'var(--co-aba-soft)',
+                    boxShadow: 'inset 0 0 0 1px var(--co-aba-line)',
+                  }}
                 >
                   <Zap className="h-5 w-5" style={{ color: 'var(--co-aba)' }} />
                 </span>
@@ -1257,7 +1260,7 @@ export default function SubscriptionModal({
                     </span>
                     <span
                       className="rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                      style={{ backgroundColor: 'rgba(92,130,206,0.24)', color: '#cfdcf8' }}
+                      style={{ backgroundColor: 'var(--co-brand-soft)', color: '#a9c0ff' }}
                     >
                       {t.subRecommended}
                     </span>

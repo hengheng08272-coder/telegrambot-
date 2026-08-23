@@ -35,7 +35,7 @@ export default function LegalScreen({ onBack }: Props) {
           <button
             onClick={() => setTab('terms')}
             className={`rounded-xl px-4 py-1.5 text-xs font-bold transition ${
-              tab === 'terms' ? 'bg-[#E6231F] text-white' : 'border border-white/10 bg-white/5 text-white/60'
+              tab === 'terms' ? 'bg-[#2050D8] text-white' : 'border border-white/10 bg-white/5 text-white/60'
             }`}
           >
             {isKh ? 'លក្ខខណ្ឌប្រើប្រាស់' : 'Terms of Service'}
@@ -43,7 +43,7 @@ export default function LegalScreen({ onBack }: Props) {
           <button
             onClick={() => setTab('privacy')}
             className={`rounded-xl px-4 py-1.5 text-xs font-bold transition ${
-              tab === 'privacy' ? 'bg-[#E6231F] text-white' : 'border border-white/10 bg-white/5 text-white/60'
+              tab === 'privacy' ? 'bg-[#2050D8] text-white' : 'border border-white/10 bg-white/5 text-white/60'
             }`}
           >
             {isKh ? 'គោលការណ៍ឯកជនភាព' : 'Privacy Policy'}

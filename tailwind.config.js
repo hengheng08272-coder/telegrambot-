@@ -24,21 +24,21 @@ export default {
           hover: '#1E2B48',
         },
         hairline: 'rgba(146,172,224,0.12)',
-        // One red for anything that acts, app and checkout alike.
+        // One blue for anything that acts, app and checkout alike.
         brand: {
-          DEFAULT: '#E6231F',
-          light: '#FF5A4F',
-          dark: '#7A0F0D',
+          DEFAULT: '#2050D8',
+          light: '#4E86FF',
+          dark: '#0E2560',
         },
-        // Quiet, informational marks — episode counts, "ongoing",
-        // section icons. Where teal and violet used to shout.
-        steel: {
-          DEFAULT: '#5B8CFF',
-          light: '#93B2FF',
+        // Quiet marks that are not actions — "ongoing", section icons,
+        // Coming Soon. Red earns attention without being tappable.
+        accent: {
+          DEFAULT: '#E6231F',
+          light: '#FF6B60',
         },
         indigo: {
-          brand: '#5B8CFF',
-          light: '#93B2FF',
+          brand: '#E6231F',
+          light: '#FF6B60',
         },
         // Gold has exactly one job left: VIP.
         gold: {
@@ -60,17 +60,17 @@ export default {
       boxShadow: {
         card: '0 10px 30px rgba(4,8,18,0.6)',
         elevated: '0 24px 60px rgba(4,8,18,0.72)',
-        glow: '0 0 34px rgba(230,35,31,0.3)',
+        glow: '0 0 34px rgba(32,80,216,0.3)',
         'glow-gold': '0 0 28px rgba(245,197,99,0.28)',
       },
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(135deg, #E6231F 0%, #B0171A 55%, #7A0F0D 100%)',
+        'brand-gradient': 'linear-gradient(135deg, #2050D8 0%, #1A3FAE 55%, #0E2560 100%)',
         'vip-gradient': 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #B98430)',
       },
       keyframes: {
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(230,35,31,0.45)' },
-          '50%': { boxShadow: '0 0 0 8px rgba(230,35,31,0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(32,80,216,0.45)' },
+          '50%': { boxShadow: '0 0 0 8px rgba(32,80,216,0)' },
         },
         'badge-pop': {
           '0%': { transform: 'scale(0.6)', opacity: '0' },

@@ -403,7 +403,7 @@ export default function HomeScreen({
             appears once the bar goes solid, so it never competes with the
             hero art underneath. */}
         <div
-          className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#E6231F]/50 to-transparent transition-opacity duration-300 ${
+          className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#2050D8]/50 to-transparent transition-opacity duration-300 ${
             heroVisible && !scrolled ? 'opacity-0' : 'opacity-100'
           }`}
           aria-hidden
@@ -448,7 +448,7 @@ export default function HomeScreen({
               )}
               {rewardsAvailable === 'spin-ready' && (
                 <span
-                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B7C] ring-2 ring-[#0A101E]"
+                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
                   aria-hidden
                 />
               )}
@@ -526,7 +526,7 @@ export default function HomeScreen({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.searchPlaceholder}
-              className="w-44 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#E6231F]/50 focus:bg-white/[0.07]"
+              className="w-44 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#2050D8]/50 focus:bg-white/[0.07]"
             />
           </div>
 
@@ -743,13 +743,13 @@ export default function HomeScreen({
             {comingSoon.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<Clock className="h-5 w-5 text-[#FF6B7C]" />}
+                icon={<Clock className="h-5 w-5 text-[#FF6B60]" />}
                 title={t.comingSoonLabel}
                 shows={comingSoon}
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.comingSoonLabel, shows: comingSoon })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.freshTag ?? 'SOON', color: '#FF6B7C' }}
+                tag={{ label: t.freshTag ?? 'SOON', color: '#E6231F' }}
               />
             )}
 
@@ -766,7 +766,7 @@ export default function HomeScreen({
                 >
                   <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
                   <Gift className="h-4 w-4" />
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B7C] ring-2 ring-[#0A101E]" aria-hidden />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]" aria-hidden />
                 </button>
               </div>
             )}
@@ -1093,7 +1093,7 @@ function CoverflowHero({
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
           <span
-            className="relative -top-1 mb-1 inline-flex items-center gap-1 rounded-md border border-[#E6231F]/40 bg-[#E6231F]/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#FF6B7C] sm:text-[11px]"
+            className="relative -top-1 mb-1 inline-flex items-center gap-1 rounded-md border border-[#E6231F]/40 bg-[#E6231F]/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#FF6B60] sm:text-[11px]"
             style={{ fontFamily: '"Anton", Battambang, sans-serif', letterSpacing: '0.06em' }}
           >
             <span className="animate-pulse">🔥</span> {t.featuredLabel ?? 'កំពុងពេញនិយម'}
@@ -1134,15 +1134,16 @@ function CoverflowHero({
             <span className="rounded border border-white/20 px-1.5 py-0.5 text-[9px] font-medium uppercase text-white/70 sm:text-[10px]">
               {hero.type === 'movie' ? t.movie : t.series}
             </span>
-            {/* "Ongoing" — same steel-blue pill as the Show Detail
+            {/* "Ongoing" — same red pill as the Show Detail
                 screen, so the cue reads consistently across the app
                 instead of inventing a separate style just for the hero.
-                Steel and not gold: it says the show is still getting
-                episodes, which is information, not a premium promise. */}
+                Red and not gold: it says the show is still getting
+                episodes, which is information, not a premium promise —
+                and nothing red in this app is tappable. */}
             {hero.type === 'series' && hero.status !== 'completed' && (
               <>
                 <span className="h-3 w-px bg-white/20" aria-hidden />
-                <span className="rounded bg-steel/15 px-1.5 py-0.5 text-[9px] font-semibold text-steel sm:text-[10px]">
+                <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold text-accent sm:text-[10px]">
                   {t.ongoing}
                 </span>
               </>
@@ -1155,8 +1156,8 @@ function CoverflowHero({
                 "Play" for something that cannot be played yet. */}
             <button
               onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(230,35,31,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
-              style={{ background: 'linear-gradient(135deg, #E6231F, #E6231F 55%, #8F1020)' }}
+              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(32,80,216,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
+              style={{ background: 'linear-gradient(135deg, #2050D8, #1A3FAE 55%, #0E2560)' }}
             >
               {hero.coming_soon ? (
                 <>
@@ -1247,7 +1248,7 @@ function CoverflowHero({
             className="hero-progress-fill h-full"
             style={{
               animationDuration: `${HERO_AUTO_MS}ms`,
-              background: '#E6231F',
+              background: '#2050D8',
             }}
           />
         </div>
@@ -1340,12 +1341,12 @@ function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
     <button
       onClick={onClick}
       className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 transition ${
-        active ? 'text-[#FF6B7C]' : 'text-[#9AA1B2] active:text-white/80'
+        active ? 'text-[#4E86FF]' : 'text-[#9AA1B2] active:text-white/80'
       }`}
     >
       {active && (
         <span
-          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#E6231F] to-transparent"
+          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#2050D8] to-transparent"
           aria-hidden
         />
       )}
@@ -1373,7 +1374,7 @@ function NavLink({ label, active, onClick }: NavLinkProps) {
     >
       {label}
       {active && (
-        <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#FF6B7C] to-[#E6231F] shadow-[0_0_10px_rgba(230,35,31,0.8)]" />
+        <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#4E86FF] to-[#2050D8] shadow-[0_0_10px_rgba(32,80,216,0.8)]" />
       )}
     </button>
   );
@@ -1438,7 +1439,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="text-xs font-semibold text-[#A3ADC4] transition hover:text-[#E6231F]"
+              className="text-xs font-semibold text-[#A3ADC4] transition hover:text-[#2050D8]"
             >
               {viewAllLabel}
             </button>
@@ -1449,7 +1450,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           <div className="flex min-w-0 items-center gap-2">
             <span
               className="h-4 w-[3px] shrink-0 rounded-sm"
-              style={{ background: tag?.color ?? '#E6231F' }}
+              style={{ background: tag?.color ?? '#2050D8' }}
               aria-hidden
             />
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
@@ -1466,7 +1467,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="shrink-0 text-xs font-semibold text-[#A3ADC4] transition hover:text-[#E6231F]"
+              className="shrink-0 text-xs font-semibold text-[#A3ADC4] transition hover:text-[#2050D8]"
             >
               {viewAllLabel}
             </button>
@@ -1504,7 +1505,7 @@ function ContinueWatchingRow({ items, onResume, title, epLabel }: ContinueWatchi
   return (
     <section className="mt-9">
       <div className="mb-3 flex items-center gap-2">
-        <Clock className="h-5 w-5 text-steel" />
+        <Clock className="h-5 w-5 text-accent" />
         <h2 className="text-lg font-bold tracking-tight">{title}</h2>
       </div>
       <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-3">
@@ -1523,7 +1524,7 @@ function ContinueWatchingRow({ items, onResume, title, epLabel }: ContinueWatchi
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-transparent" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E6231F]/90 shadow-lg transition group-active:scale-90">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2050D8]/90 shadow-lg transition group-active:scale-90">
                   <Play className="h-3.5 w-3.5 fill-white text-white" />
                 </div>
               </div>
@@ -1559,12 +1560,12 @@ function StartWatchingPrompt({ show, title, message, cta, onSelectShow }: StartW
   return (
     <section className="mt-9">
       <div className="mb-3 flex items-center gap-2">
-        <Clock className="h-5 w-5 text-steel" />
+        <Clock className="h-5 w-5 text-accent" />
         <h2 className="text-lg font-bold tracking-tight">{title}</h2>
       </div>
       <button
         onClick={() => onSelectShow(show)}
-        className="group relative flex w-full items-center gap-4 overflow-hidden rounded-xl border border-dashed border-white/12 bg-white/[0.02] p-3 text-left transition hover:border-[#E6231F]/40 hover:bg-white/[0.04]"
+        className="group relative flex w-full items-center gap-4 overflow-hidden rounded-xl border border-dashed border-white/12 bg-white/[0.02] p-3 text-left transition hover:border-[#2050D8]/40 hover:bg-white/[0.04]"
       >
         <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151926] ring-1 ring-white/5 sm:h-24 sm:w-16">
           <img
@@ -1577,7 +1578,7 @@ function StartWatchingPrompt({ show, title, message, cta, onSelectShow }: StartW
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white sm:text-base">{show.title}</p>
           <p className="mt-0.5 text-xs text-[#8A93AC] sm:text-sm">{message}</p>
-          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#E6231F] px-3 py-1.5 text-xs font-bold text-white shadow-[0_2px_10px_rgba(230,35,31,0.35)] transition group-active:scale-95">
+          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#2050D8] px-3 py-1.5 text-xs font-bold text-white shadow-[0_2px_10px_rgba(32,80,216,0.35)] transition group-active:scale-95">
             <Play className="h-3 w-3 fill-white" />
             {cta}
           </span>

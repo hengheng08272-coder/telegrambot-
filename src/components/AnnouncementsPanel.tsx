@@ -113,7 +113,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
             onChange={(e) => setTickerDraft(e.target.value)}
             placeholder={tickerLoaded ? '' : 'Loading current ticker text…'}
             rows={2}
-            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#E6231F]/50"
+            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#2050D8]/50"
           />
           <button
             onClick={handleSaveTicker}
@@ -137,7 +137,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
             onChange={(e) => setDraft(e.target.value)}
             placeholder="ឧ. ថ្ងៃនេះ episode ថ្មីចេញ 3 ភាគ! / ថ្ងៃស្អែក spin ថ្មីមកដល់..."
             rows={3}
-            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#E6231F]/50"
+            className="mb-2 w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#2050D8]/50"
           />
           {error && <p className="mb-2 text-xs text-red-300">{error}</p>}
           <button

@@ -32,20 +32,23 @@
   --co-line-strong: rgba(146, 172, 224, 0.22);
 
   /* ── Brand ────────────────────────────────────────────────────────── */
-  --co-brand: #e6231f;       /* primary action — one red, used sparingly */
-  --co-brand-deep: #7a0f0d;  /* gradient end */
-  --co-brand-soft: rgba(230, 35, 31, 0.12);
-  --co-brand-ring: rgba(230, 35, 31, 0.42);
+  --co-brand: #2050d8;       /* primary action — one blue, used sparingly */
+  --co-brand-deep: #0e2560;  /* gradient end */
+  --co-brand-soft: rgba(32, 80, 216, 0.12);
+  --co-brand-ring: rgba(32, 80, 216, 0.42);
 
-  /* ABA blue. Reserved STRICTLY for the "open ABA" affordance so the
-     bank's own colour never competes with the primary action. */
-  --co-aba: #5c82ce;
-  --co-aba-soft: rgba(92, 130, 206, 0.12);
-  --co-aba-line: rgba(92, 130, 206, 0.32);
+  /* ABA's own blue sits right on top of the brand blue now, so the bank
+     affordance is carried by a neutral surface and the ABA mark itself
+     rather than by hue. Nothing but the primary button gets to look
+     like the primary button. */
+  --co-aba: #b9c6e2;
+  --co-aba-soft: rgba(146, 172, 224, 0.08);
+  --co-aba-line: rgba(146, 172, 224, 0.2);
 
   /* ── Status ───────────────────────────────────────────────────────── */
-  /* Warnings and errors are amber, never red: red is the primary button
-     here, so a red error would read as something to tap. */
+  /* Warnings and errors stay amber. Red is now a quiet marker elsewhere
+     in the app, and amber is still the clearer "stop and read this" on a
+     dark ground. */
   --co-amber: #ffb84d;
   --co-amber-soft: rgba(255, 184, 77, 0.1);
   --co-amber-line: rgba(255, 184, 77, 0.32);

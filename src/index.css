@@ -32,19 +32,20 @@
      scratch; a blue-grey one reads as an edge. */
   --nv-hairline: rgba(146, 172, 224, 0.12);
 
-  /* Brand. One red for anything that acts — Play, Subscribe, the pay
+  /* Brand. One blue for anything that acts — Play, Subscribe, the pay
      button in checkout — so the app and its payment flow are visibly the
-     same product. Steel blue carries the quiet, informational marks
-     (episode counts, "ongoing", section icons) that used to be gold or
-     teal and pulled the eye off the covers. Gold is left with exactly
-     one job: VIP. */
-  --nv-primary: #e6231f;
-  --nv-primary-light: #ff5a4f;
-  --nv-primary-dark: #7a0f0d;
-  --nv-steel: #5b8cff;
-  --nv-steel-soft: rgba(91, 140, 255, 0.14);
-  --nv-indigo: #5b8cff;
-  --nv-indigo-light: #93b2ff;
+     same product, and the tappable thing never competes with the reds
+     and oranges in the artwork. Red is demoted to the quiet marks that
+     are NOT actions ("ongoing", section icons, Coming Soon): it still
+     catches the eye, but nothing red asks to be pressed. Gold is left
+     with exactly one job: VIP. */
+  --nv-primary: #2050d8;
+  --nv-primary-light: #4e86ff;
+  --nv-primary-dark: #0e2560;
+  --nv-accent: #e6231f;
+  --nv-accent-soft: rgba(230, 35, 31, 0.14);
+  --nv-indigo: #e6231f;
+  --nv-indigo-light: #ff6b60;
   --nv-gold: #f5c563;
   --nv-gold-light: #ffe7b0;
   --nv-gold-dark: #b98430;
@@ -62,7 +63,7 @@
   /* Elevation */
   --nv-shadow-card: 0 10px 30px rgba(4, 8, 18, 0.6);
   --nv-shadow-elevated: 0 24px 60px rgba(4, 8, 18, 0.72);
-  --nv-glow-primary: 0 0 34px rgba(230, 35, 31, 0.3);
+  --nv-glow-primary: 0 0 34px rgba(32, 80, 216, 0.3);
   --nv-glow-gold: 0 0 28px rgba(245, 197, 99, 0.28);
 
   /* Safe-area insets, so bars can sit flush against the notch/home bar */
@@ -206,7 +207,7 @@ h3 {
   /* Text painted with the brand gradients — used for section eyebrows and
      the VIP wordmark. */
   .text-gradient-primary {
-    background-image: linear-gradient(120deg, #ff6a5f 0%, #e6231f 55%, #7a0f0d 100%);
+    background-image: linear-gradient(120deg, #ff6a5f 0%, #2050d8 55%, #0e2560 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -221,7 +222,7 @@ h3 {
   /* Primary action surface — one class so every CTA in the app shares the
      same gradient, glow and press feedback instead of redefining it. */
   .btn-primary {
-    background-image: linear-gradient(135deg, #e6231f 0%, #b0171a 55%, #7a0f0d 100%);
+    background-image: linear-gradient(135deg, #2050d8 0%, #1a3fae 55%, #0e2560 100%);
     color: #fff;
     box-shadow: 0 6px 18px rgba(4, 8, 18, 0.5);
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
@@ -314,7 +315,7 @@ h3 {
   inset: -1.5px;
   border-radius: inherit;
   padding: 1.5px;
-  background: conic-gradient(from 0deg, #F5C563, #7a0f0d, #F5C563, #c98a2e, #F5C563);
+  background: conic-gradient(from 0deg, #F5C563, #0e2560, #F5C563, #c98a2e, #F5C563);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -402,7 +403,7 @@ h3 {
   position: absolute;
   bottom: 6%;
   border-radius: 9999px;
-  background: radial-gradient(circle, #FFEFC8 0%, #F5C563 45%, #E6231F 80%, transparent 100%);
+  background: radial-gradient(circle, #FFEFC8 0%, #F5C563 45%, #2050D8 80%, transparent 100%);
   opacity: 0;
   animation-name: ember-rise;
   animation-timing-function: ease-in;
@@ -639,8 +640,8 @@ h3 {
     inset-block: 0;
     left: 0;
     border-radius: 9999px;
-    background: linear-gradient(90deg, #6dffe4, #12e7c6);
-    box-shadow: 0 0 12px rgba(18, 231, 198, 0.55);
+    background: linear-gradient(90deg, #4e86ff, #2050d8);
+    box-shadow: 0 0 12px rgba(32, 80, 216, 0.5);
   }
   .seek-knob {
     position: absolute;
@@ -739,7 +740,7 @@ h3 {
   }
   .co-row-selected {
     border-color: var(--co-brand-ring);
-    background-color: rgba(230, 35, 31, 0.07);
+    background-color: rgba(32, 80, 216, 0.07);
   }
 
   /* The one primary action per screen. */
@@ -825,7 +826,7 @@ h3 {
   }
   .co-ticket-selected {
     border-color: var(--co-brand-ring);
-    background-image: linear-gradient(90deg, rgba(230, 35, 31, 0.13) 0%, rgba(230, 35, 31, 0) 58%);
+    background-image: linear-gradient(90deg, rgba(32, 80, 216, 0.13) 0%, rgba(32, 80, 216, 0) 58%);
   }
 
   .co-ticket-stub {
@@ -946,7 +947,7 @@ h3 {
 @keyframes co-focus-ring {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(230, 35, 31, 0);
+    box-shadow: 0 0 0 0 rgba(32, 80, 216, 0);
   }
   15%,
   70% {

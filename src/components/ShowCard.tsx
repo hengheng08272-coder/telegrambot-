@@ -78,7 +78,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
         style={{ transition: 'transform 0.35s ease-out', transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }}
       >
         <div
-          className={`aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-[#E6231F]/60 ${
+          className={`aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-[#2050D8]/60 ${
             large
               ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)] group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.8)]'
               : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)]'
@@ -176,7 +176,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               tapping them can't actually play anything yet. */}
           {!show.coming_soon && (
             <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_28px_rgba(230,35,31,0.65)]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_28px_rgba(32,80,216,0.65)]">
                 <Play className="h-4 w-4 fill-white text-white" />
               </div>
             </div>
@@ -185,7 +185,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
       </div>
       {!rank && (
         <div className="mt-2 px-0.5">
-          <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#FF6B7C] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
+          <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
             {show.title}
           </h3>
         </div>

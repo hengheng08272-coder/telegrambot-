@@ -89,7 +89,7 @@ export default function WatchlistScreen({
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition group-hover:bg-black/30">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_22px_rgba(230,35,31,0.5)]">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_22px_rgba(32,80,216,0.5)]">
                         <Play className="h-4 w-4 fill-white text-white" />
                       </div>
                     </div>
@@ -110,7 +110,7 @@ export default function WatchlistScreen({
                   </div>
                   <button
                     onClick={() => handleClearContinue(item.show.id)}
-                    className="shrink-0 rounded-full p-2 text-[#6E7586] transition hover:text-[#E6231F]"
+                    className="shrink-0 rounded-full p-2 text-[#6E7586] transition hover:text-[#2050D8]"
                     aria-label={t.removeFromList}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -124,7 +124,7 @@ export default function WatchlistScreen({
         {/* Want to watch */}
         <section className="mt-10">
           <div className="mb-3 flex items-center gap-2">
-            <Bookmark className="h-5 w-5 text-[#E6231F]" />
+            <Bookmark className="h-5 w-5 text-[#2050D8]" />
             <h2 className="text-lg font-bold tracking-tight">{t.wantToWatch}</h2>
           </div>
           {watchlist.length === 0 ? (
@@ -139,7 +139,7 @@ export default function WatchlistScreen({
                     onClick={() => onSelectShow(s)}
                     className="block w-full text-left"
                   >
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#E6231F]/50">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#2050D8]/50">
                       <img
                         src={s.poster_url ?? ''}
                         alt={s.title}
@@ -160,7 +160,7 @@ export default function WatchlistScreen({
                   </button>
                   <button
                     onClick={() => handleRemove(s.id)}
-                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white/70 backdrop-blur-sm transition hover:text-[#E6231F]"
+                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white/70 backdrop-blur-sm transition hover:text-[#2050D8]"
                     aria-label={t.removeFromList}
                   >
                     <Trash2 className="h-3.5 w-3.5" />

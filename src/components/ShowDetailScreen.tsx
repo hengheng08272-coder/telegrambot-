@@ -294,7 +294,7 @@ export default function ShowDetailScreen({
                     className={`group flex w-full items-center gap-4 overflow-hidden rounded-card border p-3 text-left shadow-card transition active:scale-[0.995] ${
                       locked
                         ? 'border-[#F5C563]/25 bg-[#1A1710] hover:border-[#F5C563]/60 hover:shadow-glow-gold'
-                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#E6231F]/35 hover:bg-[#151926]'
+                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#2050D8]/35 hover:bg-[#151926]'
                     }`}
                   >
                     <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-xl sm:w-48">
@@ -323,7 +323,7 @@ export default function ShowDetailScreen({
                         </div>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition group-hover:opacity-100">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_24px_rgba(230,35,31,0.55)]">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_24px_rgba(32,80,216,0.55)]">
                             <Play className="h-4 w-4 fill-white text-white" />
                           </div>
                         </div>
@@ -348,14 +348,14 @@ export default function ShowDetailScreen({
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#FF6B7C]">
+                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#4E86FF]">
                         {ep.title}
                       </h3>
                       <p className="mt-1 line-clamp-1 text-sm text-[#A3ADC4]">
                         {locked ? t.lockedUnlockHint : ep.description}
                       </p>
                     </div>
-                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-[#6E7586] transition group-hover:text-[#E6231F] sm:block" />
+                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-[#6E7586] transition group-hover:text-[#2050D8] sm:block" />
                   </button>
                   );
                 })}

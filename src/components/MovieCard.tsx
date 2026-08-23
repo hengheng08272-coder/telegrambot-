@@ -47,7 +47,7 @@ export default function MovieCard({ show, onClick }: Props) {
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(115deg, rgba(10,10,13,0.94) 20%, rgba(10,10,13,0.66) 62%, rgba(230,35,31,0.20) 100%)',
+              'linear-gradient(115deg, rgba(10,10,13,0.94) 20%, rgba(10,10,13,0.66) 62%, rgba(32,80,216,0.20) 100%)',
           }}
         />
       </span>
