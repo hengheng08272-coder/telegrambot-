@@ -881,6 +881,7 @@ type TranslationText = {
   featuredLabel?: string;
   vipBadge?: string;
   ongoing?: string;
+  comingSoonLabel: string;
   myList: string;
 };
 
@@ -1029,29 +1030,45 @@ function CoverflowHero({
               className="absolute inset-0"
               style={{ background: 'linear-gradient(180deg, rgba(7,8,12,0) 60%, rgba(7,8,12,0.6) 100%)' }}
             />
-            {/* Trending tag — a small corner flag instead of a numeral,
-                only shown when the show is genuinely trending. */}
-            {heroRank && (
-              <span className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-black text-white backdrop-blur-sm">
-                <span className="animate-pulse">🔥</span> TOP #{heroRank}
+            {/* Coming Soon — announced, but there is nothing to play yet.
+                It takes the whole top of the cover: a title in the Top 10
+                that cannot be watched is the one thing a viewer has to
+                know before tapping. Spelled out here rather than the
+                icon the rails use, since the hero has no row header above
+                it saying what it is. */}
+            {hero.coming_soon ? (
+              <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded-md bg-[#FF2D46]/90 px-1.5 py-0.5 text-[9px] font-black text-white backdrop-blur-sm">
+                <Clock className="h-2.5 w-2.5" /> {t.comingSoonLabel}
               </span>
+            ) : (
+              <>
+                {/* Trending tag — a small corner flag instead of a numeral,
+                    only shown when the show is genuinely trending. */}
+                {heroRank && (
+                  <span className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-black text-white backdrop-blur-sm">
+                    <span className="animate-pulse">🔥</span> TOP #{heroRank}
+                  </span>
+                )}
+                {/* VIP / Free badge — same subscription status the detail
+                    screen enforces, so the cover never over-promises.
+                    Skipped on a Coming Soon cover, where neither label
+                    means anything until episodes exist. */}
+                <div className="absolute right-1.5 top-1.5">
+                  {heroIsFree ? (
+                    <span className="rounded-md bg-emerald-500/85 px-1.5 py-0.5 text-[8px] font-bold text-white backdrop-blur-sm">
+                      {t.freeBadge}
+                    </span>
+                  ) : (
+                    <span
+                      className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8px] font-black text-black backdrop-blur-sm"
+                      style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
+                    >
+                      👑 {t.vipBadge ?? 'VIP'}
+                    </span>
+                  )}
+                </div>
+              </>
             )}
-            {/* VIP / Free badge — same subscription status the detail
-                screen enforces, so the cover never over-promises. */}
-            <div className="absolute right-1.5 top-1.5">
-              {heroIsFree ? (
-                <span className="rounded-md bg-emerald-500/85 px-1.5 py-0.5 text-[8px] font-bold text-white backdrop-blur-sm">
-                  {t.freeBadge}
-                </span>
-              ) : (
-                <span
-                  className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8px] font-black text-black backdrop-blur-sm"
-                  style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
-                >
-                  👑 {t.vipBadge ?? 'VIP'}
-                </span>
-              )}
-            </div>
           </div>
         </button>
 
@@ -1115,12 +1132,23 @@ function CoverflowHero({
           </div>
 
           <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
+            {/* Same tap either way — the detail screen is where a Coming
+                Soon title explains itself — but the label stops saying
+                "Play" for something that cannot be played yet. */}
             <button
               onClick={() => onSelectShow(hero)}
               className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(255,45,70,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
               style={{ background: 'linear-gradient(135deg, #FF2D46, #FF2D46 55%, #8F1020)' }}
             >
-              <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
+              {hero.coming_soon ? (
+                <>
+                  <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t.comingSoonLabel}
+                </>
+              ) : (
+                <>
+                  <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
+                </>
+              )}
             </button>
             <button
               onClick={() => {
