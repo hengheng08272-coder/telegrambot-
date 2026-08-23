@@ -269,12 +269,28 @@ Deno.serve(async (req: Request) => {
         Deno.env.get("TELEGRAM_SUPPORT_URL") ||
         (adminUsername ? `https://t.me/${adminUsername}` : null);
 
+      // A `url` button hands the address to the operating system, so iOS
+      // stops to ask "Open link?" and then opens the Mini App as an
+      // ordinary web page in the browser -- outside Telegram, with no
+      // initData, so the viewer is not signed in. A `web_app` button
+      // opens it in place inside Telegram: no prompt, no URL shown, and
+      // the Mini App gets its Telegram identity.
+      //
+      // Telegram only accepts web_app buttons in private chats, and
+      // rejects the whole sendMessage call in a group -- which would
+      // mean no welcome at all for a /start typed in a group. So the
+      // plain link stays as the fallback there.
+      const isPrivateChat = msg?.chat?.type === "private";
+      const openAppButton = isPrivateChat
+        ? { text: OPEN_APP_BTN, web_app: { url: miniAppUrl } }
+        : { text: OPEN_APP_BTN, url: miniAppUrl };
+
       // Two buttons, one job each: go in, or get help. Subscribe led to
       // the same Mini App as Open App, and About/Preview were reading
       // material in front of a door the viewer had already decided to
       // walk through.
       const keyboard = [
-        [{ text: OPEN_APP_BTN, url: miniAppUrl }],
+        [openAppButton],
         supportUrl ? [{ text: SUPPORT_BTN, url: supportUrl }] : [],
       ].filter((row) => row.length > 0);
 
