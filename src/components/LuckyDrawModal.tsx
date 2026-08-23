@@ -13,8 +13,8 @@ interface Props {
 // near-black, ember orange, chrome silver, with gold reserved for
 // whichever slice is the top prize in a given pool.
 const WEDGE_PALETTE = [
-  '#FF2D46', '#F5C563', '#FF6B7C', '#8F1020', '#C08F33',
-  '#7B2D8B', '#1F8A70', '#2C5F8A', '#FF2D46', '#F5C563',
+  '#E6231F', '#F5C563', '#FF6B7C', '#8F1020', '#C08F33',
+  '#7B2D8B', '#1F8A70', '#2C5F8A', '#E6231F', '#F5C563',
   '#B98430', '#F5C563',
 ];
 
@@ -85,10 +85,10 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
       >
         <div className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-[#F5C563]/10 blur-3xl" />
 
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#07080C] p-6 text-center shadow-[0_0_70px_rgba(245,197,99,0.2)]">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#0A101E] p-6 text-center shadow-[0_0_70px_rgba(245,197,99,0.2)]">
           <Sparkles className="sparkle-twinkle pointer-events-none absolute left-5 top-5 h-3.5 w-3.5 text-[#F5C563]/50" />
           <Sparkles
-            className="sparkle-twinkle pointer-events-none absolute right-14 top-8 h-2.5 w-2.5 text-[#FF2D46]/60"
+            className="sparkle-twinkle pointer-events-none absolute right-14 top-8 h-2.5 w-2.5 text-[#E6231F]/60"
             style={{ animationDelay: '0.5s' }}
           />
 
@@ -173,8 +173,8 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
                 })}
               </div>
 
-              <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#07080C] bg-gradient-to-br from-[#F5C563] to-[#B98430] shadow-lg">
-                <Gift className={`h-6 w-6 text-[#07080C] ${spinning ? '' : 'gift-float'}`} />
+              <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#0A101E] bg-gradient-to-br from-[#F5C563] to-[#B98430] shadow-lg">
+                <Gift className={`h-6 w-6 text-[#0A101E] ${spinning ? '' : 'gift-float'}`} />
               </div>
             </div>
           )}
@@ -193,7 +193,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
               </div>
               <button
                 onClick={onClose}
-                className="btn-primary w-full rounded-full py-3.5 text-sm font-bold shadow-[0_8px_24px_rgba(255,45,70,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(255,45,70,0.5)] active:scale-[0.98]"
+                className="btn-primary w-full rounded-full py-3.5 text-sm font-bold shadow-[0_8px_24px_rgba(230,35,31,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(230,35,31,0.5)] active:scale-[0.98]"
               >
                 {t.spinCollect}
               </button>
@@ -209,7 +209,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
             <button
               onClick={spin}
               disabled={spinning || checking || !!error}
-              className="w-full rounded-full bg-gradient-to-r from-[#F5C563] to-[#B98430] py-3.5 text-sm font-bold text-[#07080C] shadow-[0_8px_24px_rgba(245,197,99,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(245,197,99,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full rounded-full bg-gradient-to-r from-[#F5C563] to-[#B98430] py-3.5 text-sm font-bold text-[#0A101E] shadow-[0_8px_24px_rgba(245,197,99,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(245,197,99,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
             >
               {spinning ? t.spinSpinning : t.spinButton}
             </button>

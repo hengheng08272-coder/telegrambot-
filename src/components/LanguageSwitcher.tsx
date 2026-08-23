@@ -24,7 +24,7 @@ export default function LanguageSwitcher({ lang, onChange, className = '', bare 
         onClick={() => onChange('km')}
         aria-pressed={lang === 'km'}
         className={`rounded-md px-2 py-1 text-[10px] font-semibold leading-none transition font-khmer ${
-          lang === 'km' ? 'bg-[#FF2D46] text-white' : 'text-white/60 hover:text-white'
+          lang === 'km' ? 'bg-[#E6231F] text-white' : 'text-white/60 hover:text-white'
         }`}
       >
         ខ្មែរ
@@ -34,7 +34,7 @@ export default function LanguageSwitcher({ lang, onChange, className = '', bare 
         onClick={() => onChange('en')}
         aria-pressed={lang === 'en'}
         className={`rounded-md px-2 py-1 text-[10px] font-semibold leading-none transition ${
-          lang === 'en' ? 'bg-[#FF2D46] text-white' : 'text-white/60 hover:text-white'
+          lang === 'en' ? 'bg-[#E6231F] text-white' : 'text-white/60 hover:text-white'
         }`}
       >
         EN

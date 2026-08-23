@@ -169,7 +169,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               ? {
                   borderColor: 'rgba(245,197,99,0.3)',
                   background:
-                    'linear-gradient(120deg, rgba(245,197,99,0.14), rgba(7,8,12,0.4) 60%)',
+                    'linear-gradient(120deg, rgba(245,197,99,0.14), rgba(10,16,30,0.4) 60%)',
                   boxShadow: '0 0 24px rgba(245,197,99,0.12)',
                 }
               : { borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }
@@ -177,8 +177,8 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
         >
           {status?.subscribed && (
             <span
-              className="absolute right-3 top-3 flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#07080C]"
-              style={{ background: 'linear-gradient(135deg, #FFE7B0, #FF2D46 45%, #C08F33)' }}
+              className="absolute right-3 top-3 flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#0A101E]"
+              style={{ background: 'linear-gradient(135deg, #FFE7B0, #E6231F 45%, #C08F33)' }}
             >
               <Crown className="h-2.5 w-2.5" /> VIP
             </span>
@@ -189,7 +189,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             style={
               status?.subscribed
                 ? {
-                    background: 'linear-gradient(135deg, #FFE7B0, #FF2D46 45%, #C08F33)',
+                    background: 'linear-gradient(135deg, #FFE7B0, #E6231F 45%, #C08F33)',
                     padding: 2,
                     boxShadow: '0 0 20px rgba(245,197,99,0.35)',
                   }
@@ -200,7 +200,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               {profile?.photoUrl ? (
                 <img src={profile.photoUrl} alt={profile.fullName ?? 'Profile'} className="h-full w-full object-cover" />
               ) : (
-                <User className="h-7 w-7 text-[#B9BFCC]" />
+                <User className="h-7 w-7 text-[#B7C0D4]" />
               )}
             </div>
           </div>
@@ -218,11 +218,11 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             )}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {status?.subscribed ? (
-                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#FF2D46]">
+                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#E6231F]">
                   សមាជិក VIP
                 </span>
               ) : (
-                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-medium text-[#A6ADBD]">
+                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-medium text-[#A3ADC4]">
                   មិនទាន់ជា VIP
                 </span>
               )}
@@ -237,7 +237,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                       /* clipboard unavailable — the ID is still visible to read/copy manually */
                     }
                   }}
-                  className="flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-[10px] font-medium text-[#8B92A3] transition hover:bg-white/10 hover:text-white/70"
+                  className="flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-[10px] font-medium text-[#8A93AC] transition hover:bg-white/10 hover:text-white/70"
                   title="ចម្លង Telegram ID"
                 >
                   ID: {profile.id}
@@ -253,12 +253,12 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             "when does my VIP run out" is the #1 thing people open this
             screen to check. */}
         {status?.subscribed ? (
-          <div className="mb-4 overflow-hidden rounded-card border border-[#FF2D46]/25 bg-gradient-to-br from-[#FF2D46]/12 via-transparent to-[#4C6FFF]/8 p-4 shadow-card">
+          <div className="mb-4 overflow-hidden rounded-card border border-[#E6231F]/25 bg-gradient-to-br from-[#E6231F]/12 via-transparent to-[#4C6FFF]/8 p-4 shadow-card">
             <div className="mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-[#FF2D46]" />
+              <ShieldCheck className="h-4 w-4 text-[#E6231F]" />
               <p className="text-sm font-bold text-white">VIP កំពុងសកម្ម</p>
               {tierLabel && (
-                <span className="ml-auto rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#B9BFCC]">
+                <span className="ml-auto rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-[#B7C0D4]">
                   {tierLabel}
                 </span>
               )}
@@ -269,14 +269,14 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                 what I bought", which is the thing people are actually
                 checking for. */}
             <div className="mb-3 rounded-xl border border-white/10 bg-black/30 p-4 text-center">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-[#8B92A3]">នៅសល់</p>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-[#8A93AC]">នៅសល់</p>
               <p
                 className={`text-4xl font-black leading-none ${
                   expiringSoon ? 'text-[#FFC24D]' : 'text-white'
                 }`}
               >
                 {daysLeft ?? '—'}
-                <span className="ml-1 text-base font-bold text-[#A6ADBD]">ថ្ងៃ</span>
+                <span className="ml-1 text-base font-bold text-[#A3ADC4]">ថ្ងៃ</span>
               </p>
 
               {usedPercent !== null && (
@@ -287,8 +287,8 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                       style={{
                         width: `${100 - usedPercent}%`,
                         background: expiringSoon
-                          ? 'linear-gradient(90deg,#FFC24D,#FF2D46)'
-                          : 'linear-gradient(90deg,#FF2D46,#86EEC0)',
+                          ? 'linear-gradient(90deg,#FFC24D,#E6231F)'
+                          : 'linear-gradient(90deg,#E6231F,#86EEC0)',
                       }}
                     />
                   </div>
@@ -314,7 +314,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
                 <span className="ml-auto truncate text-xs font-semibold text-white">
                   {tierLabel ?? '—'}
                   {currentTier && (
-                    <span className="text-[#8B92A3]"> · {currentTier.months} ខែ · ${currentTier.price}</span>
+                    <span className="text-[#8A93AC]"> · {currentTier.months} ខែ · ${currentTier.price}</span>
                   )}
                 </span>
               </div>
@@ -327,9 +327,9 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               )}
               {status.expiresAt && (
                 <div className="flex items-center gap-2 px-3 py-2.5">
-                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#FF2D46]" />
+                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#E6231F]" />
                   <span className="text-[11px] text-[#9AA1B2]">ផុតកំណត់</span>
-                  <span className="ml-auto text-xs font-semibold text-[#FF2D46]">
+                  <span className="ml-auto text-xs font-semibold text-[#E6231F]">
                     {fmtDate(status.expiresAt)}
                   </span>
                 </div>
@@ -338,14 +338,14 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
 
             <button
               onClick={onOpenSubscription}
-              className="w-full rounded-full border border-[#FF2D46]/30 bg-[#FF2D46]/10 py-2 text-xs font-bold text-[#FF2D46] transition hover:bg-[#FF2D46]/20"
+              className="w-full rounded-full border border-[#E6231F]/30 bg-[#E6231F]/10 py-2 text-xs font-bold text-[#E6231F] transition hover:bg-[#E6231F]/20"
             >
               បន្តគម្រោង / ប្តូរគម្រោង
             </button>
           </div>
         ) : (
           <div className="card-surface mb-4 rounded-card p-4 text-center">
-            <p className="mb-3 text-sm text-[#B9BFCC]">ចុះឈ្មោះជា VIP ដើម្បីមើលគ្រប់វគ្គ + ចាប់រង្វាន់ bonus</p>
+            <p className="mb-3 text-sm text-[#B7C0D4]">ចុះឈ្មោះជា VIP ដើម្បីមើលគ្រប់វគ្គ + ចាប់រង្វាន់ bonus</p>
             {/* The door and the room behind it are the same colour: this
                 opens the checkout, which is red throughout. A teal CTA
                 here handed off to a red sheet, and the two read as two
@@ -368,14 +368,14 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             onClick={onOpenSpin}
             className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#4C6FFF]/30 bg-gradient-to-r from-[#4C6FFF]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#4C6FFF]/60 hover:from-[#4C6FFF]/20 active:scale-[0.99]"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D46] to-[#B98430]">
-              <Gift className="h-5 w-5 text-[#07080C]" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E6231F] to-[#B98430]">
+              <Gift className="h-5 w-5 text-[#0A101E]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white">មាន Bonus Spin រង់ចាំ!</p>
-              <p className="text-xs text-[#A6ADBD]">ការទិញ VIP លើកនេះឲ្យអ្នកនូវការចាប់រង្វាន់ថ្ងៃបន្ថែម ១ដង — ចុចដើម្បីចាប់</p>
+              <p className="text-xs text-[#A3ADC4]">ការទិញ VIP លើកនេះឲ្យអ្នកនូវការចាប់រង្វាន់ថ្ងៃបន្ថែម ១ដង — ចុចដើម្បីចាប់</p>
             </div>
-            <Sparkles className="h-4 w-4 text-[#FF2D46]" />
+            <Sparkles className="h-4 w-4 text-[#E6231F]" />
           </button>
         )}
 
@@ -389,14 +389,14 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             promise in copy. */}
         <button
           onClick={handleInviteReferral}
-          className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#FF2D46]/25 bg-gradient-to-r from-[#FF2D46]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#FF2D46]/50 hover:from-[#FF2D46]/20 active:scale-[0.99]"
+          className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#E6231F]/25 bg-gradient-to-r from-[#E6231F]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#E6231F]/50 hover:from-[#E6231F]/20 active:scale-[0.99]"
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF2D46] to-[#8F1020]">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#E6231F] to-[#8F1020]">
             <UserPlus className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold text-white">អញ្ជើញមិត្តភ័ក្តិ ទទួល VIP ឥតគិតថ្លៃ</p>
-            <p className="text-xs text-[#A6ADBD]">
+            <p className="text-xs text-[#A3ADC4]">
               {referralStats && referralStats.totalReferred > 0
                 ? `មិត្តភ័ក្តិ ${referralStats.totalReferred} នាក់បានចូល • ទទួលបានរង្វាន់ ${referralStats.totalBonusDays} ថ្ងៃ`
                 : 'ចែករំលែក link ផ្ទាល់ខ្លួន — មិត្តភ័ក្តិទិញ VIP លើកដំបូង អ្នកទទួលបានថ្ងៃ VIP ដោយឥតគិតថ្លៃ'}
@@ -416,7 +416,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             onClick={onOpenWatchlist}
             className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-white/[0.06]"
           >
-            <Bookmark className="h-5 w-5 text-[#A6ADBD]" />
+            <Bookmark className="h-5 w-5 text-[#A3ADC4]" />
             <span className="text-sm font-semibold text-white">បញ្ជីរបស់ខ្ញុំ</span>
           </button>
 
@@ -426,7 +426,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             onClick={onOpenLegal}
             className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-white/[0.06]"
           >
-            <FileText className="h-5 w-5 text-[#A6ADBD]" />
+            <FileText className="h-5 w-5 text-[#A3ADC4]" />
             <span className="text-sm font-semibold text-white">លក្ខខណ្ឌប្រើប្រាស់ & ឯកជនភាព</span>
           </button>
 

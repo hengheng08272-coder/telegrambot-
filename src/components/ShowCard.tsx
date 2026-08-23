@@ -58,7 +58,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
             fontSize: 'clamp(100px, 32vw, 168px)',
             fontWeight: 900,
             lineHeight: 1,
-            color: 'rgba(7,8,12,0.5)',
+            color: 'rgba(10,16,30,0.5)',
             WebkitTextStroke: '2.5px rgba(255,255,255,0.9)',
             fontFamily: '"Anton", Battambang, Inter, sans-serif',
             filter:
@@ -78,7 +78,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
         style={{ transition: 'transform 0.35s ease-out', transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }}
       >
         <div
-          className={`aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-[#FF2D46]/60 ${
+          className={`aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-[#E6231F]/60 ${
             large
               ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)] group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.8)]'
               : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)]'
@@ -100,8 +100,8 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
             className="absolute inset-0"
             style={{
               background: rank
-                ? 'linear-gradient(180deg, rgba(7,8,12,0) 35%, rgba(7,8,12,0.95) 100%)'
-                : 'linear-gradient(180deg, rgba(7,8,12,0) 50%, rgba(7,8,12,0.9) 100%)',
+                ? 'linear-gradient(180deg, rgba(10,16,30,0) 35%, rgba(10,16,30,0.95) 100%)'
+                : 'linear-gradient(180deg, rgba(10,16,30,0) 50%, rgba(10,16,30,0.9) 100%)',
             }}
           />
           {/* Title — overlaid directly on the poster for ranked (Top 10)
@@ -148,7 +148,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               (admin toggle). Icon-only since the row header above already
               says "Coming Soon" in words. */}
           {show.coming_soon && (
-            <div className="absolute right-1.5 top-1.5 flex items-center justify-center rounded-full bg-[#FF2D46]/90 p-1 text-white backdrop-blur-sm">
+            <div className="absolute right-1.5 top-1.5 flex items-center justify-center rounded-full bg-[#E6231F]/90 p-1 text-white backdrop-blur-sm">
               <Clock className="h-2.5 w-2.5" />
             </div>
           )}
@@ -176,7 +176,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               tapping them can't actually play anything yet. */}
           {!show.coming_soon && (
             <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_28px_rgba(255,45,70,0.65)]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_28px_rgba(230,35,31,0.65)]">
                 <Play className="h-4 w-4 fill-white text-white" />
               </div>
             </div>

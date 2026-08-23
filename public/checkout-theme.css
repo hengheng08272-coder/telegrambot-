@@ -20,13 +20,16 @@
    ===================================================================== */
 :root {
   /* ── Surfaces ─────────────────────────────────────────────────────── */
-  --co-bg: #0a0a0d;          /* page base */
-  --co-bg-deep: #050507;     /* behind the base — scrims, sheets */
-  --co-card: #121218;        /* every card and row */
-  --co-card-raised: #17171e; /* input / pressed row */
-  --co-line: rgba(255, 255, 255, 0.1);   /* default hairline (10%) */
-  --co-line-soft: rgba(255, 255, 255, 0.06);
-  --co-line-strong: rgba(255, 255, 255, 0.16);
+  /* Same midnight navy the app is built on (src/index.css --nv-bg), so
+     the sheet and the app behind it are one surface rather than two
+     different blacks meeting at an edge. */
+  --co-bg: #0a101e;          /* page base */
+  --co-bg-deep: #060a14;     /* behind the base — scrims, sheets */
+  --co-card: #111a2e;        /* every card and row */
+  --co-card-raised: #17223a; /* input / pressed row */
+  --co-line: rgba(146, 172, 224, 0.14);   /* default hairline */
+  --co-line-soft: rgba(146, 172, 224, 0.08);
+  --co-line-strong: rgba(146, 172, 224, 0.22);
 
   /* ── Brand ────────────────────────────────────────────────────────── */
   --co-brand: #e6231f;       /* primary action — one red, used sparingly */
@@ -87,8 +90,8 @@
      up and cheap, and it fought with the one red thing that matters
      (the pay button). Attention belongs on the amount. */
   --co-backdrop:
-    radial-gradient(ellipse 120% 38% at 50% -8%, rgba(255, 255, 255, 0.035) 0%, rgba(10, 10, 13, 0) 60%),
-    radial-gradient(ellipse 130% 75% at 50% 55%, rgba(10, 10, 13, 0) 45%, rgba(0, 0, 0, 0.5) 100%);
+    radial-gradient(ellipse 120% 38% at 50% -8%, rgba(146, 172, 224, 0.06) 0%, rgba(10, 16, 30, 0) 60%),
+    radial-gradient(ellipse 130% 75% at 50% 55%, rgba(10, 16, 30, 0) 45%, rgba(4, 8, 18, 0.55) 100%);
 
   /* ── Motion ───────────────────────────────────────────────────────── */
   --co-motion: 180ms cubic-bezier(0.22, 0.61, 0.36, 1);

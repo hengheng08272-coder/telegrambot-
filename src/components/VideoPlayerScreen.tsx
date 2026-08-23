@@ -739,7 +739,7 @@ export default function VideoPlayerScreen({
         {/* Resolving playback URL */}
         {resolving && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black">
-            <Loader2 className="h-8 w-8 animate-spin text-[#FF2D46]" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#E6231F]" />
           </div>
         )}
 
@@ -760,7 +760,7 @@ export default function VideoPlayerScreen({
         {/* Buffering spinner */}
         {buffering && !loadError && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#FF2D46]" />
+            <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#E6231F]" />
           </div>
         )}
 
@@ -958,7 +958,7 @@ export default function VideoPlayerScreen({
                 >
                   <MoreVertical className="h-[18px] w-[18px]" />
                   {(speed !== 1 || fillScreen) && (
-                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#FF2D46]" />
+                    <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#E6231F]" />
                   )}
                 </button>
                 {moreOpen && (
@@ -991,7 +991,7 @@ export default function VideoPlayerScreen({
                             }}
                             className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
                               s === speed
-                                ? 'bg-[#FF2D46]/15 text-[#FF6B7C]'
+                                ? 'bg-[#E6231F]/15 text-[#FF6B7C]'
                                 : 'bg-white/[0.06] text-white/75 hover:bg-white/10'
                             }`}
                           >
@@ -1112,7 +1112,7 @@ export default function VideoPlayerScreen({
                       }}
                       className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left transition ${
                         isCurrent
-                          ? 'border-[#FF2D46]/45 bg-[#FF2D46]/[0.12] shadow-[0_0_22px_rgba(255,45,70,0.18)]'
+                          ? 'border-[#E6231F]/45 bg-[#E6231F]/[0.12] shadow-[0_0_22px_rgba(230,35,31,0.18)]'
                           : 'border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08]'
                       }`}
                     >
@@ -1127,7 +1127,7 @@ export default function VideoPlayerScreen({
                         </p>
                         {ep.duration && <p className="text-[10px] text-white/40">{ep.duration} min</p>}
                       </div>
-                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#FF2D46]" />}
+                      {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#E6231F]" />}
                     </button>
                   );
                 })}
