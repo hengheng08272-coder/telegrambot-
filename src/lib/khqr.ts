@@ -209,27 +209,20 @@ export function buildPayPageUrl(opts: PayPageOptions): string {
   // Where "back to the app" should point. Without a configured bot
   // username there is no Mini App link to return to, so the page simply
   // doesn't render that button.
-  // Where the checkout page's "back to the app" button points. This
-  // button is the whole return path — Telegram opens the page in a
-  // fresh browser tab with no history behind it — so it degrades in
-  // steps rather than disappearing:
-  //
-  //   bot + mini app short name -> t.me/<bot>/<app>, straight back in
-  //   bot alone                 -> t.me/<bot>, the chat with its Open
-  //                                App button (always resolves, one tap
-  //                                more)
-  //   neither                   -> tg://, which at least brings Telegram
-  //                                forward with the Mini App still open
-  //
-  // The short name is the one BotFather asks for when a Mini App is
-  // created (/newapp); a bot that only has a menu button has none, and
-  // guessing "app" for it produces a link that opens nothing.
+  // Getting back. The Mini App is still open inside Telegram — the
+  // viewer only left it in the sense that Safari came to the front — so
+  // the right move is to bring Telegram forward, not to launch the app
+  // again. `tg://` does exactly that and lands them back on the payment
+  // sheet they were looking at; a t.me/<bot>/<app> link, by contrast,
+  // opens the bot's chat and starts a SECOND instance of the Mini App,
+  // losing the open ticket. So that link is only kept as the fallback
+  // for a viewer whose Mini App really is gone.
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
   const miniAppName = import.meta.env.VITE_TELEGRAM_MINIAPP_SHORT_NAME as string | undefined;
-  const backToApp = botUsername
-    ? `https://t.me/${botUsername}${miniAppName ? `/${miniAppName}` : ''}`
-    : 'tg://';
-  params.set('ret', backToApp);
+  params.set('ret', 'tg://');
+  if (botUsername) {
+    params.set('app', `https://t.me/${botUsername}${miniAppName ? `/${miniAppName}` : ''}`);
+  }
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   return `${origin}/pay/?${params.toString()}`;

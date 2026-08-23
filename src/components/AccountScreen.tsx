@@ -346,9 +346,13 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
         ) : (
           <div className="card-surface mb-4 rounded-card p-4 text-center">
             <p className="mb-3 text-sm text-[#B9BFCC]">ចុះឈ្មោះជា VIP ដើម្បីមើលគ្រប់វគ្គ + ចាប់រង្វាន់ bonus</p>
+            {/* The door and the room behind it are the same colour: this
+                opens the checkout, which is red throughout. A teal CTA
+                here handed off to a red sheet, and the two read as two
+                different products. */}
             <button
               onClick={onOpenSubscription}
-              className="btn-primary w-full rounded-full py-2.5 text-sm font-bold"
+              className="co-btn co-btn-primary w-full rounded-full py-2.5 text-sm"
             >
               ក្លាយជា VIP ឥឡូវនេះ
             </button>

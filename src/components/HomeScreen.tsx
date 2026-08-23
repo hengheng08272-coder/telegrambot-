@@ -532,9 +532,16 @@ export default function HomeScreen({
             className={
               subscribed
                 ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#F5C563] transition hover:bg-[#F5C563]/10'
-                : 'flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(245,197,99,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs'
+                : 'flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] font-black text-white transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs'
             }
-            style={subscribed ? undefined : { background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
+            // Gold still marks VIP status (the crown, once they have it);
+            // red marks the action that takes money, here and inside the
+            // checkout this button opens.
+            style={
+              subscribed
+                ? undefined
+                : { backgroundImage: 'linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%)' }
+            }
           >
             <Crown className={subscribed ? 'h-4 w-4' : 'h-3 w-3 sm:h-3.5 sm:w-3.5'} />
             {!subscribed && (t.vipBadge ?? 'VIP')}

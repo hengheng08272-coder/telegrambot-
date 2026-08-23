@@ -65,29 +65,48 @@
   .brand img { width: 32px; height: 32px; object-fit: contain; }
   .brand span { font-size: 13px; font-weight: 700; color: var(--co-text); }
 
-  .card {
+  /* The pass — the same shape the in-app sheet draws, so the hand-off
+     to a browser doesn't feel like a hand-off to a different product. */
+  .pass {
     background: var(--co-card);
     border: 1px solid var(--co-line);
     border-radius: var(--co-r-card);
-    padding: var(--co-s3);
-    margin-bottom: var(--co-s2);
+    overflow: hidden;
+    margin-bottom: var(--co-s3);
   }
+  .pass-band {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--co-s3);
+    padding: 9px 14px; color: #fff;
+    background-image: linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%);
+  }
+  .pass-title { font-family: var(--co-font-display); font-size: 12px; letter-spacing: .22em; }
+  .mono { font-family: ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: .06em; color: rgba(255,255,255,.85); }
+  .pass-body { padding: var(--co-s3) var(--co-s4) var(--co-s4); }
+  .pass-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--co-s3); }
+  .amount-row { align-items: flex-end; margin-top: 2px; }
   .label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--co-text-dim); margin: 0; }
   .plan { font-size: 15px; font-weight: 700; margin: 2px 0 0; }
   .amount {
     font-family: var(--co-font-display);
-    font-size: clamp(28px, 8vw, 36px); line-height: 1; letter-spacing: .01em;
+    font-size: clamp(26px, 7.5vw, 32px); line-height: 1; letter-spacing: .01em;
     margin: 0;
   }
-  .meta { font-size: 10px; color: var(--co-text-dim); margin: 4px 0 0; }
 
   /* No dark card around the code: the KHQR ticket is already a card,
      and wrapping a white card in a grey one just drew a second border
      around the one thing on the page that has to look official. */
-  .qr-wrap {
-    text-align: center; background: none; border: 0;
-    padding: var(--co-s3) 0 0; margin-bottom: var(--co-s2);
+  .tear {
+    position: relative; margin: var(--co-s3) calc(-1 * var(--co-s4));
+    border-top: 1px dashed rgba(255, 255, 255, 0.22);
   }
+  .tear::before, .tear::after {
+    content: ''; position: absolute; top: -8px; width: 16px; height: 16px;
+    border-radius: var(--co-r-pill); background: var(--co-bg);
+  }
+  .tear::before { left: -8px; }
+  .tear::after { right: -8px; }
+
+  .qr-wrap { text-align: center; padding-top: var(--co-s1); }
   .qr-wrap img.qr-img {
     width: min(52vw, 23vh); height: auto; border-radius: var(--co-r-btn);
     background: #fff; padding: 8px; display: inline-block;
@@ -145,8 +164,7 @@
     margin: 2px 0 var(--co-s2); text-align: center;
     font-size: 11px; line-height: 1.5; color: var(--co-text-dim);
   }
-  .summary-row { display: flex; align-items: center; justify-content: space-between; gap: var(--co-s3); }
-  .summary-text { min-width: 0; }
+
 
   /* Warnings are amber, never red: red is the pay button on this page. */
   .note {
@@ -165,15 +183,22 @@
   /* Which half leads. Paying by ABA, the tap is the whole page and the
      QR is the fallback underneath it; paying from another bank's app,
      the QR IS the page and the ABA button drops to a quiet alternative. */
-  #summary { order: 1; }
-  #qr-card { order: 2; }
-  #orline { order: 3; }
-  #open-aba { order: 4; }
-  #not-open { order: 5; }
-  #payway { order: 6; }
-  #steps-card { order: 7; }
-  #back { order: 8; }
+  #pass { order: 1; }
+  #orline { order: 2; }
+  #open-aba { order: 3; }
+  #not-open { order: 4; }
+  #payway { order: 5; }
+  #steps-card { order: 6; }
+  #back { order: 7; }
+  #app-again { order: 8; }
   #err, .foot { order: 9; }
+
+  #app-again {
+    display: none; text-align: center; padding: 6px;
+    font-size: 12px; font-weight: 700; color: var(--co-aba);
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  #app-again.show { display: block; }
 
   /* Scanning and tapping are two ways to do the same thing, so the page
      says so out loud instead of stacking two buttons. */
@@ -217,28 +242,40 @@
     <span id="brand-name">NINT ANIME VIP</span>
   </div>
 
-  <div class="card summary-row" id="summary" hidden>
-    <div class="summary-text">
-      <p class="label" id="plan-label"></p>
-      <p class="plan" id="plan"></p>
-      <p class="meta" id="ticket"></p>
+  <!-- One card, the same object the app's sheet shows: a red band with
+       the reference, what is being paid, then the code itself. -->
+  <div class="pass" id="pass" hidden>
+    <div class="pass-band">
+      <span class="pass-title">VIP PASS</span>
+      <span class="mono" id="ticket"></span>
     </div>
-    <p class="amount" id="amount"></p>
-  </div>
+    <div class="pass-body">
+      <div class="pass-row">
+        <span class="label" id="plan-label"></span>
+        <span class="plan" id="plan"></span>
+      </div>
+      <div class="pass-row amount-row">
+        <span class="label" id="amount-label"></span>
+        <span class="amount" id="amount"></span>
+      </div>
 
-  <div class="card qr-wrap" id="qr-card" hidden>
-    <img class="qr-img" id="qr" alt="KHQR" hidden />
-    <div class="khqr-ticket" id="qr-ticket" hidden>
-      <div class="band"><p>KHQR</p></div>
-      <div class="body">
-        <p class="name" id="qr-name"></p>
-        <p class="price" id="qr-price"></p>
-        <hr />
-        <canvas id="qr-canvas"></canvas>
+      <div class="tear"></div>
+
+      <div class="qr-wrap" id="qr-card" hidden>
+        <img class="qr-img" id="qr" alt="KHQR" hidden />
+        <div class="khqr-ticket" id="qr-ticket" hidden>
+          <div class="band"><p>KHQR</p></div>
+          <div class="body">
+            <p class="name" id="qr-name"></p>
+            <p class="price" id="qr-price"></p>
+            <hr />
+            <canvas id="qr-canvas"></canvas>
+          </div>
+        </div>
+        <p class="hint" id="qr-hint"></p>
+        <p class="hint desktop-hint" id="qr-desktop-hint"></p>
       </div>
     </div>
-    <p class="hint" id="qr-hint"></p>
-    <p class="hint desktop-hint" id="qr-desktop-hint"></p>
   </div>
 
   <div class="note" id="not-open">
@@ -266,6 +303,7 @@
   </a>
 
 
+  <a class="app-again" id="app-again" hidden rel="noreferrer"></a>
   <p class="hint back-hint" id="back-hint"></p>
 
   <p class="err" id="err" hidden></p>
@@ -285,6 +323,8 @@
       openAbaAlt: 'ប្រើ ABA Mobile ជំនួស',
       qrDesktopHint: 'បើកលើកុំព្យូទ័រ? សូមស្កេន QR នេះដោយទូរស័ព្ទ។',
       ticket: 'លេខយោង',
+      amountDue: 'ត្រូវបង់',
+      openAppAgain: 'បើក Mini App ម្ដងទៀត',
       back: 'ត្រឡប់ទៅ App',
       backHint: 'បើមិនត្រឡប់ទេ សូមចុច «Done» ឬព្រួញថយក្រោយ នៅជ្រុងខាងលើ។',
       notOpen: 'ABA មិនបានបើកទេ។ សូមប្រើជម្រើសខាងក្រោម ឬស្កេន QR ខាងលើ។',
@@ -302,6 +342,8 @@
       openAbaAlt: 'Use ABA Mobile instead',
       qrDesktopHint: 'On a computer? Scan this QR with your phone.',
       ticket: 'Reference',
+      amountDue: 'Amount due',
+      openAppAgain: 'Open the Mini App again',
       back: 'Back to the app',
       backHint: 'Nothing happened? Use "Done" or the back arrow at the top of the screen.',
       notOpen: 'ABA did not open. Use the option below, or scan the QR above.',
@@ -323,6 +365,10 @@
   var ticket = params.get('ticket');
   var payLink = params.get('pay');
   var ret = params.get('ret');
+  // Where to relaunch the Mini App if bringing Telegram forward didn't
+  // land them back on it — a last resort, since it starts a fresh
+  // instance rather than returning to the ticket they left open.
+  var appLink = params.get('app');
   // 'qr' = someone paying from another bank's app: the QR leads and the
   // ABA button steps down to a quiet alternative. Anything else is the
   // ABA route, where the tap is the whole page.
@@ -337,13 +383,14 @@
   el('foot').textContent = t.foot;
   el('back-hint').textContent = t.backHint;
 
-  if (plan || amount) {
-    el('plan-label').textContent = t.planLabel;
-    el('plan').textContent = plan || '';
-    el('amount').textContent = amount || '';
-    if (ticket) el('ticket').textContent = t.ticket + ': ' + ticket;
-    show(el('summary'));
-  }
+  // The pass is always shown — even a link missing its labels still has
+  // the code in it, and an empty page would tell the viewer nothing.
+  el('plan-label').textContent = t.planLabel;
+  el('amount-label').textContent = t.amountDue;
+  el('plan').textContent = plan || '—';
+  el('amount').textContent = amount || '';
+  el('ticket').textContent = ticket || '';
+  show(el('pass'));
 
   if (qr) {
     // An uploaded QR image: show it as-is.
@@ -458,12 +505,20 @@
   // it in a fresh tab with no history to go back to.
   var back = el('back');
   el('back-label').textContent = t.back;
-  if (ret) back.href = ret;
+  back.href = ret || 'tg://';
+  if (appLink) {
+    el('app-again').href = appLink;
+    el('app-again').textContent = t.openAppAgain;
+  }
   back.addEventListener('click', function () {
-    // Nothing came to the front after a beat: say where the real exit
-    // is instead of leaving them tapping a button that does nothing.
+    // Nothing came to the front after a beat: Telegram is not installed,
+    // or the scheme was refused. Offer the relaunch link and say where
+    // the browser's own exit is, instead of leaving them tapping a
+    // button that appears to do nothing.
     window.setTimeout(function () {
-      if (document.visibilityState === 'visible') el('back-hint').classList.add('show');
+      if (document.visibilityState !== 'visible') return;
+      el('back-hint').classList.add('show');
+      if (appLink) el('app-again').classList.add('show');
     }, 1200);
   });
   show(back);
