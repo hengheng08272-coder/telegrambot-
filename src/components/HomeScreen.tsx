@@ -22,6 +22,7 @@ import {
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, type ShowEpisodeInfo } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
+import MovieCard from '@/components/MovieCard';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
 import NotificationBell from '@/components/NotificationBell';
@@ -137,7 +138,14 @@ export default function HomeScreen({
   const [heroIndex, setHeroIndex] = useState(0);
   const [query, setQuery] = useState('');
   const [interacting, setInteracting] = useState(false);
-  const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
+  // `movies: true` switches the drill-down to the wide film cards. There
+  // are only ever a handful of standalone movies, so they get a shelf
+  // built for a handful rather than a grid built for hundreds.
+  const [viewAll, setViewAll] = useState<{
+    title: string;
+    shows: Show[];
+    movies?: boolean;
+  } | null>(null);
   const [tickerMessage, setTickerMessage] = useState<string | undefined>(undefined);
   const [episodeInfo, setEpisodeInfo] = useState<Record<string, ShowEpisodeInfo>>({});
 
@@ -497,7 +505,7 @@ export default function HomeScreen({
               active={viewAll?.title === t.navMovies}
               onClick={() => {
                 setQuery('');
-                setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie') });
+                setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie'), movies: true });
               }}
             />
             <NavLink label={t.navMyList} active={false} onClick={onOpenWatchlist} />
@@ -605,11 +613,21 @@ export default function HomeScreen({
               </button>
               <h2 className="text-xl font-bold">{viewAll.title}</h2>
             </div>
-            <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
-              {viewAll.shows.map((s) => (
-                <ShowCard key={s.id} show={s} onClick={onSelectShow} latestEpisode={episodeNumbers[s.id]} />
-              ))}
-            </div>
+            {viewAll.shows.length === 0 ? (
+              <p className="py-20 text-center text-[#8B92A3]">{t.noResults}</p>
+            ) : viewAll.movies ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {viewAll.shows.map((s) => (
+                  <MovieCard key={s.id} show={s} onClick={onSelectShow} />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+                {viewAll.shows.map((s) => (
+                  <ShowCard key={s.id} show={s} onClick={onSelectShow} latestEpisode={episodeNumbers[s.id]} />
+                ))}
+              </div>
+            )}
           </section>
         ) : query.trim() ? (
           <section className="pt-4">
@@ -860,7 +878,7 @@ export default function HomeScreen({
         }}
         onMovies={() => {
           setQuery('');
-          setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie') });
+          setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie'), movies: true });
         }}
         onMyList={onOpenWatchlist}
         onAccount={onOpenProfile}

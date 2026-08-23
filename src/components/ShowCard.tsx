@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Play, Clock } from 'lucide-react';
 import type { Show } from '@/lib/types';
+import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 
@@ -126,6 +127,21 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               }`}
             >
               EP {latestEpisode}
+            </div>
+          )}
+          {/* A standalone film's price, where a series shows its latest
+              episode number. Both answer the same question in a rail —
+              "what do I get if I tap this" — and a movie's answer is a
+              dollar, once, with no membership involved. */}
+          {show.type === 'movie' && !show.is_free && !show.coming_soon && (
+            <div
+              className="absolute bottom-1.5 left-1.5 rounded-md px-1.5 py-[2px] text-[9px] font-black text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+              style={{
+                backgroundImage:
+                  'linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%)',
+              }}
+            >
+              ${MOVIE_PRICE}
             </div>
           )}
           {/* Coming Soon marker — announced/promoted but no episodes yet
