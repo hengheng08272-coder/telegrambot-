@@ -220,5 +220,15 @@ upload វិក្កយបត្រ → `confirm-payment-proof` → ជូន�
    មាន bot username → `https://t.me/<bot>/app` · គ្មាន → `tg://` (បើក Telegram មកមុខវិញ)
    · បើនៅតែគ្មានអ្វីកើតឡើងក្នុង ១.២ វិនាទី → បង្ហាញការណែនាំ «ចុច Done ឬព្រួញថយក្រោយ»។
 
-> **អនុសាសន៍**៖ សូមកំណត់ `VITE_TELEGRAM_BOT_USERNAME` ក្នុង Vercel env
-> ដើម្បីឲ្យប៊ូតុងនោះត្រឡប់ចូល Mini App ដោយផ្ទាល់ ជំនួសឲ្យបើកតែ Telegram។
+> **អនុសាសន៍ env** (Vercel → Settings → Environment Variables → រួច **Redeploy**,
+> ព្រោះ Vite បញ្ចូល env ចូល bundle ពេល build)៖
+>
+> ```
+> VITE_TELEGRAM_BOT_USERNAME=AnimetioMini_bot     # គ្មាន @
+> VITE_TELEGRAM_MINIAPP_SHORT_NAME=app            # ស្រេចចិត្ត — short name ពី BotFather
+> ```
+>
+> ប៊ូតុង «ត្រឡប់ទៅ App» ធ្លាក់ចុះជាកម្រិត៖ មានទាំងពីរ → `t.me/<bot>/<app>` ចូល Mini App ផ្ទាល់ ·
+> មានតែ username → `t.me/<bot>` (ផ្ទាំងឆាតរបស់ bot ដែលមានប៊ូតុង Open App — ដំណើរការជានិច្ច) ·
+> គ្មានទាំងពីរ → `tg://` (បើក Telegram មកមុខ)។ **កុំទាយ short name** — bot ដែលមានតែ
+> menu button គ្មាន short name ទេ ហើយ `/app` នឹងបើកអ្វីមិនកើត។
