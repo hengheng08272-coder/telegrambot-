@@ -23,7 +23,7 @@ const TINT_MAP: Record<IconTint, { bg: string; color: string }> = {
   gold: { bg: '#F0F3FF', color: '#185FA5' },
   navy: { bg: '#F0F3FF', color: '#1E2A80' },
   success: { bg: '#E8F6F0', color: '#1F9D6B' },
-  danger: { bg: '#FDEDE9', color: '#FF2D46' },
+  danger: { bg: '#FDEDE9', color: '#2050D8' },
   white: { bg: '#FFFFFF', color: '#1E2A80' },
   light: { bg: 'rgba(255,255,255,0.18)', color: '#FFFFFF' },
   stock: { bg: '#E1F5EE', color: '#0F6E56' },

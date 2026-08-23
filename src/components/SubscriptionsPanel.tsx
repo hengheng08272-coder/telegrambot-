@@ -583,7 +583,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               payload the bank itself issued needs no reconstruction, and
               reconstruction is where ABA rejects us. */}
           <div className="mb-3 rounded-lg border border-white/10 bg-black/20 p-3">
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-[#2FD98C]">
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[#2FD98C]">
               ★ វិធីងាយបំផុត — បិទភ្ជាប់ KHQR ពីធនាគាររបស់អ្នក
             </label>
             <p className="mb-2 text-[11px] leading-relaxed text-white/50">
@@ -633,7 +633,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     </p>
                   </>
                 ) : (
-                  <span className="text-[#FF8494]">{TEMPLATE_ERRORS[templateCheck.reason]}</span>
+                  <span className="text-[#FF6B60]">{TEMPLATE_ERRORS[templateCheck.reason]}</span>
                 )}
               </div>
             )}
@@ -641,7 +641,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
 
           <div className="grid gap-2 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-white/40">
                 Bakong Account ID
               </label>
               <input
@@ -652,7 +652,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-white/40">
                 ឈ្មោះបង្ហាញ
                 {bakongTemplate.trim() && (
                   <span className="ml-1 normal-case text-white/30">(ទុកទទេ = ឈ្មោះធនាគារ)</span>
@@ -666,7 +666,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-white/40">
                 ទីក្រុង
               </label>
               <input
@@ -677,8 +677,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
-                លេខគណនី {needsAccountInformation(bakongAccountId, bakongMerchantId) && <span className="text-[#FF8494]">*</span>}
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-white/40">
+                លេខគណនី {needsAccountInformation(bakongAccountId, bakongMerchantId) && <span className="text-[#FF6B60]">*</span>}
               </label>
               <input
                 value={bakongAccountNumber}
@@ -689,7 +689,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-white/40">
                 ធនាគារ
               </label>
               <input
@@ -700,7 +700,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-white/40">
                 Merchant ID
               </label>
               <input
@@ -712,7 +712,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-white/40">
                 MCC
               </label>
               <input
@@ -786,12 +786,12 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             <button
               onClick={handleDisableBakong}
               disabled={bakongSaving}
-              className="flex items-center gap-1.5 rounded-xl border border-[#FF8494]/25 bg-[#FF8494]/[0.06] px-3 py-1.5 text-xs font-bold text-[#FF8494] transition hover:bg-[#FF8494]/10 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl border border-[#FF6B60]/25 bg-[#FF6B60]/[0.06] px-3 py-1.5 text-xs font-bold text-[#FF6B60] transition hover:bg-[#FF6B60]/10 disabled:opacity-50"
             >
               បិទ / ត្រឡប់ទៅរូប QR upload
             </button>
             {bakongPreviewError && (
-              <span className="text-[11px] font-semibold text-[#FF8494]">{bakongPreviewError}</span>
+              <span className="text-[11px] font-semibold text-[#FF6B60]">{bakongPreviewError}</span>
             )}
           </div>
           {bakongPreview && (
@@ -865,7 +865,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     key={tier.key}
                     className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-xs ${
                       clash
-                        ? 'border-[#FF8494]/30 bg-[#FF8494]/[0.07]'
+                        ? 'border-[#FF6B60]/30 bg-[#FF6B60]/[0.07]'
                         : 'border-white/[0.07] bg-black/20'
                     }`}
                   >
@@ -878,7 +878,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         តម្លៃដូចគ្នា — auto-confirm នឹងបដិសេធ
                       </span>
                     ) : (
-                      <Check className="h-3.5 w-3.5 shrink-0 text-[#86EEC0]" />
+                      <Check className="h-3.5 w-3.5 shrink-0 text-[#2FD98C]" />
                     )}
                   </div>
                 );
@@ -948,7 +948,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         <p className="truncate text-sm font-semibold text-white">
                           {edit.label_en.trim() || edit.label_km.trim() || tier.labelEn}
                         </p>
-                        <span className="shrink-0 rounded bg-white/[0.07] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-white/35">
+                        <span className="shrink-0 rounded bg-white/[0.07] px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wide text-white/35">
                           {tier.key}
                         </span>
                       </div>
@@ -982,7 +982,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                   <>
                   <div className="grid grid-cols-[76px_76px_1fr] gap-2">
                     <div>
-                      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-white/40">
                         តម្លៃ ($)
                       </label>
                       <input
@@ -993,7 +993,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-white/40">
                         រយៈពេល (ខែ)
                       </label>
                       <input
@@ -1004,7 +1004,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-white/40">
                         ឈ្មោះគម្រោង (ខ្មែរ)
                       </label>
                       <input
@@ -1018,7 +1018,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
 
                   <div className="mt-2 grid grid-cols-[130px_1fr] gap-2">
                     <div>
-                      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-white/40">
                         Plan name (EN)
                       </label>
                       <input
@@ -1029,7 +1029,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-white/40">
                         ការពិពណ៌នា (ខ្មែរ)
                       </label>
                       <input
@@ -1045,7 +1045,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       warning when the name promises a different number of
                       months from the one actually granted. */}
                   <div className="mt-2 rounded-lg border border-white/[0.07] bg-black/20 px-2.5 py-2">
-                    <p className="text-[10px] uppercase tracking-wide text-white/30">
+                    <p className="text-[11px] uppercase tracking-wide text-white/30">
                       អ្នកទស្សនាឃើញ
                     </p>
                     <p className="mt-0.5 text-xs text-white">
@@ -1068,7 +1068,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
 
                   {section === 'qr' && (
                   <div className="mt-2.5">
-                    <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-white/40">
+                    <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-white/40">
                       ABA PayWay link (ជម្រើស — ចុចទូទាត់ភ្លាមៗ)
                     </label>
                     <div className="flex gap-2">
@@ -1094,7 +1094,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         )}
                       </button>
                     </div>
-                    <p className="mt-1 text-[10px] leading-relaxed text-white/35">
+                    <p className="mt-1 text-[11px] leading-relaxed text-white/35">
                       ត្រូវជា link ដែលកំណត់ចំនួនទឹកប្រាក់ ${edit.price} ស្រាប់ (Payment Link ចេញពី ABA Merchant
                       សម្រាប់ជម្រើសនេះម្នាក់ៗ) — ទុកទទេបើមិនទាន់មាន នោះ app នឹងបង្ហាញតែ QR ធម្មតា។
                       {payLinks[tier.key] ? ' Link uploaded ✓' : ''}
@@ -1117,7 +1117,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       {hiddenKeys.has(tier.key) ? (
                         <EyeOff className="h-3.5 w-3.5 text-[#FFC24D]" />
                       ) : (
-                        <Eye className="h-3.5 w-3.5 text-[#86EEC0]" />
+                        <Eye className="h-3.5 w-3.5 text-[#2FD98C]" />
                       )}
                       {hiddenKeys.has(tier.key) ? 'លាក់ — អតិថិជនមិនឃើញ' : 'បង្ហាញក្នុង app'}
                     </span>
@@ -1173,7 +1173,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     <div className="flex items-center justify-between gap-2">
                       <p
                         className={`flex items-center gap-1.5 text-[11px] font-semibold ${
-                          hasKhqr ? 'text-[#86EEC0]' : 'text-[#FFC24D]'
+                          hasKhqr ? 'text-[#2FD98C]' : 'text-[#FFC24D]'
                         }`}
                       >
                         {hasKhqr ? (
@@ -1195,13 +1195,13 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                     {/* What the QR itself says, read straight out of the
                         payload — the numbers ABA will actually use. */}
                     {hasKhqr && (
-                      <p className="mt-1.5 text-[10px] leading-relaxed text-white/40">
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-white/40">
                         ក្នុង QR៖ <span className="font-bold text-white/70">${qrAmount?.toFixed(2) ?? '?'}</span>
                         {qrMerchant ? ` · ${qrMerchant}` : ''}
                       </p>
                     )}
                     {amountMismatch && (
-                      <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-[#FF8494]/10 px-2 py-1.5 text-[11px] leading-relaxed text-[#FFA8B2]">
+                      <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-[#FF6B60]/10 px-2 py-1.5 text-[11px] leading-relaxed text-[#FFA8B2]">
                         <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
                         <span>
                           QR យក ${qrAmount?.toFixed(2)} តែតម្លៃក្នុង app ដាក់ ${edit.price} — អតិថិជននឹងបង់តាម QR
@@ -1240,7 +1240,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         >
                           {copiedDeeplinkTier === tier.key ? (
                             <>
-                              <Check className="h-3 w-3 text-[#86EEC0]" /> ចម្លងរួច
+                              <Check className="h-3 w-3 text-[#2FD98C]" /> ចម្លងរួច
                             </>
                           ) : (
                             'ចម្លង deep link'
@@ -1259,7 +1259,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                       <a
                         href={abaDeeplink}
                         rel="noreferrer"
-                        className="mt-2 block break-all rounded-lg bg-black/30 px-2.5 py-2 text-[10px] leading-relaxed text-[#B6C3FF] underline decoration-[#B6C3FF]/50 underline-offset-2"
+                        className="mt-2 block break-all rounded-lg bg-black/30 px-2.5 py-2 text-[11px] leading-relaxed text-[#B6C3FF] underline decoration-[#B6C3FF]/50 underline-offset-2"
                       >
                         {abaDeeplink}
                       </a>
@@ -1267,7 +1267,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
 
                     {isEditingKhqr && (
                       <div className="mt-2 space-y-1.5">
-                        <p className="text-[10px] leading-relaxed text-white/40">
+                        <p className="text-[11px] leading-relaxed text-white/40">
                           ចម្លង KHQR text ពី ABA Business app (មិនមែនរូបភាព) — ចាប់ផ្តើមដោយ 0002 — មកបិទភ្ជាប់ត្រង់នេះ
                           ដើម្បីជួសជុលដោយផ្ទាល់ ក្នុងករណីរូបភាពមិនអាចអានស្វ័យប្រវត្តិបាន។
                         </p>

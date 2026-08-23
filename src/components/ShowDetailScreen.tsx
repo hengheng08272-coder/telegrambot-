@@ -138,7 +138,7 @@ export default function ShowDetailScreen({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(90deg, rgba(7,8,12,0.85) 0%, rgba(7,8,12,0.4) 50%, rgba(7,8,12,0.2) 100%), linear-gradient(0deg, rgba(7,8,12,1) 0%, rgba(7,8,12,0) 45%)',
+              'linear-gradient(90deg, rgba(10,16,30,0.85) 0%, rgba(10,16,30,0.4) 50%, rgba(10,16,30,0.2) 100%), linear-gradient(0deg, rgba(10,16,30,1) 0%, rgba(10,16,30,0) 45%)',
           }}
         />
       </div>
@@ -198,7 +198,7 @@ export default function ShowDetailScreen({
                 className={`rounded px-2 py-0.5 text-xs font-semibold ${
                   show.status === 'ongoing'
                     ? 'bg-[#F5C563]/15 text-[#F5C563]'
-                    : 'bg-white/10 text-[#B9BFCC]'
+                    : 'bg-white/10 text-[#9AA4BD]'
                 }`}
               >
                 {show.status === 'ongoing' ? t.ongoing : t.completed}
@@ -221,7 +221,7 @@ export default function ShowDetailScreen({
 
             {/* Studio */}
             {show.studio && (
-              <p className="mt-5 flex items-center gap-2 text-sm text-[#A6ADBD]">
+              <p className="mt-5 flex items-center gap-2 text-sm text-[#9AA4BD]">
                 <Building2 className="h-4 w-4" /> {t.studio} {show.studio}
               </p>
             )}
@@ -240,7 +240,7 @@ export default function ShowDetailScreen({
                 disabled={show.coming_soon}
                 className={`flex items-center gap-2 rounded-xl px-7 py-3 text-sm font-bold transition active:scale-95 ${
                   show.coming_soon
-                    ? 'cursor-not-allowed bg-white/10 text-[#A6ADBD]'
+                    ? 'cursor-not-allowed bg-white/10 text-[#9AA4BD]'
                     : movieLocked
                       ? 'bg-gradient-to-r from-[#F5C563] to-[#C08F33] text-[#211A0E] shadow-[0_8px_20px_-8px_rgba(245,197,99,0.5)]'
                       : 'btn-primary'
@@ -278,9 +278,9 @@ export default function ShowDetailScreen({
                 ))}
               </div>
             ) : error ? (
-              <p className="text-sm text-[#FF4D5E]">{error}</p>
+              <p className="text-sm text-[#FF6B60]">{error}</p>
             ) : episodes.length === 0 ? (
-              <p className="text-sm text-[#8B92A3]">
+              <p className="text-sm text-[#6A7591]">
                 {show.coming_soon ? `🎬 ${t.comingSoonLabel}` : t.noEpisodes}
               </p>
             ) : (
@@ -294,7 +294,7 @@ export default function ShowDetailScreen({
                     className={`group flex w-full items-center gap-4 overflow-hidden rounded-card border p-3 text-left shadow-card transition active:scale-[0.995] ${
                       locked
                         ? 'border-[#F5C563]/25 bg-[#1A1710] hover:border-[#F5C563]/60 hover:shadow-glow-gold'
-                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#FF2D46]/35 hover:bg-[#151926]'
+                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#2050D8]/35 hover:bg-[#151926]'
                     }`}
                   >
                     <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-xl sm:w-48">
@@ -317,13 +317,13 @@ export default function ShowDetailScreen({
                           >
                             <Lock className="h-4 w-4 text-[#211A0E]" strokeWidth={2.5} />
                           </div>
-                          <span className="rounded-md bg-black/60 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#F5C563]">
+                          <span className="rounded-md bg-black/60 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide text-[#F5C563]">
                             {t.lockedVip}
                           </span>
                         </div>
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition group-hover:opacity-100">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_24px_rgba(255,45,70,0.55)]">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_24px_rgba(32,80,216,0.55)]">
                             <Play className="h-4 w-4 fill-white text-white" />
                           </div>
                         </div>
@@ -331,31 +331,31 @@ export default function ShowDetailScreen({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-[#A6ADBD]">
+                        <span className="text-sm font-bold text-[#9AA4BD]">
                           {t.epShort} {ep.episode_number}
                         </span>
                         {ep.duration && (
-                          <span className="flex items-center gap-1 text-xs text-[#8B92A3]">
+                          <span className="flex items-center gap-1 text-xs text-[#6A7591]">
                             <Clock className="h-3 w-3" /> {fmtDuration(ep.duration)}
                           </span>
                         )}
                         {locked && (
                           <span
-                            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#211A0E]"
+                            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#211A0E]"
                             style={{ background: 'linear-gradient(90deg,#F5C563,#C08F33)' }}
                           >
                             <Lock className="h-2.5 w-2.5" /> {t.lockedVip}
                           </span>
                         )}
                       </div>
-                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#FF6B7C]">
+                      <h3 className="mt-0.5 truncate text-base font-semibold text-white transition group-hover:text-[#4E86FF]">
                         {ep.title}
                       </h3>
-                      <p className="mt-1 line-clamp-1 text-sm text-[#A6ADBD]">
+                      <p className="mt-1 line-clamp-1 text-sm text-[#9AA4BD]">
                         {locked ? t.lockedUnlockHint : ep.description}
                       </p>
                     </div>
-                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-[#6E7586] transition group-hover:text-[#FF2D46] sm:block" />
+                    <ChevronRight className="hidden h-5 w-5 shrink-0 text-[#6A7591] transition group-hover:text-[#2050D8] sm:block" />
                   </button>
                   );
                 })}

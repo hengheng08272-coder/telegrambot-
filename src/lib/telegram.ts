@@ -145,6 +145,14 @@ export async function inviteFriend(): Promise<'shared' | 'copied' | 'failed' | '
   }
 }
 
+// Where "message the admin" goes when a payment needs a human: the
+// community group, which is the only support channel this app has. Null
+// when VITE_TELEGRAM_GROUP_LINK isn't configured, in which case the UI
+// simply doesn't offer the button rather than opening a dead link.
+export function getSupportLink(): string | null {
+  return (import.meta.env.VITE_TELEGRAM_GROUP_LINK as string | undefined) || null;
+}
+
 // Shares a deep link straight into a specific show
 // (t.me/YourBot/app?startapp=show_<id>). Anyone who opens it can watch
 // straight away if the show/episode is free; VIP-only episodes still

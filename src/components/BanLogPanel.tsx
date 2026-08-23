@@ -58,7 +58,7 @@ export default function BanLogPanel({ onClose }: Props) {
       title="Ban log"
       subtitle="Ban and kick events recorded from the Telegram group"
       icon={<ShieldBan className="h-4 w-4" />}
-      accent="#FF4D5E"
+      accent="#FF6B60"
       maxWidth="max-w-[900px]"
       onClose={onClose}
     >
@@ -84,7 +84,7 @@ export default function BanLogPanel({ onClose }: Props) {
                   <span className="text-xs font-bold uppercase tracking-wide">
                     {ACTION_LABEL[row.action]}
                   </span>
-                  <span className="text-[10px] text-white/40">
+                  <span className="text-[11px] text-white/40">
                     {new Date(row.created_at).toLocaleString()}
                   </span>
                 </div>
@@ -93,7 +93,7 @@ export default function BanLogPanel({ onClose }: Props) {
                   <span className="ml-1 text-xs text-white/40">({row.telegram_user_id})</span>
                 </p>
                 {row.reason && <p className="mt-1 text-xs text-white/60">Reason: {row.reason}</p>}
-                <p className="mt-1 text-[10px] text-white/30">
+                <p className="mt-1 text-[11px] text-white/30">
                   {row.source}
                   {row.performed_by ? ` · by ${row.performed_by}` : ''}
                 </p>

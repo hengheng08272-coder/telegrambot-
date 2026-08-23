@@ -22,6 +22,8 @@ import {
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, type ShowEpisodeInfo } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
+import Badge, { type BadgeTone } from '@/components/Badge';
+import MovieCard from '@/components/MovieCard';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
 import NotificationBell from '@/components/NotificationBell';
@@ -137,7 +139,14 @@ export default function HomeScreen({
   const [heroIndex, setHeroIndex] = useState(0);
   const [query, setQuery] = useState('');
   const [interacting, setInteracting] = useState(false);
-  const [viewAll, setViewAll] = useState<{ title: string; shows: Show[] } | null>(null);
+  // `movies: true` switches the drill-down to the wide film cards. There
+  // are only ever a handful of standalone movies, so they get a shelf
+  // built for a handful rather than a grid built for hundreds.
+  const [viewAll, setViewAll] = useState<{
+    title: string;
+    shows: Show[];
+    movies?: boolean;
+  } | null>(null);
   const [tickerMessage, setTickerMessage] = useState<string | undefined>(undefined);
   const [episodeInfo, setEpisodeInfo] = useState<Record<string, ShowEpisodeInfo>>({});
 
@@ -355,8 +364,8 @@ export default function HomeScreen({
     return (
       <div className="flex min-h-screen items-center justify-center bg-app px-6">
         <div className="max-w-md text-center">
-          <p className="text-lg font-semibold text-[#FF2D46]">{t.somethingWrong}</p>
-          <p className="mt-2 text-sm text-[#B9BFCC]">{error}</p>
+          <p className="text-lg font-semibold text-[#E6231F]">{t.somethingWrong}</p>
+          <p className="mt-2 text-sm text-[#9AA4BD]">{error}</p>
         </div>
       </div>
     );
@@ -395,7 +404,7 @@ export default function HomeScreen({
             appears once the bar goes solid, so it never competes with the
             hero art underneath. */}
         <div
-          className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#FF2D46]/50 to-transparent transition-opacity duration-300 ${
+          className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#2050D8]/50 to-transparent transition-opacity duration-300 ${
             heroVisible && !scrolled ? 'opacity-0' : 'opacity-100'
           }`}
           aria-hidden
@@ -434,13 +443,13 @@ export default function HomeScreen({
                 )}
               </div>
               {subscribed && (
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#07080C]">
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#0A101E]">
                   <Crown className="h-2 w-2 text-black" />
                 </span>
               )}
               {rewardsAvailable === 'spin-ready' && (
                 <span
-                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B7C] ring-2 ring-[#07080C]"
+                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
                   aria-hidden
                 />
               )}
@@ -459,11 +468,11 @@ export default function HomeScreen({
               viewport width. */}
           <div className="flex shrink-0 items-center gap-1.5">
             <span className="relative flex h-1.5 w-1.5 shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF2D46]/70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#FF2D46]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6231F]/70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E6231F]" />
             </span>
             <span className="font-display text-xs font-bold text-white sm:text-sm">{watchingNow.toLocaleString()}</span>
-            <span className="whitespace-nowrap text-[10px] text-[#A6ADBD] sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
+            <span className="whitespace-nowrap text-[11px] text-[#9AA4BD] sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
           </div>
 
           {/* Divider — marks where "browse" ends and personal/account
@@ -497,7 +506,7 @@ export default function HomeScreen({
               active={viewAll?.title === t.navMovies}
               onClick={() => {
                 setQuery('');
-                setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie') });
+                setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie'), movies: true });
               }}
             />
             <NavLink label={t.navMyList} active={false} onClick={onOpenWatchlist} />
@@ -513,12 +522,12 @@ export default function HomeScreen({
             <Search className="h-4 w-4" />
           </button>
           <div className="relative hidden shrink-0 sm:block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B92A3]" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6A7591]" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.searchPlaceholder}
-              className="w-44 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#FF2D46]/50 focus:bg-white/[0.07]"
+              className="w-44 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#2050D8]/50 focus:bg-white/[0.07]"
             />
           </div>
 
@@ -532,9 +541,16 @@ export default function HomeScreen({
             className={
               subscribed
                 ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#F5C563] transition hover:bg-[#F5C563]/10'
-                : 'flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] font-black text-black shadow-[0_2px_10px_rgba(245,197,99,0.35)] transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs'
+                : 'flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-black text-white transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs'
             }
-            style={subscribed ? undefined : { background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
+            // Gold still marks VIP status (the crown, once they have it);
+            // red marks the action that takes money, here and inside the
+            // checkout this button opens.
+            style={
+              subscribed
+                ? undefined
+                : { backgroundImage: 'linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%)' }
+            }
           >
             <Crown className={subscribed ? 'h-4 w-4' : 'h-3 w-3 sm:h-3.5 sm:w-3.5'} />
             {!subscribed && (t.vipBadge ?? 'VIP')}
@@ -598,20 +614,30 @@ export default function HomeScreen({
               </button>
               <h2 className="text-xl font-bold">{viewAll.title}</h2>
             </div>
-            <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
-              {viewAll.shows.map((s) => (
-                <ShowCard key={s.id} show={s} onClick={onSelectShow} latestEpisode={episodeNumbers[s.id]} />
-              ))}
-            </div>
+            {viewAll.shows.length === 0 ? (
+              <p className="py-20 text-center text-[#6A7591]">{t.noResults}</p>
+            ) : viewAll.movies ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {viewAll.shows.map((s) => (
+                  <MovieCard key={s.id} show={s} onClick={onSelectShow} />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+                {viewAll.shows.map((s) => (
+                  <ShowCard key={s.id} show={s} onClick={onSelectShow} latestEpisode={episodeNumbers[s.id]} />
+                ))}
+              </div>
+            )}
           </section>
         ) : query.trim() ? (
           <section className="pt-4">
             <h2 className="mb-5 text-xl font-bold">
               {t.resultsFor} &ldquo;{query}&rdquo;{' '}
-              <span className="text-[#8B92A3]">({filteredShows.length})</span>
+              <span className="text-[#6A7591]">({filteredShows.length})</span>
             </h2>
             {filteredShows.length === 0 ? (
-              <p className="py-20 text-center text-[#8B92A3]">{t.noResults}</p>
+              <p className="py-20 text-center text-[#6A7591]">{t.noResults}</p>
             ) : (
               <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
                 {filteredShows.map((s) => (
@@ -650,7 +676,7 @@ export default function HomeScreen({
             {recommended.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<Star className="h-5 w-5 text-[#F5C563]" />}
+                icon={<Star className="h-5 w-5 text-white/45" />}
                 title={t.recommendedForYou ?? 'Recommended for You'}
                 shows={recommended}
                 onSelectShow={onSelectShow}
@@ -665,15 +691,15 @@ export default function HomeScreen({
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.freeBadge, color: '#2FD98C' }}
+                tag={{ label: t.freeBadge, tone: 'free' }}
               />
             )}
             <RailRow
               episodeNumbers={episodeNumbers}
               icon={
-                <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center text-[#FF2D46]">
+                <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center text-[#E6231F]">
                   <ClapperIcon className="h-5 w-5" />
-                  <span className="absolute -right-1 -top-1 h-2 w-2 animate-badge-pop rounded-full bg-[#FF2D46] ring-2 ring-[#07080C]" aria-hidden />
+                  <span className="absolute -right-1 -top-1 h-2 w-2 animate-badge-pop rounded-full bg-[#E6231F] ring-2 ring-[#0A101E]" aria-hidden />
                 </span>
               }
               title={t.newRelease}
@@ -681,17 +707,17 @@ export default function HomeScreen({
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
-              tag={{ label: t.newTag ?? 'NEW', color: '#EDEDF0' }}
+              tag={{ label: t.newTag ?? 'NEW', tone: 'info' }}
             />
             <RailRow
               episodeNumbers={episodeNumbers}
-              icon={<Flame className="h-5 w-5 text-[#FF2D46]" />}
+              icon={<Flame className="h-5 w-5 text-white/45" />}
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
-              tag={{ label: t.hotTag ?? 'HOT', color: '#FF2D46' }}
+              tag={{ label: t.hotTag ?? 'HOT', tone: 'mark' }}
             />
 
             {genres.map((g) => {
@@ -718,13 +744,13 @@ export default function HomeScreen({
             {comingSoon.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<Clock className="h-5 w-5 text-[#FF6B7C]" />}
+                icon={<Clock className="h-5 w-5 text-white/45" />}
                 title={t.comingSoonLabel}
                 shows={comingSoon}
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.comingSoonLabel, shows: comingSoon })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.freshTag ?? 'SOON', color: '#FF6B7C' }}
+                tag={{ label: t.freshTag ?? 'SOON', tone: 'mark' }}
               />
             )}
 
@@ -741,7 +767,7 @@ export default function HomeScreen({
                 >
                   <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
                   <Gift className="h-4 w-4" />
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B7C] ring-2 ring-[#07080C]" aria-hidden />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]" aria-hidden />
                 </button>
               </div>
             )}
@@ -749,10 +775,10 @@ export default function HomeScreen({
         )}
       </main>
 
-      <footer className="relative z-10 flex flex-col items-center gap-2 border-t border-white/5 px-4 pb-24 pt-8 text-center text-xs text-[#6E7586] sm:px-8 sm:pb-8">
+      <footer className="relative z-10 flex flex-col items-center gap-2 border-t border-white/5 px-4 pb-24 pt-8 text-center text-xs text-[#6A7591] sm:px-8 sm:pb-8">
         <span>{t.footerTagline}</span>
         {onOpenLegal && (
-          <button onClick={onOpenLegal} className="underline decoration-white/20 underline-offset-2 transition hover:text-[#B9BFCC]">
+          <button onClick={onOpenLegal} className="underline decoration-white/20 underline-offset-2 transition hover:text-[#9AA4BD]">
             {t.legalLink ?? 'Terms & Privacy'}
           </button>
         )}
@@ -763,7 +789,7 @@ export default function HomeScreen({
       {searchOpen && (
         <div className="fixed inset-0 z-[60] bg-app md:hidden">
           <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4">
-            <Search className="h-5 w-5 text-[#8B92A3]" />
+            <Search className="h-5 w-5 text-[#6A7591]" />
             <input
               autoFocus
               value={query}
@@ -776,7 +802,7 @@ export default function HomeScreen({
                 setSearchOpen(false);
                 setQuery('');
               }}
-              className="rounded-full p-1.5 text-[#B9BFCC] transition hover:text-white"
+              className="rounded-full p-1.5 text-[#9AA4BD] transition hover:text-white"
               aria-label="Close search"
             >
               <X className="h-5 w-5" />
@@ -785,7 +811,7 @@ export default function HomeScreen({
           <div className="h-[calc(100%-65px)] overflow-y-auto px-4 py-4">
             {query.trim() ? (
               filteredShows.length === 0 ? (
-                <p className="py-20 text-center text-[#8B92A3]">{t.noResults}</p>
+                <p className="py-20 text-center text-[#6A7591]">{t.noResults}</p>
               ) : (
                 <div className="grid grid-cols-3 gap-x-3 gap-y-5">
                   {filteredShows.map((s) => (
@@ -816,7 +842,7 @@ export default function HomeScreen({
             ) : (
               <div className="flex flex-col items-center gap-3 py-20 text-center">
                 <Search className="h-10 w-10 text-white/20" />
-                <p className="text-sm text-[#8B92A3]">{t.searchHint}</p>
+                <p className="text-sm text-[#6A7591]">{t.searchHint}</p>
               </div>
             )}
           </div>
@@ -853,7 +879,7 @@ export default function HomeScreen({
         }}
         onMovies={() => {
           setQuery('');
-          setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie') });
+          setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie'), movies: true });
         }}
         onMyList={onOpenWatchlist}
         onAccount={onOpenProfile}
@@ -874,6 +900,7 @@ type TranslationText = {
   featuredLabel?: string;
   vipBadge?: string;
   ongoing?: string;
+  comingSoonLabel: string;
   myList: string;
 };
 
@@ -1020,41 +1047,59 @@ function CoverflowHero({
             />
             <div
               className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, rgba(7,8,12,0) 60%, rgba(7,8,12,0.6) 100%)' }}
+              style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 60%, rgba(10,16,30,0.6) 100%)' }}
             />
-            {/* Trending tag — a small corner flag instead of a numeral,
-                only shown when the show is genuinely trending. */}
-            {heroRank && (
-              <span className="absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-black text-white backdrop-blur-sm">
-                <span className="animate-pulse">🔥</span> TOP #{heroRank}
-              </span>
+            {/* Coming Soon — announced, but there is nothing to play yet.
+                It takes the whole top of the cover: a title in the Top 10
+                that cannot be watched is the one thing a viewer has to
+                know before tapping. Spelled out here rather than the
+                icon the rails use, since the hero has no row header above
+                it saying what it is. */}
+            {hero.coming_soon ? (
+              <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />} className="absolute left-1.5 top-1.5">
+                {t.comingSoonLabel}
+              </Badge>
+            ) : (
+              <>
+                {/* The rank moved up beside the "trending" label — the
+                    cover is only about 100px wide on a small phone, and
+                    rank plus access badge were sitting on top of each
+                    other there. Access wins the cover: it is the one
+                    that says whether this is watchable. */}
+                {/* VIP / Free badge — same subscription status the detail
+                    screen enforces, so the cover never over-promises.
+                    Skipped on a Coming Soon cover, where neither label
+                    means anything until episodes exist. */}
+                <div className="absolute right-1.5 top-1.5">
+                  {heroIsFree ? (
+                    <span className="rounded-md bg-emerald-500/85 px-1.5 py-0.5 text-[9.5px] font-bold text-white backdrop-blur-sm">
+                      {t.freeBadge}
+                    </span>
+                  ) : (
+                    <span
+                      className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9.5px] font-black text-black backdrop-blur-sm"
+                      style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
+                    >
+                      👑 {t.vipBadge ?? 'VIP'}
+                    </span>
+                  )}
+                </div>
+              </>
             )}
-            {/* VIP / Free badge — same subscription status the detail
-                screen enforces, so the cover never over-promises. */}
-            <div className="absolute right-1.5 top-1.5">
-              {heroIsFree ? (
-                <span className="rounded-md bg-emerald-500/85 px-1.5 py-0.5 text-[8px] font-bold text-white backdrop-blur-sm">
-                  {t.freeBadge}
-                </span>
-              ) : (
-                <span
-                  className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[8px] font-black text-black backdrop-blur-sm"
-                  style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
-                >
-                  👑 {t.vipBadge ?? 'VIP'}
-                </span>
-              )}
-            </div>
           </div>
         </button>
 
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
-          <span
-            className="relative -top-1 mb-1 inline-flex items-center gap-1 rounded-md border border-[#FF2D46]/40 bg-[#FF2D46]/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#FF6B7C] sm:text-[11px]"
-            style={{ fontFamily: '"Anton", Battambang, sans-serif', letterSpacing: '0.06em' }}
-          >
-            <span className="animate-pulse">🔥</span> {t.featuredLabel ?? 'កំពុងពេញនិយម'}
+          <span className="relative -top-1 mb-1 flex flex-wrap items-center gap-1.5">
+            <Badge tone="mark" icon={<Flame className="h-3 w-3" />} className="px-2 py-1 text-[11px]">
+              {t.featuredLabel ?? 'កំពុងពេញនិយម'}
+            </Badge>
+            {heroRank && !hero.coming_soon && (
+              <Badge tone="info" className="px-2 py-1 text-[11px]">
+                TOP #{heroRank}
+              </Badge>
+            )}
           </span>
           <h2
             key={hero.id}
@@ -1073,47 +1118,60 @@ function CoverflowHero({
           </h2>
 
           {heroGenre && (
-            <p className="mt-0.5 truncate text-[11px] font-semibold text-[#A6ADBD] sm:text-xs">{heroGenre}</p>
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-[#9AA4BD] sm:text-xs">{heroGenre}</p>
           )}
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-white/70 sm:text-xs">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-white/70 sm:text-xs">
             <span className="flex items-center gap-1 text-[#F5C563]">
               <Star className="h-2.5 w-2.5 fill-[#F5C563] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
             </span>
+            {/* Divider and value stay inside one span: on a 320px screen
+                this row wraps, and a separator left stranded at the end of
+                a line reads as a typo. Only the two plain-text items get a
+                divider — the chips below carry their own border, so a pipe
+                in front of them is one separator too many. */}
             {hero.release_year && (
-              <>
+              <span className="flex items-center gap-x-2">
                 <span className="h-3 w-px bg-white/20" aria-hidden />
                 <span className="flex items-center gap-1">
                   <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {hero.release_year}
                 </span>
-              </>
+              </span>
             )}
-            <span className="h-3 w-px bg-white/20" aria-hidden />
-            <span className="rounded border border-white/20 px-1.5 py-0.5 text-[9px] font-medium uppercase text-white/70 sm:text-[10px]">
+            <span className="rounded border border-white/20 px-1.5 py-0.5 text-[9.5px] font-medium uppercase text-white/70 sm:text-[11px]">
               {hero.type === 'movie' ? t.movie : t.series}
             </span>
-            {/* "Ongoing" — same gold-pill treatment as the Show Detail
-                screen (bg-[#F5C563]/15 text-[#F5C563]), so the cue reads
-                consistently across the app instead of inventing a
-                separate style just for the hero. Means the show is still
-                getting new episodes — not a livestream, the app has none. */}
+            {/* "Ongoing" — same red pill as the Show Detail
+                screen, so the cue reads consistently across the app
+                instead of inventing a separate style just for the hero.
+                Red and not gold: it says the show is still getting
+                episodes, which is information, not a premium promise —
+                and nothing red in this app is tappable. */}
             {hero.type === 'series' && hero.status !== 'completed' && (
-              <>
-                <span className="h-3 w-px bg-white/20" aria-hidden />
-                <span className="rounded bg-[#F5C563]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#F5C563] sm:text-[10px]">
-                  {t.ongoing}
-                </span>
-              </>
+              <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent sm:text-[11px]">
+                {t.ongoing}
+              </span>
             )}
           </div>
 
           <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
+            {/* Same tap either way — the detail screen is where a Coming
+                Soon title explains itself — but the label stops saying
+                "Play" for something that cannot be played yet. */}
             <button
               onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(255,45,70,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
-              style={{ background: 'linear-gradient(135deg, #FF2D46, #FF2D46 55%, #8F1020)' }}
+              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(32,80,216,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
+              style={{ background: 'linear-gradient(135deg, #2050D8, #1A3FAE 55%, #0E2560)' }}
             >
-              <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
+              {hero.coming_soon ? (
+                <>
+                  <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t.comingSoonLabel}
+                </>
+              ) : (
+                <>
+                  <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
+                </>
+              )}
             </button>
             <button
               onClick={() => {
@@ -1194,7 +1252,7 @@ function CoverflowHero({
             className="hero-progress-fill h-full"
             style={{
               animationDuration: `${HERO_AUTO_MS}ms`,
-              background: '#FF2D46',
+              background: '#2050D8',
             }}
           />
         </div>
@@ -1287,17 +1345,17 @@ function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
     <button
       onClick={onClick}
       className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 transition ${
-        active ? 'text-[#FF6B7C]' : 'text-[#9AA1B2] active:text-white/80'
+        active ? 'text-[#4E86FF]' : 'text-[#9AA4BD] active:text-white/80'
       }`}
     >
       {active && (
         <span
-          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#FF2D46] to-transparent"
+          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#2050D8] to-transparent"
           aria-hidden
         />
       )}
       {icon}
-      <span className="max-w-full truncate px-0.5 text-[9px] font-semibold leading-none">{label}</span>
+      <span className="max-w-full truncate px-0.5 text-[9.5px] font-semibold leading-none">{label}</span>
     </button>
   );
 }
@@ -1320,7 +1378,7 @@ function NavLink({ label, active, onClick }: NavLinkProps) {
     >
       {label}
       {active && (
-        <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#FF6B7C] to-[#FF2D46] shadow-[0_0_10px_rgba(255,45,70,0.8)]" />
+        <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#4E86FF] to-[#2050D8] shadow-[0_0_10px_rgba(32,80,216,0.8)]" />
       )}
     </button>
   );
@@ -1349,7 +1407,7 @@ interface RailRowProps {
    *  FREE) — echoes the "Row: <colored label>" treatment from the mockup,
    *  giving every row its own at-a-glance identity instead of a uniform
    *  plain heading. { label, color } — color is any CSS color value. */
-  tag?: { label: string; color: string };
+  tag?: { label: string; tone?: BadgeTone };
 }
 
 function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag }: RailRowProps) {
@@ -1373,19 +1431,12 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           <div className="mb-1 flex items-center justify-center gap-2">
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
             <h2 className="text-xl font-black tracking-wide text-white">{title}</h2>
-            {tag && (
-              <span
-                className="rounded-md px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
-                style={{ backgroundColor: tag.color }}
-              >
-                {tag.label}
-              </span>
-            )}
+            {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
           </div>
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="text-xs font-semibold text-[#A6ADBD] transition hover:text-[#FF2D46]"
+              className="text-xs font-semibold text-[#9AA4BD] transition hover:text-[#2050D8]"
             >
               {viewAllLabel}
             </button>
@@ -1394,26 +1445,17 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
       ) : (
         <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <span
-              className="h-4 w-[3px] shrink-0 rounded-sm"
-              style={{ background: tag?.color ?? '#FF2D46' }}
-              aria-hidden
-            />
+            {/* A quiet rule, not another colour: the row's identity
+                comes from its title and its covers. */}
+            <span className="h-4 w-[3px] shrink-0 rounded-sm bg-white/20" aria-hidden />
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
             <h2 className="truncate text-lg font-bold tracking-tight">{title}</h2>
-            {tag && (
-              <span
-                className="rounded-md px-2 py-[2px] text-[9px] font-black uppercase tracking-wider text-black"
-                style={{ backgroundColor: tag.color }}
-              >
-                {tag.label}
-              </span>
-            )}
+            {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
           </div>
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="shrink-0 text-xs font-semibold text-[#A6ADBD] transition hover:text-[#FF2D46]"
+              className="shrink-0 text-xs font-semibold text-[#9AA4BD] transition hover:text-[#2050D8]"
             >
               {viewAllLabel}
             </button>
@@ -1451,7 +1493,7 @@ function ContinueWatchingRow({ items, onResume, title, epLabel }: ContinueWatchi
   return (
     <section className="mt-9">
       <div className="mb-3 flex items-center gap-2">
-        <Clock className="h-5 w-5 text-[#F5C563]" />
+        <Clock className="h-5 w-5 text-white/45" />
         <h2 className="text-lg font-bold tracking-tight">{title}</h2>
       </div>
       <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-3">
@@ -1470,11 +1512,11 @@ function ContinueWatchingRow({ items, onResume, title, epLabel }: ContinueWatchi
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-transparent" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FF2D46]/90 shadow-lg transition group-active:scale-90">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2050D8]/90 shadow-lg transition group-active:scale-90">
                   <Play className="h-3.5 w-3.5 fill-white text-white" />
                 </div>
               </div>
-              <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+              <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
                 {epLabel} {item.episode.episode_number}
               </span>
             </div>
@@ -1506,12 +1548,12 @@ function StartWatchingPrompt({ show, title, message, cta, onSelectShow }: StartW
   return (
     <section className="mt-9">
       <div className="mb-3 flex items-center gap-2">
-        <Clock className="h-5 w-5 text-[#F5C563]" />
+        <Clock className="h-5 w-5 text-white/45" />
         <h2 className="text-lg font-bold tracking-tight">{title}</h2>
       </div>
       <button
         onClick={() => onSelectShow(show)}
-        className="group relative flex w-full items-center gap-4 overflow-hidden rounded-xl border border-dashed border-white/12 bg-white/[0.02] p-3 text-left transition hover:border-[#FF2D46]/40 hover:bg-white/[0.04]"
+        className="group relative flex w-full items-center gap-4 overflow-hidden rounded-xl border border-dashed border-white/12 bg-white/[0.02] p-3 text-left transition hover:border-[#2050D8]/40 hover:bg-white/[0.04]"
       >
         <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151926] ring-1 ring-white/5 sm:h-24 sm:w-16">
           <img
@@ -1523,8 +1565,8 @@ function StartWatchingPrompt({ show, title, message, cta, onSelectShow }: StartW
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white sm:text-base">{show.title}</p>
-          <p className="mt-0.5 text-xs text-[#8B92A3] sm:text-sm">{message}</p>
-          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#FF2D46] px-3 py-1.5 text-xs font-bold text-white shadow-[0_2px_10px_rgba(255,45,70,0.35)] transition group-active:scale-95">
+          <p className="mt-0.5 text-xs text-[#6A7591] sm:text-sm">{message}</p>
+          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#2050D8] px-3 py-1.5 text-xs font-bold text-white shadow-[0_2px_10px_rgba(32,80,216,0.35)] transition group-active:scale-95">
             <Play className="h-3 w-3 fill-white" />
             {cta}
           </span>

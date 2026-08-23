@@ -120,10 +120,10 @@ export default function AuthScreen({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle at 12% -5%, rgba(192,143,51,0.22) 0%, rgba(7,8,12,0) 48%), radial-gradient(circle at 88% 105%, rgba(255,45,70,0.18) 0%, rgba(7,8,12,0) 52%)',
+            'radial-gradient(circle at 12% -5%, rgba(192,143,51,0.22) 0%, rgba(10,16,30,0) 48%), radial-gradient(circle at 88% 105%, rgba(32,80,216,0.18) 0%, rgba(10,16,30,0) 52%)',
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#07080C]/55 via-[#07080C]/80 to-[#07080C]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0A101E]/55 via-[#0A101E]/80 to-[#0A101E]" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Top bar */}
@@ -138,7 +138,7 @@ export default function AuthScreen({
             <img
               src="/assets/logo-transparent.png"
               alt="NINT ANIME"
-              className="h-8 w-8 drop-shadow-[0_0_14px_rgba(255,45,70,0.5)]"
+              className="h-8 w-8 drop-shadow-[0_0_14px_rgba(32,80,216,0.5)]"
             />
             <span
               className="text-lg font-black tracking-wider"
@@ -181,9 +181,9 @@ export default function AuthScreen({
         <div className="flex flex-1 items-center justify-center px-5 py-8">
           <div className="w-full max-w-md">
             {kickedOut && (
-              <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/[0.08] p-4 text-left">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#FF4D5E]/15">
-                  <AlertTriangle className="h-4 w-4 text-[#FF4D5E]" />
+              <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#FF6B60]/30 bg-[#FF6B60]/[0.08] p-4 text-left">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#FF6B60]/15">
+                  <AlertTriangle className="h-4 w-4 text-[#FF6B60]" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white">{t.sessionKickedTitle}</p>
@@ -213,7 +213,7 @@ export default function AuthScreen({
               className="rounded-[18px] p-[1px] shadow-[0_30px_70px_rgba(0,0,0,0.55)]"
               style={{
                 background:
-                  'linear-gradient(160deg, rgba(255,231,176,0.35), rgba(255,255,255,0.06) 30%, rgba(255,45,70,0.18) 100%)',
+                  'linear-gradient(160deg, rgba(255,231,176,0.35), rgba(255,255,255,0.06) 30%, rgba(32,80,216,0.18) 100%)',
               }}
             >
               <form
@@ -283,7 +283,7 @@ export default function AuthScreen({
                 )}
 
                 {error && (
-                  <div className="mt-4 rounded-lg border border-[#FF4D5E]/30 bg-[#FF4D5E]/10 px-4 py-3 text-sm text-[#FF4D5E]">
+                  <div className="mt-4 rounded-lg border border-[#FF6B60]/30 bg-[#FF6B60]/10 px-4 py-3 text-sm text-[#FF6B60]">
                     {error}
                   </div>
                 )}
@@ -304,7 +304,7 @@ export default function AuthScreen({
                   )}
                 </button>
 
-                <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[10.5px] leading-relaxed text-white/35">
+                <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-white/35">
                   <Smartphone className="h-3 w-3 flex-shrink-0" />
                   {t.oneDeviceNote}
                 </p>

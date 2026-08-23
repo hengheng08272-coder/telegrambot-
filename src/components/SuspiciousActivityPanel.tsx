@@ -69,14 +69,14 @@ export default function SuspiciousActivityPanel({ onClose }: Props) {
                   <p className="text-sm font-semibold text-white">
                     {row.telegram_username ? `@${row.telegram_username}` : row.telegram_user_id}
                   </p>
-                  <span className="shrink-0 text-[10px] text-white/40">
+                  <span className="shrink-0 text-[11px] text-white/40">
                     {new Date(row.detected_at).toLocaleString()}
                   </span>
                 </div>
                 <p className="text-xs text-red-300">
                   {row.episode_count} episodes within {row.window_minutes} min
                 </p>
-                <p className="mt-1 text-[10px] text-white/30">ID: {row.telegram_user_id}</p>
+                <p className="mt-1 text-[11px] text-white/30">ID: {row.telegram_user_id}</p>
               </div>
             ))
           )}

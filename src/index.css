@@ -14,40 +14,57 @@
 :root {
   color-scheme: dark;
 
-  /* Base surfaces, from deepest to most raised */
-  --nv-bg-deep: #000000;
-  --nv-bg: #05070d;
-  --nv-surface: #0d1119;
-  --nv-surface-2: #141a28;
-  --nv-surface-3: #1a2233;
-  --nv-border: #232a3d;
-  --nv-hairline: rgba(255, 255, 255, 0.08);
+  /* Base surfaces, from deepest to most raised.
 
-  /* Brand */
-  --nv-primary: #12e7c6;
-  --nv-primary-light: #6dffe4;
-  --nv-primary-dark: #0b7f6d;
-  --nv-indigo: #7b5cff;
-  --nv-indigo-light: #a78bfa;
+     Midnight navy, not black. Every screen in this app is mostly poster
+     art — saturated reds, purples, teals, all of it — and a pure-black
+     ground makes those covers look like stickers dropped on nothing. A
+     blue-black ground sits under them instead: it reads as darker than
+     black to the eye at these levels, and it gives the whole app one
+     temperature so the chrome stops competing with the artwork. */
+  --nv-bg-deep: #060a14;
+  --nv-bg: #0a101e;
+  --nv-surface: #111a2e;
+  --nv-surface-2: #17223a;
+  --nv-surface-3: #1e2b48;
+  --nv-border: #26365a;
+  /* Hairlines are cool, not white — a white line on navy reads as a
+     scratch; a blue-grey one reads as an edge. */
+  --nv-hairline: rgba(146, 172, 224, 0.12);
+
+  /* Brand. One blue for anything that acts — Play, Subscribe, the pay
+     button in checkout — so the app and its payment flow are visibly the
+     same product, and the tappable thing never competes with the reds
+     and oranges in the artwork. Red is demoted to the quiet marks that
+     are NOT actions ("ongoing", section icons, Coming Soon): it still
+     catches the eye, but nothing red asks to be pressed. Gold is left
+     with exactly one job: VIP. */
+  --nv-primary: #2050d8;
+  --nv-primary-light: #4e86ff;
+  --nv-primary-dark: #0e2560;
+  --nv-accent: #e6231f;
+  --nv-accent-soft: rgba(230, 35, 31, 0.14);
+  --nv-indigo: #e6231f;
+  --nv-indigo-light: #ff6b60;
   --nv-gold: #f5c563;
   --nv-gold-light: #ffe7b0;
   --nv-gold-dark: #b98430;
 
   /* Text */
-  --nv-text: #f4f5fa;
-  --nv-text-muted: #9ba3bc;
-  --nv-text-dim: #656e88;
+  --nv-text: #eef1f8;
+  --nv-text-muted: #9aa4bd;
+  --nv-text-dim: #6a7591;
 
   /* Status */
   --nv-success: #2fd98c;
   --nv-warning: #ffc24d;
-  --nv-error: #ff4d5e;
+  --nv-error: #ff6b60;
 
   /* Elevation */
-  --nv-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.55);
-  --nv-shadow-elevated: 0 24px 60px rgba(0, 0, 0, 0.68);
-  --nv-glow-primary: 0 0 34px rgba(18, 231, 198, 0.38);
-  --nv-glow-gold: 0 0 28px rgba(245, 197, 99, 0.32);
+  --nv-shadow-card: 0 10px 30px rgba(4, 8, 18, 0.6);
+  --nv-shadow-elevated: 0 24px 60px rgba(4, 8, 18, 0.72);
+  --nv-glow-primary: 0 0 34px rgba(32, 80, 216, 0.3);
+  --nv-glow-gold: 0 0 28px rgba(245, 197, 99, 0.28);
 
   /* Safe-area insets, so bars can sit flush against the notch/home bar */
   --nv-safe-top: env(safe-area-inset-top, 0px);
@@ -112,33 +129,35 @@ h3 {
 
 @layer components {
   /* ── App background ─────────────────────────────────────────────────
-     Flat near-black. Deliberately not an image and not a
+     Flat midnight navy. Deliberately not an image and not a
      `background-attachment: fixed` gradient: both force the whole
      viewport to repaint on every frame of a scroll, which is what makes
      a phone feel like it's skidding. The only light in the app comes
      from the hero's own blurred poster, so artwork lights the screen and
-     everything else stays out of its way. */
+     everything else stays out of its way — the ground just has to be
+     cool enough that the covers sit ON something instead of floating in
+     a void. */
   .bg-app {
-    background-color: #05070D;
+    background-color: var(--nv-bg);
   }
 
   /* Sheets and overlays that sit on top of .bg-app go a shade darker so
      the layering still reads. */
   .bg-app-deep {
-    background-color: #000;
+    background-color: var(--nv-bg-deep);
   }
 
   /* Sticky bars (home header, screen headers, bottom nav) — translucent
      over the ambient background so content scrolling underneath stays
      faintly visible instead of hitting a hard opaque edge. */
   .bar-blur {
-    background-color: rgba(0, 0, 0, 0.88);
+    background-color: rgba(6, 10, 20, 0.86);
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .bar-blur {
-      background-color: rgba(0, 0, 0, 0.97);
+      background-color: rgba(6, 10, 20, 0.97);
     }
   }
 
@@ -148,21 +167,21 @@ h3 {
      float over artwork. Falls back to a solid tint where backdrop-filter
      isn't supported, so nothing ever renders as unreadable transparency. */
   .glass {
-    background-color: rgba(14, 16, 23, 0.72);
+    background-color: rgba(17, 26, 46, 0.74);
     border: 1px solid var(--nv-hairline);
     backdrop-filter: blur(18px) saturate(150%);
     -webkit-backdrop-filter: blur(18px) saturate(150%);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass {
-      background-color: rgba(14, 16, 23, 0.96);
+      background-color: rgba(17, 26, 46, 0.96);
     }
   }
 
   /* Raised content card: subtle top-light gradient + hairline + depth. */
   .card-surface {
-    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 46%);
-    background-color: #0C0E14;
+    background-image: linear-gradient(180deg, rgba(146, 172, 224, 0.07) 0%, rgba(146, 172, 224, 0) 46%);
+    background-color: #111a2e;
     border: 1px solid var(--nv-hairline);
     box-shadow: var(--nv-shadow-card);
   }
@@ -188,7 +207,7 @@ h3 {
   /* Text painted with the brand gradients — used for section eyebrows and
      the VIP wordmark. */
   .text-gradient-primary {
-    background-image: linear-gradient(120deg, #6dffe4 0%, #12e7c6 55%, #0b7f6d 100%);
+    background-image: linear-gradient(120deg, #ff6a5f 0%, #2050d8 55%, #0e2560 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -203,14 +222,14 @@ h3 {
   /* Primary action surface — one class so every CTA in the app shares the
      same gradient, glow and press feedback instead of redefining it. */
   .btn-primary {
-    background-image: linear-gradient(135deg, #3df0d4 0%, #12e7c6 50%, #0a9987 100%);
-    color: #04120f;
-    box-shadow: 0 6px 18px rgba(18, 231, 198, 0.28);
+    background-image: linear-gradient(135deg, #2050d8 0%, #1a3fae 55%, #0e2560 100%);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(4, 8, 18, 0.5);
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
   }
   .btn-primary:hover {
     filter: brightness(1.06);
-    box-shadow: 0 8px 24px rgba(18, 231, 198, 0.38);
+    box-shadow: 0 10px 26px rgba(4, 8, 18, 0.6);
   }
   .btn-primary:active {
     transform: scale(0.97);
@@ -232,7 +251,7 @@ h3 {
   border: 2px solid var(--nv-bg);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2b3245;
+  background: #2a3556;
 }
 
 /* Hide scrollbars on horizontal rails while keeping scroll */
@@ -296,7 +315,7 @@ h3 {
   inset: -1.5px;
   border-radius: inherit;
   padding: 1.5px;
-  background: conic-gradient(from 0deg, #F5C563, #0f8f72, #F5C563, #c98a2e, #F5C563);
+  background: conic-gradient(from 0deg, #F5C563, #0e2560, #F5C563, #c98a2e, #F5C563);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -384,7 +403,7 @@ h3 {
   position: absolute;
   bottom: 6%;
   border-radius: 9999px;
-  background: radial-gradient(circle, #FFEFC8 0%, #F5C563 45%, #12E7C6 80%, transparent 100%);
+  background: radial-gradient(circle, #FFEFC8 0%, #F5C563 45%, #2050D8 80%, transparent 100%);
   opacity: 0;
   animation-name: ember-rise;
   animation-timing-function: ease-in;
@@ -621,8 +640,8 @@ h3 {
     inset-block: 0;
     left: 0;
     border-radius: 9999px;
-    background: linear-gradient(90deg, #6dffe4, #12e7c6);
-    box-shadow: 0 0 12px rgba(18, 231, 198, 0.55);
+    background: linear-gradient(90deg, #4e86ff, #2050d8);
+    box-shadow: 0 0 12px rgba(32, 80, 216, 0.5);
   }
   .seek-knob {
     position: absolute;
@@ -675,5 +694,270 @@ h3 {
   .hero-card-enter,
   .win-pop-in {
     animation-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   CHECKOUT (v29) — subscription / payment surface only
+   ---------------------------------------------------------------------
+   Every value below comes from public/checkout-theme.css (--co-*), which
+   the standalone Safari page loads too. Nothing here hardcodes a colour,
+   so the in-app sheet and the browser page stay one product. The rest of
+   the app keeps the --nv-* palette; these classes are namespaced `co-`
+   and only ever applied inside the subscription sheet.
+   ───────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* Root of the payment sheet: flat base + the single radial glow. */
+  .co-scope {
+    background-color: var(--co-bg);
+    color: var(--co-text);
+    font-family: var(--co-font-body);
+  }
+  .co-scope::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--co-backdrop);
+    pointer-events: none;
+  }
+
+  .co-card {
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line);
+    border-radius: var(--co-r-card);
+  }
+
+  /* A row the viewer chooses between (plan rows, method rows). */
+  .co-row {
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line-soft);
+    border-radius: var(--co-r-card);
+    transition: border-color var(--co-motion), background-color var(--co-motion),
+      transform var(--co-motion);
+  }
+  .co-row:active {
+    transform: scale(0.99);
+  }
+  .co-row-selected {
+    border-color: var(--co-brand-ring);
+    background-color: rgba(32, 80, 216, 0.07);
+  }
+
+  /* The one primary action per screen. */
+  .co-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--co-s2);
+    width: 100%;
+    min-height: 44px;
+    border-radius: var(--co-r-btn);
+    font-family: var(--co-font-body);
+    font-weight: 800;
+    text-decoration: none;
+    transition: filter var(--co-motion), transform var(--co-motion), opacity var(--co-motion);
+  }
+  .co-btn:active {
+    transform: scale(0.985);
+  }
+  .co-btn:disabled {
+    opacity: 0.45;
+    transform: none;
+  }
+
+  .co-btn-primary {
+    background-image: linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%);
+    color: #fff;
+    box-shadow: var(--co-shadow-btn);
+  }
+  .co-btn-primary:hover {
+    filter: brightness(1.06);
+  }
+
+  /* ABA blue — used on nothing except the hand-off to ABA Mobile. */
+  .co-btn-aba {
+    background-color: var(--co-aba-soft);
+    border: 1px solid var(--co-aba-line);
+    color: #cfdcf8;
+  }
+  .co-btn-aba:hover {
+    background-color: rgba(92, 130, 206, 0.2);
+  }
+
+  .co-btn-ghost {
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--co-line);
+    color: var(--co-text-muted);
+  }
+  .co-btn-ghost:hover {
+    color: var(--co-text);
+    border-color: var(--co-line-strong);
+  }
+
+  /* Step transition — the only motion in the flow (fade + 6px slide). */
+  .co-enter {
+    animation: co-enter 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+
+  /* Two seconds of attention on the upload block when the viewer comes
+     back from the bank — the single moment people forget the last step. */
+  .co-focus-ring {
+    animation: co-focus-ring 2s cubic-bezier(0.22, 0.61, 0.36, 1) 1;
+  }
+
+  /* ── Ticket motif ────────────────────────────────────────────────────
+     A VIP plan is a pass, so the checkout is drawn as one: a stub with
+     the duration on it, a perforated spine, and the price on the main
+     half. The notches are half-circles in the PAGE colour clipped by the
+     card's own overflow, which is why nothing here needs an image. */
+  .co-ticket {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line-soft);
+    border-radius: var(--co-r-card);
+    transition: border-color var(--co-motion), background-color var(--co-motion),
+      transform var(--co-motion);
+  }
+  .co-ticket:active {
+    transform: scale(0.99);
+  }
+  .co-ticket-selected {
+    border-color: var(--co-brand-ring);
+    background-image: linear-gradient(90deg, rgba(32, 80, 216, 0.13) 0%, rgba(32, 80, 216, 0) 58%);
+  }
+
+  .co-ticket-stub {
+    width: 62px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 14px 0;
+  }
+
+  /* The perforation. Two half-circles bitten out of the card, top and
+     bottom, plus the dashed line between them. */
+  .co-ticket-spine {
+    position: relative;
+    width: 1px;
+    flex-shrink: 0;
+    border-left: 1px dashed rgba(255, 255, 255, 0.2);
+  }
+  .co-ticket-spine::before,
+  .co-ticket-spine::after {
+    content: '';
+    position: absolute;
+    left: -6px;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--co-r-pill);
+    background-color: var(--co-bg);
+  }
+  .co-ticket-spine::before {
+    top: -7px;
+  }
+  .co-ticket-spine::after {
+    bottom: -7px;
+  }
+
+  /* The pass itself, on the pay screen: a red header band carrying the
+     reference, then the details below a tear line. */
+  .co-pass {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line);
+    border-radius: var(--co-r-card);
+  }
+  .co-pass-band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--co-s3);
+    padding: 9px 14px;
+    background-image: linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%);
+    color: #fff;
+  }
+  .co-tear {
+    position: relative;
+    border-top: 1px dashed rgba(255, 255, 255, 0.22);
+  }
+  .co-tear::before,
+  .co-tear::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--co-r-pill);
+    background-color: var(--co-bg);
+  }
+  .co-tear::before {
+    left: -8px;
+  }
+  .co-tear::after {
+    right: -8px;
+  }
+
+  /* Stamped labels — "HOT", "BEST", "PAID". Set slightly off-square, the
+     way a rubber stamp lands. */
+  /* Latin stamps ("BEST") want the wide tracking a rubber stamp has;
+     Khmer words do not — the marks stop sitting on their consonants. So
+     the tracking here is small enough to be safe in both. */
+  .co-stamp {
+    display: inline-block;
+    padding: 2px 6px;
+    border: 1px solid var(--co-brand-ring);
+    border-radius: 3px;
+    color: var(--co-brand);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    transform: rotate(-4deg);
+  }
+  .co-stamp-quiet {
+    border-color: var(--co-line-strong);
+    color: var(--co-text-muted);
+  }
+
+  .co-skeleton {
+    background-color: var(--co-card);
+    border: 1px solid var(--co-line-soft);
+    border-radius: var(--co-r-card);
+  }
+}
+
+@keyframes co-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes co-focus-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(32, 80, 216, 0);
+  }
+  15%,
+  70% {
+    box-shadow: 0 0 0 3px var(--co-brand-ring);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .co-enter,
+  .co-focus-ring {
+    animation: none;
   }
 }

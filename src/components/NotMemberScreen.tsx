@@ -8,7 +8,7 @@ interface Props {
 export default function NotMemberScreen({ groupLink }: Props) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-app px-6 text-center text-white">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FF2D46]/10">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#2050D8]/10">
         <span className="text-3xl">🔒</span>
       </div>
       <p className="text-lg font-bold">ខ្លឹមសារនេះសម្រាប់តែសមាជិក VIP</p>

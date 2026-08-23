@@ -15,31 +15,39 @@ export default {
       // instead of pasting hex values into arbitrary-value classes.
       colors: {
         base: {
-          DEFAULT: '#06070D',
-          deep: '#03040A',
+          DEFAULT: '#0A101E',
+          deep: '#060A14',
         },
         surface: {
-          DEFAULT: '#0D1119',
-          light: '#141A28',
-          hover: '#1A2233',
+          DEFAULT: '#111A2E',
+          light: '#17223A',
+          hover: '#1E2B48',
         },
-        hairline: 'rgba(255,255,255,0.08)',
+        hairline: 'rgba(146,172,224,0.12)',
+        // One blue for anything that acts, app and checkout alike.
         brand: {
-          DEFAULT: '#12E7C6',
-          light: '#6DFFE4',
-          dark: '#0B7F6D',
+          DEFAULT: '#2050D8',
+          light: '#4E86FF',
+          dark: '#0E2560',
+        },
+        // Quiet marks that are not actions — "ongoing", section icons,
+        // Coming Soon. Red earns attention without being tappable.
+        accent: {
+          DEFAULT: '#E6231F',
+          light: '#FF6B60',
         },
         indigo: {
-          brand: '#7B5CFF',
-          light: '#A78BFA',
+          brand: '#E6231F',
+          light: '#FF6B60',
         },
+        // Gold has exactly one job left: VIP.
         gold: {
           DEFAULT: '#F5C563',
           light: '#FFE7B0',
           dark: '#B98430',
         },
-        muted: '#9BA3BC',
-        dim: '#656E88',
+        muted: '#9AA4BD',
+        dim: '#6A7591',
       },
       fontFamily: {
         khmer: ['Battambang', 'Khmer OS Battambang', 'system-ui', 'sans-serif'],
@@ -50,19 +58,19 @@ export default {
         sheet: '18px',
       },
       boxShadow: {
-        card: '0 10px 30px rgba(0,0,0,0.55)',
-        elevated: '0 24px 60px rgba(0,0,0,0.68)',
-        glow: '0 0 34px rgba(18,231,198,0.4)',
-        'glow-gold': '0 0 28px rgba(245,197,99,0.32)',
+        card: '0 10px 30px rgba(4,8,18,0.6)',
+        elevated: '0 24px 60px rgba(4,8,18,0.72)',
+        glow: '0 0 34px rgba(32,80,216,0.3)',
+        'glow-gold': '0 0 28px rgba(245,197,99,0.28)',
       },
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(135deg, #3DF0D4 0%, #12E7C6 45%, #0A9987 100%)',
+        'brand-gradient': 'linear-gradient(135deg, #2050D8 0%, #1A3FAE 55%, #0E2560 100%)',
         'vip-gradient': 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #B98430)',
       },
       keyframes: {
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(18,231,198,0.45)' },
-          '50%': { boxShadow: '0 0 0 8px rgba(18,231,198,0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(32,80,216,0.45)' },
+          '50%': { boxShadow: '0 0 0 8px rgba(32,80,216,0)' },
         },
         'badge-pop': {
           '0%': { transform: 'scale(0.6)', opacity: '0' },

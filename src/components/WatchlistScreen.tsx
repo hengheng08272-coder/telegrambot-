@@ -66,7 +66,7 @@ export default function WatchlistScreen({
             <h2 className="text-lg font-bold tracking-tight">{t.continueWatching}</h2>
           </div>
           {continueItems.length === 0 ? (
-            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#8B92A3]">
+            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#6A7591]">
               {t.continueEmpty}
             </p>
           ) : (
@@ -89,7 +89,7 @@ export default function WatchlistScreen({
                       className="h-full w-full object-cover"
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 transition group-hover:bg-black/30">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_22px_rgba(255,45,70,0.5)]">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_22px_rgba(32,80,216,0.5)]">
                         <Play className="h-4 w-4 fill-white text-white" />
                       </div>
                     </div>
@@ -98,7 +98,7 @@ export default function WatchlistScreen({
                     <p className="truncate text-sm font-semibold text-white">
                       {item.show.title}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-[#A6ADBD]">
+                    <p className="mt-0.5 truncate text-xs text-[#9AA4BD]">
                       {t.epShort} {item.episode.episode_number} · {item.episode.title}
                     </p>
                     <button
@@ -110,7 +110,7 @@ export default function WatchlistScreen({
                   </div>
                   <button
                     onClick={() => handleClearContinue(item.show.id)}
-                    className="shrink-0 rounded-full p-2 text-[#6E7586] transition hover:text-[#FF2D46]"
+                    className="shrink-0 rounded-full p-2 text-[#6A7591] transition hover:text-[#2050D8]"
                     aria-label={t.removeFromList}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -124,11 +124,11 @@ export default function WatchlistScreen({
         {/* Want to watch */}
         <section className="mt-10">
           <div className="mb-3 flex items-center gap-2">
-            <Bookmark className="h-5 w-5 text-[#FF2D46]" />
+            <Bookmark className="h-5 w-5 text-[#2050D8]" />
             <h2 className="text-lg font-bold tracking-tight">{t.wantToWatch}</h2>
           </div>
           {watchlist.length === 0 ? (
-            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#8B92A3]">
+            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#6A7591]">
               {t.watchlistEmpty}
             </p>
           ) : (
@@ -139,7 +139,7 @@ export default function WatchlistScreen({
                     onClick={() => onSelectShow(s)}
                     className="block w-full text-left"
                   >
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#FF2D46]/50">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#2050D8]/50">
                       <img
                         src={s.poster_url ?? ''}
                         alt={s.title}
@@ -150,7 +150,7 @@ export default function WatchlistScreen({
                         className="absolute inset-0"
                         style={{
                           background:
-                            'linear-gradient(180deg, rgba(7,8,12,0) 50%, rgba(7,8,12,0.9) 100%)',
+                            'linear-gradient(180deg, rgba(10,16,30,0) 50%, rgba(10,16,30,0.9) 100%)',
                         }}
                       />
                     </div>
@@ -160,7 +160,7 @@ export default function WatchlistScreen({
                   </button>
                   <button
                     onClick={() => handleRemove(s.id)}
-                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white/70 backdrop-blur-sm transition hover:text-[#FF2D46]"
+                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white/70 backdrop-blur-sm transition hover:text-[#2050D8]"
                     aria-label={t.removeFromList}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -175,7 +175,7 @@ export default function WatchlistScreen({
         {watchlist.length === 0 && continueItems.length === 0 && (
           <div className="card-surface mt-10 flex flex-col items-center gap-3 rounded-card px-6 py-10 text-center">
             <SearchIcon className="h-8 w-8 text-white/20" />
-            <p className="text-sm text-[#8B92A3]">
+            <p className="text-sm text-[#6A7591]">
               {t.watchlistEmpty}
             </p>
             <button

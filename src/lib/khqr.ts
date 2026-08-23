@@ -161,6 +161,20 @@ export interface PayPageOptions {
   ticket?: string | null;
   /** Merchant name, so the page can draw the same KHQR ticket the app does. */
   merchantName?: string | null;
+  /**
+   * The admin's PayWay link for this tier, if there is one. The page
+   * keeps it in reserve and only offers it once the deeplink has
+   * demonstrably failed to open ABA — the same fallback the app does,
+   * moved to where the failure actually happens.
+   */
+  payLink?: string | null;
+  /**
+   * Which half of the checkout page leads: 'aba' puts the hand-off to the
+   * bank first, 'qr' puts the QR first for someone paying from another
+   * bank's app. Same page either way — KHQR is one standard, so there is
+   * exactly one QR and only ABA publishes a scheme worth linking to.
+   */
+  mode?: 'aba' | 'qr';
   lang?: string;
 }
 
@@ -188,13 +202,27 @@ export function buildPayPageUrl(opts: PayPageOptions): string {
   if (opts.amount) params.set('amount', opts.amount);
   if (opts.ticket) params.set('ticket', opts.ticket);
   if (opts.merchantName) params.set('name', opts.merchantName);
+  if (opts.payLink) params.set('pay', opts.payLink);
+  if (opts.mode) params.set('mode', opts.mode);
   params.set('lang', opts.lang ?? 'km');
 
   // Where "back to the app" should point. Without a configured bot
   // username there is no Mini App link to return to, so the page simply
   // doesn't render that button.
+  // Getting back. The Mini App is still open inside Telegram — the
+  // viewer only left it in the sense that Safari came to the front — so
+  // the right move is to bring Telegram forward, not to launch the app
+  // again. `tg://` does exactly that and lands them back on the payment
+  // sheet they were looking at; a t.me/<bot>/<app> link, by contrast,
+  // opens the bot's chat and starts a SECOND instance of the Mini App,
+  // losing the open ticket. So that link is only kept as the fallback
+  // for a viewer whose Mini App really is gone.
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
-  if (botUsername) params.set('ret', `https://t.me/${botUsername}/app`);
+  const miniAppName = import.meta.env.VITE_TELEGRAM_MINIAPP_SHORT_NAME as string | undefined;
+  params.set('ret', 'tg://');
+  if (botUsername) {
+    params.set('app', `https://t.me/${botUsername}${miniAppName ? `/${miniAppName}` : ''}`);
+  }
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   return `${origin}/pay/?${params.toString()}`;

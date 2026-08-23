@@ -112,7 +112,7 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 90% 40% at 50% -5%, rgba(255,45,70,0.14) 0%, rgba(4,5,10,0) 62%)',
+            'radial-gradient(ellipse 90% 40% at 50% -5%, rgba(32,80,216,0.14) 0%, rgba(4,5,10,0) 62%)',
         }}
       />
 
@@ -183,7 +183,7 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
               <p className="min-w-0 truncate text-sm font-semibold text-white">{show.title}</p>
             </div>
 
-            <div className="relative overflow-hidden rounded-2xl border border-[#FF2D46]/20 bg-white/[0.03] p-4 text-center">
+            <div className="relative overflow-hidden rounded-2xl border border-[#2050D8]/20 bg-white/[0.03] p-4 text-center">
               <p className="text-[11px] uppercase tracking-[0.16em] text-white/40">{t.subTotalDue}</p>
               <p className="mt-1 text-[28px] font-extrabold leading-none text-white">
                 ${MOVIE_PRICE}
@@ -199,7 +199,7 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
                   className="mx-auto mt-3.5 w-full max-w-[220px] rounded-xl border border-white/10 bg-white p-2 shadow-[0_10px_34px_rgba(0,0,0,0.55)]"
                 />
               ) : (
-                <p className="mt-4 rounded-xl border border-[#FF2D46]/25 bg-[#FF2D46]/5 p-4 text-xs text-[#FF2D46]">
+                <p className="mt-4 rounded-xl border border-[#2050D8]/25 bg-[#2050D8]/5 p-4 text-xs text-[#2050D8]">
                   {t.subQrMissing}
                 </p>
               )}
@@ -208,7 +208,7 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
                 <a
                   href={abaDeeplink}
                   onClick={() => armDeeplinkFallback(() => setAbaDidNotOpen(true))}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#FF2D46] to-[#8F1020] py-3 text-sm font-bold text-white shadow-[0_8px_20px_-8px_rgba(255,45,70,0.75)] transition active:scale-[0.98]"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2050D8] to-[#0E2560] py-3 text-sm font-bold text-white shadow-[0_8px_20px_-8px_rgba(32,80,216,0.75)] transition active:scale-[0.98]"
                 >
                   {t.subOpenAba ?? 'Open ABA Mobile'}
                 </a>
@@ -258,7 +258,7 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
               ) : (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] py-4 text-sm font-semibold text-white/60 transition hover:border-[#FF2D46]/40 hover:text-white"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.02] py-4 text-sm font-semibold text-white/60 transition hover:border-[#2050D8]/40 hover:text-white"
                 >
                   <ImagePlus className="h-4 w-4" /> {t.subManualTab}
                 </button>
