@@ -1061,13 +1061,11 @@ function CoverflowHero({
               </Badge>
             ) : (
               <>
-                {/* Trending tag — a small corner flag instead of a numeral,
-                    only shown when the show is genuinely trending. */}
-                {heroRank && (
-                  <Badge tone="info" onArt className="absolute left-1.5 top-1.5">
-                    TOP #{heroRank}
-                  </Badge>
-                )}
+                {/* The rank moved up beside the "trending" label — the
+                    cover is only about 100px wide on a small phone, and
+                    rank plus access badge were sitting on top of each
+                    other there. Access wins the cover: it is the one
+                    that says whether this is watchable. */}
                 {/* VIP / Free badge — same subscription status the detail
                     screen enforces, so the cover never over-promises.
                     Skipped on a Coming Soon cover, where neither label
@@ -1093,9 +1091,16 @@ function CoverflowHero({
 
         {/* Title + meta + actions */}
         <div className="min-w-0 flex-1 text-left">
-          <Badge tone="mark" icon={<Flame className="h-3 w-3" />} className="relative -top-1 mb-1 px-2 py-1 text-[11px]">
-            {t.featuredLabel ?? 'កំពុងពេញនិយម'}
-          </Badge>
+          <span className="relative -top-1 mb-1 flex flex-wrap items-center gap-1.5">
+            <Badge tone="mark" icon={<Flame className="h-3 w-3" />} className="px-2 py-1 text-[11px]">
+              {t.featuredLabel ?? 'កំពុងពេញនិយម'}
+            </Badge>
+            {heroRank && !hero.coming_soon && (
+              <Badge tone="info" className="px-2 py-1 text-[11px]">
+                TOP #{heroRank}
+              </Badge>
+            )}
+          </span>
           <h2
             key={hero.id}
             onClick={() => onSelectShow(hero)}
@@ -1120,15 +1125,19 @@ function CoverflowHero({
             <span className="flex items-center gap-1 text-[#F5C563]">
               <Star className="h-2.5 w-2.5 fill-[#F5C563] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
             </span>
+            {/* Divider and value stay inside one span: on a 320px screen
+                this row wraps, and a separator left stranded at the end of
+                a line reads as a typo. Only the two plain-text items get a
+                divider — the chips below carry their own border, so a pipe
+                in front of them is one separator too many. */}
             {hero.release_year && (
-              <>
+              <span className="flex items-center gap-x-2">
                 <span className="h-3 w-px bg-white/20" aria-hidden />
                 <span className="flex items-center gap-1">
                   <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {hero.release_year}
                 </span>
-              </>
+              </span>
             )}
-            <span className="h-3 w-px bg-white/20" aria-hidden />
             <span className="rounded border border-white/20 px-1.5 py-0.5 text-[9.5px] font-medium uppercase text-white/70 sm:text-[11px]">
               {hero.type === 'movie' ? t.movie : t.series}
             </span>
@@ -1139,12 +1148,9 @@ function CoverflowHero({
                 episodes, which is information, not a premium promise —
                 and nothing red in this app is tappable. */}
             {hero.type === 'series' && hero.status !== 'completed' && (
-              <>
-                <span className="h-3 w-px bg-white/20" aria-hidden />
-                <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent sm:text-[11px]">
-                  {t.ongoing}
-                </span>
-              </>
+              <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent sm:text-[11px]">
+                {t.ongoing}
+              </span>
             )}
           </div>
 
