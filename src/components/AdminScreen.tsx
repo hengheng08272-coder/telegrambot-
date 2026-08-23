@@ -83,6 +83,65 @@ function detectDurationMinutes(url: string): Promise<number | null> {
   });
 }
 
+interface ParsedBulkRow {
+  episode_number: number;
+  video_url: string;
+}
+
+// Turns a pasted block of links into episode rows.
+//
+// The admin already keeps the season as a text file of one URL per line,
+// so that file IS the input format -- no CSV, no numbering by hand. The
+// episode number is read from the `/ep-175/` segment these URLs carry,
+// because the filename cannot be trusted for it: the same season has
+// `-175.mp4`, `--188.mp4`, `-1-.mp4` and bare `--.mp4` endings, all from
+// re-uploads.
+//
+// A number repeated inside one paste keeps the LAST link, since a second
+// upload of the same episode is the corrected one.
+const EP_IN_PATH = /\/ep-(\d+)(?:\/|$)/i;
+const EP_IN_FILENAME = /-(\d+)\.[a-z0-9]+$/i;
+
+function parseBulkEpisodeList(
+  text: string,
+  startNumber: number,
+): { rows: ParsedBulkRow[]; skippedLines: number; replacedInPaste: number } {
+  const byNumber = new Map<number, string>();
+  let skippedLines = 0;
+  let replacedInPaste = 0;
+  let nextFallback = startNumber;
+
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (!/^https?:\/\//i.test(line)) {
+      skippedLines++;
+      continue;
+    }
+
+    const fromPath = EP_IN_PATH.exec(line);
+    const fromName = fromPath ? null : EP_IN_FILENAME.exec(line);
+    const number = fromPath
+      ? parseInt(fromPath[1], 10)
+      : fromName
+        ? parseInt(fromName[1], 10)
+        : nextFallback;
+
+    // Keep the fallback ahead of every number seen, so a link with no
+    // readable number never lands on one already taken by this paste.
+    nextFallback = Math.max(nextFallback, number + 1);
+
+    if (byNumber.has(number)) replacedInPaste++;
+    byNumber.set(number, line);
+  }
+
+  const rows = [...byNumber.entries()]
+    .map(([episode_number, video_url]) => ({ episode_number, video_url }))
+    .sort((a, b) => a.episode_number - b.episode_number);
+
+  return { rows, skippedLines, replacedInPaste };
+}
+
 export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [shows, setShows] = useState<ShowWithEpisodes[]>([]);
   const watchingNow = usePresenceCount();
@@ -140,6 +199,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     video_url: '',
   });
   const [busy, setBusy] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState<string | null>(null);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Admin preview modal — lets admin check an uploaded episode plays
   // correctly, bypassing the subscription check via the is_admin flag
@@ -463,6 +525,57 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
         video_url: '',
       });
     }
+    await loadShows();
+  };
+
+  // Inserts a whole pasted season in one write. Duration is deliberately
+  // left null: reading metadata off 200 remote videos would take minutes
+  // and stall the import, and the per-episode "paste URL" flow still
+  // fills it in whenever a single link is replaced later.
+  const handleBulkAddEpisodes = async (showId: string) => {
+    const show = shows.find((s) => s.id === showId);
+    if (!show) return;
+
+    setBulkBusy(true);
+    setError('');
+
+    const existing = new Set(show.episodes.map((e) => e.episode_number));
+    const nextFree = show.episodes.reduce((max, ep) => Math.max(max, ep.episode_number), 0) + 1;
+    const { rows } = parseBulkEpisodeList(bulkText, nextFree);
+
+    // An episode number this show already has is skipped rather than
+    // overwritten -- a bulk paste is an add, and silently replacing a
+    // working link is not something to do behind the admin's back.
+    const fresh = rows.filter((r) => !existing.has(r.episode_number));
+
+    if (fresh.length === 0) {
+      setBulkBusy(false);
+      setError('Nothing to add — every episode number in that list is already on this show.');
+      return;
+    }
+
+    const season =
+      parseInt(newEp.season) || show.episodes[show.episodes.length - 1]?.season || 1;
+
+    const { error } = await supabase.from('episodes').insert(
+      fresh.map((r) => ({
+        show_id: showId,
+        episode_number: r.episode_number,
+        season,
+        title: `Episode ${r.episode_number}`,
+        description: null,
+        duration: null,
+        video_url: r.video_url,
+      })),
+    );
+
+    setBulkBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setBulkText('');
+    setBulkOpen(null);
     await loadShows();
   };
 
@@ -1266,6 +1379,109 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         Tip: paste the link, hit Enter — it saves this episode and jumps straight to the next number so you can paste again.
                       </p>
                     )}
+                    {/* Bulk import. One-at-a-time is the thing this panel
+                        was worst at: a 200-episode season meant 200 rounds
+                        of paste-and-click. The admin already keeps that
+                        season as a text file of one URL per line, so take
+                        the file exactly as it is. */}
+                    {focusedShow.type !== 'movie' &&
+                      (bulkOpen === focusedShow.id ? (
+                        <div className="rounded-lg border border-white/10 bg-black/25 p-3">
+                          <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
+                            <ListVideo className="h-3 w-3" /> Paste one video URL per line
+                          </label>
+                          <textarea
+                            value={bulkText}
+                            onChange={(e) => setBulkText(e.target.value)}
+                            rows={6}
+                            placeholder={'https://…/ep-175/….mp4\nhttps://…/ep-176/….mp4\nhttps://…/ep-177/….mp4'}
+                            className="w-full resize-y rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 font-mono text-[11px] text-white outline-none focus:border-[#2FD98C]/50"
+                          />
+                          {(() => {
+                            const existing = new Set(
+                              focusedShow.episodes.map((e) => e.episode_number),
+                            );
+                            const nextFree =
+                              focusedShow.episodes.reduce(
+                                (max, ep) => Math.max(max, ep.episode_number),
+                                0,
+                              ) + 1;
+                            const { rows, skippedLines, replacedInPaste } =
+                              parseBulkEpisodeList(bulkText, nextFree);
+                            const fresh = rows.filter(
+                              (r) => !existing.has(r.episode_number),
+                            );
+                            const already = rows.length - fresh.length;
+                            return (
+                              <>
+                                {/* Say what will happen before it happens --
+                                    a 200-row insert is not something to run
+                                    on trust. */}
+                                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+                                  <span className="font-semibold text-[#2FD98C]">
+                                    {fresh.length} to add
+                                  </span>
+                                  {already > 0 && (
+                                    <span className="text-white/45">
+                                      {already} already on this show — skipped
+                                    </span>
+                                  )}
+                                  {replacedInPaste > 0 && (
+                                    <span className="text-[#FFB84D]">
+                                      {replacedInPaste} repeated number — newest link kept
+                                    </span>
+                                  )}
+                                  {skippedLines > 0 && (
+                                    <span className="text-white/45">
+                                      {skippedLines} line not a URL — ignored
+                                    </span>
+                                  )}
+                                </div>
+                                {fresh.length > 0 && (
+                                  <p className="mt-1 text-[11px] text-white/35">
+                                    Ep {fresh[0].episode_number} →{' '}
+                                    {fresh[fresh.length - 1].episode_number} · season{' '}
+                                    {parseInt(newEp.season) || 1}. Duration stays blank —
+                                    reading it off this many remote videos would stall the
+                                    import.
+                                  </p>
+                                )}
+                                <div className="mt-2.5 flex gap-2">
+                                  <button
+                                    onClick={() => handleBulkAddEpisodes(focusedShow.id)}
+                                    disabled={bulkBusy || fresh.length === 0}
+                                    className="flex items-center gap-1.5 rounded-lg bg-[#2FD98C] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#4C6FFF] disabled:opacity-40"
+                                  >
+                                    {bulkBusy ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Plus className="h-3.5 w-3.5" />
+                                    )}
+                                    Add {fresh.length} episode{fresh.length === 1 ? '' : 's'}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setBulkOpen(null);
+                                      setBulkText('');
+                                    }}
+                                    className="rounded-lg border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/5"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setBulkOpen(focusedShow.id)}
+                          className="flex w-fit items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-3 py-2 text-[11px] font-semibold text-white/60 transition hover:border-[#2FD98C]/40 hover:text-white"
+                        >
+                          <ListVideo className="h-3.5 w-3.5" />
+                          Bulk paste — many links at once
+                        </button>
+                      ))}
                   </div>
                 ) : (
                   <button
