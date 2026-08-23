@@ -1541,21 +1541,19 @@ export default function SubscriptionModal({
               <div className="co-tear -mx-5 my-4" />
 
               <div className="space-y-2.5">
-                <div className="co-leader">
-                  <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-[color:var(--co-text-dim)]">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
                     {t.subReceiptPlan}
                   </span>
-                  <span className="co-leader-fill" aria-hidden="true" />
-                  <span className="max-w-[60%] truncate text-[12.5px] font-bold text-[color:var(--co-text)]">
+                  <span className="max-w-[64%] truncate text-[13px] font-bold text-[color:var(--co-text)]">
                     {planLabel(payTier)}
                   </span>
                 </div>
-                <div className="co-leader">
-                  <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-[color:var(--co-text-dim)]">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
                     {t.subMethodLabel}
                   </span>
-                  <span className="co-leader-fill" aria-hidden="true" />
-                  <span className="flex max-w-[62%] shrink-0 items-center gap-1.5 truncate text-[12.5px] font-bold text-[color:var(--co-text)]">
+                  <span className="flex max-w-[66%] shrink-0 items-center gap-1.5 truncate text-[13px] font-bold text-[color:var(--co-text)]">
                     {payMode === 'auto' ? (
                       <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--co-aba)' }} />
                     ) : (
@@ -1570,13 +1568,13 @@ export default function SubscriptionModal({
                 {/* The amount gets its own line, above the rule, the way
                     a total sits at the bottom of a bill. */}
                 <div className="flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
-                  <span className="shrink-0 pb-1 text-[10px] uppercase tracking-[0.14em] text-[color:var(--co-text-dim)]">
+                  <span className="shrink-0 pb-1 text-[11px] text-[color:var(--co-text-dim)]">
                     {t.subAmountDue}
                   </span>
                   <span className="flex items-baseline gap-1.5">
                     <span
                       className="leading-none tabular-nums text-[color:var(--co-text)]"
-                      style={{ fontFamily: 'var(--co-font-display)', fontSize: '30px' }}
+                      style={{ fontFamily: 'var(--co-font-display)', fontSize: '28px' }}
                     >
                       ${payTier.price}
                     </span>
