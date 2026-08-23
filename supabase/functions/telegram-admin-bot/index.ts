@@ -259,11 +259,23 @@ Deno.serve(async (req: Request) => {
     if (text === "/start" && fromChatId) {
       const adminUsername = Deno.env.get("TELEGRAM_ADMIN_USERNAME");
       const bannerUrl = Deno.env.get("TELEGRAM_START_BANNER_URL");
+      // Where "Support" points. Set TELEGRAM_SUPPORT_URL to a t.me link
+      // (a person, a group, or a channel) — no redeploy needed once the
+      // variable exists. Falls back to the admin's own username when
+      // that is configured, and the row is left out entirely when
+      // neither is: Telegram rejects a url button with no URL, and a
+      // button that errors is worse than a button that isn't there.
+      const supportUrl =
+        Deno.env.get("TELEGRAM_SUPPORT_URL") ||
+        (adminUsername ? `https://t.me/${adminUsername}` : null);
 
+      // Two buttons, one job each: go in, or get help. Subscribe led to
+      // the same Mini App as Open App, and About/Preview were reading
+      // material in front of a door the viewer had already decided to
+      // walk through.
       const keyboard = [
-        [{ text: SUBSCRIBE_BTN, url: miniAppUrl }, { text: OPEN_APP_BTN, url: miniAppUrl }],
-        [{ text: ABOUT_US_BTN, callback_data: "show_about" }, { text: "Preview", callback_data: "show_preview" }],
-        adminUsername ? [{ text: CONTACT_US_BTN, url: `https://t.me/${adminUsername}` }] : [],
+        [{ text: OPEN_APP_BTN, url: miniAppUrl }],
+        supportUrl ? [{ text: SUPPORT_BTN, url: supportUrl }] : [],
       ].filter((row) => row.length > 0);
 
       if (bannerUrl) {
@@ -316,8 +328,8 @@ function KICK_NOTICE(user: TgUser, actor?: TgUser) {
 
 const SUBSCRIBE_BTN = "\u1787\u17b6\u179c VIP";
 const OPEN_APP_BTN = "\u1794\u17be\u1780 Mini App";
-const ABOUT_US_BTN = "\u17a2\u17c6\u1796\u17b8\u1799\u17be\u1784";
-const CONTACT_US_BTN = "\u1791\u17b6\u1780\u17cb\u1791\u1784\u1780\u17d2\u179a\u17bb\u1798\u1780\u17b6\u179a\u1784\u17b6\u179a";
+// "\u1787\u17c6\u1793\u17bd\u1799" — Support.
+const SUPPORT_BTN = "\ud83d\udcac \u1787\u17c6\u1793\u17bd\u1799 / Support";
 const BACK_TO_PAYMENT_BTN = "\u178f\u17d2\u179a\u179b\u1794\u17cb\u1791\u17c5\u1794\u1784\u17cb\u1794\u17d2\u179a\u17b6\u1780\u17cb";
 
 const START_CAPTION =
