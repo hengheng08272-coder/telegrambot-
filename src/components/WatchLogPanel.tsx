@@ -64,7 +64,7 @@ export default function WatchLogPanel({ onClose }: Props) {
                   <p className="truncate text-sm font-semibold text-white">
                     {row.show_title} <span className="text-white/40">· {row.episode_label}</span>
                   </p>
-                  <span className="shrink-0 text-[10px] text-white/40">
+                  <span className="shrink-0 text-[11px] text-white/40">
                     {new Date(row.started_at).toLocaleString()}
                   </span>
                 </div>

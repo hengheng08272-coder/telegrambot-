@@ -155,7 +155,7 @@ export default function UsersPanel({ onClose }: Props) {
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: 'Total subscribers', value: counts.all, tone: 'text-white' },
-            { label: 'Active VIP', value: counts.active, tone: 'text-[#86EEC0]' },
+            { label: 'Active VIP', value: counts.active, tone: 'text-[#2FD98C]' },
             {
               label: 'Expiring in 7 days',
               value: counts.expiring,
@@ -230,7 +230,7 @@ export default function UsersPanel({ onClose }: Props) {
                     </p>
                   </div>
                   <span
-                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold ${
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold ${
                       active ? 'bg-[#4C6FFF]/15 text-[#4C6FFF]' : 'bg-white/10 text-white/40'
                     }`}
                   >

@@ -181,9 +181,9 @@ export default function AuthScreen({
         <div className="flex flex-1 items-center justify-center px-5 py-8">
           <div className="w-full max-w-md">
             {kickedOut && (
-              <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/[0.08] p-4 text-left">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#FF4D5E]/15">
-                  <AlertTriangle className="h-4 w-4 text-[#FF4D5E]" />
+              <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#FF6B60]/30 bg-[#FF6B60]/[0.08] p-4 text-left">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#FF6B60]/15">
+                  <AlertTriangle className="h-4 w-4 text-[#FF6B60]" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white">{t.sessionKickedTitle}</p>
@@ -283,7 +283,7 @@ export default function AuthScreen({
                 )}
 
                 {error && (
-                  <div className="mt-4 rounded-lg border border-[#FF4D5E]/30 bg-[#FF4D5E]/10 px-4 py-3 text-sm text-[#FF4D5E]">
+                  <div className="mt-4 rounded-lg border border-[#FF6B60]/30 bg-[#FF6B60]/10 px-4 py-3 text-sm text-[#FF6B60]">
                     {error}
                   </div>
                 )}
@@ -304,7 +304,7 @@ export default function AuthScreen({
                   )}
                 </button>
 
-                <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[10.5px] leading-relaxed text-white/35">
+                <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11px] leading-relaxed text-white/35">
                   <Smartphone className="h-3 w-3 flex-shrink-0" />
                   {t.oneDeviceNote}
                 </p>

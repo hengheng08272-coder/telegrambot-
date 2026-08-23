@@ -1,6 +1,7 @@
 import { Film, Play, Star } from 'lucide-react';
 import type { Show } from '@/lib/types';
 import { MOVIE_PRICE } from '@/lib/moviePurchase';
+import Badge from '@/components/Badge';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 
@@ -72,14 +73,13 @@ export default function MovieCard({ show, onClick }: Props) {
           <span className="min-w-0">
             {/* What it is: one film, start to finish. The single fact
                 that separates these from every other cover in the app. */}
-            <span className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-white/85 backdrop-blur-sm">
-              <Film className="h-2.5 w-2.5" />
+            <Badge tone="info" onArt icon={<Film className="h-3 w-3" />}>
               {t.movieOneOff}
-            </span>
-            <span className="mt-1.5 block truncate text-[13.5px] font-bold leading-snug text-white">
+            </Badge>
+            <span className="mt-1.5 block truncate text-[13px] font-bold leading-snug text-white">
               {show.title}
             </span>
-            <span className="mt-1 flex items-center gap-2 text-[10px] text-white/50">
+            <span className="mt-1 flex items-center gap-2 text-[11px] text-white/50">
               <span className="flex items-center gap-1 text-[#F5C563]">
                 <Star className="h-2.5 w-2.5 fill-[#F5C563]" />
                 {Number(show.rating).toFixed(1)}
@@ -96,19 +96,13 @@ export default function MovieCard({ show, onClick }: Props) {
           {/* Price, or the fact that there isn't one. */}
           <span className="mt-2 flex items-center justify-between gap-2">
             {show.is_free ? (
-              <span className="rounded-md border border-[#2FD98C]/40 bg-[#2FD98C]/15 px-2 py-1 text-[10px] font-bold text-[#86EEC0]">
+              <Badge tone="free" className="px-2 py-1 text-[11px]">
                 {t.freeBadge}
-              </span>
+              </Badge>
             ) : (
-              <span
-                className="rounded-md px-2 py-1 text-[10px] font-black text-white"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%)',
-                }}
-              >
+              <Badge tone="price" className="px-2 py-1 text-[11px]">
                 {t.movieOnlyPrice.replace('{price}', `$${MOVIE_PRICE}`)}
-              </span>
+              </Badge>
             )}
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition group-hover:bg-white/20">
               <Play className="h-3 w-3 fill-white" />

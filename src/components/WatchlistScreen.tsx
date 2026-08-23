@@ -66,7 +66,7 @@ export default function WatchlistScreen({
             <h2 className="text-lg font-bold tracking-tight">{t.continueWatching}</h2>
           </div>
           {continueItems.length === 0 ? (
-            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#8A93AC]">
+            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#6A7591]">
               {t.continueEmpty}
             </p>
           ) : (
@@ -98,7 +98,7 @@ export default function WatchlistScreen({
                     <p className="truncate text-sm font-semibold text-white">
                       {item.show.title}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-[#A3ADC4]">
+                    <p className="mt-0.5 truncate text-xs text-[#9AA4BD]">
                       {t.epShort} {item.episode.episode_number} · {item.episode.title}
                     </p>
                     <button
@@ -110,7 +110,7 @@ export default function WatchlistScreen({
                   </div>
                   <button
                     onClick={() => handleClearContinue(item.show.id)}
-                    className="shrink-0 rounded-full p-2 text-[#6E7586] transition hover:text-[#2050D8]"
+                    className="shrink-0 rounded-full p-2 text-[#6A7591] transition hover:text-[#2050D8]"
                     aria-label={t.removeFromList}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -128,7 +128,7 @@ export default function WatchlistScreen({
             <h2 className="text-lg font-bold tracking-tight">{t.wantToWatch}</h2>
           </div>
           {watchlist.length === 0 ? (
-            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#8A93AC]">
+            <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#6A7591]">
               {t.watchlistEmpty}
             </p>
           ) : (
@@ -175,7 +175,7 @@ export default function WatchlistScreen({
         {watchlist.length === 0 && continueItems.length === 0 && (
           <div className="card-surface mt-10 flex flex-col items-center gap-3 rounded-card px-6 py-10 text-center">
             <SearchIcon className="h-8 w-8 text-white/20" />
-            <p className="text-sm text-[#8A93AC]">
+            <p className="text-sm text-[#6A7591]">
               {t.watchlistEmpty}
             </p>
             <button

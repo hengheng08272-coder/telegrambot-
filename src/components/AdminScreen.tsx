@@ -663,7 +663,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           >
             <Wallet className="h-3.5 w-3.5" /> Payments
             {pendingPaymentsCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-md bg-[#2050D8] px-1 text-[10px] font-extrabold text-white">
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-md bg-[#2050D8] px-1 text-[11px] font-extrabold text-white">
                 {pendingPaymentsCount}
               </span>
             )}
@@ -722,7 +722,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
 
       {error && (
         <div className="mx-auto max-w-[1200px] px-4 pt-4 sm:px-8">
-          <div className="flex items-center gap-2 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/10 px-4 py-3 text-sm text-[#FF4D5E]">
+          <div className="flex items-center gap-2 rounded-xl border border-[#FF6B60]/30 bg-[#FF6B60]/10 px-4 py-3 text-sm text-[#FF6B60]">
             <X className="h-4 w-4 shrink-0" />
             {error}
             <button onClick={() => setError('')} className="ml-auto">
@@ -763,7 +763,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     <p className="mt-0.5 text-[11px] text-white/40">
                       {show.episodes.length} ep{show.episodes.length === 1 ? '' : 's'} so far
                     </p>
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-[#2050D8]/15 px-2 py-[2px] text-[10px] font-bold text-[#93B2FF]">
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-[#2050D8]/15 px-2 py-[2px] text-[11px] font-bold text-[#93B2FF]">
                       <Plus className="h-2.5 w-2.5" /> Ep {nextNumber}
                     </span>
                   </div>
@@ -821,7 +821,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         listing that will not play. Surfaced on the card
                         so it is visible without opening the show. */}
                     {show.episodes.length > withVideo && (
-                      <p className="mt-1 inline-flex items-center gap-1 rounded-md bg-[#F5C563]/12 px-2 py-[2px] text-[10px] font-bold text-[#F5C563]">
+                      <p className="mt-1 inline-flex items-center gap-1 rounded-md bg-[#F5C563]/12 px-2 py-[2px] text-[11px] font-bold text-[#F5C563]">
                         <Clock className="h-2.5 w-2.5" />
                         {show.episodes.length - withVideo} without video
                       </p>
@@ -1074,7 +1074,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                       </button>
                       <button
                         onClick={() => handleDeleteEpisode(ep.id)}
-                        className="rounded-lg p-2 text-white/40 transition hover:bg-[#FF4D5E]/10 hover:text-[#FF4D5E]"
+                        className="rounded-lg p-2 text-white/40 transition hover:bg-[#FF6B60]/10 hover:text-[#FF6B60]"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -1625,7 +1625,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             <div className="flex aspect-video items-center justify-center bg-black">
               {previewLoading && <Loader2 className="h-8 w-8 animate-spin text-white/60" />}
               {!previewLoading && previewError && (
-                <p className="px-6 text-center text-sm text-[#FF4D5E]">{previewError}</p>
+                <p className="px-6 text-center text-sm text-[#FF6B60]">{previewError}</p>
               )}
               {!previewLoading && previewUrl && (
                 <video src={previewUrl} controls autoPlay className="h-full w-full" />

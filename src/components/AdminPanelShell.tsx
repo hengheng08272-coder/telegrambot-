@@ -105,10 +105,10 @@ export default function AdminPanelShell({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className={`mx-auto ${maxWidth} px-4 py-5 sm:px-8 sm:py-6`}>
           {error && (
-            <div className="mb-4 flex items-start gap-2 rounded-xl border border-[#FF4D5E]/30 bg-[#FF4D5E]/10 px-3.5 py-3 text-xs text-[#FFB3BD]">
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-[#FF6B60]/30 bg-[#FF6B60]/10 px-3.5 py-3 text-xs text-[#FF6B60]">
               <span className="flex-1 leading-relaxed">{error}</span>
               {onDismissError && (
-                <button onClick={onDismissError} className="shrink-0 text-[#FFB3BD]/70 hover:text-[#FFB3BD]">
+                <button onClick={onDismissError} className="shrink-0 text-[#FF6B60]/70 hover:text-[#FF6B60]">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
@@ -158,7 +158,7 @@ export function PanelTabs<T extends string>({
             {tab.icon}
             {tab.label}
             {typeof tab.badge === 'number' && tab.badge > 0 && (
-              <span className="rounded-md bg-white/15 px-1.5 text-[10px] font-extrabold text-white/80">
+              <span className="rounded-md bg-white/15 px-1.5 text-[11px] font-extrabold text-white/80">
                 {tab.badge}
               </span>
             )}

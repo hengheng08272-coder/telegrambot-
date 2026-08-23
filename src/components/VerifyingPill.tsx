@@ -28,7 +28,7 @@ export default function VerifyingPill({ onClick }: Props) {
     <button
       type="button"
       onClick={onClick}
-      className="fixed left-1/2 z-[80] flex min-h-[38px] -translate-x-1/2 items-center gap-2 rounded-[var(--co-r-pill)] px-4 text-[12px] font-bold shadow-[var(--co-shadow-card)] transition active:scale-95"
+      className="fixed left-1/2 z-[80] flex min-h-[38px] -translate-x-1/2 items-center gap-2 rounded-[var(--co-r-pill)] px-4 text-[13px] font-bold shadow-[var(--co-shadow-card)] transition active:scale-95"
       style={{
         top: 'max(12px, env(safe-area-inset-top))',
         backgroundColor: 'var(--co-card)',

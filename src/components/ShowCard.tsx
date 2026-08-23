@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { Play, Clock } from 'lucide-react';
+import { Play, Clock, Crown } from 'lucide-react';
 import type { Show } from '@/lib/types';
+import Badge from '@/components/Badge';
 import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
@@ -112,7 +113,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               it. */}
           {rank && (
             <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
-              <h3 className="truncate text-[12.5px] font-bold leading-tight text-[#FFE7B0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13.5px]">
+              <h3 className="truncate text-[13px] font-bold leading-tight text-[#FFE7B0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13px]">
                 {show.title}
               </h3>
             </div>
@@ -121,56 +122,40 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               not an admin-typed rating, so this is what actually drives
               Top 10 and shows the owner which titles viewers watch most. */}
           {show.type !== 'movie' && !!latestEpisode && (
-            <div
-              className={`absolute left-1.5 z-[2] rounded-md border border-white/10 bg-black/65 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-white backdrop-blur-md sm:text-[10px] ${
-                rank ? 'bottom-9' : 'bottom-1.5'
-              }`}
-            >
+            <Badge tone="info" onArt className={`absolute left-1.5 z-[2] ${rank ? 'bottom-9' : 'bottom-1.5'}`}>
               EP {latestEpisode}
-            </div>
+            </Badge>
           )}
           {/* A standalone film's price, where a series shows its latest
               episode number. Both answer the same question in a rail —
               "what do I get if I tap this" — and a movie's answer is a
               dollar, once, with no membership involved. */}
           {show.type === 'movie' && !show.is_free && !show.coming_soon && (
-            <div
-              className="absolute bottom-1.5 left-1.5 rounded-md px-1.5 py-[2px] text-[9px] font-black text-white shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
-              style={{
-                backgroundImage:
-                  'linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%)',
-              }}
-            >
+            <Badge tone="price" onArt className="absolute bottom-1.5 left-1.5">
               ${MOVIE_PRICE}
-            </div>
+            </Badge>
           )}
           {/* Coming Soon marker — announced/promoted but no episodes yet
               (admin toggle). Icon-only since the row header above already
               says "Coming Soon" in words. */}
           {show.coming_soon && (
-            <div className="absolute right-1.5 top-1.5 flex items-center justify-center rounded-full bg-[#E6231F]/90 p-1 text-white backdrop-blur-sm">
-              <Clock className="h-2.5 w-2.5" />
-            </div>
+            <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />} className="absolute right-1.5 top-1.5">
+              {t.comingSoonLabel}
+            </Badge>
           )}
           {/* FREE / VIP badge — same subscription status the detail screen
               and hero cover enforce, so browsing never over-promises what's
               actually playable. Skipped on Coming Soon cards since neither
               label means anything until episodes exist. */}
           {!show.coming_soon && (
-            <div className="absolute left-1.5 top-1.5">
-              {show.is_free ? (
-                <span className="rounded-md border border-[#2FD98C]/40 bg-[#2FD98C]/20 px-1.5 py-[2px] text-[8px] font-bold text-[#86EEC0] backdrop-blur-md sm:px-2 sm:text-[9px]">
-                  {t.freeBadge}
-                </span>
-              ) : (
-                <span
-                  className="flex items-center gap-0.5 rounded-md px-1.5 py-[2px] text-[8px] font-black text-[#211A0E] backdrop-blur-sm sm:px-2 sm:text-[9px]"
-                  style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
-                >
-                  👑 {t.vipBadge}
-                </span>
-              )}
-            </div>
+            <Badge
+              tone={show.is_free ? 'free' : 'vip'}
+              onArt
+              icon={show.is_free ? undefined : <Crown className="h-3 w-3" />}
+              className="absolute left-1.5 top-1.5"
+            >
+              {show.is_free ? t.freeBadge : t.vipBadge}
+            </Badge>
           )}
           {/* Hover play overlay — omitted for Coming Soon cards, since
               tapping them can't actually play anything yet. */}

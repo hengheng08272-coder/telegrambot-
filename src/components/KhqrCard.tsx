@@ -32,7 +32,7 @@ export default function KhqrCard({ merchantName, amount, qrDataUrl }: KhqrCardPr
       </div>
 
       <div className="px-3 pb-3 pt-2.5">
-        <p className="truncate text-left text-[12px] font-bold text-[#1A1A1A]">{merchantName}</p>
+        <p className="truncate text-left text-[13px] font-bold text-[#1A1A1A]">{merchantName}</p>
         <p className="text-left text-[17px] font-extrabold leading-tight text-[#1A1A1A]">
           {amount.toFixed(2)}
           <span className="ml-1 text-[11px] font-semibold text-[#6B6B6B]">USD</span>

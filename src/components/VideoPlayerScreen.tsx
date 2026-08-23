@@ -227,6 +227,14 @@ export default function VideoPlayerScreen({
   useEffect(() => {
     const syncFullscreen = () => {
       setIsFullscreen(!!nativeFullscreenElement() || isTelegramFullscreen());
+      // Coming back from the phone's own fullscreen player (iOS takes
+      // over <video> entirely there), our chrome has usually timed out
+      // while we were away — so the viewer lands on a bare black video
+      // with no visible way back and has to guess that tapping does
+      // something. Put the controls up on every fullscreen transition.
+      setShowControls(true);
+      if (hideTimer.current) window.clearTimeout(hideTimer.current);
+      hideTimer.current = window.setTimeout(() => setShowControls(false), 3400);
     };
     document.addEventListener('fullscreenchange', syncFullscreen);
     document.addEventListener('webkitfullscreenchange', syncFullscreen);
@@ -977,7 +985,7 @@ export default function VideoPlayerScreen({
                     </button>
 
                     <div className="px-3 py-2">
-                      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-white/40">
+                      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-white/40">
                         <Gauge className="h-3.5 w-3.5" /> {t.playbackSpeed}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -1057,7 +1065,7 @@ export default function VideoPlayerScreen({
               className="h-14 w-14 shrink-0 rounded-xl object-cover"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#4E86FF]">{t.upNext}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#4E86FF]">{t.upNext}</p>
               <p className="truncate text-xs font-semibold text-white">
                 {t.episodeLabel} {nextEpisode.episode_number}: {nextEpisode.title}
               </p>
@@ -1125,7 +1133,7 @@ export default function VideoPlayerScreen({
                         <p className="truncate text-xs font-semibold text-white">
                           {t.episodeLabel} {ep.episode_number}: {ep.title}
                         </p>
-                        {ep.duration && <p className="text-[10px] text-white/40">{ep.duration} min</p>}
+                        {ep.duration && <p className="text-[11px] text-white/40">{ep.duration} min</p>}
                       </div>
                       {isCurrent && <Check className="h-4 w-4 shrink-0 text-[#2050D8]" />}
                     </button>
