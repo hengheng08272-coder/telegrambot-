@@ -270,6 +270,7 @@ export default function HomeScreen({
     .slice(0, 10);
   const comingSoon = shows.filter((s) => s.coming_soon);
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
+  const completedShows = shows.filter((s) => s.type === 'series' && s.status === 'completed');
 
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
   // joined) — this looks the hero's genre + Top 10 rank up against the
@@ -694,6 +695,17 @@ export default function HomeScreen({
                 tag={{ label: t.freeBadge, tone: 'free' }}
               />
             )}
+            {completedShows.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                icon={<Check className="h-5 w-5 text-[#2FD98C]" />}
+                title={t.completedRowLabel ?? 'Completed Series'}
+                shows={completedShows}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.completedRowLabel ?? 'Completed Series', shows: completedShows })}
+                viewAllLabel={t.viewAll}
+              />
+            )}
             <RailRow
               episodeNumbers={episodeNumbers}
               icon={
@@ -1104,7 +1116,7 @@ function CoverflowHero({
           <h2
             key={hero.id}
             onClick={() => onSelectShow(hero)}
-            className="cursor-pointer text-xl font-black leading-[1.05] text-white sm:text-3xl"
+            className="cursor-pointer text-lg font-black leading-[1.05] text-white sm:text-2xl"
             style={{
               fontFamily: '"Anton", Battambang, Inter, sans-serif',
               letterSpacing: '0.01em',

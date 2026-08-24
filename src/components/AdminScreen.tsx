@@ -289,6 +289,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     featured: false,
     coming_soon: false,
     is_free: false,
+    trailer_url: '',
   });
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -302,6 +303,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [editViewCount, setEditViewCount] = useState('');
   const [editComingSoon, setEditComingSoon] = useState(false);
   const [editIsFree, setEditIsFree] = useState(false);
+  const [editTrailerUrl, setEditTrailerUrl] = useState('');
   const [episodeLockBusyId, setEpisodeLockBusyId] = useState<string | null>(null);
   const [bulkLockBusyShowId, setBulkLockBusyShowId] = useState<string | null>(null);
   const [editPosterFile, setEditPosterFile] = useState<File | null>(null);
@@ -713,6 +715,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       featured: newShow.featured,
       coming_soon: newShow.coming_soon,
       is_free: newShow.is_free,
+      trailer_url: newShow.trailer_url.trim() || null,
       poster_url,
       banner_url,
     });
@@ -732,6 +735,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       featured: false,
       coming_soon: false,
       is_free: false,
+      trailer_url: '',
     });
     setPosterFile(null);
     setBannerFile(null);
@@ -747,6 +751,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setEditViewCount(show.view_count != null ? String(show.view_count) : '0');
     setEditComingSoon(show.coming_soon ?? false);
     setEditIsFree(show.is_free ?? false);
+    setEditTrailerUrl(show.trailer_url ?? '');
     setEditPosterFile(null);
     setEditBannerFile(null);
     setEditSuccess(false);
@@ -768,6 +773,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       view_count: editViewCount.trim() ? parseInt(editViewCount, 10) || 0 : 0,
       coming_soon: editComingSoon,
       is_free: editIsFree,
+      trailer_url: editTrailerUrl.trim() || null,
     };
 
     if (editPosterFile) {
@@ -1792,6 +1798,22 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 episodes you want playable from the episode list below (or use "Unlock all").
               </p>
 
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold text-white/60">
+                  Trailer URL (optional short preview clip)
+                </label>
+                <input
+                  value={newShow.trailer_url}
+                  onChange={(e) => setNewShow({ ...newShow, trailer_url: e.target.value })}
+                  placeholder="https://…/trailer.mp4"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
+                />
+                <p className="mt-1 text-[11px] text-white/40">
+                  Direct video URL — plays in a small preview player on the show detail page,
+                  most useful for completed series.
+                </p>
+              </div>
+
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={handleCreateShow}
@@ -1901,6 +1923,22 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 />
                 Free to watch (no VIP required — shows a FREE badge instead of the VIP crown)
               </label>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold text-white/60">
+                  Trailer URL (optional short preview clip)
+                </label>
+                <input
+                  value={editTrailerUrl}
+                  onChange={(e) => setEditTrailerUrl(e.target.value)}
+                  placeholder="https://…/trailer.mp4"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white outline-none"
+                />
+                <p className="mt-1 text-[11px] text-white/40">
+                  Direct video URL — plays in a small preview player on the show detail page,
+                  most useful for completed series.
+                </p>
+              </div>
 
               {/* Current images preview */}
               <div className="flex gap-3">

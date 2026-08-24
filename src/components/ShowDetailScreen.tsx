@@ -158,7 +158,7 @@ export default function ShowDetailScreen({
           {/* Info */}
           <div className="flex-1">
             <h1
-              className="text-4xl font-black leading-tight sm:text-5xl"
+              className="text-2xl font-black leading-tight sm:text-3xl"
               style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.02em' }}
             >
               {show.title.toUpperCase()}
@@ -266,6 +266,24 @@ export default function ShowDetailScreen({
             </div>
           </div>
         </div>
+
+        {/* Trailer — a short preview clip the admin can attach per show,
+            most useful for completed series where there's no "currently
+            airing" hook to pull a viewer in. Sits below the main info
+            panel, above the episode list. */}
+        {show.trailer_url && (
+          <div className="mt-10">
+            <h2 className="mb-3 text-lg font-bold">{t.trailerHeading ?? 'Trailer'}</h2>
+            <video
+              key={show.trailer_url}
+              src={show.trailer_url}
+              controls
+              playsInline
+              poster={show.banner_url ?? show.poster_url ?? undefined}
+              className="w-full max-w-2xl rounded-card bg-black shadow-elevated ring-1 ring-white/10"
+            />
+          </div>
+        )}
 
         {/* Episodes */}
         {show.type !== 'movie' && (

@@ -123,6 +123,7 @@ export default function VideoPlayerScreen({
   // rarely touched again" controls — grouped behind one overflow sheet
   // instead of four separate icons crowding the bottom bar.
   const [moreOpen, setMoreOpen] = useState(false);
+  const [speedOpen, setSpeedOpen] = useState(false);
   const [fillScreen, setFillScreen] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
   const currentIdx = allEpisodes.findIndex((e) => e.id === episode.id);
@@ -552,7 +553,7 @@ export default function VideoPlayerScreen({
   // Anything open on top of the video (episode list, the More sheet), or a
   // paused/scrubbing player, keeps the chrome pinned — hiding controls out
   // from under an open menu is the classic way to strand someone.
-  const chromeHidden = !showControls && playing && !episodeListOpen && !moreOpen && !scrubbing;
+  const chromeHidden = !showControls && playing && !episodeListOpen && !moreOpen && !speedOpen && !scrubbing;
 
   // Desktop keyboard shortcuts — the usual video-player set. Suspended
   // while the controls are locked (except the unlock key itself), and
@@ -946,26 +947,76 @@ export default function VideoPlayerScreen({
             </div>
 
             <div className="ml-auto flex items-center gap-2 sm:gap-3">
-              {/* Overflow menu: lock, playback speed, fit/fill, and the
-                  full episode list — everything a viewer sets once and
-                  leaves alone, grouped behind a single icon instead of
-                  four competing for space on the bar. The dot keeps the
-                  non-default state visible at a glance even while
-                  collapsed. */}
+              {/* Playback speed — its own always-visible button on every
+                  episode's bar (not tucked behind the overflow menu), so
+                  switching speed never needs an extra tap in and out of
+                  a submenu. Shows the active speed right on the button. */}
               <div className="relative">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    setMoreOpen(false);
+                    setSpeedOpen((o) => !o);
+                  }}
+                  className={`player-btn h-10 min-w-10 px-2 text-[11px] font-bold ${
+                    speed !== 1 ? 'text-[#4E86FF]' : ''
+                  }`}
+                  aria-label={t.playbackSpeed}
+                  title={t.playbackSpeed}
+                >
+                  {speed}×
+                </button>
+                {speedOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-12 right-0 z-30 w-40 overflow-hidden rounded-xl border border-white/[0.12] bg-black/85 p-1.5 backdrop-blur-xl sheet-in"
+                  >
+                    <p className="mb-1.5 flex items-center gap-1.5 px-1.5 pt-1 text-[11px] font-bold uppercase tracking-wide text-white/40">
+                      <Gauge className="h-3.5 w-3.5" /> {t.playbackSpeed}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 px-1.5 pb-1.5">
+                      {SPEEDS.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            setSpeed(s);
+                            setSpeedOpen(false);
+                            revealControls();
+                          }}
+                          className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                            s === speed
+                              ? 'bg-[#2050D8]/15 text-[#93B2FF]'
+                              : 'bg-white/[0.06] text-white/75 hover:bg-white/10'
+                          }`}
+                        >
+                          {s}× {s === speed && <Check className="h-3 w-3" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Overflow menu: lock, fit/fill, and the full episode list —
+                  everything else a viewer sets once and leaves alone,
+                  grouped behind a single icon instead of competing for
+                  space on the bar. The dot keeps the non-default state
+                  visible at a glance even while collapsed. */}
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSpeedOpen(false);
                     setMoreOpen((o) => !o);
                   }}
                   className={`player-btn relative h-10 w-10 ${
-                    speed !== 1 || fillScreen ? 'text-[#4E86FF]' : ''
+                    fillScreen ? 'text-[#4E86FF]' : ''
                   }`}
                   aria-label={t.moreOptions}
                   title={t.moreOptions}
                 >
                   <MoreVertical className="h-[18px] w-[18px]" />
-                  {(speed !== 1 || fillScreen) && (
+                  {fillScreen && (
                     <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#2050D8]" />
                   )}
                 </button>
@@ -983,31 +1034,6 @@ export default function VideoPlayerScreen({
                     >
                       <Lock className="h-4 w-4" /> {t.lockScreen}
                     </button>
-
-                    <div className="px-3 py-2">
-                      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-white/40">
-                        <Gauge className="h-3.5 w-3.5" /> {t.playbackSpeed}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {SPEEDS.map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => {
-                              setSpeed(s);
-                              setMoreOpen(false);
-                              revealControls();
-                            }}
-                            className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
-                              s === speed
-                                ? 'bg-[#2050D8]/15 text-[#93B2FF]'
-                                : 'bg-white/[0.06] text-white/75 hover:bg-white/10'
-                            }`}
-                          >
-                            {s}× {s === speed && <Check className="h-3 w-3" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
 
                     <button
                       onClick={() => {
