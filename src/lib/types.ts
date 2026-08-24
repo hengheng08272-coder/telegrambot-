@@ -21,6 +21,7 @@ export interface Show {
   view_count?: number;
   is_free?: boolean;
   coming_soon?: boolean;
+  trailer_url?: string | null;
   created_at?: string;
   genres?: Genre[];
 }
