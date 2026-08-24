@@ -88,28 +88,41 @@ interface ParsedBulkRow {
   video_url: string;
 }
 
-// Turns a pasted block of links into episode rows.
-//
-// The admin already keeps the season as a text file of one URL per line,
-// so that file IS the input format -- no CSV, no numbering by hand. The
-// episode number is read from the `/ep-175/` segment these URLs carry,
-// because the filename cannot be trusted for it: the same season has
-// `-175.mp4`, `--188.mp4`, `-1-.mp4` and bare `--.mp4` endings, all from
-// re-uploads.
-//
-// A number repeated inside one paste keeps the LAST link, since a second
-// upload of the same episode is the corrected one.
+interface BulkParseResult {
+  rows: ParsedBulkRow[];
+  /** Lines that were not a URL at all. */
+  skippedLines: number;
+  /** from-link: the same episode number appeared twice. */
+  repeatedNumbers: number;
+  /** sequential: the exact same URL appeared twice. */
+  repeatedUrls: number;
+}
+
+/**
+ * How a pasted block of links gets its episode numbers.
+ *
+ * 'from-link'  reads the `/ep-175/` segment out of the URL. Right when
+ *              the links are one season of one show, straight off the
+ *              same storage bucket, already numbered.
+ *
+ * 'sequential' ignores whatever the URL says and numbers the lines in
+ *              the order they were pasted. Right when the links were
+ *              gathered from different shows or different sources, where
+ *              the numbers in the paths belong to somebody else's
+ *              numbering and would collide or arrive out of order.
+ */
+type BulkNumbering = 'from-link' | 'sequential';
+
 const EP_IN_PATH = /\/ep-(\d+)(?:\/|$)/i;
 const EP_IN_FILENAME = /-(\d+)\.[a-z0-9]+$/i;
 
 function parseBulkEpisodeList(
   text: string,
   startNumber: number,
-): { rows: ParsedBulkRow[]; skippedLines: number; replacedInPaste: number } {
-  const byNumber = new Map<number, string>();
+  numbering: BulkNumbering,
+): BulkParseResult {
+  const lines: string[] = [];
   let skippedLines = 0;
-  let replacedInPaste = 0;
-  let nextFallback = startNumber;
 
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
@@ -118,7 +131,42 @@ function parseBulkEpisodeList(
       skippedLines++;
       continue;
     }
+    lines.push(line);
+  }
 
+  if (numbering === 'sequential') {
+    // Order is the whole meaning of this mode, so nothing is sorted and
+    // nothing is renumbered. The one thing dropped is a link that
+    // appears twice: the same file cannot be two episodes, and letting
+    // it through would silently shift every number after it.
+    const seen = new Set<string>();
+    const rows: ParsedBulkRow[] = [];
+    let repeatedUrls = 0;
+
+    for (const line of lines) {
+      if (seen.has(line)) {
+        repeatedUrls++;
+        continue;
+      }
+      seen.add(line);
+      rows.push({ episode_number: startNumber + rows.length, video_url: line });
+    }
+
+    return { rows, skippedLines, repeatedNumbers: 0, repeatedUrls };
+  }
+
+  // from-link. The number is read from the `/ep-175/` path segment, not
+  // the filename: one real season carries -175.mp4, --188.mp4, -1-.mp4
+  // and bare --.mp4 endings left behind by re-uploads, so the filename
+  // cannot be trusted for it.
+  //
+  // A number repeated inside one paste keeps the LAST link, since a
+  // second upload of an episode is the corrected one.
+  const byNumber = new Map<number, string>();
+  let repeatedNumbers = 0;
+  let nextFallback = startNumber;
+
+  for (const line of lines) {
     const fromPath = EP_IN_PATH.exec(line);
     const fromName = fromPath ? null : EP_IN_FILENAME.exec(line);
     const number = fromPath
@@ -131,7 +179,7 @@ function parseBulkEpisodeList(
     // readable number never lands on one already taken by this paste.
     nextFallback = Math.max(nextFallback, number + 1);
 
-    if (byNumber.has(number)) replacedInPaste++;
+    if (byNumber.has(number)) repeatedNumbers++;
     byNumber.set(number, line);
   }
 
@@ -139,7 +187,7 @@ function parseBulkEpisodeList(
     .map(([episode_number, video_url]) => ({ episode_number, video_url }))
     .sort((a, b) => a.episode_number - b.episode_number);
 
-  return { rows, skippedLines, replacedInPaste };
+  return { rows, skippedLines, repeatedNumbers, repeatedUrls: 0 };
 }
 
 export default function AdminScreen({ onBack }: AdminScreenProps) {
@@ -202,6 +250,11 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [bulkOpen, setBulkOpen] = useState<string | null>(null);
   const [bulkText, setBulkText] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkNumbering, setBulkNumbering] = useState<BulkNumbering>('from-link');
+  // Where sequential numbering begins. Pre-filled with the show's next
+  // free number when the panel opens, but editable: a batch that belongs
+  // in the middle of an existing run needs to say so.
+  const [bulkStart, setBulkStart] = useState('1');
 
   // Admin preview modal — lets admin check an uploaded episode plays
   // correctly, bypassing the subscription check via the is_admin flag
@@ -541,12 +594,26 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
 
     const existing = new Set(show.episodes.map((e) => e.episode_number));
     const nextFree = show.episodes.reduce((max, ep) => Math.max(max, ep.episode_number), 0) + 1;
-    const { rows } = parseBulkEpisodeList(bulkText, nextFree);
+    const startAt = parseInt(bulkStart) || nextFree;
+    const { rows } = parseBulkEpisodeList(bulkText, startAt, bulkNumbering);
 
     // An episode number this show already has is skipped rather than
     // overwritten -- a bulk paste is an add, and silently replacing a
     // working link is not something to do behind the admin's back.
     const fresh = rows.filter((r) => !existing.has(r.episode_number));
+
+    // In sequential mode the numbers come from position, so dropping a
+    // colliding one does not just lose that link -- every link after it
+    // slides onto the wrong episode. Refuse the whole batch instead of
+    // writing a season that is quietly off by one.
+    if (bulkNumbering === 'sequential' && fresh.length !== rows.length) {
+      setBulkBusy(false);
+      setError(
+        `${rows.length - fresh.length} of those numbers already exist on this show. ` +
+          `Set "Start at" to ${nextFree} or higher so the batch lands on free numbers.`,
+      );
+      return;
+    }
 
     if (fresh.length === 0) {
       setBulkBusy(false);
@@ -1387,8 +1454,49 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                     {focusedShow.type !== 'movie' &&
                       (bulkOpen === focusedShow.id ? (
                         <div className="rounded-lg border border-white/10 bg-black/25 p-3">
+                          {/* Two ways to number the same paste, because the
+                              links arrive two ways: a whole season off one
+                              bucket already carries its numbers, while links
+                              gathered from several shows carry somebody
+                              else's numbering that would collide. */}
+                          <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                            <div className="flex overflow-hidden rounded-lg border border-white/10">
+                              {(
+                                [
+                                  ['from-link', 'Number from link'],
+                                  ['sequential', 'Number in paste order'],
+                                ] as [BulkNumbering, string][]
+                              ).map(([value, label]) => (
+                                <button
+                                  key={value}
+                                  onClick={() => setBulkNumbering(value)}
+                                  className={`px-2.5 py-1.5 text-[11px] font-semibold transition ${
+                                    bulkNumbering === value
+                                      ? 'bg-[#2FD98C] text-white'
+                                      : 'text-white/55 hover:bg-white/5'
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                            {bulkNumbering === 'sequential' && (
+                              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
+                                Start at
+                                <input
+                                  value={bulkStart}
+                                  onChange={(e) => setBulkStart(e.target.value)}
+                                  inputMode="numeric"
+                                  className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] text-white outline-none focus:border-[#2FD98C]/50"
+                                />
+                              </label>
+                            )}
+                          </div>
                           <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
-                            <ListVideo className="h-3 w-3" /> Paste one video URL per line
+                            <ListVideo className="h-3 w-3" />
+                            {bulkNumbering === 'sequential'
+                              ? 'Paste one video URL per line — in the order the episodes should play'
+                              : 'Paste one video URL per line'}
                           </label>
                           <textarea
                             value={bulkText}
@@ -1406,8 +1514,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                 (max, ep) => Math.max(max, ep.episode_number),
                                 0,
                               ) + 1;
-                            const { rows, skippedLines, replacedInPaste } =
-                              parseBulkEpisodeList(bulkText, nextFree);
+                            const startAt = parseInt(bulkStart) || nextFree;
+                            const { rows, skippedLines, repeatedNumbers, repeatedUrls } =
+                              parseBulkEpisodeList(bulkText, startAt, bulkNumbering);
                             const fresh = rows.filter(
                               (r) => !existing.has(r.episode_number),
                             );
@@ -1426,9 +1535,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                       {already} already on this show — skipped
                                     </span>
                                   )}
-                                  {replacedInPaste > 0 && (
+                                  {repeatedNumbers > 0 && (
                                     <span className="text-[#FFB84D]">
-                                      {replacedInPaste} repeated number — newest link kept
+                                      {repeatedNumbers} repeated number — newest link kept
+                                    </span>
+                                  )}
+                                  {repeatedUrls > 0 && (
+                                    <span className="text-[#FFB84D]">
+                                      {repeatedUrls} repeated link — dropped
                                     </span>
                                   )}
                                   {skippedLines > 0 && (
@@ -1441,9 +1555,23 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                   <p className="mt-1 text-[11px] text-white/35">
                                     Ep {fresh[0].episode_number} →{' '}
                                     {fresh[fresh.length - 1].episode_number} · season{' '}
-                                    {parseInt(newEp.season) || 1}. Duration stays blank —
-                                    reading it off this many remote videos would stall the
-                                    import.
+                                    {parseInt(newEp.season) || 1}
+                                    {bulkNumbering === 'sequential'
+                                      ? ' · numbered in the order pasted, ignoring the numbers in the links'
+                                      : ' · numbered from each link'}
+                                    . Duration stays blank — reading it off this many remote
+                                    videos would stall the import.
+                                  </p>
+                                )}
+                                {/* Only reachable in sequential mode by editing
+                                    "Start at" back over episodes that already
+                                    exist. Silently skipping those would slide
+                                    every later link onto the wrong number. */}
+                                {bulkNumbering === 'sequential' && already > 0 && (
+                                  <p className="mt-1 text-[11px] text-[#FF6B60]">
+                                    {already} of these numbers already exist, so those links
+                                    would be dropped and the rest would land on the wrong
+                                    episodes. Set “Start at” to {nextFree} or higher.
                                   </p>
                                 )}
                                 <div className="mt-2.5 flex gap-2">
@@ -1475,7 +1603,17 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         </div>
                       ) : (
                         <button
-                          onClick={() => setBulkOpen(focusedShow.id)}
+                          onClick={() => {
+                            setBulkOpen(focusedShow.id);
+                            setBulkStart(
+                              String(
+                                focusedShow.episodes.reduce(
+                                  (max, ep) => Math.max(max, ep.episode_number),
+                                  0,
+                                ) + 1,
+                              ),
+                            );
+                          }}
                           className="flex w-fit items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-3 py-2 text-[11px] font-semibold text-white/60 transition hover:border-[#2FD98C]/40 hover:text-white"
                         >
                           <ListVideo className="h-3.5 w-3.5" />
