@@ -264,7 +264,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [bulkOpen, setBulkOpen] = useState<string | null>(null);
   const [bulkText, setBulkText] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [bulkNumbering, setBulkNumbering] = useState<BulkNumbering>('renumber-sorted');
+  const [bulkNumbering, setBulkNumbering] = useState<BulkNumbering>('keep');
   // Where sequential numbering begins. Pre-filled with the show's next
   // free number when the panel opens, but editable: a batch that belongs
   // in the middle of an existing run needs to say so.
@@ -1477,8 +1477,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                             <div className="flex overflow-hidden rounded-lg border border-white/10">
                               {(
                                 [
-                                  ['renumber-sorted', 'Renumber 1,2,3…'],
                                   ['keep', 'Keep link numbers'],
+                                  ['renumber-sorted', 'Renumber 1,2,3…'],
                                   ['renumber-order', 'Paste order'],
                                 ] as [BulkNumbering, string][]
                               ).map(([value, label]) => (
