@@ -92,26 +92,31 @@ interface BulkParseResult {
   rows: ParsedBulkRow[];
   /** Lines that were not a URL at all. */
   skippedLines: number;
-  /** from-link: the same episode number appeared twice. */
-  repeatedNumbers: number;
-  /** sequential: the exact same URL appeared twice. */
+  /** Two links claimed the same episode number; the later one won. */
+  mergedByNumber: number;
+  /** The exact same URL appeared twice; the repeat was dropped. */
   repeatedUrls: number;
 }
 
 /**
  * How a pasted block of links gets its episode numbers.
  *
- * 'from-link'  reads the `/ep-175/` segment out of the URL. Right when
- *              the links are one season of one show, straight off the
- *              same storage bucket, already numbered.
+ * 'keep'            takes the number straight out of the `/ep-175/` path
+ *                   segment and uses it as the episode number. Right when
+ *                   the storage numbering already IS the show's numbering.
  *
- * 'sequential' ignores whatever the URL says and numbers the lines in
- *              the order they were pasted. Right when the links were
- *              gathered from different shows or different sources, where
- *              the numbers in the paths belong to somebody else's
- *              numbering and would collide or arrive out of order.
+ * 'renumber-sorted' still reads `/ep-175/`, but only to put the links in
+ *                   order and to recognise two uploads of one episode --
+ *                   then throws those numbers away and counts 1, 2, 3…
+ *                   Right when a season sits on storage under numbers
+ *                   that mean nothing here (175, 188, 191, 194, 206) and
+ *                   should simply become episodes 1 to 5.
+ *
+ * 'renumber-order'  ignores the URLs entirely and counts in the order the
+ *                   lines were pasted. The fallback for links whose paths
+ *                   carry no usable number at all.
  */
-type BulkNumbering = 'from-link' | 'sequential';
+type BulkNumbering = 'keep' | 'renumber-sorted' | 'renumber-order';
 
 const EP_IN_PATH = /\/ep-(\d+)(?:\/|$)/i;
 const EP_IN_FILENAME = /-(\d+)\.[a-z0-9]+$/i;
@@ -134,11 +139,11 @@ function parseBulkEpisodeList(
     lines.push(line);
   }
 
-  if (numbering === 'sequential') {
-    // Order is the whole meaning of this mode, so nothing is sorted and
-    // nothing is renumbered. The one thing dropped is a link that
-    // appears twice: the same file cannot be two episodes, and letting
-    // it through would silently shift every number after it.
+  if (numbering === 'renumber-order') {
+    // Position is the only signal here, so nothing is sorted and nothing
+    // is merged. The one thing dropped is a link that appears twice: the
+    // same file cannot be two episodes, and letting it through would
+    // silently shift every number after it.
     const seen = new Set<string>();
     const rows: ParsedBulkRow[] = [];
     let repeatedUrls = 0;
@@ -152,18 +157,22 @@ function parseBulkEpisodeList(
       rows.push({ episode_number: startNumber + rows.length, video_url: line });
     }
 
-    return { rows, skippedLines, repeatedNumbers: 0, repeatedUrls };
+    return { rows, skippedLines, mergedByNumber: 0, repeatedUrls };
   }
 
-  // from-link. The number is read from the `/ep-175/` path segment, not
-  // the filename: one real season carries -175.mp4, --188.mp4, -1-.mp4
-  // and bare --.mp4 endings left behind by re-uploads, so the filename
-  // cannot be trusted for it.
+  // Both remaining modes read the number from the `/ep-175/` path segment
+  // rather than the filename, because one real season carries -175.mp4,
+  // --188.mp4, -1-.mp4 and bare --.mp4 endings left behind by re-uploads,
+  // so the filename cannot be trusted for it.
   //
-  // A number repeated inside one paste keeps the LAST link, since a
-  // second upload of an episode is the corrected one.
+  // Reading it is what makes two uploads of one episode recognisable --
+  // they land on the same key, and the LAST link wins, since a second
+  // upload is the corrected one. That matters even when the numbers are
+  // about to be thrown away: a re-upload sitting out of order further
+  // down the file would otherwise become an extra episode and push every
+  // later one onto the wrong number.
   const byNumber = new Map<number, string>();
-  let repeatedNumbers = 0;
+  let mergedByNumber = 0;
   let nextFallback = startNumber;
 
   for (const line of lines) {
@@ -179,15 +188,20 @@ function parseBulkEpisodeList(
     // readable number never lands on one already taken by this paste.
     nextFallback = Math.max(nextFallback, number + 1);
 
-    if (byNumber.has(number)) repeatedNumbers++;
+    if (byNumber.has(number)) mergedByNumber++;
     byNumber.set(number, line);
   }
 
-  const rows = [...byNumber.entries()]
+  const ordered = [...byNumber.entries()]
     .map(([episode_number, video_url]) => ({ episode_number, video_url }))
     .sort((a, b) => a.episode_number - b.episode_number);
 
-  return { rows, skippedLines, repeatedNumbers, repeatedUrls: 0 };
+  const rows =
+    numbering === 'renumber-sorted'
+      ? ordered.map((row, i) => ({ ...row, episode_number: startNumber + i }))
+      : ordered;
+
+  return { rows, skippedLines, mergedByNumber, repeatedUrls: 0 };
 }
 
 export default function AdminScreen({ onBack }: AdminScreenProps) {
@@ -250,7 +264,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [bulkOpen, setBulkOpen] = useState<string | null>(null);
   const [bulkText, setBulkText] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [bulkNumbering, setBulkNumbering] = useState<BulkNumbering>('from-link');
+  const [bulkNumbering, setBulkNumbering] = useState<BulkNumbering>('renumber-sorted');
   // Where sequential numbering begins. Pre-filled with the show's next
   // free number when the panel opens, but editable: a batch that belongs
   // in the middle of an existing run needs to say so.
@@ -606,7 +620,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     // colliding one does not just lose that link -- every link after it
     // slides onto the wrong episode. Refuse the whole batch instead of
     // writing a season that is quietly off by one.
-    if (bulkNumbering === 'sequential' && fresh.length !== rows.length) {
+    if (bulkNumbering !== 'keep' && fresh.length !== rows.length) {
       setBulkBusy(false);
       setError(
         `${rows.length - fresh.length} of those numbers already exist on this show. ` +
@@ -1463,8 +1477,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                             <div className="flex overflow-hidden rounded-lg border border-white/10">
                               {(
                                 [
-                                  ['from-link', 'Number from link'],
-                                  ['sequential', 'Number in paste order'],
+                                  ['renumber-sorted', 'Renumber 1,2,3…'],
+                                  ['keep', 'Keep link numbers'],
+                                  ['renumber-order', 'Paste order'],
                                 ] as [BulkNumbering, string][]
                               ).map(([value, label]) => (
                                 <button
@@ -1480,7 +1495,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                 </button>
                               ))}
                             </div>
-                            {bulkNumbering === 'sequential' && (
+                            {bulkNumbering !== 'keep' && (
                               <label className="flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
                                 Start at
                                 <input
@@ -1494,7 +1509,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                           </div>
                           <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
                             <ListVideo className="h-3 w-3" />
-                            {bulkNumbering === 'sequential'
+                            {bulkNumbering === 'renumber-order'
                               ? 'Paste one video URL per line — in the order the episodes should play'
                               : 'Paste one video URL per line'}
                           </label>
@@ -1515,7 +1530,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                 0,
                               ) + 1;
                             const startAt = parseInt(bulkStart) || nextFree;
-                            const { rows, skippedLines, repeatedNumbers, repeatedUrls } =
+                            const { rows, skippedLines, mergedByNumber, repeatedUrls } =
                               parseBulkEpisodeList(bulkText, startAt, bulkNumbering);
                             const fresh = rows.filter(
                               (r) => !existing.has(r.episode_number),
@@ -1535,9 +1550,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                       {already} already on this show — skipped
                                     </span>
                                   )}
-                                  {repeatedNumbers > 0 && (
+                                  {mergedByNumber > 0 && (
                                     <span className="text-[#FFB84D]">
-                                      {repeatedNumbers} repeated number — newest link kept
+                                      {mergedByNumber} re-upload merged — newest link kept
                                     </span>
                                   )}
                                   {repeatedUrls > 0 && (
@@ -1556,9 +1571,11 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                     Ep {fresh[0].episode_number} →{' '}
                                     {fresh[fresh.length - 1].episode_number} · season{' '}
                                     {parseInt(newEp.season) || 1}
-                                    {bulkNumbering === 'sequential'
-                                      ? ' · numbered in the order pasted, ignoring the numbers in the links'
-                                      : ' · numbered from each link'}
+                                    {bulkNumbering === 'keep'
+                                      ? ' · numbered from each link'
+                                      : bulkNumbering === 'renumber-sorted'
+                                        ? ' · links sorted by their own number, then counted from the start'
+                                        : ' · counted in the order pasted, ignoring the links'}
                                     . Duration stays blank — reading it off this many remote
                                     videos would stall the import.
                                   </p>
@@ -1567,7 +1584,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                                     "Start at" back over episodes that already
                                     exist. Silently skipping those would slide
                                     every later link onto the wrong number. */}
-                                {bulkNumbering === 'sequential' && already > 0 && (
+                                {bulkNumbering !== 'keep' && already > 0 && (
                                   <p className="mt-1 text-[11px] text-[#FF6B60]">
                                     {already} of these numbers already exist, so those links
                                     would be dropped and the rest would land on the wrong
