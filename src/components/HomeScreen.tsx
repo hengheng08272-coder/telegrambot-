@@ -29,7 +29,6 @@ import CreatorCredit from '@/components/CreatorCredit';
 import NotificationBell from '@/components/NotificationBell';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
-import { usePresenceCount } from '@/lib/presence';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
 
@@ -129,7 +128,6 @@ export default function HomeScreen({
 }: HomeScreenProps) {
   const { lang, setLang } = useLang();
   const t = appText[lang];
-  const watchingNow = usePresenceCount();
   const telegramProfile = getCurrentTelegramProfile();
   const [bannerShows, setBannerShows] = useState<Show[]>([]);
   const [shows, setShows] = useState<ShowWithGenres[]>([]);
@@ -460,20 +458,6 @@ export default function HomeScreen({
               </span>
             )}
           </button>
-
-          {/* Live "watching now" count — a real Realtime Presence tally
-              (see src/lib/presence.ts), sitting inline now with no border
-              of its own. Dot + number always show; the "watching now"
-              label only renders from `md:` up, past every phone's CSS
-              viewport width. */}
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span className="relative flex h-1.5 w-1.5 shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6231F]/70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E6231F]" />
-            </span>
-            <span className="font-display text-xs font-bold text-white sm:text-sm">{watchingNow.toLocaleString()}</span>
-            <span className="whitespace-nowrap text-[11px] text-[#9AA4BD] sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
-          </div>
 
           {/* Divider — marks where "browse" ends and personal/account
               utility begins. One hairline does this instead of boxing
