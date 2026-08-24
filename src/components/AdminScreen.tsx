@@ -83,6 +83,127 @@ function detectDurationMinutes(url: string): Promise<number | null> {
   });
 }
 
+interface ParsedBulkRow {
+  episode_number: number;
+  video_url: string;
+}
+
+interface BulkParseResult {
+  rows: ParsedBulkRow[];
+  /** Lines that were not a URL at all. */
+  skippedLines: number;
+  /** Two links claimed the same episode number; the later one won. */
+  mergedByNumber: number;
+  /** The exact same URL appeared twice; the repeat was dropped. */
+  repeatedUrls: number;
+}
+
+/**
+ * How a pasted block of links gets its episode numbers.
+ *
+ * 'keep'            takes the number straight out of the `/ep-175/` path
+ *                   segment and uses it as the episode number. Right when
+ *                   the storage numbering already IS the show's numbering.
+ *
+ * 'renumber-sorted' still reads `/ep-175/`, but only to put the links in
+ *                   order and to recognise two uploads of one episode --
+ *                   then throws those numbers away and counts 1, 2, 3…
+ *                   Right when a season sits on storage under numbers
+ *                   that mean nothing here (175, 188, 191, 194, 206) and
+ *                   should simply become episodes 1 to 5.
+ *
+ * 'renumber-order'  ignores the URLs entirely and counts in the order the
+ *                   lines were pasted. The fallback for links whose paths
+ *                   carry no usable number at all.
+ */
+type BulkNumbering = 'keep' | 'renumber-sorted' | 'renumber-order';
+
+const EP_IN_PATH = /\/ep-(\d+)(?:\/|$)/i;
+const EP_IN_FILENAME = /-(\d+)\.[a-z0-9]+$/i;
+
+function parseBulkEpisodeList(
+  text: string,
+  startNumber: number,
+  numbering: BulkNumbering,
+): BulkParseResult {
+  const lines: string[] = [];
+  let skippedLines = 0;
+
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (!/^https?:\/\//i.test(line)) {
+      skippedLines++;
+      continue;
+    }
+    lines.push(line);
+  }
+
+  if (numbering === 'renumber-order') {
+    // Position is the only signal here, so nothing is sorted and nothing
+    // is merged. The one thing dropped is a link that appears twice: the
+    // same file cannot be two episodes, and letting it through would
+    // silently shift every number after it.
+    const seen = new Set<string>();
+    const rows: ParsedBulkRow[] = [];
+    let repeatedUrls = 0;
+
+    for (const line of lines) {
+      if (seen.has(line)) {
+        repeatedUrls++;
+        continue;
+      }
+      seen.add(line);
+      rows.push({ episode_number: startNumber + rows.length, video_url: line });
+    }
+
+    return { rows, skippedLines, mergedByNumber: 0, repeatedUrls };
+  }
+
+  // Both remaining modes read the number from the `/ep-175/` path segment
+  // rather than the filename, because one real season carries -175.mp4,
+  // --188.mp4, -1-.mp4 and bare --.mp4 endings left behind by re-uploads,
+  // so the filename cannot be trusted for it.
+  //
+  // Reading it is what makes two uploads of one episode recognisable --
+  // they land on the same key, and the LAST link wins, since a second
+  // upload is the corrected one. That matters even when the numbers are
+  // about to be thrown away: a re-upload sitting out of order further
+  // down the file would otherwise become an extra episode and push every
+  // later one onto the wrong number.
+  const byNumber = new Map<number, string>();
+  let mergedByNumber = 0;
+  let nextFallback = startNumber;
+
+  for (const line of lines) {
+    const fromPath = EP_IN_PATH.exec(line);
+    const fromName = fromPath ? null : EP_IN_FILENAME.exec(line);
+    const number = fromPath
+      ? parseInt(fromPath[1], 10)
+      : fromName
+        ? parseInt(fromName[1], 10)
+        : nextFallback;
+
+    // Keep the fallback ahead of every number seen, so a link with no
+    // readable number never lands on one already taken by this paste.
+    nextFallback = Math.max(nextFallback, number + 1);
+
+    if (byNumber.has(number)) mergedByNumber++;
+    byNumber.set(number, line);
+  }
+
+  const ordered = [...byNumber.entries()]
+    .map(([episode_number, video_url]) => ({ episode_number, video_url }))
+    .sort((a, b) => a.episode_number - b.episode_number);
+
+  const rows =
+    numbering === 'renumber-sorted'
+      ? ordered.map((row, i) => ({ ...row, episode_number: startNumber + i }))
+      : ordered;
+
+  return { rows, skippedLines, mergedByNumber, repeatedUrls: 0 };
+}
+
 export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [shows, setShows] = useState<ShowWithEpisodes[]>([]);
   const watchingNow = usePresenceCount();
@@ -140,6 +261,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     video_url: '',
   });
   const [busy, setBusy] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState<string | null>(null);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkNumbering, setBulkNumbering] = useState<BulkNumbering>('keep');
+  // Where sequential numbering begins. Pre-filled with the show's next
+  // free number when the panel opens, but editable: a batch that belongs
+  // in the middle of an existing run needs to say so.
+  const [bulkStart, setBulkStart] = useState('1');
 
   // Admin preview modal — lets admin check an uploaded episode plays
   // correctly, bypassing the subscription check via the is_admin flag
@@ -463,6 +592,71 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
         video_url: '',
       });
     }
+    await loadShows();
+  };
+
+  // Inserts a whole pasted season in one write. Duration is deliberately
+  // left null: reading metadata off 200 remote videos would take minutes
+  // and stall the import, and the per-episode "paste URL" flow still
+  // fills it in whenever a single link is replaced later.
+  const handleBulkAddEpisodes = async (showId: string) => {
+    const show = shows.find((s) => s.id === showId);
+    if (!show) return;
+
+    setBulkBusy(true);
+    setError('');
+
+    const existing = new Set(show.episodes.map((e) => e.episode_number));
+    const nextFree = show.episodes.reduce((max, ep) => Math.max(max, ep.episode_number), 0) + 1;
+    const startAt = parseInt(bulkStart) || nextFree;
+    const { rows } = parseBulkEpisodeList(bulkText, startAt, bulkNumbering);
+
+    // An episode number this show already has is skipped rather than
+    // overwritten -- a bulk paste is an add, and silently replacing a
+    // working link is not something to do behind the admin's back.
+    const fresh = rows.filter((r) => !existing.has(r.episode_number));
+
+    // In sequential mode the numbers come from position, so dropping a
+    // colliding one does not just lose that link -- every link after it
+    // slides onto the wrong episode. Refuse the whole batch instead of
+    // writing a season that is quietly off by one.
+    if (bulkNumbering !== 'keep' && fresh.length !== rows.length) {
+      setBulkBusy(false);
+      setError(
+        `${rows.length - fresh.length} of those numbers already exist on this show. ` +
+          `Set "Start at" to ${nextFree} or higher so the batch lands on free numbers.`,
+      );
+      return;
+    }
+
+    if (fresh.length === 0) {
+      setBulkBusy(false);
+      setError('Nothing to add — every episode number in that list is already on this show.');
+      return;
+    }
+
+    const season =
+      parseInt(newEp.season) || show.episodes[show.episodes.length - 1]?.season || 1;
+
+    const { error } = await supabase.from('episodes').insert(
+      fresh.map((r) => ({
+        show_id: showId,
+        episode_number: r.episode_number,
+        season,
+        title: `Episode ${r.episode_number}`,
+        description: null,
+        duration: null,
+        video_url: r.video_url,
+      })),
+    );
+
+    setBulkBusy(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    setBulkText('');
+    setBulkOpen(null);
     await loadShows();
   };
 
@@ -1266,6 +1460,183 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         Tip: paste the link, hit Enter — it saves this episode and jumps straight to the next number so you can paste again.
                       </p>
                     )}
+                    {/* Bulk import. One-at-a-time is the thing this panel
+                        was worst at: a 200-episode season meant 200 rounds
+                        of paste-and-click. The admin already keeps that
+                        season as a text file of one URL per line, so take
+                        the file exactly as it is. */}
+                    {focusedShow.type !== 'movie' &&
+                      (bulkOpen === focusedShow.id ? (
+                        <div className="rounded-lg border border-white/10 bg-black/25 p-3">
+                          {/* Two ways to number the same paste, because the
+                              links arrive two ways: a whole season off one
+                              bucket already carries its numbers, while links
+                              gathered from several shows carry somebody
+                              else's numbering that would collide. */}
+                          <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                            <div className="flex overflow-hidden rounded-lg border border-white/10">
+                              {(
+                                [
+                                  ['keep', 'Keep link numbers'],
+                                  ['renumber-sorted', 'Renumber 1,2,3…'],
+                                  ['renumber-order', 'Paste order'],
+                                ] as [BulkNumbering, string][]
+                              ).map(([value, label]) => (
+                                <button
+                                  key={value}
+                                  onClick={() => setBulkNumbering(value)}
+                                  className={`px-2.5 py-1.5 text-[11px] font-semibold transition ${
+                                    bulkNumbering === value
+                                      ? 'bg-[#2FD98C] text-white'
+                                      : 'text-white/55 hover:bg-white/5'
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                            {bulkNumbering !== 'keep' && (
+                              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
+                                Start at
+                                <input
+                                  value={bulkStart}
+                                  onChange={(e) => setBulkStart(e.target.value)}
+                                  inputMode="numeric"
+                                  className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[11px] text-white outline-none focus:border-[#2FD98C]/50"
+                                />
+                              </label>
+                            )}
+                          </div>
+                          <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
+                            <ListVideo className="h-3 w-3" />
+                            {bulkNumbering === 'renumber-order'
+                              ? 'Paste one video URL per line — in the order the episodes should play'
+                              : 'Paste one video URL per line'}
+                          </label>
+                          <textarea
+                            value={bulkText}
+                            onChange={(e) => setBulkText(e.target.value)}
+                            rows={6}
+                            placeholder={'https://…/ep-175/….mp4\nhttps://…/ep-176/….mp4\nhttps://…/ep-177/….mp4'}
+                            className="w-full resize-y rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 font-mono text-[11px] text-white outline-none focus:border-[#2FD98C]/50"
+                          />
+                          {(() => {
+                            const existing = new Set(
+                              focusedShow.episodes.map((e) => e.episode_number),
+                            );
+                            const nextFree =
+                              focusedShow.episodes.reduce(
+                                (max, ep) => Math.max(max, ep.episode_number),
+                                0,
+                              ) + 1;
+                            const startAt = parseInt(bulkStart) || nextFree;
+                            const { rows, skippedLines, mergedByNumber, repeatedUrls } =
+                              parseBulkEpisodeList(bulkText, startAt, bulkNumbering);
+                            const fresh = rows.filter(
+                              (r) => !existing.has(r.episode_number),
+                            );
+                            const already = rows.length - fresh.length;
+                            return (
+                              <>
+                                {/* Say what will happen before it happens --
+                                    a 200-row insert is not something to run
+                                    on trust. */}
+                                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+                                  <span className="font-semibold text-[#2FD98C]">
+                                    {fresh.length} to add
+                                  </span>
+                                  {already > 0 && (
+                                    <span className="text-white/45">
+                                      {already} already on this show — skipped
+                                    </span>
+                                  )}
+                                  {mergedByNumber > 0 && (
+                                    <span className="text-[#FFB84D]">
+                                      {mergedByNumber} re-upload merged — newest link kept
+                                    </span>
+                                  )}
+                                  {repeatedUrls > 0 && (
+                                    <span className="text-[#FFB84D]">
+                                      {repeatedUrls} repeated link — dropped
+                                    </span>
+                                  )}
+                                  {skippedLines > 0 && (
+                                    <span className="text-white/45">
+                                      {skippedLines} line not a URL — ignored
+                                    </span>
+                                  )}
+                                </div>
+                                {fresh.length > 0 && (
+                                  <p className="mt-1 text-[11px] text-white/35">
+                                    Ep {fresh[0].episode_number} →{' '}
+                                    {fresh[fresh.length - 1].episode_number} · season{' '}
+                                    {parseInt(newEp.season) || 1}
+                                    {bulkNumbering === 'keep'
+                                      ? ' · numbered from each link'
+                                      : bulkNumbering === 'renumber-sorted'
+                                        ? ' · links sorted by their own number, then counted from the start'
+                                        : ' · counted in the order pasted, ignoring the links'}
+                                    . Duration stays blank — reading it off this many remote
+                                    videos would stall the import.
+                                  </p>
+                                )}
+                                {/* Only reachable in sequential mode by editing
+                                    "Start at" back over episodes that already
+                                    exist. Silently skipping those would slide
+                                    every later link onto the wrong number. */}
+                                {bulkNumbering !== 'keep' && already > 0 && (
+                                  <p className="mt-1 text-[11px] text-[#FF6B60]">
+                                    {already} of these numbers already exist, so those links
+                                    would be dropped and the rest would land on the wrong
+                                    episodes. Set “Start at” to {nextFree} or higher.
+                                  </p>
+                                )}
+                                <div className="mt-2.5 flex gap-2">
+                                  <button
+                                    onClick={() => handleBulkAddEpisodes(focusedShow.id)}
+                                    disabled={bulkBusy || fresh.length === 0}
+                                    className="flex items-center gap-1.5 rounded-lg bg-[#2FD98C] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#4C6FFF] disabled:opacity-40"
+                                  >
+                                    {bulkBusy ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Plus className="h-3.5 w-3.5" />
+                                    )}
+                                    Add {fresh.length} episode{fresh.length === 1 ? '' : 's'}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setBulkOpen(null);
+                                      setBulkText('');
+                                    }}
+                                    className="rounded-lg border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 transition hover:bg-white/5"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setBulkOpen(focusedShow.id);
+                            setBulkStart(
+                              String(
+                                focusedShow.episodes.reduce(
+                                  (max, ep) => Math.max(max, ep.episode_number),
+                                  0,
+                                ) + 1,
+                              ),
+                            );
+                          }}
+                          className="flex w-fit items-center gap-1.5 rounded-lg border border-dashed border-white/20 px-3 py-2 text-[11px] font-semibold text-white/60 transition hover:border-[#2FD98C]/40 hover:text-white"
+                        >
+                          <ListVideo className="h-3.5 w-3.5" />
+                          Bulk paste — many links at once
+                        </button>
+                      ))}
                   </div>
                 ) : (
                   <button
