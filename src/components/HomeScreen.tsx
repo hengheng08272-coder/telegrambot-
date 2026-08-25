@@ -512,7 +512,7 @@ export default function HomeScreen({
                 setViewAll({ title: t.navMovies, shows: shows.filter((s) => s.type === 'movie'), movies: true });
               }}
             />
-            <NavLink label={t.navMyList} active={false} onClick={onOpenWatchlist} />
+            <NavLink label={t.navMyList} active={false} onClick={onOpenWatchlist} highlight={continueItems.length > 0} />
           </nav>
 
           {/* Search — icon button opens the full-screen overlay below
@@ -672,6 +672,7 @@ export default function HomeScreen({
                 viewAllLabel={t.viewAll}
                 tag={{ label: `$${MOVIE_PRICE}`, tone: 'price' }}
                 large
+                panel
               />
             )}
             {recommended.length > 0 && (
@@ -719,7 +720,7 @@ export default function HomeScreen({
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
-              tag={{ label: t.newTag ?? 'NEW', tone: 'info' }}
+              tag={{ label: t.newTag ?? 'NEW', tone: 'mark' }}
             />
             <RailRow
               episodeNumbers={episodeNumbers}
@@ -895,6 +896,7 @@ export default function HomeScreen({
         }}
         onMyList={onOpenWatchlist}
         onAccount={onOpenProfile}
+        hasHistory={continueItems.length > 0}
       />
     </div>
   );
@@ -1322,9 +1324,12 @@ interface BottomNavProps {
   onMovies: () => void;
   onMyList: () => void;
   onAccount: () => void;
+  /** Highlights the "មើលបន្ត" tab when there's watch history to resume —
+   *  see NavLink's `highlight` for the same idea on the desktop nav. */
+  hasHistory?: boolean;
 }
 
-function BottomNav({ t, active, onHome, onSearch, onSeries, onMovies, onMyList, onAccount }: BottomNavProps) {
+function BottomNav({ t, active, onHome, onSearch, onSeries, onMovies, onMyList, onAccount, hasHistory }: BottomNavProps) {
   return (
     // Welded to the bottom edge of the screen (not a floating pill): on a
     // phone the tab bar has to sit in the thumb's resting place, flush
@@ -1338,7 +1343,7 @@ function BottomNav({ t, active, onHome, onSearch, onSeries, onMovies, onMyList, 
         <BottomNavItem icon={<Search className="h-5 w-5" />} label={t.navSearch} active={active === 'search'} onClick={onSearch} />
         <BottomNavItem icon={<Tv className="h-5 w-5" />} label={t.navSeries} active={active === 'series'} onClick={onSeries} />
         <BottomNavItem icon={<Film className="h-5 w-5" />} label={t.navMovies} active={active === 'movies'} onClick={onMovies} />
-        <BottomNavItem icon={<Bookmark className="h-5 w-5" />} label={t.navMyList} active={false} onClick={onMyList} />
+        <BottomNavItem icon={<Bookmark className="h-5 w-5" />} label={t.navMyList} active={false} onClick={onMyList} highlight={hasHistory} />
         <BottomNavItem icon={<User className="h-5 w-5" />} label={t.navAccount} active={false} onClick={onAccount} />
       </div>
     </nav>
@@ -1350,14 +1355,15 @@ interface BottomNavItemProps {
   label: string;
   active: boolean;
   onClick: () => void;
+  highlight?: boolean;
 }
 
-function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
+function BottomNavItem({ icon, label, active, onClick, highlight }: BottomNavItemProps) {
   return (
     <button
       onClick={onClick}
       className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 transition ${
-        active ? 'text-[#4E86FF]' : 'text-[#9AA4BD] active:text-white/80'
+        active ? 'text-[#4E86FF]' : highlight ? 'text-[#4E86FF]' : 'text-[#9AA4BD] active:text-white/80'
       }`}
     >
       {active && (
@@ -1366,8 +1372,13 @@ function BottomNavItem({ icon, label, active, onClick }: BottomNavItemProps) {
           aria-hidden
         />
       )}
-      {icon}
-      <span className="max-w-full truncate px-0.5 text-[9.5px] font-semibold leading-none">{label}</span>
+      <span className="relative">
+        {icon}
+        {highlight && !active && (
+          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#4E86FF] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
+        )}
+      </span>
+      <span className={`max-w-full truncate px-0.5 text-[9.5px] leading-none ${highlight && !active ? 'font-bold' : 'font-semibold'}`}>{label}</span>
     </button>
   );
 }
@@ -1376,19 +1387,28 @@ interface NavLinkProps {
   label: string;
   active: boolean;
   onClick: () => void;
+  /** Lit up in the accent color with a small dot when there's watch
+   *  history to resume — the "មើលបន្ត" link otherwise looks identical
+   *  whether or not there's anything worth going back for. */
+  highlight?: boolean;
 }
 
-function NavLink({ label, active, onClick }: NavLinkProps) {
+function NavLink({ label, active, onClick, highlight }: NavLinkProps) {
   return (
     <button
       onClick={onClick}
       className={`relative shrink-0 whitespace-nowrap px-0.5 pb-2 pt-1 text-[11px] transition sm:text-sm ${
         active
           ? 'font-display font-bold tracking-wide text-white'
-          : 'font-semibold text-white/50 hover:text-white/80'
+          : highlight
+            ? 'font-bold text-[#4E86FF]'
+            : 'font-semibold text-white/50 hover:text-white/80'
       }`}
     >
       {label}
+      {highlight && !active && (
+        <span className="absolute -right-2 top-0.5 h-1.5 w-1.5 rounded-full bg-[#4E86FF] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
+      )}
       {active && (
         <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#4E86FF] to-[#2050D8] shadow-[0_0_10px_rgba(32,80,216,0.8)]" />
       )}
@@ -1425,16 +1445,29 @@ interface RailRowProps {
    *  lost among the series rows (there are only ever a handful of movies,
    *  so the row can afford the extra size). */
   large?: boolean;
+  /** Wraps the row in a slim gradient banner panel instead of the plain
+   *  divider-line header — gives the row its own identity as a showcase
+   *  strip rather than just another rail, without needing taller cards
+   *  to read as "featured". Used for the Movies row. */
+  panel?: boolean;
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large }: RailRowProps) {
+function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
 
   return (
-    <section className={ranked ? 'relative mt-8 overflow-hidden rounded-xl' : 'mt-9'}>
-      {!ranked && (
+    <section
+      className={
+        ranked
+          ? 'relative mt-8 overflow-hidden rounded-xl'
+          : panel
+            ? 'mt-9 overflow-hidden rounded-2xl border border-[#F5C563]/15 bg-gradient-to-br from-[#2A2010]/70 via-[#151926]/40 to-transparent px-3 pb-1 pt-4 sm:px-4'
+            : 'mt-9'
+      }
+    >
+      {!ranked && !panel && (
         <div
           className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
           aria-hidden
