@@ -169,14 +169,6 @@ export default function ShowDetailScreen({
               <span className="flex items-center gap-1 font-semibold text-[#F5C563]">
                 <Star className="h-4 w-4 fill-[#F5C563]" /> {Number(show.rating).toFixed(1)}
               </span>
-              {!!show.view_count && (
-                <>
-                  <span className="h-1 w-1 rounded-full bg-white/30" />
-                  <span className="flex items-center gap-1 text-white/70">
-                    <Eye className="h-4 w-4" /> {fmtViews(show.view_count)}
-                  </span>
-                </>
-              )}
               <span className="h-1 w-1 rounded-full bg-white/30" />
               <span className="flex items-center gap-1 text-white/70">
                 <Calendar className="h-4 w-4" /> {show.release_year ?? '—'}
