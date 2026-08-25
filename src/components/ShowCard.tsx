@@ -27,6 +27,12 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
   const { lang } = useLang();
   const t = appText[lang];
 
+  // Added within the last week — a plain fact read off created_at, not an
+  // admin toggle, so it clears on its own instead of needing to be turned
+  // off by hand once a title stops being new.
+  const isNew =
+    !!show.created_at && Date.now() - new Date(show.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
+
   // Subtle pointer-driven 3D tilt — works for mouse hover and for a
   // finger resting/dragging on the card (Pointer Events unify both).
   // Mutates the DOM node directly instead of going through React state so
@@ -48,7 +54,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
     <button
       onClick={() => onClick(show)}
       className={`group relative shrink-0 text-left ${
-        large ? 'w-[160px] sm:w-[210px]' : rank ? 'w-[122px] sm:w-[160px]' : 'w-[104px] sm:w-[124px]'
+        large ? 'w-[128px] sm:w-[164px]' : rank ? 'w-[122px] sm:w-[160px]' : 'w-[104px] sm:w-[124px]'
       } ${rank ? 'pl-8 sm:pl-10' : ''}`}
     >
       {rank && (
@@ -85,7 +91,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)]'
           }`}
         >
-          {!loaded && <div className="absolute inset-0 animate-pulse bg-[#151926]" />}
+          {!loaded && <div className="absolute inset-0 skeleton-shimmer bg-[#151926]" />}
           <img
             src={show.poster_url ?? ''}
             alt={show.title}
@@ -143,11 +149,28 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               {t.comingSoonLabel}
             </Badge>
           )}
+          {/* NEW marker — added within the last 7 days. Skipped on Coming
+              Soon cards since that badge already owns the top-right
+              corner and says something more specific. */}
+          {!show.coming_soon && isNew && (
+            <Badge tone="mark" onArt className="absolute right-1.5 top-1.5">
+              {t.newTag ?? 'NEW'}
+            </Badge>
+          )}
           {/* FREE / VIP badge — same subscription status the detail screen
               and hero cover enforce, so browsing never over-promises what's
               actually playable. Skipped on Coming Soon cards since neither
-              label means anything until episodes exist. */}
-          {!show.coming_soon && (
+              label means anything until episodes exist. A standalone movie
+              gets its own "One-off movie" label instead of VIP here — it's
+              bought once for a flat price, not gated behind a subscription,
+              so a VIP crown on it would say the wrong thing even though
+              is_free is false. */}
+          {!show.coming_soon && show.type === 'movie' && !show.is_free && (
+            <Badge tone="info" onArt className="absolute left-1.5 top-1.5 whitespace-nowrap">
+              {t.movieOneOff}
+            </Badge>
+          )}
+          {!show.coming_soon && show.type !== 'movie' && (
             <Badge
               tone={show.is_free ? 'free' : 'vip'}
               onArt
@@ -155,6 +178,11 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
               className="absolute left-1.5 top-1.5"
             >
               {show.is_free ? t.freeBadge : t.vipBadge}
+            </Badge>
+          )}
+          {!show.coming_soon && show.type === 'movie' && show.is_free && (
+            <Badge tone="free" onArt className="absolute left-1.5 top-1.5">
+              {t.freeBadge}
             </Badge>
           )}
           {/* Hover play overlay — omitted for Coming Soon cards, since
@@ -170,7 +198,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
       </div>
       {!rank && (
         <div className="mt-2 px-0.5">
-          <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[15px]' : 'text-[13px]'}`}>
+          <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
             {show.title}
           </h3>
         </div>
