@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, type ShowEpisodeInfo } from '@/lib/api';
+import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
@@ -271,6 +272,7 @@ export default function HomeScreen({
   const comingSoon = shows.filter((s) => s.coming_soon);
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
   const completedShows = shows.filter((s) => s.type === 'series' && s.status === 'completed');
+  const oneOffMovies = shows.filter((s) => s.type === 'movie' && !s.coming_soon);
 
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
   // joined) — this looks the hero's genre + Top 10 rank up against the
@@ -652,27 +654,25 @@ export default function HomeScreen({
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
                 without repeating it as a second ranked row underneath. */}
-            {/* "Continue Watching" replaces the old "Now Airing" row here —
-                members who left a show mid-episode get it surfaced right
-                at the top of home, easy to find and resume, instead of
-                having to dig for it in My List. */}
-            {continueItems.length > 0 ? (
-              <ContinueWatchingRow
-                items={continueItems}
-                onResume={onResumeEpisode}
-                title={t.continueWatching}
-                epLabel={t.epShort}
+            {/* "Movies" showcase replaces the old "Continue Watching" row
+                here — the prime top-of-page spot now goes to the one-off
+                paid films instead, since there are only ever a handful of
+                them and they're easy to miss buried in a compact rail
+                further down. Bigger cards (the `large` size otherwise
+                reserved for the Top 10 rail) plus the price tag make each
+                one read as a featured pick worth its $ price. */}
+            {oneOffMovies.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                icon={<Film className="h-5 w-5 text-[#F5C563]" />}
+                title={t.navMovies}
+                shows={oneOffMovies}
+                onSelectShow={onSelectShow}
+                onViewAll={oneOffMovies.length > 6 ? () => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true }) : undefined}
+                viewAllLabel={t.viewAll}
+                tag={{ label: `$${MOVIE_PRICE}`, tone: 'price' }}
+                large
               />
-            ) : (
-              trending[0] && (
-                <StartWatchingPrompt
-                  show={trending[0]}
-                  title={t.continueWatching}
-                  message={t.continueEmpty}
-                  cta={t.startWatching ?? 'Start Watching'}
-                  onSelectShow={onSelectShow}
-                />
-              )
             )}
             {recommended.length > 0 && (
               <RailRow
@@ -1420,9 +1420,14 @@ interface RailRowProps {
    *  giving every row its own at-a-glance identity instead of a uniform
    *  plain heading. { label, color } — color is any CSS color value. */
   tag?: { label: string; tone?: BadgeTone };
+  /** Bigger poster cards — used for the Movies row so each one-off film
+   *  reads as a premium pick worth its price, not a compact rail item
+   *  lost among the series rows (there are only ever a handful of movies,
+   *  so the row can afford the extra size). */
+  large?: boolean;
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag }: RailRowProps) {
+function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
@@ -1485,105 +1490,10 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
             onClick={onSelectShow}
             latestEpisode={episodeNumbers?.[s.id]}
             rank={ranked ? i + 1 : undefined}
+            large={large}
           />
         ))}
       </div>
-    </section>
-  );
-}
-
-/* ---------- Continue watching row ---------- */
-
-interface ContinueWatchingRowProps {
-  items: ContinueItem[];
-  onResume: (show: Show, episodeId: string) => void;
-  title: string;
-  epLabel: string;
-}
-
-function ContinueWatchingRow({ items, onResume, title, epLabel }: ContinueWatchingRowProps) {
-  return (
-    <section className="mt-9">
-      <div className="mb-3 flex items-center gap-2">
-        <Clock className="h-5 w-5 text-white/45" />
-        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
-      </div>
-      <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-3">
-        {items.map((item) => (
-          <button
-            key={item.show.id}
-            onClick={() => onResume(item.show, item.episode.id)}
-            className="group relative w-[152px] shrink-0 text-left sm:w-[190px]"
-          >
-            <div className="relative aspect-video overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/5">
-              <img
-                src={item.episode.thumbnail_url ?? item.show.banner_url ?? item.show.poster_url ?? ''}
-                alt=""
-                loading="lazy"
-                className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-transparent" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2050D8]/90 shadow-lg transition group-active:scale-90">
-                  <Play className="h-3.5 w-3.5 fill-white text-white" />
-                </div>
-              </div>
-              <span className="absolute bottom-1.5 left-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
-                {epLabel} {item.episode.episode_number}
-              </span>
-            </div>
-            <h3 className="mt-1.5 truncate text-xs font-semibold text-white sm:text-sm">
-              {item.show.title}
-            </h3>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ---------- Continue watching — empty state ---------- */
-
-interface StartWatchingPromptProps {
-  show: Show;
-  title: string;
-  message: string;
-  cta: string;
-  onSelectShow: (s: Show) => void;
-}
-
-// Shown in place of the Continue Watching row for anyone with no watch
-// history yet — same section header and shelf height as the row it
-// replaces, so the page doesn't visibly jump once real history appears,
-// but the content invites a first tap instead of just being blank.
-function StartWatchingPrompt({ show, title, message, cta, onSelectShow }: StartWatchingPromptProps) {
-  return (
-    <section className="mt-9">
-      <div className="mb-3 flex items-center gap-2">
-        <Clock className="h-5 w-5 text-white/45" />
-        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
-      </div>
-      <button
-        onClick={() => onSelectShow(show)}
-        className="group relative flex w-full items-center gap-4 overflow-hidden rounded-xl border border-dashed border-white/12 bg-white/[0.02] p-3 text-left transition hover:border-[#2050D8]/40 hover:bg-white/[0.04]"
-      >
-        <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151926] ring-1 ring-white/5 sm:h-24 sm:w-16">
-          <img
-            src={show.poster_url ?? show.banner_url ?? ''}
-            alt=""
-            loading="lazy"
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white sm:text-base">{show.title}</p>
-          <p className="mt-0.5 text-xs text-[#6A7591] sm:text-sm">{message}</p>
-          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#2050D8] px-3 py-1.5 text-xs font-bold text-white shadow-[0_2px_10px_rgba(32,80,216,0.35)] transition group-active:scale-95">
-            <Play className="h-3 w-3 fill-white" />
-            {cta}
-          </span>
-        </div>
-      </button>
     </section>
   );
 }

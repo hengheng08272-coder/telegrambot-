@@ -32,6 +32,7 @@ import {
   type KhqrFailure,
 } from '@/lib/bakong';
 import { readKhqrField, validateKhqrTemplate, type TemplateFailure } from '@/lib/khqrTemplate';
+import { MOVIE_PRICE } from '@/lib/moviePurchase';
 
 // Said in the owner's own terms: each one names what to do about it, not
 // what the parser objected to.
@@ -1318,6 +1319,65 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             })}
           </div>
         ))}
+
+      {/* Movie (pay-per-title) QR — a fixed $1 one-off purchase, not a
+          VIP plan, so it isn't part of PRICING_TIERS/pricing_tiers and
+          gets no months/price editing here. It still shares the same
+          payment_qr_codes table under the 'movie' tier key, which is
+          exactly what MoviePurchaseModal reads via getMovieQr(), so
+          uploading it here is the one thing needed to make the $1
+          Buy Movie flow show a real QR instead of "no QR yet". */}
+      {section === 'qr' && !loading && (
+        <div className="mt-4 rounded-xl border border-[#F5C563]/25 bg-[#F5C563]/[0.04] p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/30">
+              {images.movie ? (
+                <img src={images.movie} alt="movie" className="h-full w-full object-contain" />
+              ) : (
+                <QrCode className="h-5 w-5 text-white/20" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <p className="truncate text-sm font-semibold text-white">Movie (pay-per-title)</p>
+                <span className="shrink-0 rounded bg-white/[0.07] px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wide text-white/35">
+                  movie
+                </span>
+              </div>
+              <p className="truncate text-xs text-white/55">
+                Flat ${MOVIE_PRICE} · used for every one-off movie purchase, not a VIP plan
+              </p>
+              <p className="text-[11px] text-white/35">
+                {images.movie ? 'QR uploaded' : 'No QR yet — Buy Movie will show "QR missing" until one is set'}
+              </p>
+            </div>
+            <button
+              onClick={() => triggerUpload('movie')}
+              disabled={uploadingTier === 'movie'}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-3 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20 disabled:opacity-50"
+            >
+              {uploadingTier === 'movie' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              {images.movie ? 'Replace' : 'Upload'}
+            </button>
+          </div>
+          {khqrStrings.movie && (
+            <p className="mt-2 text-[11px] text-white/40">
+              KHQR detected — amount ${readKhqrAmount(khqrStrings.movie) ?? '—'}
+              {readKhqrMerchant(khqrStrings.movie) ? ` · ${readKhqrMerchant(khqrStrings.movie)}` : ''}
+              {readKhqrAmount(khqrStrings.movie) !== null &&
+                Math.abs((readKhqrAmount(khqrStrings.movie) as number) - MOVIE_PRICE) > 0.001 && (
+                  <span className="ml-1.5 font-semibold text-[#FFA8B2]">
+                    ⚠ QR amount doesn't match ${MOVIE_PRICE}
+                  </span>
+                )}
+            </p>
+          )}
+        </div>
+      )}
 
       <input
         ref={fileInputRef}
