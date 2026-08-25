@@ -8,6 +8,11 @@ import { appText } from '@/lib/appTranslations';
 interface Props {
   show: Show;
   onClick: (show: Show) => void;
+  /** Hides the price/FREE badge — used on the home screen row, which
+   *  already states the $ price once in the row's own header instead of
+   *  repeating it on every card. The "View All → Movies" grid has no
+   *  such header, so it keeps the badge on each card there. */
+  hidePrice?: boolean;
 }
 
 /**
@@ -24,7 +29,7 @@ interface Props {
  * different without a single new asset being uploaded — which matters
  * when the shelf is short enough that repetition would be obvious.
  */
-export default function MovieCard({ show, onClick }: Props) {
+export default function MovieCard({ show, onClick, hidePrice }: Props) {
   const { lang } = useLang();
   const t = appText[lang];
   const art = show.poster_url ?? show.banner_url ?? '';
@@ -93,9 +98,12 @@ export default function MovieCard({ show, onClick }: Props) {
             </span>
           </span>
 
-          {/* Price, or the fact that there isn't one. */}
+          {/* Price, or the fact that there isn't one — skipped entirely
+              when hidePrice is set. */}
           <span className="mt-2 flex items-center justify-between gap-2">
-            {show.is_free ? (
+            {hidePrice ? (
+              <span aria-hidden />
+            ) : show.is_free ? (
               <Badge tone="free" className="px-2 py-1 text-[11px]">
                 {t.freeBadge}
               </Badge>

@@ -30,7 +30,6 @@ import CreatorCredit from '@/components/CreatorCredit';
 import NotificationBell from '@/components/NotificationBell';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
-import { usePresenceCount } from '@/lib/presence';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
 
@@ -130,7 +129,6 @@ export default function HomeScreen({
 }: HomeScreenProps) {
   const { lang, setLang } = useLang();
   const t = appText[lang];
-  const watchingNow = usePresenceCount();
   const telegramProfile = getCurrentTelegramProfile();
   const [bannerShows, setBannerShows] = useState<Show[]>([]);
   const [shows, setShows] = useState<ShowWithGenres[]>([]);
@@ -464,20 +462,6 @@ export default function HomeScreen({
             )}
           </button>
 
-          {/* Live "watching now" count — a real Realtime Presence tally
-              (see src/lib/presence.ts), sitting inline now with no border
-              of its own. Dot + number always show; the "watching now"
-              label only renders from `md:` up, past every phone's CSS
-              viewport width. */}
-          <div className="flex shrink-0 items-center gap-1.5">
-            <span className="relative flex h-1.5 w-1.5 shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E6231F]/70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#E6231F]" />
-            </span>
-            <span className="font-display text-xs font-bold text-white sm:text-sm">{watchingNow.toLocaleString()}</span>
-            <span className="whitespace-nowrap text-[11px] text-[#9AA4BD] sm:text-xs">{t.watchingNow ?? 'watching now'}</span>
-          </div>
-
           {/* Divider — marks where "browse" ends and personal/account
               utility begins. One hairline does this instead of boxing
               every control that follows it. */}
@@ -669,7 +653,6 @@ export default function HomeScreen({
                   <div className="flex min-w-0 items-center gap-2">
                     <Film className="h-5 w-5 shrink-0 text-[#F5C563]" />
                     <h2 className="truncate text-lg font-bold tracking-tight">{t.navMovies}</h2>
-                    <Badge tone="price">${MOVIE_PRICE}</Badge>
                   </div>
                   {oneOffMovies.length > 4 && (
                     <button
@@ -680,9 +663,9 @@ export default function HomeScreen({
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {oneOffMovies.slice(0, 4).map((s) => (
-                    <MoviePosterCard key={s.id} show={s} onClick={onSelectShow} />
+                    <MovieCard key={s.id} show={s} onClick={onSelectShow} hidePrice />
                   ))}
                 </div>
               </section>
@@ -1462,82 +1445,6 @@ interface RailRowProps {
    *  strip rather than just another rail, without needing taller cards
    *  to read as "featured". Used for the Movies row. */
   panel?: boolean;
-}
-
-/* ---------- Movie showcase card (Home screen "Movies" row) ---------- */
-
-// The poster-on-its-own-backdrop treatment from the Telegram post design:
-// the same artwork blurred and scaled up fills the card as a glow behind
-// it, with the sharp poster floating centered on top — so a movie reads
-// as a poster reveal, not a list row, right on the home screen.
-function MoviePosterCard({ show, onClick }: { show: Show; onClick: (s: Show) => void }) {
-  const { lang } = useLang();
-  const t = appText[lang];
-  const art = show.poster_url ?? show.banner_url ?? '';
-
-  return (
-    <button
-      onClick={() => onClick(show)}
-      className="group relative aspect-[3/4] w-full overflow-hidden rounded-2xl border border-white/10 text-left transition active:scale-[0.98] hover:border-[#F5C563]/40"
-    >
-      {/* Blurred, scaled-up backdrop — same art, no extra asset needed. */}
-      <span aria-hidden className="absolute inset-0">
-        {art && (
-          <img src={art} alt="" className="h-full w-full scale-150 object-cover opacity-55 blur-2xl" draggable={false} />
-        )}
-        <span className="absolute inset-0 bg-black/45" />
-      </span>
-
-      {/* Small label pinned to the top, echoing the reference layout's
-          "row » title (Movie)" line — kept short since the card itself
-          is narrow. */}
-      <span className="absolute inset-x-2 top-2 z-10 flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wide text-white/70">
-        <Film className="h-3 w-3 shrink-0 text-[#F5C563]" />
-        <span className="truncate">{t.movieOneOff}</span>
-      </span>
-
-      {/* The sharp poster itself, floating centered on the blur. */}
-      <span className="absolute inset-0 flex items-center justify-center p-4 pt-7">
-        <span className="relative aspect-[2/3] w-full max-w-[78%] overflow-hidden rounded-xl shadow-[0_18px_40px_rgba(0,0,0,0.75)] ring-1 ring-white/15 transition duration-300 group-hover:scale-[1.03]">
-          {art ? (
-            <img src={art} alt={show.title} className="h-full w-full object-cover" draggable={false} />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center bg-white/5">
-              <Film className="h-6 w-6 text-white/40" />
-            </span>
-          )}
-          <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
-          <span className="absolute bottom-1.5 left-1.5">
-            {show.is_free ? (
-              <Badge tone="free" className="px-1.5 py-1 text-[10px]">
-                {t.freeBadge}
-              </Badge>
-            ) : (
-              <Badge tone="price" className="px-1.5 py-1 text-[10px]">
-                ${MOVIE_PRICE}
-              </Badge>
-            )}
-          </span>
-          <span className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-gradient shadow-[0_0_24px_rgba(32,80,216,0.65)]">
-              <Play className="h-3.5 w-3.5 fill-white text-white" />
-            </span>
-          </span>
-        </span>
-      </span>
-
-      {/* Title + rating, under the poster at the card's own bottom edge. */}
-      <span className="absolute inset-x-2 bottom-2 z-10">
-        <span className="block truncate text-[12px] font-bold leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
-          {show.title}
-        </span>
-        <span className="mt-0.5 flex items-center gap-1 text-[10.5px] text-[#F5C563]">
-          <Star className="h-2.5 w-2.5 fill-[#F5C563]" />
-          {Number(show.rating).toFixed(1)}
-        </span>
-      </span>
-    </button>
-  );
 }
 
 function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel }: RailRowProps) {
