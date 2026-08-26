@@ -135,19 +135,11 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
           {/* A standalone film's price, where a series shows its latest
               episode number. Both answer the same question in a rail —
               "what do I get if I tap this" — and a movie's answer is a
-              dollar, once, with no membership involved. This is the only
-              badge a one-off movie poster carries now (the separate
-              "One-off movie" label was dropped so the price is the one
-              clean thing the eye lands on), so it gets its own bigger,
-              two-line treatment instead of sharing the plain Badge style
-              used for episode/VIP/free tags elsewhere. */}
+              dollar, once, with no membership involved. */}
           {show.type === 'movie' && !show.is_free && !show.coming_soon && (
-            <div className="absolute bottom-1.5 left-1.5 z-[2] flex flex-col items-center rounded-lg bg-gradient-to-br from-[#2F6BFF] to-[#0E2560] px-2 py-1 leading-none shadow-[0_4px_14px_rgba(32,80,216,0.6)] ring-1 ring-inset ring-white/25 backdrop-blur-sm">
-              <span className="text-[14px] font-black text-white">${MOVIE_PRICE}</span>
-              <span className="text-[6.5px] font-bold uppercase tracking-wider text-white/75">
-                {t.movieOnlyPrice.replace('{price}', '').trim()}
-              </span>
-            </div>
+            <Badge tone="price" onArt className="absolute bottom-1.5 left-1.5">
+              ${MOVIE_PRICE}
+            </Badge>
           )}
           {/* Coming Soon marker — announced/promoted but no episodes yet
               (admin toggle). Icon-only since the row header above already
@@ -168,11 +160,16 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
           {/* FREE / VIP badge — same subscription status the detail screen
               and hero cover enforce, so browsing never over-promises what's
               actually playable. Skipped on Coming Soon cards since neither
-              label means anything until episodes exist. A standalone paid
-              movie shows no VIP/info badge at all — the $ price badge
-              below is the only marker its poster carries, since it's
-              bought once at a flat price rather than gated behind a
-              subscription. */}
+              label means anything until episodes exist. A standalone movie
+              gets its own "One-off movie" label instead of VIP here — it's
+              bought once for a flat price, not gated behind a subscription,
+              so a VIP crown on it would say the wrong thing even though
+              is_free is false. */}
+          {!show.coming_soon && show.type === 'movie' && !show.is_free && (
+            <Badge tone="info" onArt className="absolute left-1.5 top-1.5 whitespace-nowrap">
+              {t.movieOneOff}
+            </Badge>
+          )}
           {!show.coming_soon && show.type !== 'movie' && (
             <Badge
               tone={show.is_free ? 'free' : 'vip'}
