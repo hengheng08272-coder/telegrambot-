@@ -642,26 +642,18 @@ export default function HomeScreen({
                 here — the prime top-of-page spot now goes to the one-off
                 paid films instead, since there are only ever a handful of
                 them and they're easy to miss buried in a compact rail
-                further down. This is the same gold-panel + oversized-poster
-                treatment RailRow was already built for (see its `panel`
-                and `large` props) — a horizontal-scrolling rail rather
-                than the old stacked wide cards, so one movie no longer
-                eats the whole screen and the row underneath stays visible
-                without scrolling. ShowCard already prints the $ price as
-                its own badge for `type === 'movie'`, and the panel header
-                repeats it once more as a pill next to the title — the "$1
-                only" tag echoing the VIP pill in the hero above. */}
+                further down. The gold panel background and the "Movies"
+                title text were dropped so the row stays short enough that
+                the row underneath is visible without scrolling — the $1
+                price now lives only on the poster badge itself (see
+                ShowCard), so nothing is lost by dropping the header. */}
             {oneOffMovies.length > 0 && (
               <RailRow
-                icon={<Film className="h-5 w-5 text-[#F5C563]" />}
-                title={t.navMovies}
                 shows={oneOffMovies}
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
-                viewAllLabel={t.viewAll}
-                tag={{ label: t.movieOnlyPrice.replace('{price}', `$${MOVIE_PRICE}`), tone: 'price' }}
                 large
-                panel
+                hideHeader
               />
             )}
             {recommended.length > 0 && (
@@ -1439,9 +1431,16 @@ interface RailRowProps {
    *  strip rather than just another rail, without needing taller cards
    *  to read as "featured". Used for the Movies row. */
   panel?: boolean;
+  /** Drops the row's header entirely — no icon, title text, tag chip, or
+   *  divider line, just the poster rail (and a small "view all" link if
+   *  one was passed in). Used for the Movies row so it stays compact
+   *  enough that the row underneath is visible without scrolling; the
+   *  price already reads off each poster's own badge, so no information
+   *  is lost by hiding the header. */
+  hideHeader?: boolean;
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel }: RailRowProps) {
+function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel, hideHeader }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
@@ -1453,16 +1452,29 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           ? 'relative mt-8 overflow-hidden rounded-xl'
           : panel
             ? 'mt-9 overflow-hidden rounded-2xl border border-[#F5C563]/15 bg-gradient-to-br from-[#2A2010]/70 via-[#151926]/40 to-transparent px-3 pb-1 pt-4 sm:px-4'
-            : 'mt-9'
+            : hideHeader
+              ? 'mt-5'
+              : 'mt-9'
       }
     >
-      {!ranked && !panel && (
+      {!ranked && !panel && !hideHeader && (
         <div
           className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
           aria-hidden
         />
       )}
-      {ranked ? (
+      {hideHeader ? (
+        onViewAll && (
+          <div className="mb-2 flex justify-end">
+            <button
+              onClick={onViewAll}
+              className="shrink-0 text-xs font-semibold text-[#9AA4BD] transition hover:text-[#2050D8]"
+            >
+              {viewAllLabel}
+            </button>
+          </div>
+        )
+      ) : ranked ? (
         // Centered, Netflix-style row header — the "View All" link moves
         // to its own row underneath instead of crowding the centered
         // title on the same line.
