@@ -11,6 +11,8 @@ import {
   attachMovieScreenshot,
   checkMoviePurchaseStatus,
 } from '@/lib/moviePurchase';
+import { decodeKhqrFromImage, isKhqrPayload, buildAbaDeeplink, armDeeplinkFallback } from '@/lib/khqr';
+
 interface Props {
   show: Show;
   onClose: () => void;
@@ -25,9 +27,11 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
   const [phase, setPhase] = useState<Phase>('loading');
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [qrSrc, setQrSrc] = useState<string | null>(null);
+  const [khqrString, setKhqrString] = useState<string | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [abaDidNotOpen, setAbaDidNotOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const notifiedRef = useRef(false);
 
@@ -39,6 +43,11 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
       const [pending, qr] = await Promise.all([getPendingMoviePurchase(show.id), getMovieQr()]);
       if (!active) return;
       setQrSrc(qr.imageUrl);
+      if (qr.khqrString) {
+        setKhqrString(qr.khqrString);
+      } else if (qr.imageUrl) {
+        decodeKhqrFromImage(qr.imageUrl).then((v) => active && setKhqrString(v));
+      }
       if (pending) {
         setSubmissionId(pending.id);
         setPhase('pay');
@@ -74,6 +83,8 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
     notifiedRef.current = true;
     onUnlocked(show.id);
   }, [phase, onUnlocked, show.id]);
+
+  const abaDeeplink = isKhqrPayload(khqrString) ? buildAbaDeeplink(khqrString) : null;
 
   const handlePickFile = (file: File) => {
     if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
@@ -193,6 +204,18 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
                 </p>
               )}
 
+              {abaDeeplink && (
+                <a
+                  href={abaDeeplink}
+                  onClick={() => armDeeplinkFallback(() => setAbaDidNotOpen(true))}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#2050D8] to-[#0E2560] py-3 text-sm font-bold text-white shadow-[0_8px_20px_-8px_rgba(32,80,216,0.75)] transition active:scale-[0.98]"
+                >
+                  {t.subOpenAba ?? 'Open ABA Mobile'}
+                </a>
+              )}
+              {abaDidNotOpen && (
+                <p className="mt-2 text-[11px] text-white/40">{t.subAbaFallbackHint ?? 'Nothing opened? Scan the QR instead.'}</p>
+              )}
             </div>
 
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">

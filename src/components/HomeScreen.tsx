@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, type ShowEpisodeInfo } from '@/lib/api';
+import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
@@ -270,10 +271,6 @@ export default function HomeScreen({
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
   const completedShows = shows.filter((s) => s.type === 'series' && s.status === 'completed');
   const oneOffMovies = shows.filter((s) => s.type === 'movie' && !s.coming_soon);
-  // The single movie the panel leads with — most-watched first (same
-  // real play-count signal `trending` uses above), so the one card the
-  // row spends its height on is the one most people already want.
-  const featuredMovie = [...oneOffMovies].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))[0];
 
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
   // joined) — this looks the hero's genre + Top 10 rank up against the
@@ -645,29 +642,27 @@ export default function HomeScreen({
                 here — the prime top-of-page spot now goes to the one-off
                 paid films instead, since there are only ever a handful of
                 them and they're easy to miss buried in a compact rail
-                further down. Down to a single card — the most-watched
-                movie — instead of a whole rail or grid, so the panel
-                stays short enough that the row underneath is still on
-                screen without scrolling. The rest of the catalog is one
-                tap away behind "View All" whenever there's more than one. */}
-            {featuredMovie && (
-              <section className="mt-9 overflow-hidden rounded-2xl border border-[#F5C563]/15 bg-gradient-to-br from-[#2A2010]/70 via-[#151926]/40 to-transparent px-3 pb-3 pt-4 sm:px-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Film className="h-5 w-5 shrink-0 text-[#F5C563]" />
-                    <h2 className="truncate text-lg font-bold tracking-tight">{t.navMovies}</h2>
-                  </div>
-                  {oneOffMovies.length > 1 && (
-                    <button
-                      onClick={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
-                      className="shrink-0 text-xs font-semibold text-[#9AA4BD] transition hover:text-[#2050D8]"
-                    >
-                      {t.viewAll}
-                    </button>
-                  )}
-                </div>
-                <MovieCard show={featuredMovie} onClick={onSelectShow} />
-              </section>
+                further down. This is the same gold-panel + oversized-poster
+                treatment RailRow was already built for (see its `panel`
+                and `large` props) — a horizontal-scrolling rail rather
+                than the old stacked wide cards, so one movie no longer
+                eats the whole screen and the row underneath stays visible
+                without scrolling. ShowCard already prints the $ price as
+                its own badge for `type === 'movie'`, and the panel header
+                repeats it once more as a pill next to the title — the "$1
+                only" tag echoing the VIP pill in the hero above. */}
+            {oneOffMovies.length > 0 && (
+              <RailRow
+                icon={<Film className="h-5 w-5 text-[#F5C563]" />}
+                title={t.navMovies}
+                shows={oneOffMovies}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
+                viewAllLabel={t.viewAll}
+                tag={{ label: t.movieOnlyPrice.replace('{price}', `$${MOVIE_PRICE}`), tone: 'price' }}
+                large
+                panel
+              />
             )}
             {recommended.length > 0 && (
               <RailRow
