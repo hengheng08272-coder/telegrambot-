@@ -108,9 +108,23 @@ export default function MovieCard({ show, onClick, hidePrice }: Props) {
                 {t.freeBadge}
               </Badge>
             ) : (
-              <Badge tone="price" className="px-2 py-1 text-[11px]">
-                {t.movieOnlyPrice.replace('{price}', `$${MOVIE_PRICE}`)}
-              </Badge>
+              // A stamped seal instead of the usual pill — the $ price is
+              // the one fact on this card that's supposed to jump out and
+              // read as "official, go ahead", the way a stamp does on a
+              // receipt. Double ring + a few degrees of tilt sells the
+              // ink-stamp read without needing an image asset.
+              <span
+                className="relative inline-flex shrink-0 flex-col items-center justify-center rounded-lg border-2 border-[#5B93FF] px-2.5 py-1 leading-none text-[#5B93FF]"
+                style={{
+                  transform: 'rotate(-8deg)',
+                  boxShadow: 'inset 0 0 0 2px rgba(91,147,255,0.4)',
+                }}
+              >
+                <span className="text-[13px] font-black tracking-tight">${MOVIE_PRICE}</span>
+                <span className="mt-0.5 text-[6.5px] font-bold uppercase tracking-[0.18em]">
+                  {t.movieOnlyPrice.replace('{price} ', '').replace('{price}', '')}
+                </span>
+              </span>
             )}
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition group-hover:bg-white/20">
               <Play className="h-3 w-3 fill-white" />
