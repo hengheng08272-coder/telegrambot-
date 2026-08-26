@@ -642,33 +642,27 @@ export default function HomeScreen({
                 here — the prime top-of-page spot now goes to the one-off
                 paid films instead, since there are only ever a handful of
                 them and they're easy to miss buried in a compact rail
-                further down. Same MovieCard used by "View All → Movies" —
-                blurred backdrop art, rating, year and the $ price all on
-                one wide card — instead of a poster rail, since a couple
-                of tiny poster thumbnails said far less about what makes
-                a movie worth buying than this card does. */}
+                further down. This is the same gold-panel + oversized-poster
+                treatment RailRow was already built for (see its `panel`
+                and `large` props) — a horizontal-scrolling rail rather
+                than the old stacked wide cards, so one movie no longer
+                eats the whole screen and the row underneath stays visible
+                without scrolling. ShowCard already prints the $ price as
+                its own badge for `type === 'movie'`, and the panel header
+                repeats it once more as a pill next to the title — the "$1
+                only" tag echoing the VIP pill in the hero above. */}
             {oneOffMovies.length > 0 && (
-              <section className="mt-9 overflow-hidden rounded-2xl border border-[#F5C563]/15 bg-gradient-to-br from-[#2A2010]/70 via-[#151926]/40 to-transparent px-3 pb-3 pt-4 sm:px-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Film className="h-5 w-5 shrink-0 text-[#F5C563]" />
-                    <h2 className="truncate text-lg font-bold tracking-tight">{t.navMovies}</h2>
-                  </div>
-                  {oneOffMovies.length > 4 && (
-                    <button
-                      onClick={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
-                      className="shrink-0 text-xs font-semibold text-[#9AA4BD] transition hover:text-[#2050D8]"
-                    >
-                      {t.viewAll}
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {oneOffMovies.slice(0, 4).map((s) => (
-                    <MovieCard key={s.id} show={s} onClick={onSelectShow} hidePrice />
-                  ))}
-                </div>
-              </section>
+              <RailRow
+                icon={<Film className="h-5 w-5 text-[#F5C563]" />}
+                title={t.navMovies}
+                shows={oneOffMovies}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
+                viewAllLabel={t.viewAll}
+                tag={{ label: t.movieOnlyPrice.replace('{price}', `$${MOVIE_PRICE}`), tone: 'price' }}
+                large
+                panel
+              />
             )}
             {recommended.length > 0 && (
               <RailRow
