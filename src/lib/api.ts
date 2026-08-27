@@ -65,6 +65,33 @@ export async function saveAbaMerchantName(value: string): Promise<void> {
   if (error) throw error;
 }
 
+export interface TelegramAutoPostSettings {
+  enabled: boolean;
+  interval_minutes: number;
+  shows_per_run: number;
+  last_run_at: string | null;
+}
+
+export async function fetchTelegramAutoPostSettings(): Promise<TelegramAutoPostSettings | null> {
+  const { data, error } = await supabase
+    .from('telegram_auto_post_settings')
+    .select('enabled, interval_minutes, shows_per_run, last_run_at')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) return null; // table may not exist yet on older deploys
+  return data ?? null;
+}
+
+export async function saveTelegramAutoPostSettings(
+  settings: Pick<TelegramAutoPostSettings, 'enabled' | 'interval_minutes' | 'shows_per_run'>,
+): Promise<void> {
+  const { error } = await supabase
+    .from('telegram_auto_post_settings')
+    .update({ ...settings, updated_at: new Date().toISOString() })
+    .eq('id', 1);
+  if (error) throw error;
+}
+
 export async function fetchAllShows(): Promise<ShowWithGenres[]> {
   const { data, error } = await supabase
     .from('shows')
@@ -147,4 +174,64 @@ export async function fetchEpisodesByShow(showId: string): Promise<Episode[]> {
     .order('episode_number', { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+
+// ---------- Blocked Telegram users (copyright block screen) ----------
+
+export interface BlockedTelegramUser {
+  id: string;
+  telegram_user_id: string | null;
+  telegram_username: string | null;
+  reason: string | null;
+  created_at: string;
+}
+
+// Checked once on app boot against the viewer's own Telegram identity
+// (see getCurrentTelegramProfile in lib/telegram.ts). Matches on either
+// the numeric id or the @username, whichever the admin entered — a
+// viewer only needs one of the two to hit a block.
+export async function checkTelegramUserBlocked(
+  telegramId: number,
+  username: string | null,
+): Promise<{ blocked: boolean; reason: string | null }> {
+  const idStr = String(telegramId);
+  const usernameLower = username ? username.toLowerCase() : null;
+  const orFilter = usernameLower
+    ? `telegram_user_id.eq.${idStr},telegram_username.eq.${usernameLower}`
+    : `telegram_user_id.eq.${idStr}`;
+  const { data, error } = await supabase
+    .from('blocked_telegram_users')
+    .select('reason')
+    .or(orFilter)
+    .limit(1)
+    .maybeSingle();
+  if (error) return { blocked: false, reason: null }; // table may not exist yet on older deploys
+  return { blocked: !!data, reason: data?.reason ?? null };
+}
+
+export async function fetchBlockedTelegramUsers(): Promise<BlockedTelegramUser[]> {
+  const { data, error } = await supabase
+    .from('blocked_telegram_users')
+    .select('id, telegram_user_id, telegram_username, reason, created_at')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function addBlockedTelegramUser(entry: {
+  telegram_user_id?: string;
+  telegram_username?: string;
+  reason?: string;
+}): Promise<void> {
+  const { error } = await supabase.from('blocked_telegram_users').insert({
+    telegram_user_id: entry.telegram_user_id || null,
+    telegram_username: entry.telegram_username || null,
+    reason: entry.reason || null,
+  });
+  if (error) throw error;
+}
+
+export async function removeBlockedTelegramUser(id: string): Promise<void> {
+  const { error } = await supabase.from('blocked_telegram_users').delete().eq('id', id);
+  if (error) throw error;
 }
