@@ -27,6 +27,8 @@ import {
   Users as UsersIcon,
   ChevronRight,
   ListVideo,
+  Bot,
+  ShieldAlert,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import type { Show, Episode } from '@/lib/types';
@@ -37,6 +39,8 @@ import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
 import PaymentsPanel from '@/components/PaymentsPanel';
 import SubscriptionsPanel from '@/components/SubscriptionsPanel';
 import UsersPanel from '@/components/UsersPanel';
+import TelegramAutoPostPanel from '@/components/TelegramAutoPostPanel';
+import BlockedUsersPanel from '@/components/BlockedUsersPanel';
 import { usePresenceCount } from '@/lib/presence';
 
 interface AdminScreenProps {
@@ -227,6 +231,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [paymentsOpen, setPaymentsOpen] = useState(false);
   const [subscriptionsOpen, setSubscriptionsOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
+  const [telegramAutoPostOpen, setTelegramAutoPostOpen] = useState(false);
+  const [blockedUsersOpen, setBlockedUsersOpen] = useState(false);
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   useEffect(() => {
     supabase
@@ -882,6 +888,12 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           </button>
           <span className="mx-1 h-4 w-px shrink-0 bg-white/10" aria-hidden />
           <button
+            onClick={() => setTelegramAutoPostOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
+          >
+            <Bot className="h-3.5 w-3.5" /> Telegram Auto-Post
+          </button>
+          <button
             onClick={() => setWatchLogOpen(true)}
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-xs font-bold text-white/70 transition hover:bg-white/10"
           >
@@ -898,6 +910,12 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/20"
           >
             <ShieldBan className="h-3.5 w-3.5" /> Ban log
+          </button>
+          <button
+            onClick={() => setBlockedUsersOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-1.5 text-xs font-bold text-red-300 transition hover:bg-red-500/20"
+          >
+            <ShieldAlert className="h-3.5 w-3.5" /> Blocked Users
           </button>
         </nav>
       </header>
@@ -2054,6 +2072,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       />
 
       {announcementsOpen && <AnnouncementsPanel onClose={() => setAnnouncementsOpen(false)} />}
+      {telegramAutoPostOpen && <TelegramAutoPostPanel onClose={() => setTelegramAutoPostOpen(false)} />}
+      {blockedUsersOpen && <BlockedUsersPanel onClose={() => setBlockedUsersOpen(false)} />}
       {banLogOpen && <BanLogPanel onClose={() => setBanLogOpen(false)} />}
       {watchLogOpen && <WatchLogPanel onClose={() => setWatchLogOpen(false)} />}
       {paymentsOpen && <PaymentsPanel onClose={() => setPaymentsOpen(false)} />}
