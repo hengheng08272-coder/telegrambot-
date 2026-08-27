@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { fetchProfile, type Profile } from '@/lib/auth';
-import { fetchShowById, fetchEpisodesByShow } from '@/lib/api';
+import { fetchShowById, fetchEpisodesByShow, checkTelegramUserBlocked } from '@/lib/api';
 import type { Show, ShowWithGenres, Episode } from '@/lib/types';
 import { addToContinueWatching } from '@/lib/watchlist';
 import AuthScreen from '@/components/AuthScreen';
@@ -14,6 +14,7 @@ import VideoPlayerScreen from '@/components/VideoPlayerScreen';
 import WatchlistScreen from '@/components/WatchlistScreen';
 import AdminScreen from '@/components/AdminScreen';
 import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
+import CopyrightBlockedScreen from '@/components/CopyrightBlockedScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
 import SubscriptionModal from '@/components/SubscriptionModal';
 import VerifyingPill from '@/components/VerifyingPill';
@@ -24,7 +25,7 @@ import { getSubscriptionStatus } from '@/lib/subscription';
 import { getMyMoviePurchases } from '@/lib/moviePurchase';
 import { getAvailableBonusSpin } from '@/lib/spin';
 import { recordReferralIfPresent } from '@/lib/referral';
-import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess } from '@/lib/telegram';
+import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess, getCurrentTelegramProfile } from '@/lib/telegram';
 
 // This build is the Telegram VIP Mini App: the app itself opens for
 // everyone, no group-join check and no viewer sign-in/sign-up required.
@@ -70,6 +71,26 @@ function App() {
     getMyMoviePurchases().then(setPurchasedMovies);
   };
   const [bonusSpinReady, setBonusSpinReady] = useState(false);
+  // Checked once on boot against the viewer's own Telegram identity (see
+  // lib/telegram's getCurrentTelegramProfile) — a match on the admin's
+  // block list (Admin Panel -> Blocked Users) replaces the whole app
+  // with CopyrightBlockedScreen below instead of granting any access.
+  // `checked` gates rendering so a blocked viewer never sees even a
+  // flash of real content while the query is in flight.
+  const [telegramBlock, setTelegramBlock] = useState<{ checked: boolean; blocked: boolean }>({
+    checked: false,
+    blocked: false,
+  });
+  useEffect(() => {
+    const tgUser = getCurrentTelegramProfile();
+    if (!tgUser) {
+      setTelegramBlock({ checked: true, blocked: false });
+      return;
+    }
+    checkTelegramUserBlocked(tgUser.id, tgUser.username).then((result) => {
+      setTelegramBlock({ checked: true, blocked: result.blocked });
+    });
+  }, []);
   const refreshSubscription = () => {
     getSubscriptionStatus().then((s) => {
       setSubscribed(s.subscribed);
@@ -269,8 +290,12 @@ function App() {
     else if (screen.name === 'watchlist') setActiveTab('watchlist');
   }, [screen.name]);
 
-  if (!authReady) {
+  if (!authReady || !telegramBlock.checked) {
     return <div className="min-h-screen bg-app" />;
+  }
+
+  if (telegramBlock.blocked) {
+    return <CopyrightBlockedScreen />;
   }
 
   // Desktop is admin-only. On mobile (the real Telegram Mini App surface)
