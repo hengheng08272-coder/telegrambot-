@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import {
+  autoPostQueueSupported,
   fetchAutoPostQueue,
   fetchAutoPostShowOptions,
   fetchRecentTelegramAutoPosts,
@@ -66,6 +67,10 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
   const [queue, setQueue] = useState<string[]>([]);
   const [savedQueue, setSavedQueue] = useState<string[]>([]);
   const [pickerQuery, setPickerQuery] = useState('');
+  // False until database/telegram-auto-post-addition.sql has been re-run on
+  // this project: without selection_mode and the queue table the panel
+  // still works, it just can't offer the hand-picked list.
+  const [queueSupported, setQueueSupported] = useState(true);
 
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -96,6 +101,7 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
       setQueue(queueIds);
       setSavedQueue(queueIds);
       setOptions(showOptions);
+      setQueueSupported(autoPostQueueSupported());
       setRecent(await fetchRecentTelegramAutoPosts(8));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'ផ្ទុកការកំណត់មិនបាន');
@@ -303,7 +309,8 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
                 <button
                   key={opt.key}
                   onClick={() => setMode(opt.key)}
-                  className={`rounded-xl border p-3 text-left transition ${
+                  disabled={opt.key === 'queue' && !queueSupported}
+                  className={`rounded-xl border p-3 text-left transition disabled:opacity-40 ${
                     mode === opt.key
                       ? 'border-[#4C6FFF]/50 bg-[#4C6FFF]/10'
                       : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.05]'
@@ -319,7 +326,16 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
               ))}
             </div>
 
-            {mode === 'queue' && (
+            {!queueSupported && (
+              <p className="mt-2 flex items-start gap-1.5 text-[11px] text-[#F5C563]">
+                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+                ដើម្បីជ្រើសរើសរឿងដោយខ្លួនឯង ត្រូវ run
+                <code className="mx-1 rounded bg-white/10 px-1">database/telegram-auto-post-addition.sql</code>
+                ក្នុង Supabase → SQL Editor ជាមុនសិន។ ឥឡូវនេះកំពុងប្រើ «តាមវេនស្វ័យប្រវត្តិ» ធម្មតា។
+              </p>
+            )}
+
+            {mode === 'queue' && queueSupported && (
               <div className="mt-3 space-y-3">
                 <div>
                   <p className="mb-1.5 text-[11px] font-bold text-white/50">

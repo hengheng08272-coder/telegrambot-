@@ -105,14 +105,57 @@ function describeAutoPostError(error: { code?: string; message: string }): strin
   return error.message;
 }
 
+// `selection_mode` and the queue table arrived after the first version of
+// this feature shipped, so a project that hasn't re-run the migration yet
+// still has the older shape. Rather than breaking the whole panel with
+// "column ... does not exist", the loader notices, remembers, and runs in
+// rotate-only mode until the migration is applied.
+let selectionModeSupported: boolean | null = null;
+
+const SETTINGS_COLUMNS = 'enabled, interval_minutes, shows_per_run, last_run_at';
+const SETTINGS_COLUMNS_WITH_MODE = `enabled, interval_minutes, shows_per_run, selection_mode, last_run_at`;
+
+// PostgREST reports an unknown column as 42703 / PGRST204 depending on
+// whether it fails in Postgres or in PostgREST's own schema cache.
+function isMissingColumn(error: { code?: string; message?: string }): boolean {
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    /column .* does not exist/i.test(error.message ?? '')
+  );
+}
+
+function isMissingTable(error: { code?: string; message?: string }): boolean {
+  return error.code === '42P01' || error.code === 'PGRST205';
+}
+
+/** False when the migration adding selection_mode / the queue table hasn't been run. */
+export function autoPostQueueSupported(): boolean {
+  return selectionModeSupported !== false;
+}
+
 export async function fetchTelegramAutoPostSettings(): Promise<TelegramAutoPostSettings> {
+  if (selectionModeSupported !== false) {
+    const { data, error } = await supabase
+      .from('telegram_auto_post_settings')
+      .select(SETTINGS_COLUMNS_WITH_MODE)
+      .eq('id', 1)
+      .maybeSingle();
+    if (!error) {
+      selectionModeSupported = true;
+      return data ?? { ...TELEGRAM_AUTO_POST_DEFAULTS };
+    }
+    if (!isMissingColumn(error)) throw new Error(describeAutoPostError(error));
+    selectionModeSupported = false;
+  }
+
   const { data, error } = await supabase
     .from('telegram_auto_post_settings')
-    .select('enabled, interval_minutes, shows_per_run, selection_mode, last_run_at')
+    .select(SETTINGS_COLUMNS)
     .eq('id', 1)
     .maybeSingle();
   if (error) throw new Error(describeAutoPostError(error));
-  return data ?? { ...TELEGRAM_AUTO_POST_DEFAULTS };
+  return { ...TELEGRAM_AUTO_POST_DEFAULTS, ...(data ?? {}), selection_mode: 'rotate' };
 }
 
 // Upsert, not update: an UPDATE ... WHERE id = 1 that matches no row (the
@@ -127,21 +170,35 @@ export async function saveTelegramAutoPostSettings(
     'enabled' | 'interval_minutes' | 'shows_per_run' | 'selection_mode'
   >,
 ): Promise<TelegramAutoPostSettings> {
-  const { data, error } = await supabase
-    .from('telegram_auto_post_settings')
-    .upsert(
-      { id: 1, ...settings, updated_at: new Date().toISOString() },
-      { onConflict: 'id' },
-    )
-    .select('enabled, interval_minutes, shows_per_run, selection_mode, last_run_at')
-    .maybeSingle();
-  if (error) throw new Error(describeAutoPostError(error));
+  const { selection_mode, ...rest } = settings;
+  const legacy = selectionModeSupported === false;
+  const row = {
+    id: 1,
+    ...rest,
+    ...(legacy ? {} : { selection_mode }),
+    updated_at: new Date().toISOString(),
+  };
+  const upsert = supabase.from('telegram_auto_post_settings').upsert(row, { onConflict: 'id' });
+  const { data, error } = legacy
+    ? await upsert.select(SETTINGS_COLUMNS).maybeSingle()
+    : await upsert.select(SETTINGS_COLUMNS_WITH_MODE).maybeSingle();
+  if (error) {
+    // The column can disappear from under us between load and save only if
+    // the probe above never ran (a save on a stale page); retry once
+    // without it rather than losing the admin's edit.
+    if (isMissingColumn(error)) {
+      selectionModeSupported = false;
+      return saveTelegramAutoPostSettings(settings);
+    }
+    throw new Error(describeAutoPostError(error));
+  }
   if (!data) {
     throw new Error(
       'Settings were not saved (no row came back). Re-run database/telegram-auto-post-addition.sql so the admin write policies exist.',
     );
   }
-  return data;
+  const saved = data as Partial<TelegramAutoPostSettings>;
+  return { ...TELEGRAM_AUTO_POST_DEFAULTS, ...saved, selection_mode: saved.selection_mode ?? 'rotate' };
 }
 
 export interface TelegramAutoPostLogEntry {
@@ -205,7 +262,15 @@ export async function fetchAutoPostQueue(): Promise<string[]> {
     .from('telegram_auto_post_queue')
     .select('show_id, position')
     .order('position', { ascending: true });
-  if (error) throw new Error(describeAutoPostError(error));
+  if (error) {
+    // Same story as selection_mode: an install that predates the queue
+    // simply has no queue, which is an empty list, not a failure.
+    if (isMissingTable(error)) {
+      selectionModeSupported = false;
+      return [];
+    }
+    throw new Error(describeAutoPostError(error));
+  }
   return (data ?? []).map((row) => row.show_id as string);
 }
 
