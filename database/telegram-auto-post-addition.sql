@@ -68,3 +68,45 @@ COMMENT ON TABLE telegram_auto_post_settings IS
   'Singleton config for the telegram-auto-post edge function: on/off, how often (minutes), and how many shows per run.';
 COMMENT ON TABLE telegram_auto_post_log IS
   'History of shows the auto-poster has sent into the group, used to rotate through the catalog instead of repeating.';
+
+-- ---------------------------------------------------------------------
+-- Choosing WHICH shows get posted, and in what order
+--
+-- Default stays 'rotate': every eligible show takes a turn, least
+-- recently posted first. 'queue' hands the choice to the admin — only
+-- the shows in telegram_auto_post_queue are posted, walking the list in
+-- the admin's own order and wrapping around at the end.
+-- ---------------------------------------------------------------------
+
+ALTER TABLE telegram_auto_post_settings
+  ADD COLUMN IF NOT EXISTS selection_mode text NOT NULL DEFAULT 'rotate';
+
+DO $$
+BEGIN
+  ALTER TABLE telegram_auto_post_settings
+    ADD CONSTRAINT telegram_auto_post_settings_selection_mode_check
+    CHECK (selection_mode IN ('rotate', 'queue'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS telegram_auto_post_queue (
+  show_id uuid PRIMARY KEY REFERENCES shows(id) ON DELETE CASCADE,
+  position integer NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS telegram_auto_post_queue_position_idx
+  ON telegram_auto_post_queue (position);
+
+ALTER TABLE telegram_auto_post_queue ENABLE ROW LEVEL SECURITY;
+
+-- The panel rewrites the whole list on save (delete + insert), so admins
+-- need all three verbs here.
+DROP POLICY IF EXISTS "admin_manage_telegram_auto_post_queue" ON telegram_auto_post_queue;
+CREATE POLICY "admin_manage_telegram_auto_post_queue" ON telegram_auto_post_queue FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));
+
+COMMENT ON TABLE telegram_auto_post_queue IS
+  'Admin-picked shows for the auto-poster, in the order they should go out. Only used when telegram_auto_post_settings.selection_mode = ''queue''.';

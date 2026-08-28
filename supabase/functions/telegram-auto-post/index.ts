@@ -126,13 +126,42 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Every non-"coming soon" show is eligible — movies and series alike.
-    const { data: shows, error: showsErr } = await admin
-      .from("shows")
-      .select("id, title, synopsis, poster_url, type, status, is_free, created_at")
-      .eq("coming_soon", false);
+    // Two ways to choose what goes out, set from the Admin Panel:
+    //   rotate (default) — every non-"coming soon" show is eligible and
+    //                      the least recently posted one goes first;
+    //   queue            — only the shows the admin picked, walked in the
+    //                      admin's own order, wrapping at the end. A
+    //                      queued show posts even if it is marked coming
+    //                      soon: putting it in the list is a deliberate
+    //                      choice.
+    const queueMode = settings.selection_mode === "queue";
+    const SHOW_COLUMNS = "id, title, synopsis, poster_url, type, status, is_free, created_at";
 
-    if (showsErr || !shows || shows.length === 0) {
+    let queueOrder: string[] = [];
+    let shows: Show[] | null = null;
+
+    if (queueMode) {
+      const { data: queueRows } = await admin
+        .from("telegram_auto_post_queue")
+        .select("show_id, position")
+        .order("position", { ascending: true });
+      queueOrder = (queueRows ?? []).map((row) => row.show_id as string);
+
+      if (queueOrder.length === 0) {
+        return new Response(JSON.stringify({ ok: true, skipped: "empty_queue" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data } = await admin.from("shows").select(SHOW_COLUMNS).in("id", queueOrder);
+      shows = (data ?? []) as Show[];
+    } else {
+      const { data } = await admin.from("shows").select(SHOW_COLUMNS).eq("coming_soon", false);
+      shows = (data ?? []) as Show[];
+    }
+
+    if (!shows || shows.length === 0) {
       return new Response(JSON.stringify({ ok: true, skipped: "no_shows" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -151,17 +180,45 @@ Deno.serve(async (req: Request) => {
       if (!lastPosted.has(row.show_id)) lastPosted.set(row.show_id, new Date(row.posted_at).getTime());
     }
 
-    // Least-recently-posted first; never-posted shows (0) come first of
-    // all. Shows that tie — every never-posted one, on the first run — are
-    // ordered by age so a run of several shows is deterministic instead of
-    // depending on whatever order PostgREST returned.
-    const ranked = (shows as Show[]).slice().sort((a, b) => {
-      const diff = (lastPosted.get(a.id) ?? 0) - (lastPosted.get(b.id) ?? 0);
-      if (diff !== 0) return diff;
-      return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
-    });
+    const perRun = Math.max(1, settings.shows_per_run);
+    let batch: Show[];
 
-    const batch = ranked.slice(0, Math.max(1, settings.shows_per_run));
+    if (queueMode) {
+      // Walk the admin's list in their order. The starting point is
+      // whatever comes after the most recently posted queue entry, so
+      // each run continues where the last one stopped and the list loops
+      // instead of always restarting from the top.
+      const byId = new Map(shows.map((show) => [show.id, show]));
+      const ordered = queueOrder.map((id) => byId.get(id)).filter((show): show is Show => !!show);
+
+      let startAt = 0;
+      let newestPost = -1;
+      ordered.forEach((show, index) => {
+        const posted = lastPosted.get(show.id);
+        if (posted !== undefined && posted > newestPost) {
+          newestPost = posted;
+          startAt = (index + 1) % ordered.length;
+        }
+      });
+
+      batch = [];
+      for (let i = 0; i < Math.min(perRun, ordered.length); i++) {
+        batch.push(ordered[(startAt + i) % ordered.length]);
+      }
+    } else {
+      // Least-recently-posted first; never-posted shows (0) come first of
+      // all. Shows that tie — every never-posted one, on the first run —
+      // are ordered by age so a run of several shows is deterministic
+      // instead of depending on whatever order PostgREST returned.
+      batch = shows
+        .slice()
+        .sort((a, b) => {
+          const diff = (lastPosted.get(a.id) ?? 0) - (lastPosted.get(b.id) ?? 0);
+          if (diff !== 0) return diff;
+          return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
+        })
+        .slice(0, perRun);
+    }
 
     const posted: string[] = [];
     const errors: string[] = [];
@@ -242,7 +299,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, posted, errors, forced: force, next_due_at: nextDueAt }),
+      JSON.stringify({ ok: true, posted, errors, forced: force, mode: queueMode ? "queue" : "rotate", next_due_at: nextDueAt }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {

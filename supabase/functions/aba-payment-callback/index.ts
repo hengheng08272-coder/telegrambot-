@@ -27,11 +27,20 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 //      PAID/APPROVED and that the viewer's VIP actually unlocks.
 // =====================================================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const corsHeaders = {  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
+
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
 
 function baseUrl(env: string) {
   return env === "production"
@@ -208,11 +217,10 @@ Deno.serve(async (req: Request) => {
     console.log(`[aba-payment-callback] VIP granted via real ABA gateway: ${sub.id} (${sub.tier}, $${sub.amount})`);
 
     const mainBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (mainBotToken && adminChatId) {
+    for (const chatId of mainBotToken ? adminChatIds() : []) {
       await tg(
-        mainBotToken,
-        adminChatId,
+        mainBotToken!,
+        chatId,
         `✅ ទូទាត់ស្វ័យប្រវត្តិ — ផ្ទៀងផ្ទាត់ពិតតាម ABA PayWay Gateway\n` +
           `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
           `📦 ${sub.tier} — $${sub.amount}\n` +

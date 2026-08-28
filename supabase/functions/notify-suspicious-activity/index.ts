@@ -16,6 +16,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -32,7 +42,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID")!;
+    const chatIds = adminChatIds();
 
     const who = row.telegram_username ? `@${row.telegram_username}` : row.telegram_user_id;
     const text =
@@ -42,15 +52,21 @@ Deno.serve(async (req: Request) => {
       `📺 មើល ${row.episode_count} វគ្គក្នុងចន្លោះ ${row.window_minutes} នាទី\n\n` +
       `/ban ${row.telegram_user_id} mass-download — ban ភ្លាមៗ`;
 
-    const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: adminChatId, text }),
-    });
+    let delivered = 0;
+    let lastError = "no admin chat id configured";
+    for (const chatId of chatIds) {
+      const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text }),
+      });
+      const tgData: { ok: boolean; description?: string } = await tgRes.json();
+      if (tgData.ok) delivered++;
+      else lastError = tgData.description ?? "telegram rejected the message";
+    }
 
-    const tgData = await tgRes.json();
-    if (!tgData.ok) {
-      return new Response(JSON.stringify({ error: tgData.description }), {
+    if (delivered === 0) {
+      return new Response(JSON.stringify({ error: lastError }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

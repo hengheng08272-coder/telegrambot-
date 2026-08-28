@@ -15,6 +15,21 @@ interface TgUser {
 
 const TIER_MONTHS_FALLBACK: Record<string, number> = { "1m": 1, "2m": 2, "3m": 3, "6m": 6, "12m": 12 };
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689"). Every listed id receives the admin
+// notices and may press the Approve/Reject buttons; a single id keeps
+// behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+function isAdminChat(chatId: string | null): boolean {
+  return chatId !== null && adminChatIds().includes(chatId);
+}
+
 async function tg(botToken: string, method: string, body: Record<string, unknown>) {
   const res = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
     method: "POST",
@@ -38,7 +53,7 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const groupId = Deno.env.get("TELEGRAM_GROUP_ID")!;
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID")!;
+    const chatIds = adminChatIds();
     const miniAppUrl = Deno.env.get("TELEGRAM_MINIAPP_URL")!;
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
@@ -59,10 +74,12 @@ Deno.serve(async (req: Request) => {
           performed_by: actor?.username ?? (actor ? String(actor.id) : null),
         });
 
-        await tg(botToken, "sendMessage", {
-          chat_id: adminChatId,
-          text: KICK_NOTICE(user, actor),
-        });
+        for (const chatId of chatIds) {
+          await tg(botToken, "sendMessage", {
+            chat_id: chatId,
+            text: KICK_NOTICE(user, actor),
+          });
+        }
       }
 
       return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -118,7 +135,7 @@ Deno.serve(async (req: Request) => {
       // pay_approve / pay_reject: submission is still genuinely pending --
       // nothing has been granted yet, this IS the approval decision.
       if ((action === "pay_approve" || action === "pay_reject") && submissionId) {
-        if (callbackChatId !== adminChatId) {
+        if (!isAdminChat(callbackChatId)) {
           await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Not authorized.", show_alert: true });
           return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -180,7 +197,7 @@ Deno.serve(async (req: Request) => {
       // PaymentsPanel's confirmAuto/revokeAuto so both entry points
       // (Telegram buttons and the Admin Panel) behave identically.
       if ((action === "pay_confirm" || action === "pay_revoke") && submissionId) {
-        if (callbackChatId !== adminChatId) {
+        if (!isAdminChat(callbackChatId)) {
           await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Not authorized.", show_alert: true });
           return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -219,7 +236,7 @@ Deno.serve(async (req: Request) => {
       // back (sets status to rejected, which is what hasPurchasedMovie
       // checks against).
       if ((action === "movie_confirm" || action === "movie_revoke") && submissionId) {
-        if (callbackChatId !== adminChatId) {
+        if (!isAdminChat(callbackChatId)) {
           await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Not authorized.", show_alert: true });
           return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -303,7 +320,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (text && fromChatId === adminChatId) {
+    if (text && isAdminChat(fromChatId)) {
       const banMatch = text.match(/^\/ban\s+(\d+)\s*(.*)$/);
       const unbanMatch = text.match(/^\/unban\s+(\d+)\s*$/);
 
@@ -313,9 +330,9 @@ Deno.serve(async (req: Request) => {
 
         if (result.ok) {
           await admin.from("ban_log").insert({ telegram_user_id: userId, action: "banned", reason: reason || null, source: "admin_command", performed_by: fromChatId });
-          await tg(botToken, "sendMessage", { chat_id: adminChatId, text: `Ban user ${userId} success${reason ? ` (${reason})` : ""}` });
+          await tg(botToken, "sendMessage", { chat_id: fromChatId, text: `Ban user ${userId} success${reason ? ` (${reason})` : ""}` });
         } else {
-          await tg(botToken, "sendMessage", { chat_id: adminChatId, text: `Ban failed: ${result.description}` });
+          await tg(botToken, "sendMessage", { chat_id: fromChatId, text: `Ban failed: ${result.description}` });
         }
       } else if (unbanMatch) {
         const [, userId] = unbanMatch;
@@ -323,9 +340,9 @@ Deno.serve(async (req: Request) => {
 
         if (result.ok) {
           await admin.from("ban_log").insert({ telegram_user_id: userId, action: "unbanned", source: "admin_command", performed_by: fromChatId });
-          await tg(botToken, "sendMessage", { chat_id: adminChatId, text: `Unban user ${userId} success` });
+          await tg(botToken, "sendMessage", { chat_id: fromChatId, text: `Unban user ${userId} success` });
         } else {
-          await tg(botToken, "sendMessage", { chat_id: adminChatId, text: `Unban failed: ${result.description}` });
+          await tg(botToken, "sendMessage", { chat_id: fromChatId, text: `Unban failed: ${result.description}` });
         }
       }
     }

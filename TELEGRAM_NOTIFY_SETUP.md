@@ -37,3 +37,25 @@ Admin បន្ថែម episode ថ្មី → INSERT ចូល `episodes` ta
 > 🎬 **[ឈ្មោះ Show]**
 > EP 12 — [ចំណងជើង episode] ត្រូវបានដាក់បញ្ចូលរួចហើយ!
 > [ប៊ូតុង: មើលឥឡូវនេះ 📺] → ចុចបើក Mini App ត្រង់ Show នោះភ្លាម
+
+## Admin Chat ID ច្រើននាក់
+
+`TELEGRAM_ADMIN_CHAT_ID` ទទួល chat id បានច្រើន ដោយបំបែកដោយ **សញ្ញាក្បៀស**៖
+
+```
+TELEGRAM_ADMIN_CHAT_ID = 123456789,7777639689
+```
+
+រាល់ id ក្នុងបញ្ជីនឹងទទួល៖ សំបុត្រទូទាត់ថ្មី (ព្រមទាំងប៊ូតុង ✅ Approve / ❌ Reject
+ដែលដំណើរការគ្រប់គ្នា), ការជូនដំណឹង auto-confirm ពី ABA/Bakong, សារសង្ស័យ
+mass-download, និងសារពេលមានអ្នកត្រូវ kick ចេញពី group។ ពាក្យបញ្ជា `/ban` និង
+`/unban` ក៏ប្រើបានដែរគ្រប់ admin ក្នុងបញ្ជី (ចម្លើយត្រឡប់ទៅអ្នកដែលវាយ)។
+
+ដាក់តែ id តែមួយ ក៏ដំណើរការដូចមុនដដែល។ បន្ទាប់ពីប្តូរ secret ត្រូវ **deploy
+edge functions ឡើងវិញ** ដើម្បីឲ្យតម្លៃថ្មីមានប្រសិទ្ធភាព៖ `telegram-admin-bot`,
+`notify-payment-submission`, `notify-suspicious-activity`, `auto-approve-payment`,
+`confirm-payment-proof`, `confirm-movie-payment-proof`, `bakong-verify`,
+`aba-payment-callback`, `aba-payment-webhook`, `aba-notify-ingest`។
+
+> ចំណាំ៖ admin ថ្មីត្រូវចុច **Start** ជាមួយ bot ជាមុនសិន បើមិនដូច្នេះ Telegram
+> មិនអនុញ្ញាតឲ្យ bot ផ្ញើសារទៅគាត់ទេ (error: "bot can't initiate conversation")។

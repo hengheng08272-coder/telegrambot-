@@ -44,6 +44,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
 };
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 // Fallback only — the live source of truth is pricing_tiers.months,
 // editable from Admin Panel -> Subscriptions -> "Duration".
 const TIER_MONTHS_FALLBACK: Record<string, number> = {
@@ -142,8 +152,8 @@ Deno.serve(async (req: Request) => {
     // either way: Approve is a confirmation when already granted, and
     // Reject revokes through the same telegram-admin-bot handler.
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (botToken && adminChatId) {
+    const chatIds = adminChatIds();
+    if (botToken && chatIds.length > 0) {
       const caption =
         `🧾 វិក្កយបត្រពីអ្នកប្រើ${AUTO_GRANT_ON_PROOF ? " — VIP បានដោះសោជាបណ្ដោះអាសន្ន" : ""}\n\n` +
         `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
@@ -152,21 +162,23 @@ Deno.serve(async (req: Request) => {
         `💵 $${sub.amount}\n\n` +
         `សូមផ្ទៀងផ្ទាត់ជាមួយបញ្ជីធនាគារ រួចចុច ✅ ដើម្បីបញ្ជាក់ ឬ ❌ ដើម្បីដកវិញ`;
 
-      await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: adminChatId,
-          photo: screenshot_url,
-          caption,
-          reply_markup: {
-            inline_keyboard: [[
-              { text: "✅ Confirm", callback_data: `pay_approve:${submission_id}` },
-              { text: "❌ Revoke", callback_data: `pay_reject:${submission_id}` },
-            ]],
-          },
-        }),
-      }).catch(() => {});
+      for (const chatId of chatIds) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            photo: screenshot_url,
+            caption,
+            reply_markup: {
+              inline_keyboard: [[
+                { text: "✅ Confirm", callback_data: `pay_approve:${submission_id}` },
+                { text: "❌ Revoke", callback_data: `pay_reject:${submission_id}` },
+              ]],
+            },
+          }),
+        }).catch(() => {});
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, granted: AUTO_GRANT_ON_PROOF }), {

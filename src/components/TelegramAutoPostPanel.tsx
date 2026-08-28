@@ -1,14 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Send, Save, Bot, Clock, AlertTriangle } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Loader2,
+  Send,
+  Save,
+  Bot,
+  Clock,
+  AlertTriangle,
+  ArrowUp,
+  ArrowDown,
+  X,
+  Plus,
+  Search,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import {
+  fetchAutoPostQueue,
+  fetchAutoPostShowOptions,
   fetchRecentTelegramAutoPosts,
   fetchTelegramAutoPostSettings,
   nextAutoPostDueAt,
+  saveAutoPostQueue,
   saveTelegramAutoPostSettings,
   TELEGRAM_AUTO_POST_DEFAULTS,
   TELEGRAM_AUTO_POST_MIN_INTERVAL_MINUTES as MIN_INTERVAL,
+  type AutoPostQueueShow,
   type TelegramAutoPostLogEntry,
+  type TelegramAutoPostMode,
   type TelegramAutoPostSettings,
 } from '@/lib/api';
 import AdminPanelShell from '@/components/AdminPanelShell';
@@ -17,17 +34,23 @@ interface Props {
   onClose: () => void;
 }
 
-// "in 2h 15m" / "due now" — the schedule is expressed in minutes, so the
-// only way to tell it is actually running is to see the next post move.
+// "នៅ ២ម ១៥ន ទៀត" — the schedule is expressed in minutes, so the only way
+// to tell it is actually running is to watch the next post move.
 function formatCountdown(target: Date): string {
   const ms = target.getTime() - Date.now();
-  if (ms <= 0) return 'due now — posts on the next cron tick';
+  if (ms <= 0) return 'ដល់ពេលហើយ — ផុសនៅ cron ជុំបន្ទាប់';
   const minutes = Math.round(ms / 60_000);
-  if (minutes < 60) return `in ${minutes} min`;
+  if (minutes < 60) return `នៅ ${minutes} នាទីទៀត`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return rest === 0 ? `in ${hours}h` : `in ${hours}h ${rest}m`;
+  return rest === 0 ? `នៅ ${hours} ម៉ោងទៀត` : `នៅ ${hours} ម៉ោង ${rest} នាទីទៀត`;
 }
+
+const formatDateTime = (d: Date) =>
+  `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+const sameOrder = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((id, i) => id === b[i]);
 
 export default function TelegramAutoPostPanel({ onClose }: Props) {
   const [loaded, setLoaded] = useState(false);
@@ -35,7 +58,14 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
   const [enabled, setEnabled] = useState(false);
   const [intervalMinutes, setIntervalMinutes] = useState(TELEGRAM_AUTO_POST_DEFAULTS.interval_minutes);
   const [showsPerRun, setShowsPerRun] = useState(TELEGRAM_AUTO_POST_DEFAULTS.shows_per_run);
+  const [mode, setMode] = useState<TelegramAutoPostMode>('rotate');
   const [recent, setRecent] = useState<TelegramAutoPostLogEntry[]>([]);
+
+  // The admin-picked posting order, and every show that could join it.
+  const [options, setOptions] = useState<AutoPostQueueShow[]>([]);
+  const [queue, setQueue] = useState<string[]>([]);
+  const [savedQueue, setSavedQueue] = useState<string[]>([]);
+  const [pickerQuery, setPickerQuery] = useState('');
 
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -43,7 +73,7 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
   const [postResult, setPostResult] = useState<string | null>(null);
   const [postFailed, setPostFailed] = useState(false);
   const [error, setError] = useState('');
-  // Re-renders the countdown without re-querying, so "next post in 2h 14m"
+  // Re-renders the countdown without re-querying, so "នៅ ២ម ១៤ន ទៀត"
   // stays honest while the panel sits open.
   const [, setTick] = useState(0);
 
@@ -52,15 +82,23 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
     setEnabled(settings.enabled);
     setIntervalMinutes(settings.interval_minutes);
     setShowsPerRun(settings.shows_per_run);
+    setMode(settings.selection_mode);
   };
 
   const load = useCallback(async () => {
     try {
-      const settings = await fetchTelegramAutoPostSettings();
+      const [settings, queueIds, showOptions] = await Promise.all([
+        fetchTelegramAutoPostSettings(),
+        fetchAutoPostQueue(),
+        fetchAutoPostShowOptions(),
+      ]);
       applySettings(settings);
+      setQueue(queueIds);
+      setSavedQueue(queueIds);
+      setOptions(showOptions);
       setRecent(await fetchRecentTelegramAutoPosts(8));
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load auto-post settings');
+      setError(e instanceof Error ? e.message : 'ផ្ទុកការកំណត់មិនបាន');
     } finally {
       setLoaded(true);
     }
@@ -78,13 +116,20 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
   const dirty =
     enabled !== saved.enabled ||
     intervalMinutes !== saved.interval_minutes ||
-    showsPerRun !== saved.shows_per_run;
+    showsPerRun !== saved.shows_per_run ||
+    mode !== saved.selection_mode ||
+    !sameOrder(queue, savedQueue);
 
   const persist = async () => {
+    if (!sameOrder(queue, savedQueue)) {
+      await saveAutoPostQueue(queue);
+      setSavedQueue(queue);
+    }
     const fresh = await saveTelegramAutoPostSettings({
       enabled,
       interval_minutes: intervalMinutes,
       shows_per_run: showsPerRun,
+      selection_mode: mode,
     });
     applySettings(fresh);
     return fresh;
@@ -98,7 +143,7 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 2000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to save settings');
+      setError(e instanceof Error ? e.message : 'រក្សាទុកមិនបាន');
     } finally {
       setSaving(false);
     }
@@ -106,11 +151,10 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
 
   // Fires one run right now, ignoring both the interval and the on/off
   // switch — a quick way to check the bot, group id, and poster/caption
-  // actually work before waiting for the schedule to come around. Settings
-  // are saved first so a "Post now" right after editing the count/interval
-  // uses the values on screen, not whatever was last saved. A test run
-  // deliberately does not move `last_run_at`, so the next scheduled post
-  // stays where it was.
+  // actually work before waiting for the schedule to come around.
+  // Settings are saved first so a test right after editing uses what is
+  // on screen. A test run deliberately does not move `last_run_at`, so
+  // the next scheduled post stays where it was.
   const handlePostNow = async () => {
     setPosting(true);
     setPostResult(null);
@@ -127,31 +171,50 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
         setPostFailed(true);
         setPostResult(
           data.skipped === 'no_settings_row'
-            ? 'Skipped: settings row missing — run database/telegram-auto-post-addition.sql.'
+            ? 'រំលង៖ គ្មានជួរការកំណត់ — សូម run database/telegram-auto-post-addition.sql'
             : data.skipped === 'no_shows'
-              ? 'Skipped: no shows are eligible (every show is marked coming soon).'
-              : `Skipped: ${data.skipped}`,
+              ? 'រំលង៖ គ្មានរឿងសមស្រប (រឿងទាំងអស់ជា Coming soon)'
+              : data.skipped === 'empty_queue'
+                ? 'រំលង៖ បញ្ជីរឿងដែលជ្រើសរើសនៅទទេ — សូមបន្ថែមរឿងសិន'
+                : `រំលង៖ ${data.skipped}`,
         );
       } else if (failures.length > 0) {
         setPostFailed(true);
-        setPostResult(`Telegram refused ${failures.length} — ${failures.join(' | ')}`);
+        setPostResult(`Telegram បដិសេធ ${failures.length} — ${failures.join(' | ')}`);
       } else {
-        setPostResult(`Posted ${data?.posted?.length ?? 0} show(s) into the group`);
+        setPostResult(`ផុសបាន ${data?.posted?.length ?? 0} រឿងចូល group`);
       }
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to post');
+      setError(e instanceof Error ? e.message : 'ផុសមិនបាន');
     } finally {
       setPosting(false);
     }
   };
 
   const dueAt = nextAutoPostDueAt(saved);
+  const optionsById = useMemo(() => new Map(options.map((o) => [o.id, o])), [options]);
+
+  const pickerResults = useMemo(() => {
+    const q = pickerQuery.trim().toLowerCase();
+    return options
+      .filter((o) => !queue.includes(o.id))
+      .filter((o) => !q || o.title.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [options, queue, pickerQuery]);
+
+  const move = (index: number, delta: number) => {
+    const next = [...queue];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setQueue(next);
+  };
 
   return (
     <AdminPanelShell
-      title="Telegram Auto-Post"
-      subtitle="Automatically post rotating shows into the VIP group — poster, title, synopsis, current episode, and a watch-now link"
+      title="ផុសរឿងស្វ័យប្រវត្តិ (Telegram Auto-Post)"
+      subtitle="Bot ផុសរឿងចូល VIP group ដោយខ្លួនឯង — poster, ចំណងជើង, សាច់រឿង, ភាគចុងក្រោយ និងប៊ូតុងចូលទស្សនា"
       icon={<Bot className="h-4 w-4" />}
       accent="#4C6FFF"
       maxWidth="max-w-[700px]"
@@ -168,9 +231,9 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
             <label className="flex items-center justify-between gap-3">
               <span>
-                <span className="block text-sm font-bold text-white">Enable auto-posting</span>
+                <span className="block text-sm font-bold text-white">បើកការផុសស្វ័យប្រវត្តិ</span>
                 <span className="block text-xs text-white/50">
-                  When off, nothing posts on schedule — "Post now" still works for testing.
+                  ពេលបិទ គ្មានការផុសតាមកាលវិភាគទេ — ប៊ូតុង «ផុសឥឡូវ» នៅតែសាកល្បងបាន។
                 </span>
               </span>
               <button
@@ -190,9 +253,7 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-white/50">
-                Post every (minutes)
-              </label>
+              <label className="mb-2 block text-xs font-bold text-white/50">ផុសរៀងរាល់ (នាទី)</label>
               <input
                 type="number"
                 min={MIN_INTERVAL}
@@ -203,14 +264,12 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
                 className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#2050D8]/50"
               />
               <p className="mt-1.5 text-[11px] text-white/40">
-                E.g. 180 = every 3 hours. 1440 = once a day. Minimum {MIN_INTERVAL}.
+                ឧ. 180 = រៀងរាល់ ៣ម៉ោង · 1440 = ១ដងក្នុង១ថ្ងៃ · យ៉ាងតិច {MIN_INTERVAL} នាទី
               </p>
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-white/50">
-                Shows per post
-              </label>
+              <label className="mb-2 block text-xs font-bold text-white/50">ចំនួនរឿងក្នុងមួយដង</label>
               <input
                 type="number"
                 min={1}
@@ -219,35 +278,161 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
                 onChange={(e) => setShowsPerRun(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
                 className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-[#2050D8]/50"
               />
-              <p className="mt-1.5 text-[11px] text-white/40">
-                How many titles get posted each time it runs.
-              </p>
+              <p className="mt-1.5 text-[11px] text-white/40">ផុសម្ដងបានប៉ុន្មានរឿង (១–១០)។</p>
             </div>
+          </div>
+
+          {/* Which shows go out, and in what order. */}
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="mb-2 text-xs font-bold text-white/50">រឿងដែលត្រូវផុស</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {(
+                [
+                  {
+                    key: 'rotate' as const,
+                    title: 'តាមវេនស្វ័យប្រវត្តិ',
+                    desc: 'រឿងទាំងអស់ផ្លាស់វេនគ្នា រឿងណាមិនទាន់ផុសយូរជាងគេផុសមុន',
+                  },
+                  {
+                    key: 'queue' as const,
+                    title: 'ជ្រើសរើសដោយខ្លួនឯង',
+                    desc: 'ផុសតែរឿងក្នុងបញ្ជីខាងក្រោម តាមលំដាប់ដែលបងរៀប',
+                  },
+                ] satisfies { key: TelegramAutoPostMode; title: string; desc: string }[]
+              ).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setMode(opt.key)}
+                  className={`rounded-xl border p-3 text-left transition ${
+                    mode === opt.key
+                      ? 'border-[#4C6FFF]/50 bg-[#4C6FFF]/10'
+                      : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <span
+                    className={`block text-sm font-bold ${mode === opt.key ? 'text-[#4C6FFF]' : 'text-white'}`}
+                  >
+                    {opt.title}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-white/45">{opt.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            {mode === 'queue' && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="mb-1.5 text-[11px] font-bold text-white/50">
+                    លំដាប់ផុស ({queue.length} រឿង) — លេខ ១ ផុសមុនគេ
+                  </p>
+                  {queue.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-white/15 px-3 py-4 text-center text-[11px] text-white/40">
+                      មិនទាន់មានរឿងទេ — ស្វែងរក រួចចុច ➕ ដើម្បីបន្ថែម
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {queue.map((id, index) => {
+                        const show = optionsById.get(id);
+                        return (
+                          <li
+                            key={id}
+                            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2"
+                          >
+                            <span className="w-5 shrink-0 text-center text-[11px] font-bold text-[#4C6FFF]">
+                              {index + 1}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-xs text-white/85">
+                              {show?.title ?? 'រឿងត្រូវបានលុប'}
+                              {show?.coming_soon && (
+                                <span className="ml-1.5 text-[10px] text-[#FFC24D]">(Coming soon)</span>
+                              )}
+                            </span>
+                            <button
+                              onClick={() => move(index, -1)}
+                              disabled={index === 0}
+                              className="rounded-md border border-white/10 bg-white/5 p-1 text-white/60 transition hover:bg-white/10 disabled:opacity-25"
+                              title="ឡើងលើ"
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => move(index, 1)}
+                              disabled={index === queue.length - 1}
+                              className="rounded-md border border-white/10 bg-white/5 p-1 text-white/60 transition hover:bg-white/10 disabled:opacity-25"
+                              title="ចុះក្រោម"
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => setQueue(queue.filter((q) => q !== id))}
+                              className="rounded-md border border-red-500/25 bg-red-500/10 p-1 text-red-300 transition hover:bg-red-500/20"
+                              title="ដកចេញ"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />
+                    <input
+                      value={pickerQuery}
+                      onChange={(e) => setPickerQuery(e.target.value)}
+                      placeholder="ស្វែងរករឿងដើម្បីបន្ថែម…"
+                      className="w-full rounded-full border border-white/10 bg-white/[0.04] py-1.5 pl-8 pr-3 text-xs text-white placeholder-white/40 outline-none focus:border-[#4C6FFF]/50"
+                    />
+                  </div>
+                  {pickerResults.length > 0 && (
+                    <ul className="mt-1.5 space-y-1">
+                      {pickerResults.map((show) => (
+                        <li key={show.id}>
+                          <button
+                            onClick={() => {
+                              setQueue([...queue, show.id]);
+                              setPickerQuery('');
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-1.5 text-left text-xs text-white/75 transition hover:bg-white/[0.06]"
+                          >
+                            <Plus className="h-3 w-3 shrink-0 text-[#4C6FFF]" />
+                            <span className="truncate">{show.title}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <Clock className="h-4 w-4 text-[#4C6FFF]" />
               {!saved.enabled
-                ? 'Auto-posting is off'
+                ? 'ការផុសស្វ័យប្រវត្តិកំពុងបិទ'
                 : dueAt
-                  ? `Next post ${formatCountdown(dueAt)}`
-                  : 'Next post on the next cron tick (never run yet)'}
+                  ? `ផុសលើកក្រោយ ${formatCountdown(dueAt)}`
+                  : 'ផុសនៅ cron ជុំបន្ទាប់ (មិនទាន់ធ្លាប់ផុស)'}
             </div>
             <p className="mt-1.5 text-[11px] text-white/40">
               {saved.last_run_at
-                ? `Last ran ${new Date(saved.last_run_at).toLocaleString()}.`
-                : 'Has not run yet.'}{' '}
+                ? `ផុសចុងក្រោយ ${formatDateTime(new Date(saved.last_run_at))}។`
+                : 'មិនទាន់ធ្លាប់ដំណើរការ។'}{' '}
               {saved.enabled && dueAt
-                ? `Scheduled for ${dueAt.toLocaleString()} (every ${saved.interval_minutes} min).`
+                ? `កំណត់ម៉ោង ${formatDateTime(dueAt)} (រៀងរាល់ ${saved.interval_minutes} នាទី)។`
                 : ''}{' '}
-              Rotates through every show so the same title isn't repeated until every other one has had a
-              turn.
+              {saved.selection_mode === 'queue'
+                ? 'កំពុងផុសតាមបញ្ជីដែលបងជ្រើស វិលជុំពីដើមវិញនៅចុងបញ្ជី។'
+                : 'ផ្លាស់វេនគ្រប់រឿង ដូច្នេះរឿងដដែលមិនផុសឡើងវិញមុនរឿងឯទៀតបានវេន។'}
             </p>
             {dirty && (
               <p className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-[#F5C563]">
-                <AlertTriangle className="h-3.5 w-3.5" /> Unsaved changes — the schedule above still uses
-                the saved values.
+                <AlertTriangle className="h-3.5 w-3.5" /> មានការកែមិនទាន់រក្សាទុក — កាលវិភាគខាងលើនៅប្រើតម្លៃចាស់
               </p>
             )}
           </div>
@@ -265,7 +450,7 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {justSaved ? 'Saved' : dirty ? 'Save settings' : 'Saved'}
+              {dirty ? 'រក្សាទុក' : 'រក្សាទុករួច'}
             </button>
             <button
               onClick={handlePostNow}
@@ -273,7 +458,7 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
               className="flex flex-1 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 py-2.5 text-sm font-bold text-white/80 transition hover:bg-white/10 disabled:opacity-50"
             >
               {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Post now (test)
+              ផុសឥឡូវ (សាកល្បង)
             </button>
           </div>
           {postResult && (
@@ -283,16 +468,16 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
           )}
 
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-white/50">Recent posts</p>
+            <p className="mb-2 text-xs font-bold text-white/50">ផុសថ្មីៗ</p>
             {recent.length === 0 ? (
-              <p className="text-xs text-white/40">Nothing posted yet.</p>
+              <p className="text-xs text-white/40">មិនទាន់មានការផុសទេ។</p>
             ) : (
               <ul className="space-y-1.5">
                 {recent.map((row) => (
                   <li key={row.id} className="flex items-center justify-between gap-3 text-xs">
                     <span className="truncate text-white/80">{row.show_title}</span>
                     <span className="shrink-0 text-white/40">
-                      {new Date(row.posted_at).toLocaleString()}
+                      {formatDateTime(new Date(row.posted_at))}
                     </span>
                   </li>
                 ))}

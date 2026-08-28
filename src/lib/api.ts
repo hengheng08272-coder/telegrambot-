@@ -65,10 +65,15 @@ export async function saveAbaMerchantName(value: string): Promise<void> {
   if (error) throw error;
 }
 
+// 'rotate' gives every show a turn, least recently posted first;
+// 'queue' posts only the shows the admin picked, in the admin's order.
+export type TelegramAutoPostMode = 'rotate' | 'queue';
+
 export interface TelegramAutoPostSettings {
   enabled: boolean;
   interval_minutes: number;
   shows_per_run: number;
+  selection_mode: TelegramAutoPostMode;
   last_run_at: string | null;
 }
 
@@ -79,6 +84,7 @@ export const TELEGRAM_AUTO_POST_DEFAULTS: TelegramAutoPostSettings = {
   enabled: false,
   interval_minutes: 180,
   shows_per_run: 1,
+  selection_mode: 'rotate',
   last_run_at: null,
 };
 
@@ -102,7 +108,7 @@ function describeAutoPostError(error: { code?: string; message: string }): strin
 export async function fetchTelegramAutoPostSettings(): Promise<TelegramAutoPostSettings> {
   const { data, error } = await supabase
     .from('telegram_auto_post_settings')
-    .select('enabled, interval_minutes, shows_per_run, last_run_at')
+    .select('enabled, interval_minutes, shows_per_run, selection_mode, last_run_at')
     .eq('id', 1)
     .maybeSingle();
   if (error) throw new Error(describeAutoPostError(error));
@@ -116,7 +122,10 @@ export async function fetchTelegramAutoPostSettings(): Promise<TelegramAutoPostS
 // back means a save that changed nothing raises an error instead of
 // pretending.
 export async function saveTelegramAutoPostSettings(
-  settings: Pick<TelegramAutoPostSettings, 'enabled' | 'interval_minutes' | 'shows_per_run'>,
+  settings: Pick<
+    TelegramAutoPostSettings,
+    'enabled' | 'interval_minutes' | 'shows_per_run' | 'selection_mode'
+  >,
 ): Promise<TelegramAutoPostSettings> {
   const { data, error } = await supabase
     .from('telegram_auto_post_settings')
@@ -124,7 +133,7 @@ export async function saveTelegramAutoPostSettings(
       { id: 1, ...settings, updated_at: new Date().toISOString() },
       { onConflict: 'id' },
     )
-    .select('enabled, interval_minutes, shows_per_run, last_run_at')
+    .select('enabled, interval_minutes, shows_per_run, selection_mode, last_run_at')
     .maybeSingle();
   if (error) throw new Error(describeAutoPostError(error));
   if (!data) {
@@ -169,6 +178,51 @@ export async function fetchRecentTelegramAutoPosts(limit = 10): Promise<Telegram
       posted_at: row.posted_at,
     };
   });
+}
+
+export interface AutoPostQueueShow {
+  id: string;
+  title: string;
+  poster_url: string | null;
+  coming_soon: boolean;
+}
+
+// Every show the admin can pick from, newest first — the panel shows
+// this list next to the queue so a title can be added without leaving
+// the panel.
+export async function fetchAutoPostShowOptions(): Promise<AutoPostQueueShow[]> {
+  const { data, error } = await supabase
+    .from('shows')
+    .select('id, title, poster_url, coming_soon')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(describeAutoPostError(error));
+  return (data ?? []) as AutoPostQueueShow[];
+}
+
+// The admin's chosen posting order, first out first.
+export async function fetchAutoPostQueue(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('telegram_auto_post_queue')
+    .select('show_id, position')
+    .order('position', { ascending: true });
+  if (error) throw new Error(describeAutoPostError(error));
+  return (data ?? []).map((row) => row.show_id as string);
+}
+
+// The whole list is rewritten on every save: positions are the list
+// index, so reordering never has to renumber anything by hand. Deleting
+// first means a show dropped from the list actually leaves the queue.
+export async function saveAutoPostQueue(showIds: string[]): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from('telegram_auto_post_queue')
+    .delete()
+    .not('show_id', 'is', null);
+  if (deleteError) throw new Error(describeAutoPostError(deleteError));
+  if (showIds.length === 0) return;
+  const { error } = await supabase
+    .from('telegram_auto_post_queue')
+    .insert(showIds.map((show_id, index) => ({ show_id, position: index })));
+  if (error) throw new Error(describeAutoPostError(error));
 }
 
 // When the next scheduled post is due, given the last run and the

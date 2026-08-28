@@ -60,6 +60,16 @@ const TIER_MONTHS_FALLBACK: Record<string, number> = { "1m": 1, "2m": 2, "3m": 3
 /** How long after a ticket opens a matching payment is still accepted. */
 const PAYMENT_GRACE_MS = 30 * 60 * 1000;
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 interface BakongEnvelope {
   responseCode?: number;
   responseMessage?: string;
@@ -227,19 +237,21 @@ Deno.serve(async (req: Request) => {
     });
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (botToken && adminChatId) {
+    const chatIds = adminChatIds();
+    if (botToken && chatIds.length > 0) {
       const text =
         "🏦 ការទូទាត់បានផ្ទៀងផ្ទាត់ដោយធនាគារ (Bakong)\n\n" +
         `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
         `📦 ${sub.tier} — $${sub.amount}\n` +
         `🔖 ${tx.hash ?? "-"}\n\n` +
         "មិនចាំបាច់ពិនិត្យទេ — ធនាគារបានបញ្ជាក់រួចហើយ។";
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: adminChatId, text }),
-      }).catch(() => {});
+      for (const chatId of chatIds) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text }),
+        }).catch(() => {});
+      }
     }
 
     return json({ ok: true, paid: true, granted: true, hash: tx.hash ?? null });
