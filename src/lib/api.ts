@@ -72,24 +72,111 @@ export interface TelegramAutoPostSettings {
   last_run_at: string | null;
 }
 
-export async function fetchTelegramAutoPostSettings(): Promise<TelegramAutoPostSettings | null> {
+// Mirrors the column defaults in database/telegram-auto-post-addition.sql,
+// used when the settings row hasn't been created yet (the first save
+// upserts it back into existence).
+export const TELEGRAM_AUTO_POST_DEFAULTS: TelegramAutoPostSettings = {
+  enabled: false,
+  interval_minutes: 180,
+  shows_per_run: 1,
+  last_run_at: null,
+};
+
+export const TELEGRAM_AUTO_POST_MIN_INTERVAL_MINUTES = 5;
+
+// The two failures that actually happen in this project are "the migration
+// was never run" and "this session isn't an admin, so RLS hid the row" —
+// both of which used to surface as a blank panel quietly showing default
+// values. Turning them into a sentence the admin can act on is the whole
+// point of this helper.
+function describeAutoPostError(error: { code?: string; message: string }): string {
+  if (error.code === '42P01' || error.code === 'PGRST205') {
+    return 'Table telegram_auto_post_settings not found — run database/telegram-auto-post-addition.sql in the Supabase SQL editor first.';
+  }
+  if (error.code === '42501' || error.code === 'PGRST301') {
+    return 'Not allowed to read/write the auto-post settings — sign in with an admin account (profiles.is_admin = true).';
+  }
+  return error.message;
+}
+
+export async function fetchTelegramAutoPostSettings(): Promise<TelegramAutoPostSettings> {
   const { data, error } = await supabase
     .from('telegram_auto_post_settings')
     .select('enabled, interval_minutes, shows_per_run, last_run_at')
     .eq('id', 1)
     .maybeSingle();
-  if (error) return null; // table may not exist yet on older deploys
-  return data ?? null;
+  if (error) throw new Error(describeAutoPostError(error));
+  return data ?? { ...TELEGRAM_AUTO_POST_DEFAULTS };
 }
 
+// Upsert, not update: an UPDATE ... WHERE id = 1 that matches no row (the
+// seed INSERT never ran, or RLS hides it) reports success while saving
+// nothing, so the panel would show "Saved" and the bot would keep posting
+// on the old interval. The upsert re-creates row 1, and reading the row
+// back means a save that changed nothing raises an error instead of
+// pretending.
 export async function saveTelegramAutoPostSettings(
   settings: Pick<TelegramAutoPostSettings, 'enabled' | 'interval_minutes' | 'shows_per_run'>,
-): Promise<void> {
-  const { error } = await supabase
+): Promise<TelegramAutoPostSettings> {
+  const { data, error } = await supabase
     .from('telegram_auto_post_settings')
-    .update({ ...settings, updated_at: new Date().toISOString() })
-    .eq('id', 1);
-  if (error) throw error;
+    .upsert(
+      { id: 1, ...settings, updated_at: new Date().toISOString() },
+      { onConflict: 'id' },
+    )
+    .select('enabled, interval_minutes, shows_per_run, last_run_at')
+    .maybeSingle();
+  if (error) throw new Error(describeAutoPostError(error));
+  if (!data) {
+    throw new Error(
+      'Settings were not saved (no row came back). Re-run database/telegram-auto-post-addition.sql so the admin write policies exist.',
+    );
+  }
+  return data;
+}
+
+export interface TelegramAutoPostLogEntry {
+  id: string;
+  show_id: string;
+  show_title: string;
+  posted_at: string;
+}
+
+// The last handful of titles the bot actually sent, newest first — the
+// panel shows it so "is this thing running?" can be answered without
+// opening the group or the edge function logs.
+export async function fetchRecentTelegramAutoPosts(limit = 10): Promise<TelegramAutoPostLogEntry[]> {
+  const { data, error } = await supabase
+    .from('telegram_auto_post_log')
+    .select('id, show_id, posted_at, shows(title)')
+    .order('posted_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(describeAutoPostError(error));
+  type Row = {
+    id: string;
+    show_id: string;
+    posted_at: string;
+    // PostgREST types an embedded one-to-one as an array; at runtime it is
+    // the single joined row (or null when the show was deleted).
+    shows: { title: string } | { title: string }[] | null;
+  };
+  return ((data ?? []) as Row[]).map((row) => {
+    const show = Array.isArray(row.shows) ? row.shows[0] : row.shows;
+    return {
+      id: row.id,
+      show_id: row.show_id,
+      show_title: show?.title ?? 'Deleted show',
+      posted_at: row.posted_at,
+    };
+  });
+}
+
+// When the next scheduled post is due, given the last run and the
+// interval — null when it has never run (the next cron tick posts) or
+// when auto-posting is off.
+export function nextAutoPostDueAt(settings: TelegramAutoPostSettings): Date | null {
+  if (!settings.enabled || !settings.last_run_at) return null;
+  return new Date(new Date(settings.last_run_at).getTime() + settings.interval_minutes * 60_000);
 }
 
 export async function fetchAllShows(): Promise<ShowWithGenres[]> {

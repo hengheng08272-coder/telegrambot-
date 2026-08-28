@@ -26,10 +26,24 @@ ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE telegram_auto_post_settings ENABLE ROW LEVEL SECURITY;
 
+-- Policies are dropped first so this file stays safe to re-run after an
+-- edit (CREATE POLICY has no IF NOT EXISTS).
+DROP POLICY IF EXISTS "admin_read_telegram_auto_post_settings" ON telegram_auto_post_settings;
 CREATE POLICY "admin_read_telegram_auto_post_settings" ON telegram_auto_post_settings FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));
+
+DROP POLICY IF EXISTS "admin_write_telegram_auto_post_settings" ON telegram_auto_post_settings;
 CREATE POLICY "admin_write_telegram_auto_post_settings" ON telegram_auto_post_settings FOR UPDATE TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true))
+  WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));
+
+-- The panel saves with an upsert rather than a bare UPDATE: an UPDATE that
+-- matches no row reports success while saving nothing, so a project where
+-- the seed INSERT above never ran would show "Saved" in the Admin Panel and
+-- keep posting on the old interval. The upsert needs INSERT rights to
+-- re-create row 1 in that case.
+DROP POLICY IF EXISTS "admin_insert_telegram_auto_post_settings" ON telegram_auto_post_settings;
+CREATE POLICY "admin_insert_telegram_auto_post_settings" ON telegram_auto_post_settings FOR INSERT TO authenticated
   WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));
 
 -- One row per show ever auto-posted, so the picker can favour whichever
@@ -46,6 +60,7 @@ CREATE INDEX IF NOT EXISTS telegram_auto_post_log_show_id_posted_at_idx
 
 ALTER TABLE telegram_auto_post_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "admin_read_telegram_auto_post_log" ON telegram_auto_post_log;
 CREATE POLICY "admin_read_telegram_auto_post_log" ON telegram_auto_post_log FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));
 

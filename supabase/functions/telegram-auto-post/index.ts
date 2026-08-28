@@ -30,6 +30,7 @@ interface Show {
   type: "series" | "movie";
   status: string | null;
   is_free?: boolean;
+  created_at?: string | null;
 }
 
 async function tg(botToken: string, method: string, body: Record<string, unknown>) {
@@ -42,7 +43,15 @@ async function tg(botToken: string, method: string, body: Record<string, unknown
   if (!data.ok) {
     console.error(`Telegram API ${method} failed:`, JSON.stringify(data));
   }
-  return data;
+  return data as { ok: boolean; description?: string };
+}
+
+// Captions are sent with parse_mode HTML, so any of &, < or > coming out
+// of a title or synopsis has to be escaped — Telegram rejects the whole
+// message with "can't parse entities" otherwise, and a single show titled
+// e.g. "Fate & Zero" would silently never post.
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // Telegram caps a photo caption at 1024 characters. The synopsis is the
@@ -51,6 +60,13 @@ async function tg(botToken: string, method: string, body: Record<string, unknown
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return text.slice(0, max - 1).trimEnd() + "…";
+}
+
+// Trimming already-escaped text can cut through an entity ("&amp;" ->
+// "&am"), which Telegram rejects just as it rejects a bare "&", so any
+// dangling one is dropped after the cut.
+function truncateEscaped(text: string, max: number): string {
+  return truncate(text, max).replace(/&[a-z]{0,5}(…)?$/i, (_match, ellipsis) => ellipsis ?? "");
 }
 
 Deno.serve(async (req: Request) => {
@@ -90,7 +106,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (!settings.enabled) {
+    // A forced run is an admin pressing "Post now (test)", so it goes
+    // through even while auto-posting is switched off — otherwise there is
+    // no way to check the bot token, group id and caption before enabling.
+    if (!settings.enabled && !force) {
       return new Response(JSON.stringify({ ok: true, skipped: "disabled" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -110,7 +129,7 @@ Deno.serve(async (req: Request) => {
     // Every non-"coming soon" show is eligible — movies and series alike.
     const { data: shows, error: showsErr } = await admin
       .from("shows")
-      .select("id, title, synopsis, poster_url, type, status, is_free")
+      .select("id, title, synopsis, poster_url, type, status, is_free, created_at")
       .eq("coming_soon", false);
 
     if (showsErr || !shows || shows.length === 0) {
@@ -132,13 +151,20 @@ Deno.serve(async (req: Request) => {
       if (!lastPosted.has(row.show_id)) lastPosted.set(row.show_id, new Date(row.posted_at).getTime());
     }
 
-    const ranked = (shows as Show[])
-      .slice()
-      .sort((a, b) => (lastPosted.get(a.id) ?? 0) - (lastPosted.get(b.id) ?? 0));
+    // Least-recently-posted first; never-posted shows (0) come first of
+    // all. Shows that tie — every never-posted one, on the first run — are
+    // ordered by age so a run of several shows is deterministic instead of
+    // depending on whatever order PostgREST returned.
+    const ranked = (shows as Show[]).slice().sort((a, b) => {
+      const diff = (lastPosted.get(a.id) ?? 0) - (lastPosted.get(b.id) ?? 0);
+      if (diff !== 0) return diff;
+      return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
+    });
 
     const batch = ranked.slice(0, Math.max(1, settings.shows_per_run));
 
     const posted: string[] = [];
+    const errors: string[] = [];
     for (const show of batch) {
       let episodeLine = "";
       if (show.type === "movie") {
@@ -161,10 +187,14 @@ Deno.serve(async (req: Request) => {
       }
 
       const deepLink = `${miniAppUrl}?startapp=show_${show.id}`;
-      const synopsis = show.synopsis ? truncate(show.synopsis, 500) : "";
+      const synopsis = show.synopsis ? escapeHtml(truncate(show.synopsis, 500)) : "";
 
-      const captionParts = [`🎬 <b>${show.title}</b>`, synopsis, episodeLine].filter(Boolean);
-      const caption = truncate(captionParts.join("\n\n"), 1024);
+      const captionParts = [
+        `🎬 <b>${escapeHtml(show.title)}</b>`,
+        synopsis,
+        escapeHtml(episodeLine),
+      ].filter(Boolean);
+      const caption = truncateEscaped(captionParts.join("\n\n"), 1024);
 
       const replyMarkup = { inline_keyboard: [[{ text: "ចូលទស្សនា 📺", url: deepLink }]] };
 
@@ -186,18 +216,35 @@ Deno.serve(async (req: Request) => {
       if (sendResult.ok) {
         await admin.from("telegram_auto_post_log").insert({ show_id: show.id });
         posted.push(show.id);
+      } else {
+        // Passed back to the Admin Panel so a misconfigured bot token or
+        // group id reads as "Bot is not a member of the group" instead of
+        // a silent "Posted 0 show(s)".
+        errors.push(`${show.title}: ${sendResult.description ?? "Telegram rejected the message"}`);
       }
     }
 
-    await admin
-      .from("telegram_auto_post_settings")
-      .update({ last_run_at: new Date().toISOString() })
-      .eq("id", 1);
+    // Only a scheduled run moves the clock. A forced test post used to
+    // reset last_run_at too, which silently pushed the next real post a
+    // full interval into the future every time the admin tested.
+    let nextDueAt: string | null = null;
+    if (!force) {
+      const now = new Date();
+      await admin
+        .from("telegram_auto_post_settings")
+        .update({ last_run_at: now.toISOString() })
+        .eq("id", 1);
+      nextDueAt = new Date(now.getTime() + settings.interval_minutes * 60_000).toISOString();
+    } else if (settings.last_run_at) {
+      nextDueAt = new Date(
+        new Date(settings.last_run_at).getTime() + settings.interval_minutes * 60_000,
+      ).toISOString();
+    }
 
-    return new Response(JSON.stringify({ ok: true, posted }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ ok: true, posted, errors, forced: force, next_due_at: nextDueAt }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
