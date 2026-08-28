@@ -82,3 +82,9 @@ supabase functions deploy episode-stream
 
 បើ run SQL មុន deploy function វីដេអូនឹងលែងចាក់បានរហូតដល់ function ដំឡើងរួច។
 Function នេះប្រើ Secret `TELEGRAM_BOT_TOKEN` ដដែល — មិនត្រូវការ secret ថ្មីទេ។
+
+> **ស្ថានភាពគម្រោងនេះ៖ ជំហានទាំង ៣ រួចរាល់ហើយ។** `episode-stream` deploy រួច,
+> app ឡើង production រួច, ហើយ SQL run រួចនៅ ២៨ សីហា ២០២៦។ ឥឡូវ role `anon`
+> អានបានតែ column ផ្សេងៗ (`title`, `thumbnail_url`, …) ប៉ុណ្ណោះ — `video_url`
+> ត្រូវបានបិទ ហើយ `select *` លើតារាង `episodes` ក៏ត្រូវបានបដិសេធដែរ។ រីឯ admin
+> (role `authenticated`) និង edge functions (service role) នៅតែអានបានធម្មតា។
