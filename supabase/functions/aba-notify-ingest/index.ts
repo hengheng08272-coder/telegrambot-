@@ -49,7 +49,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 //   it if a phone is lost. Requests without it are rejected outright.
 // =====================================================================
 
-const corsHeaders = {  "Access-Control-Allow-Origin": "*",
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, x-aba-ingest-secret",
 };

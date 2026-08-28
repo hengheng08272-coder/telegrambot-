@@ -28,7 +28,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // pending submissions share the same amount.
 // =====================================================================
 
-const corsHeaders = {  "Access-Control-Allow-Origin": "*",
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Bot-Api-Secret-Token",
 };
@@ -42,6 +43,28 @@ function adminChatIds(): string[] {
     .map((id) => id.trim())
     .filter(Boolean);
 }
+
+// Only the fields this function actually reads — a Telegram update
+// carries a great deal more, and none of it is trusted here anyway.
+type TgChat = { id?: number };
+type TgMessage = {
+  chat?: TgChat;
+  text?: string;
+  caption?: string;
+  from?: { id?: number };
+  sender_chat?: TgChat;
+  forward_from?: { id?: number };
+  forward_from_chat?: TgChat;
+  forward_origin?: { chat?: TgChat; sender_chat?: TgChat; sender_user?: { id?: number } };
+  is_automatic_forward?: boolean;
+  via_bot?: { username?: string };
+};
+type TgUpdate = {
+  message?: TgMessage;
+  channel_post?: TgMessage;
+  edited_message?: TgMessage;
+  edited_channel_post?: TgMessage;
+};
 
 const MATCH_WINDOW_MIN = 15;
 
@@ -109,7 +132,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  let body: any;
+  let body: TgUpdate;
   try {
     body = await req.json();
   } catch {
@@ -317,9 +340,9 @@ Deno.serve(async (req: Request) => {
     console.log(`[SUCCESS] Auto-confirmed via ABA notification: ${sub.id} (tier: ${sub.tier}, $${amount})`);
 
     const mainBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    for (const chatId of mainBotToken ? adminChatIds() : []) {
+    for (const notifyChatId of mainBotToken ? adminChatIds() : []) {
       await tg(mainBotToken!, "sendMessage", {
-        chat_id: chatId,
+        chat_id: notifyChatId,
         text:
           `⚡ Auto-confirmed via ABA notification\n` +
           `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
