@@ -359,25 +359,40 @@ export default function VideoPlayerScreen({
     setResolving(false);
   }, [episode.id, episode.video_url]);
 
-  // Silent watch-session log — one row per episode open, no visible
-  // watermark on the video itself. If content ever leaks, this narrows
-  // down who was watching that episode around that time. Fire-and-forget:
-  // never blocks playback, and quietly no-ops in a plain browser preview
-  // where there's no Telegram identity to attach.
+  // Silent watch-session log — no visible watermark on the video itself.
+  // If content ever leaks, this narrows down who was watching that
+  // episode around that time. Fire-and-forget: never blocks playback, and
+  // quietly no-ops in a plain browser preview where there's no Telegram
+  // identity to attach.
+  //
+  // The row is written only after the episode has actually been playing
+  // for a while. Opening five episodes in a row while hunting for the one
+  // you left off at is normal viewing, and logging each of those opens
+  // both buried the real sessions and tripped the mass-download burst
+  // detector (see database/suspicious-activity-addition.sql). Fifteen
+  // seconds of playback is well past browsing, and far short of anything
+  // worth leaking.
+  const loggedEpisodeRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!playing || loggedEpisodeRef.current === episode.id) return;
     const user = getCurrentTelegramUser();
     if (!user) return;
-    supabase
-      .from('watch_log')
-      .insert({
-        telegram_user_id: String(user.id),
-        telegram_username: user.label,
-        show_id: show.id,
-        show_title: show.title,
-        episode_label: episode.episode_number ? `EP ${episode.episode_number}` : episode.title,
-      })
-      .then(() => {});
-  }, [episode.id, show.id, show.title]);
+    const episodeId = episode.id;
+    const timer = setTimeout(() => {
+      loggedEpisodeRef.current = episodeId;
+      supabase
+        .from('watch_log')
+        .insert({
+          telegram_user_id: String(user.id),
+          telegram_username: user.label,
+          show_id: show.id,
+          show_title: show.title,
+          episode_label: episode.episode_number ? `EP ${episode.episode_number}` : episode.title,
+        })
+        .then(() => {});
+    }, 15_000);
+    return () => clearTimeout(timer);
+  }, [playing, episode.id, episode.episode_number, episode.title, show.id, show.title]);
 
   // Bumps the show's real view_count (see increment_show_view_count) once
   // per episode open — same trigger as the watch-log entry above, just a
