@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
     return ack();
   }
 
-  let payload: any;
+  let payload: Record<string, unknown> | null = null;
   try {
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
     return ack();
   }
 
-  const tranId: string | undefined = payload?.tran_id;
+  const tranId = payload?.tran_id as string | undefined;
   if (!tranId) {
     console.log("[aba-payment-callback] no tran_id in payload:", payload);
     return ack();
