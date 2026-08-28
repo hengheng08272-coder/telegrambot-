@@ -25,7 +25,7 @@ import type { Episode, ShowWithGenres } from '@/lib/types';
 import { fetchEpisodesByShow } from '@/lib/api';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
-import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI, getTelegramWebApp } from '@/lib/telegram';
+import { getCurrentTelegramUser, getTelegramInitData, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI, getTelegramWebApp } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase/supabaseClient';
 
 interface VideoPlayerScreenProps {
@@ -349,15 +349,68 @@ export default function VideoPlayerScreen({
   // `videos` storage bucket is public, so we just play episode.video_url
   // directly. (No signed-URL edge function needed.)
   useEffect(() => {
+    let cancelled = false;
     setResolving(true);
     setAccessError('');
-    if (episode.video_url) {
-      setPlayUrl(episode.video_url);
-    } else {
-      setAccessError('Video not available yet.');
-    }
-    setResolving(false);
-  }, [episode.id, episode.video_url]);
+    setPlayUrl(null);
+
+    (async () => {
+      // The URL comes from the server, which checks entitlement itself
+      // (see supabase/functions/episode-stream). The client-side gate in
+      // App.handlePlayEpisode is now only about which button is offered —
+      // it is no longer what keeps a non-VIP out, because anyone could
+      // read video_url straight from the table with the public anon key.
+      const { data, error } = await supabase.functions.invoke('episode-stream', {
+        body: { episode_id: episode.id, init_data: getTelegramInitData() },
+      });
+      if (cancelled) return;
+
+      const url = (data as { url?: string } | null)?.url;
+      if (url) {
+        setPlayUrl(url);
+        setResolving(false);
+        return;
+      }
+
+      const reason = (data as { error?: string } | null)?.error;
+      if (reason === 'not_subscribed') {
+        setAccessError(t.lockedVip ?? 'VIP only.');
+        setResolving(false);
+        return;
+      }
+      if (reason === 'not_purchased') {
+        setAccessError(t.lockedMovie ?? 'Buy to watch.');
+        setResolving(false);
+        return;
+      }
+      if (reason === 'not_verified') {
+        setAccessError('Open this from inside Telegram to watch.');
+        setResolving(false);
+        return;
+      }
+      if (reason === 'no_video' || reason === 'not_found') {
+        setAccessError('Video not available yet.');
+        setResolving(false);
+        return;
+      }
+
+      // The function isn't deployed on this project yet (or the network
+      // hiccupped): fall back to the URL the row carries so playback
+      // keeps working. Deploy episode-stream first, then run
+      // database/protect-episode-video-url.sql — after that REVOKE the
+      // column is gone from the client and this branch can't fire.
+      if (episode.video_url) {
+        setPlayUrl(episode.video_url);
+      } else {
+        setAccessError(error ? 'Could not start playback.' : 'Video not available yet.');
+      }
+      setResolving(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [episode.id, episode.video_url, t]);
 
   // Silent watch-session log — no visible watermark on the video itself.
   // If content ever leaks, this narrows down who was watching that

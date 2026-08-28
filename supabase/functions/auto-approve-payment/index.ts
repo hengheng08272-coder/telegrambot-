@@ -56,6 +56,25 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, alreadyHandled: true, status: sub.status }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Claim the ticket before granting anything: the old shape read the
+    // status, granted, then marked it approved, so two paths landing
+    // together (the 30s client fallback and an ABA notification, say)
+    // both read "pending" and both added a month — which is how a
+    // one-month payment turned into 61 days. This UPDATE ... WHERE
+    // status = 'pending' is atomic: exactly one caller gets a row back,
+    // and only that caller grants.
+    const { data: claimed } = await admin
+      .from("payment_submissions")
+      .update({ status: "approved", auto_approved: true, reviewed_at: new Date().toISOString() })
+      .eq("id", submission_id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+
+    if (!claimed) {
+      return new Response(JSON.stringify({ ok: true, alreadyHandled: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { data: tierRow } = await admin.from("pricing_tiers").select("months").eq("key", sub.tier).maybeSingle();
     const months = tierRow?.months ?? TIER_MONTHS_FALLBACK[sub.tier] ?? 1;
 
@@ -72,7 +91,6 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     });
 
-    await admin.from("payment_submissions").update({ status: "approved", auto_approved: true, reviewed_at: new Date().toISOString() }).eq("id", submission_id);
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const chatIds = adminChatIds();

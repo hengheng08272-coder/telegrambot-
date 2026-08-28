@@ -174,6 +174,22 @@ Deno.serve(async (req: Request) => {
       return ack();
     }
 
+    // Claim first, grant second. Granting before the status update let a
+    // gateway callback and the 30s client fallback both add a month for
+    // the same payment.
+    const { data: claimed } = await admin
+      .from("payment_submissions")
+      .update({ status: "approved", auto_approved: true, admin_confirmed: true, reviewed_at: new Date().toISOString() })
+      .eq("id", sub.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+
+    if (!claimed) {
+      console.log(`[aba-payment-callback] ${tranId} was approved by another path first — no-op`);
+      return ack();
+    }
+
     const { data: tierRow } = await admin
       .from("pricing_tiers")
       .select("months")
@@ -200,19 +216,6 @@ Deno.serve(async (req: Request) => {
       expires_at: base.toISOString(),
       updated_at: new Date().toISOString(),
     });
-
-    const { data: updated } = await admin
-      .from("payment_submissions")
-      .update({ status: "approved", auto_approved: true, reviewed_at: new Date().toISOString() })
-      .eq("id", sub.id)
-      .eq("status", "pending") // guard against a race with the client's own 30s auto-approve
-      .select("id")
-      .maybeSingle();
-
-    if (!updated) {
-      console.log(`[aba-payment-callback] ${tranId} was approved by another path first — no-op`);
-      return ack();
-    }
 
     console.log(`[aba-payment-callback] VIP granted via real ABA gateway: ${sub.id} (${sub.tier}, $${sub.amount})`);
 

@@ -160,6 +160,23 @@ Deno.serve(async (req: Request) => {
         }
 
         if (action === "pay_approve") {
+          // Claim the ticket in one atomic step before granting. Reading
+          // the status and granting afterwards let the admin's tap and an
+          // automatic path (ABA notification, the 30s fallback) both add
+          // a month for a single payment.
+          const { data: claimed } = await admin
+            .from("payment_submissions")
+            .update({ status: "approved", admin_confirmed: true, auto_expired: false, reviewed_at: new Date().toISOString() })
+            .eq("id", submissionId)
+            .in("status", revivable ? ["pending", "rejected"] : ["pending"])
+            .select("id")
+            .maybeSingle();
+
+          if (!claimed) {
+            await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Already handled." });
+            return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+
           const { data: tierRow } = await admin.from("pricing_tiers").select("months").eq("key", sub.tier).maybeSingle();
           const months = tierRow?.months ?? TIER_MONTHS_FALLBACK[sub.tier] ?? 1;
 
@@ -175,7 +192,6 @@ Deno.serve(async (req: Request) => {
             expires_at: base.toISOString(),
             updated_at: new Date().toISOString(),
           });
-          await admin.from("payment_submissions").update({ status: "approved", admin_confirmed: true, auto_expired: false, reviewed_at: new Date().toISOString() }).eq("id", submissionId);
 
           await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: revivable ? "Approved (reopened)" : "Approved" });
           await stampDecision("APPROVED");

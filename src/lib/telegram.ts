@@ -8,6 +8,7 @@ interface TelegramWebApp {
   expand: () => void;
   colorScheme: 'light' | 'dark';
   themeParams: Record<string, string>;
+  initData?: string;
   initDataUnsafe?: {
     start_param?: string;
     user?: {
@@ -240,6 +241,15 @@ export async function shareReferralLink(): Promise<'shared' | 'copied' | 'failed
 
 // The `start_param` from a deep link like
 // https://t.me/YourBot/app?startapp=show_<id> arrives here as "show_<id>".
+// The SIGNED init data string, as opposed to initDataUnsafe — this is
+// what a server can actually verify (HMAC against the bot token), so it
+// is what gets sent to any edge function that must know who is asking.
+// See supabase/functions/episode-stream.
+export function getTelegramInitData(): string | null {
+  const raw = getTelegramWebApp()?.initData;
+  return raw && raw.length > 0 ? raw : null;
+}
+
 export function getStartParam(): string | null {
   return getTelegramWebApp()?.initDataUnsafe?.start_param ?? null;
 }

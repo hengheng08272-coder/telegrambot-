@@ -209,7 +209,7 @@ Deno.serve(async (req: Request) => {
     // into the replay guard: whichever poll gets here first wins, and a
     // second attempt to spend the same payment is refused by Postgres
     // rather than granting a second month.
-    const { error: claimErr } = await admin
+    const { data: claimed, error: claimErr } = await admin
       .from("payment_submissions")
       .update({
         bakong_hash: tx.hash ?? `${md5}:${paidAt}`,
@@ -222,10 +222,18 @@ Deno.serve(async (req: Request) => {
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", submission_id)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
 
     if (claimErr) {
       return json({ ok: false, paid: true, granted: false, reason: "already-claimed", detail: claimErr.message });
+    }
+    // No error but no row either: another path (the 30s fallback, an ABA
+    // notification, the admin) approved this ticket first. Granting here
+    // too would hand out a second month for one payment.
+    if (!claimed) {
+      return json({ ok: true, paid: true, granted: false, reason: "already-approved" });
     }
 
     await admin.from("subscriptions").upsert({

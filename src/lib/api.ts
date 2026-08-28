@@ -371,15 +371,44 @@ export async function fetchShowById(id: string): Promise<ShowWithGenres | null> 
   return { ...rest, genres } as ShowWithGenres;
 }
 
+// Explicit columns, never `*`: after
+// database/protect-episode-video-url.sql the anon role has no SELECT on
+// `video_url`, and PostgREST rejects the whole query — `*` included — if
+// it touches a column the role cannot read.
+const EPISODE_COLUMNS =
+  'id, show_id, episode_number, season, title, description, thumbnail_url, duration, is_free_preview, created_at';
+
+// Before that file is run the URL is still readable, and the player uses
+// it as a fallback while the episode-stream function is being deployed.
+// One probe decides which of the two shapes this project is on, so the
+// catalog loads either way and the fallback disappears by itself the
+// moment the column is locked down.
+let episodeVideoUrlReadable: boolean | null = null;
+
 export async function fetchEpisodesByShow(showId: string): Promise<Episode[]> {
-  const { data, error } = await supabase
-    .from('episodes')
-    .select('*')
-    .eq('show_id', showId)
-    .order('season', { ascending: true })
-    .order('episode_number', { ascending: true });
+  const query = (columns: string) =>
+    supabase
+      .from('episodes')
+      .select(columns)
+      .eq('show_id', showId)
+      .order('season', { ascending: true })
+      .order('episode_number', { ascending: true });
+
+  if (episodeVideoUrlReadable !== false) {
+    const { data, error } = await query(`${EPISODE_COLUMNS}, video_url`);
+    if (!error) {
+      episodeVideoUrlReadable = true;
+      return (data ?? []) as unknown as Episode[];
+    }
+    // 42501 = permission denied for the column; anything else is a real
+    // failure worth surfacing.
+    if (error.code !== '42501' && !/permission denied/i.test(error.message)) throw error;
+    episodeVideoUrlReadable = false;
+  }
+
+  const { data, error } = await query(EPISODE_COLUMNS);
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as unknown as Episode[];
 }
 
 // ---------- Blocked Telegram users (copyright block screen) ----------

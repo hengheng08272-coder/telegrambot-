@@ -59,3 +59,26 @@ edge functions ឡើងវិញ** ដើម្បីឲ្យតម្លៃ�
 
 > ចំណាំ៖ admin ថ្មីត្រូវចុច **Start** ជាមួយ bot ជាមុនសិន បើមិនដូច្នេះ Telegram
 > មិនអនុញ្ញាតឲ្យ bot ផ្ញើសារទៅគាត់ទេ (error: "bot can't initiate conversation")។
+
+## ការការពារវីដេអូ VIP (episode-stream)
+
+មុននេះ ការត្រួតពិនិត្យ VIP ស្ថិតនៅត្រឹម browser ប៉ុណ្ណោះ ហើយ `episodes.video_url`
+អាចអានបានដោយសាធារណៈ — មានន័យថាអ្នកណាក៏អាចទាញ URL វីដេអូចេញដោយប្រើ anon key
+(ដែលមានស្រាប់ក្នុង app) ហើយមើលដោយមិនបង់ប្រាក់។ ឥឡូវ URL ត្រូវចេញពី server
+តាម edge function `episode-stream` ដែលពិនិត្យ ២ យ៉ាង៖
+
+1. **អ្នកណាសួរ** — ផ្ទៀងផ្ទាត់ `initData` របស់ Telegram ដោយ HMAC ជាមួយ bot token
+   (មិនមែន `initDataUnsafe` ដែលអាចក្លែងបានទេ)
+2. **មានសិទ្ធិមើលឬអត់** — រឿង/ភាគឥតគិតថ្លៃ សម្រាប់គ្រប់គ្នា · ភាពយន្តទិញរួច
+   សម្រាប់អ្នកទិញ · ក្រៅពីនោះត្រូវមាន VIP នៅសល់ (`subscriptions.expires_at`)
+
+### ជំហានដំឡើង (លំដាប់សំខាន់)
+```bash
+# ១. deploy function ជាមុនសិន
+supabase functions deploy episode-stream
+```
+2. Deploy app (Vercel ធ្វើស្វ័យប្រវត្តិ)
+3. រួចទើប run `database/protect-episode-video-url.sql` ក្នុង SQL Editor
+
+បើ run SQL មុន deploy function វីដេអូនឹងលែងចាក់បានរហូតដល់ function ដំឡើងរួច។
+Function នេះប្រើ Secret `TELEGRAM_BOT_TOKEN` ដដែល — មិនត្រូវការ secret ថ្មីទេ។
