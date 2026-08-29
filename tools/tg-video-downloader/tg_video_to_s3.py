@@ -163,6 +163,8 @@ ONLY_IDS      = env("ONLY_IDS", "")      # exact message ids, comma separated
 SINCE         = env("SINCE", "")         # YYYY-MM-DD, skip anything older
 UNTIL         = env("UNTIL", "")         # YYYY-MM-DD, skip anything newer
 MAX_MB        = env_float("MAX_MB", 0)   # skip files bigger than this
+FROM_EP       = env_int("FROM_EP", 0)    # only episode N and up (0 = no limit)
+TO_EP         = env_int("TO_EP", 0)      # only up to episode N (0 = no limit)
 PICK_LIMIT    = env_int("PICK_LIMIT", 300)   # how many rows `pick` lists at once
 EP_KEYS       = env_bool("EP_KEYS", True)    # name keys <prefix>ep-<n>/<file>
 LINKS_FILE    = env("LINKS_FILE", "")        # default: links_<prefix>.txt
@@ -444,6 +446,18 @@ def unwanted(msg, size, name):
         caption = getattr(msg, "message", "") or ""
         if not FILTER_RE.search(f"{name}\n{caption}"):
             return "does not match FILTER"
+
+    # "the app already has EP 1-10, carry on from 11" - the common case after a
+    # first batch. A file whose episode number cannot be read is skipped too:
+    # there is no way to tell which side of the line it falls on.
+    if FROM_EP or TO_EP:
+        ep = episode_number(name, getattr(msg, "message", "") or "")
+        if ep is None:
+            return "no episode number in the name"
+        if FROM_EP and ep < FROM_EP:
+            return f"EP{ep} is before FROM_EP={FROM_EP}"
+        if TO_EP and ep > TO_EP:
+            return f"EP{ep} is after TO_EP={TO_EP}"
     return None
 
 
@@ -842,7 +856,8 @@ def filter_signature():
     """Resuming a scan is only safe while the same videos are being asked
     for - change FILTER and the older messages must be walked again."""
     return "|".join(str(x) for x in
-                    (TG_TOPIC, FILTER, ONLY_IDS, SINCE, UNTIL, MIN_MB, MAX_MB, S3_PREFIX))
+                    (TG_TOPIC, FILTER, ONLY_IDS, SINCE, UNTIL, MIN_MB, MAX_MB,
+                     FROM_EP, TO_EP, S3_PREFIX))
 
 
 def load_scan(chat_id):
@@ -1054,6 +1069,8 @@ async def cmd_run(client, pool, backfill=True, watch=False):
         log(f"topic:  {TG_TOPIC} only")
     if FILTER:
         log(f"filter: {FILTER}")
+    if FROM_EP or TO_EP:
+        log(f"episodes: {FROM_EP or 1} to {TO_EP or 'the end'}")
     log(f"target: {'local folder' if LOCAL_ONLY else S3_BUCKET + '/' + S3_PREFIX}")
     if LOCAL_ONLY:
         log("        (no S3_BUCKET -> the videos stay on this PC. The Admin")
@@ -1578,6 +1595,42 @@ def selftest():
     check("without one",
           build_key(_M(), "clip.mp4", None) == f"{S3_PREFIX}001234_clip.mp4",
           build_key(_M(), "clip.mp4", None))
+
+    print("carrying on from a given episode")
+
+    class _Vid:
+        def __init__(self, text=""):
+            self.id = 1
+            self.date = datetime(2026, 8, 1, tzinfo=timezone.utc)
+            self.message = text
+
+    global FROM_EP, TO_EP
+    saved = (FROM_EP, TO_EP)
+    try:
+        FROM_EP, TO_EP = 11, 0
+        for name, want_skipped in (("EP10.mp4", True), ("EP11.mp4", False),
+                                   ("EP12.mp4", False), ("EP01.mp4", True),
+                                   ("trailer.mp4", True)):
+            skipped = unwanted(_Vid(), 100, name) is not None
+            check(f"FROM_EP=11 {name} -> {'skip' if skipped else 'take'}",
+                  skipped == want_skipped)
+
+        FROM_EP, TO_EP = 11, 15
+        for name, want_skipped in (("EP10.mp4", True), ("EP11.mp4", False),
+                                   ("EP15.mp4", False), ("EP16.mp4", True)):
+            skipped = unwanted(_Vid(), 100, name) is not None
+            check(f"FROM_EP=11 TO_EP=15 {name} -> {'skip' if skipped else 'take'}",
+                  skipped == want_skipped)
+
+        FROM_EP, TO_EP = 11, 0
+        check("the episode may come from the caption",
+              unwanted(_Vid("NARUTO EP 12"), 100, "video.mp4") is None)
+
+        FROM_EP, TO_EP = 0, 0
+        check("no range set -> nothing is skipped for it",
+              unwanted(_Vid(), 100, "trailer.mp4") is None)
+    finally:
+        FROM_EP, TO_EP = saved
 
     print("choosing videos by hand")
     for text, count, want in (("1-5,8,12", 20, [1, 2, 3, 4, 5, 8, 12]),

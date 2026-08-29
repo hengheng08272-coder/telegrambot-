@@ -27,6 +27,8 @@ set AWS_SECRET_ACCESS_KEY=
 set S3_BUCKET=
 set S3_PREFIX=telegram/
 
+REM The endpoint is the HOST ONLY - never add the bucket name to it, or every
+REM object lands under <bucket>/<bucket>/... and nothing can be played.
 REM Cloudflare R2:  endpoint = https://<ACCOUNT_ID>.r2.cloudflarestorage.com  region = auto
 REM Wasabi:         endpoint = https://s3.ap-southeast-1.wasabisys.com        region = ap-southeast-1
 REM DO Spaces:      endpoint = https://sgp1.digitaloceanspaces.com           region = sgp1
@@ -60,6 +62,12 @@ set ONLY_IDS=
 set SINCE=
 set UNTIL=
 set MAX_MB=
+
+REM Already have EP 1-10 in the app? FROM_EP=11 takes it from there.
+REM (a file whose name carries no episode number is skipped while these are set)
+set FROM_EP=
+set TO_EP=
+
 set PICK_LIMIT=300
 set EP_KEYS=1
 set LINKS_FILE=
