@@ -806,9 +806,23 @@ def sorted_keys(state):
     return [key for _, key in rows]
 
 
+_LOCAL_LINKS_WARNED = [False]
+
+
 def write_links(storage, state):
     """One plain URL per line - the exact thing the Admin panel's
-    "Bulk import" box wants pasted into it."""
+    "Bulk import" box wants pasted into it.
+
+    With no bucket configured these are file paths, not URLs, and the Admin
+    panel drops every line that does not start with http - so say so once
+    rather than letting a paste come back empty.
+    """
+    if storage.local and not PUBLIC_BASE and not _LOCAL_LINKS_WARNED[0]:
+        _LOCAL_LINKS_WARNED[0] = True
+        log("[NOTE] these are local file paths, not web links: with S3_BUCKET")
+        log("       empty there is nothing to paste into the Admin panel's")
+        log("       Bulk import, which only accepts https:// lines. Set up a")
+        log("       bucket (R2/S3) to get pasteable links - see SETUP_KH.md.")
     path = links_path()
     try:
         body = "\n".join(storage.url(key) for key in sorted_keys(state))
@@ -1041,6 +1055,10 @@ async def cmd_run(client, pool, backfill=True, watch=False):
     if FILTER:
         log(f"filter: {FILTER}")
     log(f"target: {'local folder' if LOCAL_ONLY else S3_BUCKET + '/' + S3_PREFIX}")
+    if LOCAL_ONLY:
+        log("        (no S3_BUCKET -> the videos stay on this PC. The Admin")
+        log("        panel needs https:// links, so set up a bucket when you")
+        log("        want to feed them into the Mini App.)")
     if DRY_RUN:
         log("DRY_RUN=1 -> nothing will be downloaded or stored")
 
