@@ -120,12 +120,21 @@ double-click **`run-topics.bat`**៖
 ចម្លង ២ បន្ទាត់នោះចូល `run-download.bat` រួច double-click វា — វានឹងទាញ
 **តែរឿងនោះ** ហើយបង្កើត `links_anime_one_piece.txt` ដាច់ដោយឡែក។
 
+> **បើឈ្មោះរឿងចេញជាប្រអប់ □□□□ ក្នុង Command Prompt** — នេះជារឿងធម្មតា៖
+> Windows console មិនអាចគូរអក្សរខ្មែរបានទេ (មិនមែន bug ទេ)។ Tool សរសេរបញ្ជីដដែល
+> ចូល **`topics.txt`** ផងដែរ — **បើកវាដោយ Notepad** នោះឈ្មោះខ្មែរនឹងអានបានច្បាស់។
+>
+> រឿងណាដែលឈ្មោះជាភាសាខ្មែរសុទ្ធ (គ្មានអក្សរឡាតាំង) នឹងបាន folder ជា
+> `anime/topic-<លេខ>/` ដើម្បីកុំឱ្យរឿងច្រើនលាយចូល folder តែមួយ។ អ្នកអាចកែ
+> `S3_PREFIX` នោះទៅជាឈ្មោះដែលអ្នកចង់បានដោយដៃ ឧ. `anime/slay-the-gods/`។
+
 > Topic គឺជាវិធីល្អបំផុត ព្រោះ Telegram ខ្លួនឯងជាអ្នកជ្រើស — មិនចាំបាច់ដើរ
 > មើលសារទាំងអស់ក្នុង group ទេ ដូច្នេះ**លឿនជាងច្រើន**។
 
 #### វិធីទី ២ — Group គ្មាន topic (រឿងច្រើនលាយគ្នា)
 
-double-click **`run-shows.bat`** — វាអានឈ្មោះ file ទាំងអស់រួចដាក់ជាក្រុម៖
+double-click **`run-shows.bat`** — វាអានឈ្មោះ file ទាំងអស់រួចដាក់ជាក្រុម
+(និងសរសេរចូល **`shows.txt`** ដែលបើកដោយ Notepad អានបានច្បាស់)៖
 
 ```
 videos  episodes      total  show
@@ -263,6 +272,7 @@ state file — ទាំងអស់ដោយមិនប៉ះ Telegram។ ត�
 | សារ | មូលហេតុ / ដំណោះស្រាយ |
 |---|---|
 | `does not use Topics` | Group នេះគ្មាន topic — ប្រើ `run-shows.bat` ជំនួស |
+| ឈ្មោះរឿងចេញជា `□□□□` | Windows console គូរអក្សរខ្មែរមិនបាន — បើក `topics.txt` / `shows.txt` ដោយ Notepad |
 | `cannot open chat ...` | គណនីអ្នកមិនទាន់ចូល group នោះ ឬ id ខុស — ប្រើ id ដែល `list-chats.bat` បោះពុម្ព |
 | `[SLOW] cryptg is missing` | រត់ `python -m pip install cryptg` — លឿនជាងមុនច្រើន |
 | `[WAIT] Telegram asked to wait ...` | ធម្មតា — បន្ថយ `TG_CONNECTIONS`/`TG_WORKERS` បើញឹកញាប់ពេក |

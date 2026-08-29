@@ -404,9 +404,12 @@ def show_title(name, caption=""):
     return text
 
 
-def slug(text):
+def slug(text, fallback="show"):
+    """Folder name for a show. A title written entirely in Khmer leaves
+    nothing behind, so the caller passes a fallback that is unique to that
+    show - otherwise two shows would share one folder and one link list."""
     out = re.sub(r"[^0-9a-zA-Z]+", "-", (text or "").lower()).strip("-")
-    return out or "show"
+    return out or fallback
 
 
 def build_key(msg, name, ep):
@@ -1113,6 +1116,18 @@ async def cmd_run(client, pool, backfill=True, watch=False):
 
 # ------------------------------------------------------- topics / shows -----
 
+def write_listing(name, lines):
+    """Write a listing next to the script as UTF-8 *with a BOM* - without it
+    Notepad guesses the ANSI code page and Khmer titles come out as mojibake."""
+    path = Path(name)
+    try:
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
+    except OSError as exc:
+        log(f"[WARN] could not write {path}: {exc}")
+        return None
+    return path.resolve()
+
+
 async def cmd_topics(client):
     """List the forum topics of a group - the usual way a group keeps one show
     per topic. Prints the two settings to paste for each show."""
@@ -1139,25 +1154,35 @@ async def cmd_topics(client):
         last = got[-1]
         offset_topic, offset_id = last.id, last.top_message
 
-    print()
-    print(f"{'topic id':>9}  {'videos':>7}  title")
-    print("-" * 78)
+    counts = {}
     for t in topics:
         try:
             counted = await client.get_messages(entity, limit=0, reply_to=t.id,
                                                 filter=InputMessagesFilterVideo)
-            n = getattr(counted, "total", 0)
+            counts[t.id] = getattr(counted, "total", 0)
         except Exception:
-            n = "?"
-        print(f"{t.id:>9}  {str(n):>7}  {printable(t.title)}")
-    print("-" * 78)
+            counts[t.id] = "?"
+
+    lines = [f"{'topic id':>9}  {'videos':>7}  title", "-" * 78]
+    lines += [f"{t.id:>9}  {str(counts[t.id]):>7}  {t.title}" for t in topics]
+    lines += ["-" * 78, "",
+              " copy the two lines of the show you want into run-download.bat:", ""]
+    for t in topics:
+        lines += [f"   set TG_TOPIC={t.id}",
+                  f"   set S3_PREFIX=anime/{slug(t.title, f'topic-{t.id}')}/"
+                  f"      REM {t.title}", ""]
+
     print()
-    print(" copy the two lines of the show you want into run-download.bat:")
-    print()
-    for t in topics[:12]:
-        print(f"   set TG_TOPIC={t.id}")
-        print(f"   set S3_PREFIX=anime/{slug(t.title)}/      REM {printable(t.title)}")
-        print()
+    for line in lines:
+        print(printable(line))
+
+    # The console cannot draw Khmer glyphs whatever the code page is, so the
+    # same list goes to a file - with a BOM, which is what makes Notepad read
+    # it as UTF-8 and show the titles properly.
+    out = write_listing("topics.txt", lines)
+    if out:
+        log(f"the same list, with the titles readable: {out}")
+        log("open it with Notepad if the names show as boxes here")
 
 
 async def cmd_shows(client):
@@ -1195,24 +1220,30 @@ async def cmd_shows(client):
         log("no videos found here")
         return
 
-    print()
-    print(f"{'videos':>6}  {'episodes':>10}  {'total':>9}  show")
-    print("-" * 78)
-    for row in sorted(groups.values(), key=lambda r: -r["n"]):
+    ranked = sorted(groups.values(), key=lambda r: -r["n"])
+
+    lines = [f"{'videos':>6}  {'episodes':>10}  {'total':>9}  show", "-" * 78]
+    for row in ranked:
         eps = f"{min(row['eps'])}-{max(row['eps'])}" if row["eps"] else "-"
-        print(f"{row['n']:>6}  {eps:>10}  {human(row['bytes']):>9}  "
-              f"{printable(row['show'])}")
-    print("-" * 78)
-    print()
-    print(" copy the two lines of the show you want into run-download.bat:")
-    print()
-    for row in sorted(groups.values(), key=lambda r: -r["n"])[:12]:
+        lines.append(f"{row['n']:>6}  {eps:>10}  {human(row['bytes']):>9}  "
+                     f"{row['show']}")
+    lines += ["-" * 78, "",
+              " copy the two lines of the show you want into run-download.bat:", ""]
+    for i, row in enumerate(ranked, 1):
         if row["show"].startswith("("):
             continue
-        print(f"   set FILTER={printable(row['show'])}")
-        print(f"   set S3_PREFIX=anime/{slug(row['show'])}/")
-        print(f"   REM {row['n']} video(s), e.g. {printable(row['example'])}")
-        print()
+        lines += [f"   set FILTER={row['show']}",
+                  f"   set S3_PREFIX=anime/{slug(row['show'], f'show-{i}')}/",
+                  f"   REM {row['n']} video(s), e.g. {row['example']}", ""]
+
+    print()
+    for line in lines:
+        print(printable(line))
+
+    out = write_listing("shows.txt", lines)
+    if out:
+        log(f"the same list, with the names readable: {out}")
+        log("open it with Notepad if the names show as boxes here")
 
 
 # ----------------------------------------------------------------- pick -----
@@ -1448,6 +1479,14 @@ def selftest():
           show_title("", "Naruto Shippuden EP03") == "Naruto Shippuden")
     check("slug for the folder", slug("Naruto Shippuden!") == "naruto-shippuden",
           slug("Naruto Shippuden!"))
+    check("english inside a Khmer title still wins",
+          slug("\u1797\u17b6\u1782\u1781\u17d2\u1798\u17c2\u179a [Slay the Gods]") == "slay-the-gods",
+          slug("\u1797\u17b6\u1782\u1781\u17d2\u1798\u17c2\u179a [Slay the Gods]"))
+    khmer_a = "\u1797\u17b6\u1782\u1781\u17d2\u1798\u17c2\u179a"
+    khmer_b = "\u179a\u17c1\u17c0\u1784\u1781\u17d2\u1798\u17c2\u179a"
+    check("two Khmer-only titles never share a folder",
+          slug(khmer_a, "topic-2153") != slug(khmer_b, "topic-3109"),
+          f"{slug(khmer_a, 'topic-2153')} vs {slug(khmer_b, 'topic-3109')}")
 
     print("forum topics")
 
