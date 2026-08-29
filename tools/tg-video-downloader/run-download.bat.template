@@ -44,6 +44,19 @@ set PARALLEL_MIN_MB=8
 set UPLOAD_CHUNK_MB=16
 set UPLOAD_CONCURRENCY=8
 
+REM --- choose WHICH videos (leave empty = every video in the group) ---
+REM One group with many shows: run it once per show, changing FILTER and
+REM S3_PREFIX together so each show gets its own folder and its own link list.
+set FILTER=
+set ONLY_IDS=
+set SINCE=
+set UNTIL=
+set MAX_MB=
+set PICK_LIMIT=300
+set EP_KEYS=1
+set LINKS_FILE=
+set RESCAN_ALL=0
+
 REM --- options ---
 set MIN_MB=0
 set MAX_ITEMS=0

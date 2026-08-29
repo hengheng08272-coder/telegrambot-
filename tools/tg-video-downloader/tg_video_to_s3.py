@@ -11,6 +11,8 @@ MODES
     python tg_video_to_s3.py           -> backfill: scan the chat, grab everything
     python tg_video_to_s3.py watch     -> stay open, grab new videos as they arrive
     python tg_video_to_s3.py auto      -> backfill first, then keep watching
+    python tg_video_to_s3.py pick      -> list what is missing, choose 1-5,8,12
+    python tg_video_to_s3.py links     -> reprint the link list for the Admin panel
     python tg_video_to_s3.py bench     -> measure 1-connection vs N-connection speed
     python tg_video_to_s3.py selftest  -> offline sanity check (no Telegram login)
 
@@ -123,7 +125,7 @@ def load_config():
 
 
 # selftest never talks to Telegram, so it must never ask for credentials
-if MODE == "selftest":
+if MODE in ("selftest", "links"):
     API_ID, API_HASH = 0, ""
 else:
     API_ID, API_HASH = load_config()
@@ -148,6 +150,47 @@ MIN_MB        = env_float("MIN_MB", 0)
 MAX_ITEMS     = env_int("MAX_ITEMS", 0)              # 0 = no limit
 NEWEST_FIRST  = env_bool("NEWEST_FIRST", False)
 DRY_RUN       = env_bool("DRY_RUN", False)
+
+# --- choosing WHICH videos ---------------------------------------------------
+# A group that carries many different shows is worked one show at a time:
+# FILTER picks the show, S3_PREFIX gives it its own folder and its own link
+# list, so the links can be pasted into that show's Bulk import.
+FILTER        = env("FILTER", "")        # keyword or regex, matched on filename+caption
+ONLY_IDS      = env("ONLY_IDS", "")      # exact message ids, comma separated
+SINCE         = env("SINCE", "")         # YYYY-MM-DD, skip anything older
+UNTIL         = env("UNTIL", "")         # YYYY-MM-DD, skip anything newer
+MAX_MB        = env_float("MAX_MB", 0)   # skip files bigger than this
+PICK_LIMIT    = env_int("PICK_LIMIT", 300)   # how many rows `pick` lists at once
+EP_KEYS       = env_bool("EP_KEYS", True)    # name keys <prefix>ep-<n>/<file>
+LINKS_FILE    = env("LINKS_FILE", "")        # default: links_<prefix>.txt
+RESCAN_ALL    = env_bool("RESCAN_ALL", False)  # ignore the saved scan position
+
+
+def _compile_filter(raw):
+    """FILTER is a regex, but a plain keyword must keep working even when it
+    contains characters a regex would choke on."""
+    if not raw:
+        return None
+    try:
+        return re.compile(raw, re.IGNORECASE)
+    except re.error:
+        return re.compile(re.escape(raw), re.IGNORECASE)
+
+
+def _parse_date(raw, name):
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        print(f"[FATAL] {name} must look like 2026-01-31, got {raw!r}")
+        sys.exit(1)
+
+
+FILTER_RE  = _compile_filter(FILTER)
+ONLY_ID_SET = {int(x) for x in re.findall(r"-?\d+", ONLY_IDS)}
+SINCE_DATE = _parse_date(SINCE, "SINCE")
+UNTIL_DATE = _parse_date(UNTIL, "UNTIL")
 
 # --- speed knobs -------------------------------------------------------------
 # connections that split ONE video between them (the big win; 4-8 is the sweet
@@ -259,6 +302,107 @@ def video_info(msg):
 def safe_name(name):
     name = re.sub(r"[\\/:*?\"<>|\r\n\t]", "_", name).strip(" ._")
     return name[:120] or "video.mp4"
+
+
+def printable(text):
+    """Windows consoles still die on some characters; never let a filename
+    stop a download."""
+    try:
+        (text or "").encode(sys.stdout.encoding or "utf-8")
+        return text
+    except (UnicodeEncodeError, LookupError):
+        return (text or "").encode("ascii", "replace").decode("ascii")
+
+
+# Khmer digits, so "ភាគ ១២" is read as episode 12 just like "EP12"
+KHMER_DIGITS = str.maketrans("០១២៣៤៥៦៧៨៩", "0123456789")
+
+EP_PATTERNS = [
+    # S02E05 -> 5. Checked first, or the season number would win.
+    re.compile(r"s\d{1,2}[ ._\-]*e(\d{1,4})(?![0-9])", re.IGNORECASE),
+    # EP12 / ep-12 / Episode 12 / part 12 / E12
+    re.compile(r"(?:^|[^0-9a-z])(?:ep|epi|episode|part|e)[ ._\-]*(\d{1,4})(?![0-9])",
+               re.IGNORECASE),
+    # ភាគ ១២ / ភាគទី 12
+    re.compile(r"ភាគ(?:ទី)?[ ._\-]*(\d{1,4})"),
+    # "One Piece - 1088.mp4", "Naruto_220.mkv"
+    re.compile(r"[ ._\-\[(](\d{1,4})[ ._\-\])]*\.(?:mp4|mkv|mov|webm|avi)$",
+               re.IGNORECASE),
+]
+
+
+def episode_number(name, caption=""):
+    """Read the episode number out of the filename, else out of the caption.
+
+    This is what lets the Admin panel's Bulk import number the episodes for
+    you: the number ends up in the object key as `/ep-<n>/`, which is exactly
+    what that box reads.
+    """
+    for text in (name or "", caption or ""):
+        text = text.translate(KHMER_DIGITS)
+        for pattern in EP_PATTERNS:
+            hit = pattern.search(text)
+            if hit:
+                n = int(hit.group(1))
+                if 0 < n < 10000:
+                    return n
+    return None
+
+
+def build_key(msg, name, ep):
+    """Where the file lands in the bucket.
+
+    With an episode number: `<prefix>ep-12/<name>` - the Admin panel reads the
+    12 straight out of that path. Without one: the old `<prefix><id>_<name>`,
+    which at least keeps the order.
+    """
+    if EP_KEYS and ep is not None:
+        return f"{S3_PREFIX}ep-{ep}/{name}"
+    return f"{S3_PREFIX}{msg.id:06d}_{name}"
+
+
+def unwanted(msg, size, name):
+    """Why this video should be skipped, or None when it should be downloaded."""
+    if ONLY_ID_SET and msg.id not in ONLY_ID_SET:
+        return "not in ONLY_IDS"
+    if MIN_MB and size < MIN_MB * 1024 * 1024:
+        return f"smaller than MIN_MB ({human(size)})"
+    if MAX_MB and size > MAX_MB * 1024 * 1024:
+        return f"bigger than MAX_MB ({human(size)})"
+    when = getattr(msg, "date", None)
+    if when:
+        if SINCE_DATE and when.date() < SINCE_DATE:
+            return "older than SINCE"
+        if UNTIL_DATE and when.date() > UNTIL_DATE:
+            return "newer than UNTIL"
+    if FILTER_RE:
+        caption = getattr(msg, "message", "") or ""
+        if not FILTER_RE.search(f"{name}\n{caption}"):
+            return "does not match FILTER"
+    return None
+
+
+def parse_selection(text, count):
+    """'1-5, 8, 12' or 'all' -> [1, 2, 3, 4, 5, 8, 12] (1-based, deduped)."""
+    text = (text or "").strip().lower()
+    if not text:
+        return []
+    if text in ("all", "a", "*"):
+        return list(range(1, count + 1))
+
+    picked = set()
+    for part in re.split(r"[,\s]+", text):
+        if not part:
+            continue
+        span = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
+        if span:
+            lo, hi = int(span.group(1)), int(span.group(2))
+            if lo > hi:
+                lo, hi = hi, lo
+            picked.update(range(lo, hi + 1))
+        elif part.isdigit():
+            picked.add(int(part))
+    return sorted(n for n in picked if 1 <= n <= count)
 
 
 async def cmd_list(client):
@@ -572,17 +716,87 @@ def remember_url(storage, key):
         log(f"[WARN] could not write {URL_LIST}: {exc}")
 
 
+def links_path():
+    if LINKS_FILE:
+        return Path(LINKS_FILE)
+    slug = re.sub(r"[^0-9a-zA-Z]+", "_", S3_PREFIX).strip("_") or "links"
+    return Path(f"links_{slug}.txt")
+
+
+def sorted_keys(state):
+    """Every finished object, episodes first and in episode order, then
+    whatever had no episode number, oldest message first."""
+    rows = []
+    for mid, entry in state.items():
+        key = (entry or {}).get("key")
+        if not key:
+            continue
+        ep = entry.get("ep")
+        try:
+            mid_int = int(mid)
+        except (TypeError, ValueError):
+            mid_int = 0
+        rows.append(((0, ep, mid_int) if isinstance(ep, int) else (1, 0, mid_int), key))
+    rows.sort(key=lambda r: r[0])
+    return [key for _, key in rows]
+
+
+def write_links(storage, state):
+    """One plain URL per line - the exact thing the Admin panel's
+    "Bulk import" box wants pasted into it."""
+    path = links_path()
+    try:
+        body = "\n".join(storage.url(key) for key in sorted_keys(state))
+        path.write_text(body + ("\n" if body else ""), encoding="utf-8")
+    except OSError as exc:
+        log(f"[WARN] could not write {path}: {exc}")
+    return path
+
+
+def scan_path(chat_id):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    safe = re.sub(r"[^0-9a-zA-Z_-]", "_", str(chat_id))
+    return STATE_DIR / f"scan_{safe}.json"
+
+
+def filter_signature():
+    """Resuming a scan is only safe while the same videos are being asked
+    for - change FILTER and the older messages must be walked again."""
+    return "|".join(str(x) for x in
+                    (FILTER, ONLY_IDS, SINCE, UNTIL, MIN_MB, MAX_MB, S3_PREFIX))
+
+
+def load_scan(chat_id):
+    p = scan_path(chat_id)
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_scan(chat_id, max_id):
+    p = scan_path(chat_id)
+    try:
+        p.write_text(json.dumps({"max_id": max_id, "filter": filter_signature()},
+                                indent=1), encoding="utf-8")
+    except OSError as exc:
+        log(f"[WARN] could not write {p}: {exc}")
+
+
 # -------------------------------------------------------------- pipeline ----
 
 class Job:
-    __slots__ = ("msg", "size", "name", "mime", "key", "local")
+    __slots__ = ("msg", "size", "name", "mime", "ep", "key", "local")
 
     def __init__(self, msg, size, name, mime):
         self.msg = msg
         self.size = size
         self.name = name
         self.mime = mime
-        self.key = f"{S3_PREFIX}{msg.id:06d}_{name}"
+        self.ep = episode_number(name, getattr(msg, "message", "") or "")
+        self.key = build_key(msg, name, self.ep)
         self.local = TEMP_DIR / f"{msg.id}_{name}"
 
 
@@ -603,32 +817,40 @@ class Pipeline:
         self.stats = {"scanned": 0, "queued": 0, "skipped": 0,
                       "stored": 0, "failed": 0}
         self.stop_reason = None
+        # oldest message that failed: the saved scan position must never move
+        # past it, or the next run would skip the video instead of retrying it
+        self.retry_from = None
 
     # -- intake -------------------------------------------------------------
-    async def offer(self, msg):
+    async def offer(self, msg, force=False):
         """Queue a message if it is a new video we still want. Returns True
-        when it was actually queued."""
+        when it was actually queued. `force` is for videos the user picked by
+        hand - they have already been through the filters."""
         info = video_info(msg)
         if not info:
             return False
         size, raw_name, mime = info
+        name = safe_name(raw_name)
 
         mid = str(msg.id)
         if mid in self.seen:
             self.stats["skipped"] += 1
             return False
-        if MIN_MB and size < MIN_MB * 1024 * 1024:
-            self.stats["skipped"] += 1
-            return False
+        if not force:
+            reason = unwanted(msg, size, name)
+            if reason:
+                self.stats["skipped"] += 1
+                return False
         if MAX_ITEMS and self.stats["queued"] >= MAX_ITEMS:
             self.stop_reason = f"reached MAX_ITEMS={MAX_ITEMS}"
             return False
 
         self.seen.add(mid)
         self.stats["queued"] += 1
-        job = Job(msg, size, safe_name(raw_name), mime)
+        job = Job(msg, size, name, mime)
         when = (msg.date or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
-        log(f"#{msg.id} {when}  {job.name}  {human(size)}")
+        ep = f"  EP{job.ep}" if job.ep is not None else ""
+        log(f"#{msg.id} {when}{ep}  {printable(job.name)}  {human(size)}")
         if DRY_RUN:
             return True
         await self.dl_q.put(job)
@@ -663,6 +885,7 @@ class Pipeline:
             except Exception as exc:
                 self.stats["failed"] += 1
                 self.seen.discard(str(job.msg.id))     # let a re-run try again
+                self._mark_retry(job)
                 log(f"[ERROR] download #{job.msg.id}: {exc}")
                 self._cleanup(job)
             finally:
@@ -683,6 +906,7 @@ class Pipeline:
             except Exception as exc:
                 self.stats["failed"] += 1
                 self.seen.discard(str(job.msg.id))
+                self._mark_retry(job)
                 log(f"[ERROR] upload #{job.msg.id}: {exc}")
             finally:
                 self._cleanup(job)
@@ -697,15 +921,21 @@ class Pipeline:
         except OSError:
             pass
 
+    def _mark_retry(self, job):
+        mid = job.msg.id
+        self.retry_from = mid if self.retry_from is None else min(self.retry_from, mid)
+
     async def _finish(self, job, note=None):
-        entry = {"key": job.key, "size": job.size,
+        entry = {"key": job.key, "size": job.size, "ep": job.ep,
                  "date": job.msg.date.isoformat() if job.msg.date else None}
         if note:
             entry["note"] = note
         async with self.lock:
             self.state[str(job.msg.id)] = entry
+            snapshot = dict(self.state)
             await asyncio.to_thread(save_state, self.chat_key, self.state)
-        remember_url(self.storage, job.key)
+            await asyncio.to_thread(remember_url, self.storage, job.key)
+            await asyncio.to_thread(write_links, self.storage, snapshot)
 
     async def drain(self):
         await self.dl_q.join()
@@ -759,9 +989,23 @@ async def cmd_run(client, pool, backfill=True, watch=False):
                 log("    (new message - picked up automatically)")
 
     if backfill:
+        # A group with thousands of messages costs real minutes just to walk.
+        # The position of the last full scan is remembered, so the next run
+        # only looks at what was posted since - unless the filters changed,
+        # which would mean older messages are wanted after all.
+        resume_ok = not NEWEST_FIRST and not RESCAN_ALL
+        scan = load_scan(raw) if resume_ok else {}
+        min_id = int(scan.get("max_id", 0) or 0) if scan.get("filter") == filter_signature() else 0
+        if min_id:
+            log(f"resuming after message #{min_id} "
+                f"(set RESCAN_ALL=1 to walk the whole history again)")
+
+        highest = min_id
         log("scanning history...")
-        async for msg in client.iter_messages(entity, reverse=not NEWEST_FIRST):
+        async for msg in client.iter_messages(entity, reverse=not NEWEST_FIRST,
+                                              min_id=min_id):
             pipe.stats["scanned"] += 1
+            highest = max(highest, msg.id)
             if pipe.stats["scanned"] % 500 == 0:
                 log(f"...scanned {pipe.stats['scanned']} messages")
             await pipe.offer(msg)
@@ -769,6 +1013,12 @@ async def cmd_run(client, pool, backfill=True, watch=False):
                 log(pipe.stop_reason + ", stopping the scan")
                 break
         await pipe.drain()
+
+        if resume_ok and not pipe.stop_reason and not DRY_RUN:
+            mark = highest
+            if pipe.retry_from is not None:
+                mark = min(mark, pipe.retry_from - 1)   # come back for the failures
+            save_scan(raw, mark)
 
         mins = (time.time() - started) / 60
         s = pipe.stats
@@ -778,6 +1028,7 @@ async def cmd_run(client, pool, backfill=True, watch=False):
         log(f"finished in {mins:.1f} min")
         if s["stored"] or s["skipped"]:
             log(f"URL list: {URL_LIST}")
+            log(f"paste into Admin -> Bulk import: {write_links(storage, state)}")
         log("re-run any time: finished videos are remembered and never re-downloaded")
 
     if watch:
@@ -790,6 +1041,106 @@ async def cmd_run(client, pool, backfill=True, watch=False):
             await pipe.drain()
 
     await pipe.stop()
+
+
+# ----------------------------------------------------------------- pick -----
+
+async def cmd_pick(client, pool):
+    """List the videos that are still missing and let the user choose which
+    ones to download - `1-5, 8, 12`."""
+    storage = Storage()
+    raw, entity, title = await resolve_chat(client)
+    state = load_state(raw)
+
+    log(f"source: {title}  (id {raw})")
+    log(f"looking for videos not downloaded yet (max {PICK_LIMIT})...")
+
+    found = []
+    scanned = 0
+    async for msg in client.iter_messages(entity, reverse=not NEWEST_FIRST):
+        scanned += 1
+        if scanned % 500 == 0:
+            log(f"...scanned {scanned} messages, found {len(found)}")
+        info = video_info(msg)
+        if not info:
+            continue
+        size, raw_name, _mime = info
+        if str(msg.id) in state:
+            continue
+        name = safe_name(raw_name)
+        if unwanted(msg, size, name):
+            continue
+        found.append((msg, size, name))
+        if len(found) >= PICK_LIMIT:
+            log(f"stopping at PICK_LIMIT={PICK_LIMIT}")
+            break
+
+    if not found:
+        log("nothing new to download (everything here is already finished)")
+        return
+
+    print()
+    print(f"{'#':>4}  {'id':>9}  {'date':<10}  {'ep':>4}  {'size':>9}  name")
+    print("-" * 78)
+    for i, (msg, size, name) in enumerate(found, 1):
+        when = (msg.date or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
+        ep = episode_number(name, getattr(msg, "message", "") or "")
+        print(f"{i:>4}  {msg.id:>9}  {when:<10}  {('' if ep is None else ep):>4}  "
+              f"{human(size):>9}  {printable(name)}")
+    print("-" * 78)
+    print(" choose what to download:  1-5,8,12   or  all   (empty = cancel)")
+
+    try:
+        answer = input(" > ")
+    except EOFError:
+        answer = ""
+    chosen = parse_selection(answer, len(found))
+    if not chosen:
+        log("nothing chosen - stopping")
+        return
+
+    total = sum(found[i - 1][1] for i in chosen)
+    log(f"downloading {len(chosen)} video(s), {human(total)} in total")
+
+    pipe = Pipeline(pool, storage, raw, state)
+    pipe.start()
+    try:
+        for i in chosen:
+            await pipe.offer(found[i - 1][0], force=True)
+        await pipe.drain()
+    finally:
+        await pipe.stop()
+
+    s = pipe.stats
+    log("-" * 60)
+    log(f"stored {s['stored']} | skipped {s['skipped']} | failed {s['failed']}")
+    if s["stored"]:
+        log(f"paste into Admin -> Bulk import: {write_links(storage, state)}")
+
+
+# ---------------------------------------------------------------- links -----
+
+def cmd_links():
+    """Rebuild the paste-ready link list from what has already been stored.
+    Needs no Telegram login at all."""
+    if not SOURCE_CHAT:
+        print("[FATAL] TG_SOURCE_CHAT is empty - it says which state file to read.")
+        return 1
+    storage = Storage()
+    state = load_state(SOURCE_CHAT)
+    if not state:
+        print("[FATAL] nothing finished yet for this chat - run a download first.")
+        return 1
+
+    path = write_links(storage, state)
+    urls = sorted_keys(state)
+    print()
+    for key in urls:
+        print(storage.url(key))
+    print()
+    log(f"{len(urls)} link(s) also written to {path}")
+    log("Admin panel -> open the show -> Bulk import -> paste -> Add")
+    return 0
 
 
 # ---------------------------------------------------------------- bench -----
@@ -891,6 +1242,62 @@ def selftest():
     check("megabytes", human(3 * 1024 * 1024) == "3.0MB", human(3 * 1024 * 1024))
     check("rate", rate(10 * 1024 * 1024, 5) == "2.0MB/s", rate(10 * 1024 * 1024, 5))
 
+    print("episode numbers")
+    for name, want in (("EP01.mp4", 1), ("ep-12.mkv", 12), ("Episode 7.mp4", 7),
+                       ("One Piece - 1088.mp4", 1088), ("Naruto_220.mkv", 220),
+                       ("S02E05.mp4", 5), ("part 3.mp4", 3),
+                       ("\u1797\u17b6\u1782 \u17e1\u17e2.mp4", 12),
+                       ("\u1797\u17b6\u1782\u1791\u17b8 9.mp4", 9),
+                       ("trailer.mp4", None), ("video_2026.mp4", 2026),
+                       ("clip.mp4", None)):
+        got = episode_number(name)
+        check(f"{name!r} -> {got}", got == want, f"wanted {want}")
+    check("caption is the fallback", episode_number("aaa.mp4", "NARUTO EP 45") == 45)
+    check("filename wins over caption",
+          episode_number("EP03.mp4", "EP 99") == 3)
+
+    print("object keys")
+
+    class _M:
+        id = 1234
+
+    check("with an episode number",
+          build_key(_M(), "EP07.mp4", 7) == f"{S3_PREFIX}ep-7/EP07.mp4",
+          build_key(_M(), "EP07.mp4", 7))
+    check("without one",
+          build_key(_M(), "clip.mp4", None) == f"{S3_PREFIX}001234_clip.mp4",
+          build_key(_M(), "clip.mp4", None))
+
+    print("choosing videos by hand")
+    for text, count, want in (("1-5,8,12", 20, [1, 2, 3, 4, 5, 8, 12]),
+                              ("all", 3, [1, 2, 3]),
+                              ("3 1 2", 5, [1, 2, 3]),
+                              ("5-1", 9, [1, 2, 3, 4, 5]),
+                              ("2,2,2", 5, [2]),
+                              ("7", 3, []),
+                              ("", 5, []),
+                              ("junk", 5, [])):
+        got = parse_selection(text, count)
+        check(f"{text!r} of {count} -> {got}", got == want, f"wanted {want}")
+
+    print("link list order (what gets pasted into the Admin panel)")
+
+    class _Storage:
+        def url(self, key):
+            return "https://cdn.test/" + key
+
+    ordered = sorted_keys({
+        "50": {"key": "a/ep-2/b.mp4", "ep": 2},
+        "10": {"key": "a/ep-10/b.mp4", "ep": 10},
+        "30": {"key": "a/ep-1/b.mp4", "ep": 1},
+        "20": {"key": "a/000020_x.mp4", "ep": None},
+        "5":  {"key": "a/000005_y.mp4", "ep": None},
+        "99": {"note": "no key at all"},
+    })
+    check("episodes in episode order, unnumbered last by id",
+          ordered == ["a/ep-1/b.mp4", "a/ep-2/b.mp4", "a/ep-10/b.mp4",
+                      "a/000005_y.mp4", "a/000020_x.mp4"], str(ordered))
+
     print("state file round-trip")
     global STATE_DIR
     STATE_DIR = TEMP_DIR / "_selftest_state"
@@ -988,6 +1395,9 @@ async def main():
     try:
         if MODE == "list":
             await cmd_list(client)
+        elif MODE == "pick":
+            await pool.start()
+            await cmd_pick(client, pool)
         elif MODE == "bench":
             await pool.start()
             await cmd_bench(client, pool)
@@ -1008,6 +1418,8 @@ async def main():
 if __name__ == "__main__":
     if MODE == "selftest":
         sys.exit(selftest())
+    if MODE == "links":
+        sys.exit(cmd_links())
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

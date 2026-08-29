@@ -63,13 +63,83 @@ double-click **`list-chats.bat`**។
 | File | ធ្វើអ្វី |
 |---|---|
 | **`run-download.bat`** | ទាញយក video ចាស់ទាំងអស់ក្នុង group រួចឈប់ |
+| **`run-pick.bat`** | **បង្ហាញបញ្ជី video រួចឱ្យអ្នកជ្រើសរើស** ថាចង់ទាញមួយណាខ្លះ |
 | **`run-watch.bat`** | ទាញយកចាស់ទាំងអស់ **រួចនៅចាំបន្ត** — video ថ្មីណាចូល ទាញភ្លាម (ស្វ័យប្រវត្តិ) |
+| **`run-links.bat`** | បោះពុម្ព link ទាំងអស់ សម្រាប់ paste ចូល Admin panel |
 | **`run-bench.bat`** | វាស់ល្បឿន ១ connection ធៀបនឹងច្រើន connection |
 | **`list-chats.bat`** | បង្ហាញ chat + id |
 
 សម្រាប់ការទាញស្វ័យប្រវត្តិរយៈពេលវែង៖ បើក **`run-watch.bat`** ហើយទុក window នោះ
 បើកចោល (ឬដាក់លើ VPS — មើលផ្នែកខាងក្រោម)។ បិទហើយបើកឡើងវិញក៏បាន វាចាំថា
 file ណាធ្វើរួចហើយ។
+
+---
+
+## ជ្រើសរើស video ដែលចង់ទាញ (មិនចាំបាច់ទាញទាំងអស់)
+
+### ក. ជ្រើសដោយដៃ — `run-pick.bat`
+
+វានឹង scan រួចបង្ហាញតារាង៖
+
+```
+   #         id  date          ep       size  name
+------------------------------------------------------------------------------
+   1  102934567  2026-08-01     1     412.5MB  NARUTO EP01.mp4
+   2  102934571  2026-08-02     2     398.1MB  NARUTO EP02.mp4
+   3  102934590  2026-08-02             15.2MB  trailer.mp4
+------------------------------------------------------------------------------
+ choose what to download:  1-5,8,12   or  all   (empty = cancel)
+ >
+```
+
+វាយ `1-2` ឬ `1,3` ឬ `all` រួច Enter — វាទាញតែអ្វីដែលអ្នកជ្រើស។
+
+### ខ. ជ្រើសដោយលក្ខខណ្ឌ (សម្រាប់ group ដែលមានរឿងច្រើន)
+
+| ជួរក្នុង `run-download.bat` | អត្ថន័យ | ឧទាហរណ៍ |
+|---|---|---|
+| `FILTER` | យកតែ file/caption ដែលមានពាក្យនេះ (regex ក៏បាន) | `set FILTER=naruto` |
+| `ONLY_IDS` | យកតែ message id ទាំងនេះ | `set ONLY_IDS=102934567,102934571` |
+| `SINCE` / `UNTIL` | យកតែក្នុងចន្លោះកាលបរិច្ឆេទ | `set SINCE=2026-08-01` |
+| `MIN_MB` / `MAX_MB` | យកតែទំហំក្នុងចន្លោះនេះ (រំលង trailer/clip) | `set MIN_MB=50` |
+
+**វិធីល្អបំផុតសម្រាប់ group ដែលមានរឿងច្រើន៖ ធ្វើម្ដងមួយរឿង** — កែ `FILTER`
+ជាមួយ `S3_PREFIX` ព្រមគ្នា ដូច្នេះរឿងនីមួយៗមាន folder ដាច់ដោយឡែក និងមានបញ្ជី
+link ដាច់ដោយឡែក៖
+
+```bat
+set FILTER=naruto
+set S3_PREFIX=anime/naruto/
+```
+រួច double-click `run-download.bat`។ បន្ទាប់មកប្តូរទៅរឿងបន្ទាប់៖
+```bat
+set FILTER=one piece
+set S3_PREFIX=anime/one-piece/
+```
+
+---
+
+## ទាញ link ចូល Mini App Admin ដើម្បីបញ្ចូល Ep
+
+Admin panel មាន **"Bulk import"** ស្រាប់ (បើករឿង → រំកិលចុះ → **Bulk import**)។
+Tool នេះរៀបចំ link ឱ្យស្រាប់សម្រាប់ប្រអប់នោះ៖
+
+1. **ឈ្មោះ file លើ storage មានលេខភាគ** — tool អាន `EP01`, `Episode 7`,
+   `S02E05`, `One Piece - 1088`, `ភាគ ១២` (លេខខ្មែរក៏បាន) ពីឈ្មោះ file ឬពី
+   caption រួចដាក់ key ជា `<prefix>ep-12/<file>.mp4`។
+   Admin panel អានលេខ `12` ចេញពី `/ep-12/` នោះដោយស្វ័យប្រវត្តិ។
+2. **File `links_<prefix>.txt`** ត្រូវបានសរសេររាល់ពេលមាន video រួចរាល់ —
+   ១ URL ក្នុង ១ បន្ទាត់ តម្រៀបតាមលេខភាគ។
+3. បើកវា (ឬ double-click **`run-links.bat`** ដើម្បីបោះពុម្ពម្ដងទៀត) →
+   **Ctrl+A, Ctrl+C** → Admin panel → បើករឿង → **Bulk import** → **Ctrl+V**
+   → ជ្រើស **keep** (ព្រោះ key មានលេខភាគស្រាប់) → មើល preview → **Add**។
+
+> បើឈ្មោះ file គ្មានលេខភាគទាល់តែសោះ — link ទាំងនោះនៅចុងបញ្ជី តម្រៀបតាមលំដាប់
+> ដែលគេផុសក្នុង group។ ពេលនោះជ្រើស **renumber-order** ក្នុង Bulk import ជំនួស។
+
+**បញ្ចូល Ep បន្តរាល់ថ្ងៃ៖** ទុក `run-watch.bat` បើកចោល → Ep ថ្មីចូល group →
+វាទាញ + upload → `links_<prefix>.txt` ត្រូវបាន update ភ្លាម → paste តែបន្ទាត់ថ្មី
+ចូល Bulk import (ជ្រើស keep — Admin panel រំលង Ep ដែលមានស្រាប់ដោយខ្លួនឯង)។
 
 ---
 
@@ -84,6 +154,10 @@ Telegram កំណត់ល្បឿនលើ **connection នីមួយៗ** 
    កំពុងទាញរួចហើយ (`TG_WORKERS`, `TG_UPLOADERS`)។
 3. **`cryptg`** — បើគ្មាន វា decrypt ដោយ Python សុទ្ធ ដែលយឺតជាងច្រើន។
    Tool នឹងព្រមានថា `[SLOW] cryptg is missing` បើមិនទាន់ដំឡើង។
+4. **មិន scan ដដែលៗ** — Group ដែលមានសាររាប់ពាន់ ចំណាយពេលច្រើនត្រឹមតែ scan។
+   Tool ចាំទីតាំងចុងក្រោយដែល scan រួច ដូច្នេះលើកក្រោយវាមើលតែសារថ្មីៗប៉ុណ្ណោះ
+   (ឃើញ `resuming after message #...`)។ ចង់ scan ពីដើមវិញ ដាក់ `RESCAN_ALL=1`។
+   *(បើប្តូរ `FILTER` វា scan ពីដើមឡើងវិញដោយស្វ័យប្រវត្តិ — មិនខកខានរឿងចាស់ទេ)*
 
 ### Setting ល្បឿន (ក្នុង `run-download.bat`)
 
@@ -117,6 +191,9 @@ Telegram នឹងឱ្យរង់ចាំ (FloodWait) ជំនួសឱ្�
 | `MIN_MB=20` | រំលង file តូចជាង 20MB (រំលង clip/sticker) |
 | `KEEP_LOCAL=1` | រក្សា file ក្នុង `_tmp` ផង បន្ទាប់ពី upload |
 | `NEWEST_FIRST=1` | ចាប់ពី video ថ្មីបំផុតទៅចាស់ (default: ចាស់ → ថ្មី) |
+| `RESCAN_ALL=1` | scan សារទាំងអស់ពីដើមឡើងវិញ (មិនប្រើទីតាំងចាស់) |
+| `EP_KEYS=0` | កុំដាក់ `ep-<n>/` ក្នុង key (ត្រឡប់ទៅឈ្មោះចាស់ `<id>_<file>`) |
+| `PICK_LIMIT=300` | ចំនួនជួរអតិបរមាដែល `run-pick.bat` បង្ហាញ |
 
 ---
 
@@ -127,8 +204,9 @@ Telegram នឹងឱ្យរង់ចាំ (FloodWait) ជំនួសឱ្�
 - បើ file នៅលើ S3 រួចហើយ (ទំហំដូចគ្នា) វារំលង។
 - ឈ្មោះ file៖ `<prefix><message_id>_<ឈ្មោះដើម>` ឧ. `anime/000123_EP01.mp4`
 - file បណ្ដោះអាសន្នស្ថិតក្នុង `_tmp` ហើយត្រូវលុបភ្លាមបន្ទាប់ពី upload។
-- **`uploaded_urls.csv`** ត្រូវបានសរសេរបន្ថែមរាល់ file ដែលរួចរាល់ (key + URL) —
-  បើក Excel ចម្លង URL ទាំងអស់ទៅដាក់ក្នុង Admin Panel បានតែម្ដង។
+- **`uploaded_urls.csv`** ត្រូវបានសរសេរបន្ថែមរាល់ file ដែលរួចរាល់ (key + URL)។
+- **`links_<prefix>.txt`** = URL សុទ្ធ ១ បន្ទាត់ ១ link តម្រៀបតាមលេខភាគ —
+  file នេះហើយដែលត្រូវ copy ទៅ paste ក្នុង **Bulk import** របស់ Admin panel។
 
 ## តេស្តថា code ដំណើរការត្រឹមត្រូវ (មិនបាច់ login)
 

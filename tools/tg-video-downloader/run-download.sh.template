@@ -4,6 +4,8 @@
 #   ./run-download.sh auto     full history, then keep watching for new videos
 #   ./run-download.sh watch    only watch for new videos
 #   ./run-download.sh list     print chat ids
+#   ./run-download.sh pick     choose which videos to download (1-5,8,12)
+#   ./run-download.sh links    reprint the link list for the Admin panel
 #   ./run-download.sh bench    measure the speed-up from more connections
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -29,6 +31,15 @@ export PUBLIC_BASE_URL=
 export TG_CONNECTIONS=8
 export TG_WORKERS=3
 export TG_UPLOADERS=3
+
+# --- choose WHICH videos (empty = all) ---
+export FILTER=
+export ONLY_IDS=
+export SINCE=
+export UNTIL=
+export MAX_MB=
+export EP_KEYS=1
+export RESCAN_ALL=0
 
 # --- options ---
 export MIN_MB=0
