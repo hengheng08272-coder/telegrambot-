@@ -9,10 +9,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # --- Telegram (my.telegram.org -> API development tools) ---
-export TG_API_ID=
-export TG_API_HASH=
+export TG_API_ID=32578084
+export TG_API_HASH=6aebae7ae5432cf87672545c8cd1ed70
 export TG_SESSION=tg_downloader
-export TG_SOURCE_CHAT=
+export TG_SOURCE_CHAT=-1004468850700
 
 # --- storage: leave S3_BUCKET empty to just save into SAVE_DIR ---
 export SAVE_DIR=./downloads
