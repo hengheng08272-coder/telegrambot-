@@ -1196,11 +1196,11 @@ async def cmd_shows(client):
         return
 
     print()
-    print(f"{'videos':>6}  {'episodes':>8}  {'total':>9}  show")
+    print(f"{'videos':>6}  {'episodes':>10}  {'total':>9}  show")
     print("-" * 78)
     for row in sorted(groups.values(), key=lambda r: -r["n"]):
         eps = f"{min(row['eps'])}-{max(row['eps'])}" if row["eps"] else "-"
-        print(f"{row['n']:>6}  {eps:>8}  {human(row['bytes']):>9}  "
+        print(f"{row['n']:>6}  {eps:>10}  {human(row['bytes']):>9}  "
               f"{printable(row['show'])}")
     print("-" * 78)
     print()
