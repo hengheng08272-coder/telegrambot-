@@ -31,13 +31,24 @@ const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now(
 const formatDate = (d: Date) =>
   `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
-// Tiers are stored as "1m" / "6m" / "12m". Anything unexpected falls
-// through as-is rather than being hidden.
-function tierLabel(tier: string): string {
+// A tier key is only a key: the "2m" plan is currently sold as three
+// months ($5, pricing_tiers.months = 3), so deriving the length from the
+// key made the panel claim two months for a subscription that really
+// runs three. The live table is the source of truth; the key is used
+// only when a row references a tier that no longer exists there.
+type TierInfo = { label: string; months: number };
+
+function tierLabelFromKey(tier: string): string {
   const months = /^(\d+)m$/.exec(tier);
   if (!months) return tier;
   const n = Number(months[1]);
   return n % 12 === 0 ? `${n / 12} ឆ្នាំ` : `${n} ខែ`;
+}
+
+function tierLabel(tier: string, tiers: Record<string, TierInfo>): string {
+  const known = tiers[tier];
+  if (!known) return tierLabelFromKey(tier);
+  return known.label || tierLabelFromKey(`${known.months}m`);
 }
 
 // Some rows were saved with the leading "@" already in the username, so
@@ -65,15 +76,32 @@ export default function UsersPanel({ onClose }: Props) {
   // the viewer actually paid.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [daysInput, setDaysInput] = useState('');
+  // key -> { label, months }, straight from pricing_tiers.
+  const [tiers, setTiers] = useState<Record<string, TierInfo>>({});
 
   const load = async () => {
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from('subscriptions')
-      .select('telegram_user_id, telegram_username, tier, expires_at, updated_at')
-      .order('expires_at', { ascending: false });
-    if (err) setError(err.message);
-    setRows(data ?? []);
+    const [subs, plans] = await Promise.all([
+      supabase
+        .from('subscriptions')
+        .select('telegram_user_id, telegram_username, tier, expires_at, updated_at')
+        .order('expires_at', { ascending: false }),
+      supabase.from('pricing_tiers').select('key, label_km, months'),
+    ]);
+    if (subs.error) setError(subs.error.message);
+    setRows(subs.data ?? []);
+    // A failure here does not deserve an error banner: the list still
+    // works, it just names plans after their key instead.
+    if (plans.data) {
+      setTiers(
+        Object.fromEntries(
+          plans.data.map((t) => [
+            String(t.key),
+            { label: String(t.label_km ?? '').trim(), months: Number(t.months) || 0 },
+          ]),
+        ),
+      );
+    }
     setLoading(false);
   };
 
@@ -227,7 +255,7 @@ export default function UsersPanel({ onClose }: Props) {
                   key={tier}
                   className="rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/60"
                 >
-                  <span className="text-white/50">{tierLabel(tier)}</span>{' '}
+                  <span className="text-white/50">{tierLabel(tier, tiers)}</span>{' '}
                   <span className="font-bold text-white">{n}</span> នាក់
                 </span>
               ))}
@@ -278,7 +306,7 @@ export default function UsersPanel({ onClose }: Props) {
                         {name ?? `ID ${row.telegram_user_id}`}
                       </p>
                       <p className="mt-0.5 text-[11px] text-white/45">
-                        ID {row.telegram_user_id} · គម្រោង {tierLabel(row.tier)}
+                        ID {row.telegram_user_id} · គម្រោង {tierLabel(row.tier, tiers)}
                       </p>
                       <p className="mt-0.5 text-[11px]">
                         <span className="text-white/45">
