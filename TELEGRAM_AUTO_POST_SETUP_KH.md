@@ -28,7 +28,7 @@ Function នេះប្រើ Secrets ដូចគ្នានឹង `notify-ne
 ```
 TELEGRAM_BOT_TOKEN
 TELEGRAM_GROUP_ID
-TELEGRAM_MINIAPP_URL = https://t.me/AnimetioMini_bot/App
+TELEGRAM_MINIAPP_URL = https://t.me/AnimetioMini_bot/app   (ស្រេចចិត្ត — បើមិនដាក់ ឬដាក់ខុស វាទាញឈ្មោះ bot ពី getMe ដោយខ្លួនឯង)
 ```
 
 ## ៣. តាំង Cron job (ហៅ function រៀងរាល់នាទី)

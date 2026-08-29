@@ -12,7 +12,7 @@ supabase functions deploy notify-new-episode
 ```
 TELEGRAM_BOT_TOKEN   = <token ពី @BotFather>
 TELEGRAM_GROUP_ID    = <chat id របស់ VIP group, លេខអវិជ្ជមាន ដូចជា -1001234567890>
-TELEGRAM_MINIAPP_URL = https://t.me/YourBotName/app   (link ដដែលពី BotFather Menu Button, មិនដាក់ ? query)
+TELEGRAM_MINIAPP_URL = https://t.me/YourBotName/app   (ស្រេចចិត្ត — link ពី BotFather, មិនដាក់ ? query។ ត្រូវតែជា t.me; បើដាក់ URL គេហទំព័រ (vercel.app) ប៊ូតុងនឹងបើកក្នុង browser មិនមែនក្នុង Mini App — កូដឥឡូវមិនយកតម្លៃបែបនោះទេ ហើយទាញឈ្មោះ bot ពី getMe ជំនួស)
 ```
 
 ### របៀបរក Group ID
