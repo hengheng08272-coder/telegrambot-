@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase/supabaseClient';
+import { supabase, missingSupabaseConfig } from '@/lib/supabase/supabaseClient';
 import { fetchProfile, type Profile } from '@/lib/auth';
 import { fetchShowById, fetchEpisodesByShow, checkTelegramUserBlocked } from '@/lib/api';
 import type { Show, ShowWithGenres, Episode } from '@/lib/types';
@@ -14,6 +14,7 @@ import VideoPlayerScreen from '@/components/VideoPlayerScreen';
 import WatchlistScreen from '@/components/WatchlistScreen';
 import AdminScreen from '@/components/AdminScreen';
 import DesktopBlockedScreen from '@/components/DesktopBlockedScreen';
+import ConfigErrorScreen from '@/components/ConfigErrorScreen';
 import CopyrightBlockedScreen from '@/components/CopyrightBlockedScreen';
 import LuckyDrawModal from '@/components/LuckyDrawModal';
 import SubscriptionModal from '@/components/SubscriptionModal';
@@ -296,6 +297,12 @@ function App() {
 
   if (telegramBlock.blocked) {
     return <CopyrightBlockedScreen />;
+  }
+
+  // Nothing below this point can work without the database, and every
+  // failure would surface as an empty screen, so say so plainly first.
+  if (missingSupabaseConfig.length > 0) {
+    return <ConfigErrorScreen missing={missingSupabaseConfig} />;
   }
 
   // Desktop is admin-only. On mobile (the real Telegram Mini App surface)
