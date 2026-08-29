@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Linux / VPS launcher. Copy to run-download.sh, fill it in, chmod +x it.
+#   ./run-download.sh          full history, then exit
+#   ./run-download.sh auto     full history, then keep watching for new videos
+#   ./run-download.sh watch    only watch for new videos
+#   ./run-download.sh list     print chat ids
+#   ./run-download.sh bench    measure the speed-up from more connections
+set -euo pipefail
+cd "$(dirname "$0")"
+
+# --- Telegram (my.telegram.org -> API development tools) ---
+export TG_API_ID=
+export TG_API_HASH=
+export TG_SESSION=tg_downloader
+export TG_SOURCE_CHAT=
+
+# --- storage: leave S3_BUCKET empty to just save into SAVE_DIR ---
+export SAVE_DIR=./downloads
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+export S3_BUCKET=
+export S3_PREFIX=telegram/
+export S3_ENDPOINT=
+export AWS_REGION=auto
+export S3_ADDRESSING=
+export PUBLIC_BASE_URL=
+
+# --- speed ---
+export TG_CONNECTIONS=8
+export TG_WORKERS=3
+export TG_UPLOADERS=3
+
+# --- options ---
+export MIN_MB=0
+export MAX_ITEMS=0
+export NEWEST_FIRST=0
+export DRY_RUN=0
+
+exec python3 tg_video_to_s3.py "${1:-}"

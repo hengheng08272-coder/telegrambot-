@@ -1,0 +1,164 @@
+# ទាញយក Video ពី Telegram ស្វ័យប្រវត្តិ — ការណែនាំ
+
+ឧបករណ៍នេះ scan គ្រប់ message ក្នុង group/channel មួយ ទាញយក **video ទាំងអស់**
+រួចរក្សាទុក (ក្នុង folder ឬ upload ទៅ S3/R2) ហើយអាច **នៅចាំបន្ត** — video ថ្មី
+ណាដែលគេផុសចូល group វានឹងទាញយកភ្លាមដោយស្វ័យប្រវត្តិ។
+
+**សំខាន់៖** វា login ជា **គណនីផ្ទាល់ខ្លួន** របស់អ្នក (userbot មិនមែន bot ទេ)
+ព្រោះ bot ទាញយកបានត្រឹម 20MB។ គណនីអ្នកត្រូវតែជាសមាជិកក្នុង group នោះ។
+
+---
+
+## ១. ដំឡើង
+
+បើមិនទាន់មាន Python៖ https://www.python.org/downloads/ →
+**ត្រូវធីក `Add python.exe to PATH`** ពេលដំឡើង។
+
+រួចហើយ double-click **`install-windows.bat`**។ វានឹង៖
+- ដំឡើង `telethon` + `boto3`
+- ដំឡើង **`cryptg`** (សំខាន់ណាស់សម្រាប់ល្បឿន — មើលផ្នែក "ល្បឿន" ខាងក្រោម)
+- បង្កើត **`run-download.bat`** ពី template (file នេះផ្ទុក key របស់អ្នក ដូច្នេះ
+  វាមិនត្រូវបានដាក់ក្នុង git ទេ)
+
+## ២. យក API ID / API HASH
+
+1. ចូល https://my.telegram.org → login ដោយលេខទូរស័ព្ទ Telegram របស់អ្នក
+2. ចុច **API development tools** → បង្កើត app មួយ (ដាក់ឈ្មោះអ្វីក៏បាន)
+3. ចម្លង **api_id** និង **api_hash** ដាក់ក្នុង `run-download.bat`
+
+> បើអ្នកធ្លាប់ធ្វើ relay ABA រួច — គឺជាតម្លៃដដែល អាចយកមកប្រើឡើងវិញបាន។
+
+## ៣. រក id របស់ group
+
+double-click **`list-chats.bat`**។
+- លើកដំបូង វានឹងសួរលេខទូរស័ព្ទ + code ដែល Telegram ផ្ញើមក (វាយចូល ១ ដងគត់)
+- វានឹងបោះពុម្ព chat ទាំងអស់ជាមួយ id
+- ចម្លង id ដែលចង់បាន (ជាធម្មតាចាប់ផ្ដើមដោយ `-100...`) → ដាក់ក្នុង
+  `TG_SOURCE_CHAT` ក្នុង `run-download.bat`
+
+## ៤. ជ្រើសរើសកន្លែងរក្សាទុក
+
+### ក. រក្សាទុកក្នុងកុំព្យូទ័រ (ងាយស្រួលបំផុត)
+ទុក `S3_BUCKET=` **ទទេ** — video នឹងចូល folder `downloads` (កែបានតាម `SAVE_DIR`)។
+
+### ខ. Upload ទៅ S3 / R2 / Wasabi / Spaces / MinIO
+
+| Provider | `S3_ENDPOINT` | `AWS_REGION` |
+|---|---|---|
+| Cloudflare R2 | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` | `auto` |
+| Wasabi | `https://s3.ap-southeast-1.wasabisys.com` | `ap-southeast-1` |
+| DO Spaces | `https://sgp1.digitaloceanspaces.com` | `sgp1` |
+| MinIO / VPS ផ្ទាល់ | domain របស់អ្នក + `S3_ADDRESSING=path` | អ្វីក៏បាន |
+| AWS S3 | ទុកទទេ | `ap-southeast-1` |
+
+**Cloudflare R2 (ណែនាំ — គ្មានថ្លៃ egress):**
+1. Cloudflare dashboard → R2 → Create bucket
+2. R2 → Manage API Tokens → Create token → **Object Read & Write**
+3. យក Access Key ID + Secret Access Key និង Account ID (សម្រាប់ endpoint)
+4. បើចង់ឱ្យ video ចាក់បានផ្ទាល់៖ bucket → Settings → Public access
+   ឬភ្ជាប់ custom domain រួចដាក់ URL នោះក្នុង `PUBLIC_BASE_URL`
+
+## ៥. រត់
+
+| File | ធ្វើអ្វី |
+|---|---|
+| **`run-download.bat`** | ទាញយក video ចាស់ទាំងអស់ក្នុង group រួចឈប់ |
+| **`run-watch.bat`** | ទាញយកចាស់ទាំងអស់ **រួចនៅចាំបន្ត** — video ថ្មីណាចូល ទាញភ្លាម (ស្វ័យប្រវត្តិ) |
+| **`run-bench.bat`** | វាស់ល្បឿន ១ connection ធៀបនឹងច្រើន connection |
+| **`list-chats.bat`** | បង្ហាញ chat + id |
+
+សម្រាប់ការទាញស្វ័យប្រវត្តិរយៈពេលវែង៖ បើក **`run-watch.bat`** ហើយទុក window នោះ
+បើកចោល (ឬដាក់លើ VPS — មើលផ្នែកខាងក្រោម)។ បិទហើយបើកឡើងវិញក៏បាន វាចាំថា
+file ណាធ្វើរួចហើយ។
+
+---
+
+## ល្បឿន — របៀបធ្វើឱ្យលឿនជាងមុន
+
+Telegram កំណត់ល្បឿនលើ **connection នីមួយៗ** មិនមែនលើគណនីទេ។ ដូច្នេះ tool នេះ៖
+
+1. **បើក connection ច្រើនក្នុងពេលតែមួយសម្រាប់ video តែមួយ** — video ១ ត្រូវបានកាត់
+   ជាចម្រៀកៗ ហើយ connection នីមួយៗទាញចម្រៀករបស់ខ្លួនស្របគ្នា រួចផ្គុំជា file
+   តែមួយវិញ (`TG_CONNECTIONS`)។ នេះជាចំណុចដែលលឿនជាងគេ — ធម្មតា **៣–៦ដង**។
+2. **ទាញ និង upload ស្របគ្នា** — ពេល video ទី១ កំពុង upload នោះ video ទី២
+   កំពុងទាញរួចហើយ (`TG_WORKERS`, `TG_UPLOADERS`)។
+3. **`cryptg`** — បើគ្មាន វា decrypt ដោយ Python សុទ្ធ ដែលយឺតជាងច្រើន។
+   Tool នឹងព្រមានថា `[SLOW] cryptg is missing` បើមិនទាន់ដំឡើង។
+
+### Setting ល្បឿន (ក្នុង `run-download.bat`)
+
+| ជួរ | អត្ថន័យ | ណែនាំ |
+|---|---|---|
+| `TG_CONNECTIONS` | ចំនួន connection ចែកគ្នាទាញ video ១ | `4` (internet លឿន/VPS ដាក់ `8`) |
+| `TG_WORKERS` | ចំនួន video ទាញព្រមគ្នា | `2`–`3` |
+| `TG_UPLOADERS` | ចំនួន video upload ព្រមគ្នា | `2`–`3` |
+| `PARALLEL_MIN_MB` | file តូចជាងនេះ មិនបាច់ចែក connection | `8` |
+| `UPLOAD_CHUNK_MB` / `UPLOAD_CONCURRENCY` | ទំហំ + ចំនួន part ពេល upload | `16` / `8` |
+
+**របៀបជ្រើសលេខត្រឹមត្រូវ៖** double-click **`run-bench.bat`** — វានឹងទាញ video
+ពិតមួយ ២ដង (១ connection និង `TG_CONNECTIONS` connection) រួចប្រាប់ថាលឿនប៉ុន្មានដង។
+បើនៅតែឡើងខ្ពស់ សាកបង្កើន `TG_CONNECTIONS` ម្ដងមួយជំហាន។ លើសពី `8` ជាធម្មតា
+Telegram នឹងឱ្យរង់ចាំ (FloodWait) ជំនួសឱ្យការលឿនជាងមុន។
+
+> បើឃើញ `[WAIT] Telegram asked for ...s` ញឹកញាប់ — បន្ថយ `TG_CONNECTIONS` ឬ
+> `TG_WORKERS` មកវិញ។ វារង់ចាំដោយខ្លួនឯង មិនបាត់ file ទេ។
+
+> ល្បឿនអតិបរមានៅតែអាស្រ័យលើ internet របស់អ្នក។ បើ line ផ្ទះយឺត ដាក់លើ **VPS**
+> (Singapore ជិតបំផុត) នឹងលឿនជាងច្រើន — មើល `tools/VPS_SETUP_KH.md` ដែលមានរួច
+> សម្រាប់ ABA relay វិធីដូចគ្នា គ្រាន់តែប្តូរ script ជា `tg_video_to_s3.py`
+> ហើយប្រើ `run-download.sh.template`។
+
+### Option បន្ថែម
+
+| ជួរ | អត្ថន័យ |
+|---|---|
+| `DRY_RUN=1` | គ្រាន់តែបង្ហាញថានឹងទាញអ្វីខ្លះ **មិនទាញ មិន upload** — សាកលើកដំបូងជានិច្ច |
+| `MAX_ITEMS=3` | ឈប់បន្ទាប់ពី ៣ file (សម្រាប់សាកល្បង) |
+| `MIN_MB=20` | រំលង file តូចជាង 20MB (រំលង clip/sticker) |
+| `KEEP_LOCAL=1` | រក្សា file ក្នុង `_tmp` ផង បន្ទាប់ពី upload |
+| `NEWEST_FIRST=1` | ចាប់ពី video ថ្មីបំផុតទៅចាស់ (default: ចាស់ → ថ្មី) |
+
+---
+
+## ដំណើរការយ៉ាងណា
+
+- វាចាំថា file ណាធ្វើរួចហើយ (ក្នុង folder `_state`) — **ដំណើរការឡើងវិញបានគ្រប់ពេល
+  ដោយមិនទាញយកស្ទួន**។ បិទចោលពាក់កណ្ដាលក៏បាន គ្រាន់តែបើកវាឡើងវិញ។
+- បើ file នៅលើ S3 រួចហើយ (ទំហំដូចគ្នា) វារំលង។
+- ឈ្មោះ file៖ `<prefix><message_id>_<ឈ្មោះដើម>` ឧ. `anime/000123_EP01.mp4`
+- file បណ្ដោះអាសន្នស្ថិតក្នុង `_tmp` ហើយត្រូវលុបភ្លាមបន្ទាប់ពី upload។
+- **`uploaded_urls.csv`** ត្រូវបានសរសេរបន្ថែមរាល់ file ដែលរួចរាល់ (key + URL) —
+  បើក Excel ចម្លង URL ទាំងអស់ទៅដាក់ក្នុង Admin Panel បានតែម្ដង។
+
+## តេស្តថា code ដំណើរការត្រឹមត្រូវ (មិនបាច់ login)
+
+```
+python tg_video_to_s3.py selftest
+```
+វាតេស្តការកាត់ចម្រៀក, ការផ្គុំ file ឡើងវិញ, ការ retry ពេល connection ដាច់, និង
+state file — ទាំងអស់ដោយមិនប៉ះ Telegram។ ត្រូវឃើញ `all checks passed`។
+
+## បញ្ហាដែលអាចជួប
+
+| សារ | មូលហេតុ / ដំណោះស្រាយ |
+|---|---|
+| `cannot open chat ...` | គណនីអ្នកមិនទាន់ចូល group នោះ ឬ id ខុស — ប្រើ id ដែល `list-chats.bat` បោះពុម្ព |
+| `[SLOW] cryptg is missing` | រត់ `python -m pip install cryptg` — លឿនជាងមុនច្រើន |
+| `[WAIT] Telegram asked to wait ...` | ធម្មតា — បន្ថយ `TG_CONNECTIONS`/`TG_WORKERS` បើញឹកញាប់ពេក |
+| `parallel download failed ... retrying the slow way` | វាដូរទៅ ១ connection ដោយខ្លួនឯង — file នៅតែបានគ្រប់ |
+| `extra connection N failed` | Telegram មិនឱ្យបើក connection ច្រើនម្ដងនេះ — វានៅតែដំណើរការ |
+| `NoSuchBucket` / `AccessDenied` | ខុស bucket/endpoint ឬ token គ្មានសិទ្ធិ Write |
+| `InvalidArgument` លើ R2 | R2 មិនទទួល `S3_STORAGE_CLASS` — ទុកវាទទេ |
+| `SignatureDoesNotMatch` | key ខុស ឬ endpoint ខុស provider |
+| `telethon is not installed` | រត់ `install-windows.bat` ជាមុន |
+
+## សុវត្ថិភាព
+
+- `tg_downloader.session` = login Telegram ពេញលេញ, `config.json` ផ្ទុក api_hash,
+  និង `run-download.bat` ផ្ទុក AWS key — **កុំ upload ទៅ GitHub**។
+  (`.gitignore` របស់ project នេះបានការពាររួចហើយ — មានតែ `.template` ប៉ុណ្ណោះដែលចូល git។)
+
+## ចំណាំផ្នែកច្បាប់
+
+ទាញយកតែ content ដែលអ្នកមានសិទ្ធិប្រើ (ផ្ទាល់ខ្លួន ឬមានអាជ្ញាបណ្ណ) ដើម្បីជៀសវាង
+បញ្ហារក្សាសិទ្ធិ ពេលយកទៅចាក់ក្នុង app។
