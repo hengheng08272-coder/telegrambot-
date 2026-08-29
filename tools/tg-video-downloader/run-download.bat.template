@@ -49,8 +49,12 @@ set UPLOAD_CHUNK_MB=16
 set UPLOAD_CONCURRENCY=8
 
 REM --- choose WHICH videos (leave empty = every video in the group) ---
-REM One group with many shows: run it once per show, changing FILTER and
-REM S3_PREFIX together so each show gets its own folder and its own link list.
+REM One group with many shows: run it once per show.
+REM   - group uses Topics?  run-topics.bat -> copy TG_TOPIC + S3_PREFIX here
+REM   - no topics?          run-shows.bat  -> copy FILTER  + S3_PREFIX here
+REM Always move S3_PREFIX with them, so each show gets its own folder and its
+REM own links_*.txt to paste into that show's Bulk import.
+set TG_TOPIC=
 set FILTER=
 set ONLY_IDS=
 set SINCE=

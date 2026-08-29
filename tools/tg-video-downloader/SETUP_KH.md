@@ -63,6 +63,8 @@ double-click **`list-chats.bat`**។
 | File | ធ្វើអ្វី |
 |---|---|
 | **`run-download.bat`** | ទាញយក video ចាស់ទាំងអស់ក្នុង group រួចឈប់ |
+| **`run-topics.bat`** | បង្ហាញ **Topics** ក្នុង group (រឿង ១ ក្នុង topic ១) + ចំនួន video |
+| **`run-shows.bat`** | បែងចែក video តាម **ឈ្មោះរឿង** (សម្រាប់ group គ្មាន topic) |
 | **`run-pick.bat`** | **បង្ហាញបញ្ជី video រួចឱ្យអ្នកជ្រើសរើស** ថាចង់ទាញមួយណាខ្លះ |
 | **`run-watch.bat`** | ទាញយកចាស់ទាំងអស់ **រួចនៅចាំបន្ត** — video ថ្មីណាចូល ទាញភ្លាម (ស្វ័យប្រវត្តិ) |
 | **`run-links.bat`** | បោះពុម្ព link ទាំងអស់ សម្រាប់ paste ចូល Admin panel |
@@ -94,28 +96,66 @@ file ណាធ្វើរួចហើយ។
 
 វាយ `1-2` ឬ `1,3` ឬ `all` រួច Enter — វាទាញតែអ្វីដែលអ្នកជ្រើស។
 
-### ខ. ជ្រើសដោយលក្ខខណ្ឌ (សម្រាប់ group ដែលមានរឿងច្រើន)
+### ខ. **រឿងច្រើនក្នុង group តែមួយ — ធ្វើម្ដងមួយរឿង** ⭐
+
+មានវិធី ២ អាស្រ័យលើថា group បែងចែករឿងបែបណា។
+
+#### វិធីទី ១ — Group ប្រើ **Topics** (រឿង ១ ក្នុង topic ១)
+
+double-click **`run-topics.bat`**៖
+
+```
+ topic id   videos  title
+------------------------------------------------------------------------------
+        2      124  Naruto Shippuden
+      145       87  One Piece
+      302       26  Jujutsu Kaisen
+------------------------------------------------------------------------------
+ copy the two lines of the show you want into run-download.bat:
+
+   set TG_TOPIC=145
+   set S3_PREFIX=anime/one-piece/      REM One Piece
+```
+
+ចម្លង ២ បន្ទាត់នោះចូល `run-download.bat` រួច double-click វា — វានឹងទាញ
+**តែរឿងនោះ** ហើយបង្កើត `links_anime_one_piece.txt` ដាច់ដោយឡែក។
+
+> Topic គឺជាវិធីល្អបំផុត ព្រោះ Telegram ខ្លួនឯងជាអ្នកជ្រើស — មិនចាំបាច់ដើរ
+> មើលសារទាំងអស់ក្នុង group ទេ ដូច្នេះ**លឿនជាងច្រើន**។
+
+#### វិធីទី ២ — Group គ្មាន topic (រឿងច្រើនលាយគ្នា)
+
+double-click **`run-shows.bat`** — វាអានឈ្មោះ file ទាំងអស់រួចដាក់ជាក្រុម៖
+
+```
+videos  episodes      total  show
+------------------------------------------------------------------------------
+   124     1-124     48.2GB  Naruto Shippuden
+    87   1001-1088   33.9GB  One Piece
+    26      1-26     9.10GB  Jujutsu Kaisen
+------------------------------------------------------------------------------
+ copy the two lines of the show you want into run-download.bat:
+
+   set FILTER=One Piece
+   set S3_PREFIX=anime/one-piece/
+   REM 87 video(s), e.g. One Piece - 1001.mp4
+```
+
+ចម្លង ២ បន្ទាត់នោះចូល `run-download.bat` រួច run។ បើឈ្មោះរឿងខុសបន្តិច
+(ឧ. រឿងដែលមានលេខនៅចុងឈ្មោះ) កែ `FILTER` ដោយដៃបាន។
+
+**ធ្វើម្ដងមួយរឿងរហូត៖** ប្តូរ `TG_TOPIC` (ឬ `FILTER`) + `S3_PREFIX` → run →
+paste link ចូល Bulk import របស់រឿងនោះ → បន្តរឿងបន្ទាប់។
+
+### គ. ជ្រើសដោយលក្ខខណ្ឌផ្សេងទៀត
 
 | ជួរក្នុង `run-download.bat` | អត្ថន័យ | ឧទាហរណ៍ |
 |---|---|---|
+| `TG_TOPIC` | យកតែ topic នេះ (លេខពី `run-topics.bat`) | `set TG_TOPIC=145` |
 | `FILTER` | យកតែ file/caption ដែលមានពាក្យនេះ (regex ក៏បាន) | `set FILTER=naruto` |
 | `ONLY_IDS` | យកតែ message id ទាំងនេះ | `set ONLY_IDS=102934567,102934571` |
 | `SINCE` / `UNTIL` | យកតែក្នុងចន្លោះកាលបរិច្ឆេទ | `set SINCE=2026-08-01` |
 | `MIN_MB` / `MAX_MB` | យកតែទំហំក្នុងចន្លោះនេះ (រំលង trailer/clip) | `set MIN_MB=50` |
-
-**វិធីល្អបំផុតសម្រាប់ group ដែលមានរឿងច្រើន៖ ធ្វើម្ដងមួយរឿង** — កែ `FILTER`
-ជាមួយ `S3_PREFIX` ព្រមគ្នា ដូច្នេះរឿងនីមួយៗមាន folder ដាច់ដោយឡែក និងមានបញ្ជី
-link ដាច់ដោយឡែក៖
-
-```bat
-set FILTER=naruto
-set S3_PREFIX=anime/naruto/
-```
-រួច double-click `run-download.bat`។ បន្ទាប់មកប្តូរទៅរឿងបន្ទាប់៖
-```bat
-set FILTER=one piece
-set S3_PREFIX=anime/one-piece/
-```
 
 ---
 
@@ -154,7 +194,9 @@ Telegram កំណត់ល្បឿនលើ **connection នីមួយៗ** 
    កំពុងទាញរួចហើយ (`TG_WORKERS`, `TG_UPLOADERS`)។
 3. **`cryptg`** — បើគ្មាន វា decrypt ដោយ Python សុទ្ធ ដែលយឺតជាងច្រើន។
    Tool នឹងព្រមានថា `[SLOW] cryptg is missing` បើមិនទាន់ដំឡើង។
-4. **មិន scan ដដែលៗ** — Group ដែលមានសាររាប់ពាន់ ចំណាយពេលច្រើនត្រឹមតែ scan។
+4. **ប្រើ Topic បើមាន** — `TG_TOPIC` ធ្វើឱ្យ Telegram ជ្រើសឱ្យតែម្ដង ជំនួសឱ្យ
+   ការដើរមើលសារទាំង group។ ក្នុង group ធំ នេះកាត់ពេល scan បានច្រើនដង។
+5. **មិន scan ដដែលៗ** — Group ដែលមានសាររាប់ពាន់ ចំណាយពេលច្រើនត្រឹមតែ scan។
    Tool ចាំទីតាំងចុងក្រោយដែល scan រួច ដូច្នេះលើកក្រោយវាមើលតែសារថ្មីៗប៉ុណ្ណោះ
    (ឃើញ `resuming after message #...`)។ ចង់ scan ពីដើមវិញ ដាក់ `RESCAN_ALL=1`។
    *(បើប្តូរ `FILTER` វា scan ពីដើមឡើងវិញដោយស្វ័យប្រវត្តិ — មិនខកខានរឿងចាស់ទេ)*
@@ -220,6 +262,7 @@ state file — ទាំងអស់ដោយមិនប៉ះ Telegram។ ត�
 
 | សារ | មូលហេតុ / ដំណោះស្រាយ |
 |---|---|
+| `does not use Topics` | Group នេះគ្មាន topic — ប្រើ `run-shows.bat` ជំនួស |
 | `cannot open chat ...` | គណនីអ្នកមិនទាន់ចូល group នោះ ឬ id ខុស — ប្រើ id ដែល `list-chats.bat` បោះពុម្ព |
 | `[SLOW] cryptg is missing` | រត់ `python -m pip install cryptg` — លឿនជាងមុនច្រើន |
 | `[WAIT] Telegram asked to wait ...` | ធម្មតា — បន្ថយ `TG_CONNECTIONS`/`TG_WORKERS` បើញឹកញាប់ពេក |

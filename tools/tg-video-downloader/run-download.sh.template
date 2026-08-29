@@ -7,6 +7,8 @@
 #   ./run-download.sh auto     full history, then keep watching for new videos
 #   ./run-download.sh watch    only watch for new videos
 #   ./run-download.sh list     print chat ids
+#   ./run-download.sh topics   list the group's topics (one show each)
+#   ./run-download.sh shows    group the videos by show name
 #   ./run-download.sh pick     choose which videos to download (1-5,8,12)
 #   ./run-download.sh links    reprint the link list for the Admin panel
 #   ./run-download.sh bench    measure the speed-up from more connections
@@ -40,6 +42,7 @@ export TG_WORKERS=3
 export TG_UPLOADERS=3
 
 # --- choose WHICH videos (empty = all) ---
+export TG_TOPIC=
 export FILTER=
 export ONLY_IDS=
 export SINCE=

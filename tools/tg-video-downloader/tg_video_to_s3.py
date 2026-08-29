@@ -11,6 +11,8 @@ MODES
     python tg_video_to_s3.py           -> backfill: scan the chat, grab everything
     python tg_video_to_s3.py watch     -> stay open, grab new videos as they arrive
     python tg_video_to_s3.py auto      -> backfill first, then keep watching
+    python tg_video_to_s3.py topics    -> list the group's topics (one show each)
+    python tg_video_to_s3.py shows     -> group the videos by show name
     python tg_video_to_s3.py pick      -> list what is missing, choose 1-5,8,12
     python tg_video_to_s3.py links     -> reprint the link list for the Admin panel
     python tg_video_to_s3.py bench     -> measure 1-connection vs N-connection speed
@@ -155,6 +157,7 @@ DRY_RUN       = env_bool("DRY_RUN", False)
 # A group that carries many different shows is worked one show at a time:
 # FILTER picks the show, S3_PREFIX gives it its own folder and its own link
 # list, so the links can be pasted into that show's Bulk import.
+TG_TOPIC      = env_int("TG_TOPIC", 0)   # one forum topic only (see `topics` mode)
 FILTER        = env("FILTER", "")        # keyword or regex, matched on filename+caption
 ONLY_IDS      = env("ONLY_IDS", "")      # exact message ids, comma separated
 SINCE         = env("SINCE", "")         # YYYY-MM-DD, skip anything older
@@ -349,6 +352,63 @@ def episode_number(name, caption=""):
     return None
 
 
+def topic_id(msg):
+    """Which forum topic a message sits in, or None outside a forum.
+
+    A topic is really a thread hanging off its own root message, so the id we
+    want is the top of that thread - or the root message itself for a message
+    posted straight into the topic.
+    """
+    head = getattr(msg, "reply_to", None)
+    if head is None or not getattr(head, "forum_topic", False):
+        return None
+    return getattr(head, "reply_to_top_id", None) or getattr(head, "reply_to_msg_id", None)
+
+
+# quality/release tags that are part of the file name but not of the show name
+NOISE = re.compile(
+    r"\b(1080p|720p|480p|360p|2160p|4k|x264|x265|h\.?264|h\.?265|hevc|avc|aac|"
+    r"web-?dl|web-?rip|blu-?ray|hd-?rip|dvd-?rip|hdtv|10bit|dual|multi|"
+    r"sub|subbed|dub|dubbed|raw|eng|jpn|kh|khmer|speak|full)\b",
+    re.IGNORECASE)
+
+
+def show_title(name, caption=""):
+    """The show name a file belongs to: everything before the episode marker,
+    with the release tags stripped. `NARUTO.SHIPPUDEN.EP01.1080p.mp4` and
+    `Naruto Shippuden - 02 [720p].mkv` both come back as `Naruto Shippuden`."""
+    text = (name or "").strip()
+    if not text:
+        text = ((caption or "").strip().splitlines() or [""])[0]
+    text = text.translate(KHMER_DIGITS)
+
+    # Cut at the first episode marker - what follows is numbering, not a name.
+    # The extension is still attached here on purpose: a bare trailing number
+    # ("One Piece - 1088.mp4") is only recognisable as an episode next to it.
+    cut = len(text)
+    for pattern in EP_PATTERNS:
+        hit = pattern.search(text)
+        if hit:
+            cut = min(cut, hit.start())
+    text = text[:cut]
+    text = re.sub(r"\.[a-z0-9]{2,4}$", "", text, flags=re.IGNORECASE)
+
+    text = NOISE.sub(" ", text)
+    text = re.sub(r"[\[\]\(\)_.\-]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip(" -_.")
+
+    # A number still hanging off the end is the episode: "Naruto Shippuden 02"
+    # once "[720p]" has gone. This does cost a show whose real name ends in a
+    # number, which is why the suggested FILTER is printed for you to edit.
+    text = re.sub(r"\s+\d{1,4}$", "", text).strip()
+    return text
+
+
+def slug(text):
+    out = re.sub(r"[^0-9a-zA-Z]+", "-", (text or "").lower()).strip("-")
+    return out or "show"
+
+
 def build_key(msg, name, ep):
     """Where the file lands in the bucket.
 
@@ -363,6 +423,8 @@ def build_key(msg, name, ep):
 
 def unwanted(msg, size, name):
     """Why this video should be skipped, or None when it should be downloaded."""
+    if TG_TOPIC and topic_id(msg) != TG_TOPIC:
+        return "in another topic"
     if ONLY_ID_SET and msg.id not in ONLY_ID_SET:
         return "not in ONLY_IDS"
     if MIN_MB and size < MIN_MB * 1024 * 1024:
@@ -763,7 +825,7 @@ def filter_signature():
     """Resuming a scan is only safe while the same videos are being asked
     for - change FILTER and the older messages must be walked again."""
     return "|".join(str(x) for x in
-                    (FILTER, ONLY_IDS, SINCE, UNTIL, MIN_MB, MAX_MB, S3_PREFIX))
+                    (TG_TOPIC, FILTER, ONLY_IDS, SINCE, UNTIL, MIN_MB, MAX_MB, S3_PREFIX))
 
 
 def load_scan(chat_id):
@@ -971,6 +1033,10 @@ async def cmd_run(client, pool, backfill=True, watch=False):
     raw, entity, title = await resolve_chat(client)
 
     log(f"source: {title}  (id {raw})")
+    if TG_TOPIC:
+        log(f"topic:  {TG_TOPIC} only")
+    if FILTER:
+        log(f"filter: {FILTER}")
     log(f"target: {'local folder' if LOCAL_ONLY else S3_BUCKET + '/' + S3_PREFIX}")
     if DRY_RUN:
         log("DRY_RUN=1 -> nothing will be downloaded or stored")
@@ -1002,8 +1068,10 @@ async def cmd_run(client, pool, backfill=True, watch=False):
 
         highest = min_id
         log("scanning history...")
+        # reply_to asks Telegram itself for just that topic - far less to walk
         async for msg in client.iter_messages(entity, reverse=not NEWEST_FIRST,
-                                              min_id=min_id):
+                                              min_id=min_id,
+                                              reply_to=TG_TOPIC or None):
             pipe.stats["scanned"] += 1
             highest = max(highest, msg.id)
             if pipe.stats["scanned"] % 500 == 0:
@@ -1043,6 +1111,110 @@ async def cmd_run(client, pool, backfill=True, watch=False):
     await pipe.stop()
 
 
+# ------------------------------------------------------- topics / shows -----
+
+async def cmd_topics(client):
+    """List the forum topics of a group - the usual way a group keeps one show
+    per topic. Prints the two settings to paste for each show."""
+    from telethon.tl.functions.messages import GetForumTopicsRequest
+    from telethon.tl.types import InputMessagesFilterVideo
+
+    raw, entity, title = await resolve_chat(client)
+    if not getattr(entity, "forum", False):
+        log(f"{title} does not use Topics.")
+        log("Use `shows` instead - it groups the videos by their file names.")
+        return
+
+    log(f"topics in {title}:")
+    topics = []
+    offset_date, offset_id, offset_topic = None, 0, 0
+    while True:
+        batch = await client(GetForumTopicsRequest(
+            peer=entity, offset_date=offset_date, offset_id=offset_id,
+            offset_topic=offset_topic, limit=100))
+        got = [t for t in batch.topics if getattr(t, "title", None)]
+        topics.extend(got)
+        if len(got) < 100:
+            break
+        last = got[-1]
+        offset_topic, offset_id = last.id, last.top_message
+
+    print()
+    print(f"{'topic id':>9}  {'videos':>7}  title")
+    print("-" * 78)
+    for t in topics:
+        try:
+            counted = await client.get_messages(entity, limit=0, reply_to=t.id,
+                                                filter=InputMessagesFilterVideo)
+            n = getattr(counted, "total", 0)
+        except Exception:
+            n = "?"
+        print(f"{t.id:>9}  {str(n):>7}  {printable(t.title)}")
+    print("-" * 78)
+    print()
+    print(" copy the two lines of the show you want into run-download.bat:")
+    print()
+    for t in topics[:12]:
+        print(f"   set TG_TOPIC={t.id}")
+        print(f"   set S3_PREFIX=anime/{slug(t.title)}/      REM {printable(t.title)}")
+        print()
+
+
+async def cmd_shows(client):
+    """No topics? Group the videos by the show name read out of their file
+    names, and print the FILTER to use for each one."""
+    raw, entity, title = await resolve_chat(client)
+    log(f"source: {title}  (id {raw})")
+    if TG_TOPIC:
+        log(f"looking inside topic {TG_TOPIC} only")
+    log("reading file names (this walks the history once)...")
+
+    groups = {}
+    scanned = 0
+    async for msg in client.iter_messages(entity, reply_to=TG_TOPIC or None):
+        scanned += 1
+        if scanned % 1000 == 0:
+            log(f"...scanned {scanned} messages, {len(groups)} show(s) so far")
+        info = video_info(msg)
+        if not info:
+            continue
+        size, raw_name, _mime = info
+        name = safe_name(raw_name)
+        show = show_title(name, getattr(msg, "message", "") or "")
+        if not show:
+            show = "(no name in the file)"
+        row = groups.setdefault(show.lower(), {"show": show, "n": 0, "bytes": 0,
+                                               "eps": set(), "example": name})
+        row["n"] += 1
+        row["bytes"] += size
+        ep = episode_number(name, getattr(msg, "message", "") or "")
+        if ep is not None:
+            row["eps"].add(ep)
+
+    if not groups:
+        log("no videos found here")
+        return
+
+    print()
+    print(f"{'videos':>6}  {'episodes':>8}  {'total':>9}  show")
+    print("-" * 78)
+    for row in sorted(groups.values(), key=lambda r: -r["n"]):
+        eps = f"{min(row['eps'])}-{max(row['eps'])}" if row["eps"] else "-"
+        print(f"{row['n']:>6}  {eps:>8}  {human(row['bytes']):>9}  "
+              f"{printable(row['show'])}")
+    print("-" * 78)
+    print()
+    print(" copy the two lines of the show you want into run-download.bat:")
+    print()
+    for row in sorted(groups.values(), key=lambda r: -r["n"])[:12]:
+        if row["show"].startswith("("):
+            continue
+        print(f"   set FILTER={printable(row['show'])}")
+        print(f"   set S3_PREFIX=anime/{slug(row['show'])}/")
+        print(f"   REM {row['n']} video(s), e.g. {printable(row['example'])}")
+        print()
+
+
 # ----------------------------------------------------------------- pick -----
 
 async def cmd_pick(client, pool):
@@ -1057,7 +1229,8 @@ async def cmd_pick(client, pool):
 
     found = []
     scanned = 0
-    async for msg in client.iter_messages(entity, reverse=not NEWEST_FIRST):
+    async for msg in client.iter_messages(entity, reverse=not NEWEST_FIRST,
+                                          reply_to=TG_TOPIC or None):
         scanned += 1
         if scanned % 500 == 0:
             log(f"...scanned {scanned} messages, found {len(found)}")
@@ -1256,6 +1429,43 @@ def selftest():
     check("filename wins over caption",
           episode_number("EP03.mp4", "EP 99") == 3)
 
+    print("show names (how one group with many shows is split)")
+    for name, want in (
+            ("NARUTO.SHIPPUDEN.EP01.1080p.mp4", "NARUTO SHIPPUDEN"),
+            ("Naruto Shippuden - 02 [720p].mkv", "Naruto Shippuden"),
+            ("One Piece - 1088.mp4", "One Piece"),
+            ("[Group] Bleach_S02E05_x265.mkv", "Group Bleach"),
+            ("Jujutsu Kaisen ep 12 KH dub.mp4", "Jujutsu Kaisen"),
+            ("Demon Slayer 07 [1080p] KH.mp4", "Demon Slayer"),
+            ("EP01.mp4", ""),
+    ):
+        got = show_title(name)
+        check(f"{name!r} -> {got!r}", got == want, f"wanted {want!r}")
+    check("two files of one show land on one name",
+          show_title("NARUTO.SHIPPUDEN.EP01.1080p.mp4").lower()
+          == show_title("naruto shippuden - 02 [720p].mkv").lower())
+    check("caption is the fallback",
+          show_title("", "Naruto Shippuden EP03") == "Naruto Shippuden")
+    check("slug for the folder", slug("Naruto Shippuden!") == "naruto-shippuden",
+          slug("Naruto Shippuden!"))
+
+    print("forum topics")
+
+    class _Head:
+        def __init__(self, forum, top=None, root=None):
+            self.forum_topic = forum
+            self.reply_to_top_id = top
+            self.reply_to_msg_id = root
+
+    class _Msg:
+        def __init__(self, head):
+            self.reply_to = head
+
+    check("message posted into a topic", topic_id(_Msg(_Head(True, None, 42))) == 42)
+    check("reply inside a topic", topic_id(_Msg(_Head(True, 42, 77))) == 42)
+    check("plain group message", topic_id(_Msg(_Head(False, None, 5))) is None)
+    check("no reply header at all", topic_id(_Msg(None)) is None)
+
     print("object keys")
 
     class _M:
@@ -1395,6 +1605,10 @@ async def main():
     try:
         if MODE == "list":
             await cmd_list(client)
+        elif MODE == "topics":
+            await cmd_topics(client)
+        elif MODE == "shows":
+            await cmd_shows(client)
         elif MODE == "pick":
             await pool.start()
             await cmd_pick(client, pool)
