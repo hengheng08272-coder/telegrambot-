@@ -64,5 +64,7 @@ tools/tg-video-downloader/_state/
 tools/tg-video-downloader/downloads/
 tools/tg-video-downloader/uploaded_urls.csv
 tools/tg-video-downloader/topics.txt
+tools/tg-video-downloader/topics.html
 tools/tg-video-downloader/shows.txt
+tools/tg-video-downloader/shows.html
 tools/tg-video-downloader/links_*.txt

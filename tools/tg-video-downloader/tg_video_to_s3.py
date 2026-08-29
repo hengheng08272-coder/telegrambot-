@@ -1116,16 +1116,56 @@ async def cmd_run(client, pool, backfill=True, watch=False):
 
 # ------------------------------------------------------- topics / shows -----
 
-def write_listing(name, lines):
-    """Write a listing next to the script as UTF-8 *with a BOM* - without it
-    Notepad guesses the ANSI code page and Khmer titles come out as mojibake."""
+LISTING_HTML = """<!doctype html>
+<meta charset="utf-8">
+<title>{title}</title>
+<style>
+  body {{ background:#12141a; color:#e7e9ee; margin:0; padding:24px; }}
+  pre {{
+    /* Notepad draws Khmer as boxes because its font has no Khmer glyphs.
+       A browser falls back through this list until one of them does. */
+    font-family: "Khmer OS System", "Khmer OS", "Leelawadee UI", "Nirmala UI",
+                 "Noto Sans Khmer", Consolas, monospace;
+    font-size: 15px; line-height: 1.9; white-space: pre-wrap; margin:0;
+  }}
+  h1 {{ font: 600 15px system-ui, sans-serif; color:#8b93a7; margin:0 0 16px; }}
+</style>
+<h1>{title} &mdash; {when}</h1>
+<pre>{body}</pre>
+"""
+
+
+def _escape(text):
+    return (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def write_listing(name, lines, title="Telegram videos"):
+    """Write a listing next to the script, twice.
+
+    The .txt is UTF-8 *with a BOM* - without it Notepad guesses the ANSI code
+    page and the Khmer titles come out as mojibake. But Notepad's own font has
+    no Khmer glyphs either, so the same listing also goes to an .html file: a
+    browser falls back to a font that can actually draw them.
+    """
+    written = None
     path = Path(name)
     try:
         path.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
+        written = path.resolve()
     except OSError as exc:
         log(f"[WARN] could not write {path}: {exc}")
-        return None
-    return path.resolve()
+
+    page = path.with_suffix(".html")
+    try:
+        page.write_text(LISTING_HTML.format(
+            title=_escape(title),
+            when=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            body=_escape("\n".join(lines))), encoding="utf-8")
+        written = page.resolve()          # the readable one wins the message
+    except OSError as exc:
+        log(f"[WARN] could not write {page}: {exc}")
+
+    return written
 
 
 async def cmd_topics(client):
@@ -1179,10 +1219,12 @@ async def cmd_topics(client):
     # The console cannot draw Khmer glyphs whatever the code page is, so the
     # same list goes to a file - with a BOM, which is what makes Notepad read
     # it as UTF-8 and show the titles properly.
-    out = write_listing("topics.txt", lines)
+    out = write_listing("topics.txt", lines, "Telegram topics")
     if out:
-        log(f"the same list, with the titles readable: {out}")
-        log("open it with Notepad if the names show as boxes here")
+        log("")
+        log("the names above show as boxes because the Windows console has no")
+        log("Khmer font. The same list, readable, was written next to this script:")
+        log(f"    {out}")
 
 
 async def cmd_shows(client):
@@ -1240,10 +1282,12 @@ async def cmd_shows(client):
     for line in lines:
         print(printable(line))
 
-    out = write_listing("shows.txt", lines)
+    out = write_listing("shows.txt", lines, "Telegram shows")
     if out:
-        log(f"the same list, with the names readable: {out}")
-        log("open it with Notepad if the names show as boxes here")
+        log("")
+        log("the names above show as boxes because the Windows console has no")
+        log("Khmer font. The same list, readable, was written next to this script:")
+        log(f"    {out}")
 
 
 # ----------------------------------------------------------------- pick -----
