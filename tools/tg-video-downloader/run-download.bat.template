@@ -1,4 +1,8 @@
 @echo off
+REM TEMPLATE - install-windows.bat copies this to run-download.bat.
+REM Fill in run-download.bat, NEVER this file: run-download.bat is gitignored,
+REM this template is tracked, so an api_hash or an S3 key typed in here gets
+REM pushed to GitHub for everyone with access to the repo to read.
 title Telegram videos -> storage
 chcp 65001 >nul
 cd /d "%~dp0"

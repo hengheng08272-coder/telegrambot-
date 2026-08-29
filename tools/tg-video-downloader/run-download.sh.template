@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Linux / VPS launcher. Copy to run-download.sh, fill it in, chmod +x it.
+# Linux / VPS launcher TEMPLATE.
+#
+#   cp run-download.sh.template run-download.sh
+#   chmod +x run-download.sh
 #   ./run-download.sh          full history, then exit
 #   ./run-download.sh auto     full history, then keep watching for new videos
 #   ./run-download.sh watch    only watch for new videos
@@ -7,12 +10,16 @@
 #   ./run-download.sh pick     choose which videos to download (1-5,8,12)
 #   ./run-download.sh links    reprint the link list for the Admin panel
 #   ./run-download.sh bench    measure the speed-up from more connections
+#
+# Fill in the COPY, never this template. run-download.sh is gitignored; this
+# file is tracked, so an api_hash or an S3 key typed in here gets pushed to
+# GitHub for everyone with access to the repo to read.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 # --- Telegram (my.telegram.org -> API development tools) ---
-export TG_API_ID=32578084
-export TG_API_HASH=6aebae7ae5432cf87672545c8cd1ed70
+export TG_API_ID=
+export TG_API_HASH=
 export TG_SESSION=tg_downloader
 export TG_SOURCE_CHAT=-1004468850700
 
