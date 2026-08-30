@@ -17,7 +17,25 @@ VPS នៅ Singapore ជាធម្មតាបាន **10–50MB/s** — ល�
 ssh root@194.233.68.31
 ```
 
-វាសួរ password → វាយចូល (អក្សរមិនបង្ហាញទេ ជារឿងធម្មតា) → Enter
+**លើកដំបូង វានឹងសួរបែបនេះ៖**
+```
+The authenticity of host '194.233.68.31' can't be established.
+ECDSA key fingerprint is SHA256:...
+Are you sure you want to continue connecting (yes/no/[fingerprint])?
+```
+វាយ **`yes`** រួច Enter — **តែពាក្យនេះទេ**។
+
+បន្ទាប់មកវាសួរ password → វាយចូល (អក្សរមិនបង្ហាញទេ ជារឿងធម្មតា) → Enter
+
+### ⚠️ ត្រូវឃើញ prompt ប្តូរជាមុនសិន
+
+| មុនចូល (Windows) | ក្រោយចូល (VPS) |
+|---|---|
+| `PS C:\Users\xxx>` | `root@vmi123456:~#` |
+
+**កុំ paste command ណាមួយ ដរាបណា prompt នៅតែជា `PS C:\...`** — បើ paste
+ពេលនោះ បន្ទាត់ដំបូងនឹងក្លាយជាចម្លើយឱ្យសំណួរ `yes/no` (ចម្លើយខុស → ដាច់)
+ហើយបន្ទាត់ដែលនៅសល់នឹងរត់លើ Windows ដែលគ្មាន `apt` → `'apt' is not recognized`។
 
 > បើមិនចេះ password សូមមើលក្នុង email ពី VPS provider ឬ reset វាក្នុង
 > control panel របស់ពួកគេ។
@@ -195,6 +213,8 @@ File បណ្ដោះអាសន្នរស់នៅត្រឹមពេល
 
 | សារ | ដោះស្រាយ |
 |---|---|
+| `Host key verification failed` | អ្នកមិនបានវាយ `yes` ពេលវាសួរលើកដំបូង — ssh ម្តងទៀត រួចវាយ `yes` |
+| `'apt' is not recognized` | អ្នក paste command ពេលនៅលើ Windows — ត្រូវចូល VPS ឱ្យឃើញ `root@...#` សិន |
 | `Permission denied (publickey)` | password ខុស ឬ VPS បិទ password login — ប្រើ SSH key |
 | `command not found: screen` | `apt install -y screen` |
 | `[SLOW] cryptg is missing` | `./venv/bin/pip install cryptg` |
