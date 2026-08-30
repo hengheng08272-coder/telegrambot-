@@ -40,6 +40,8 @@ export PUBLIC_BASE_URL=
 export TG_CONNECTIONS=8
 export TG_WORKERS=3
 export TG_UPLOADERS=3
+export UPLOAD_CHUNK_MB=32
+export UPLOAD_CONCURRENCY=12
 
 # --- choose WHICH videos (empty = all) ---
 export TG_TOPIC=
@@ -48,6 +50,11 @@ export ONLY_IDS=
 export SINCE=
 export UNTIL=
 export MAX_MB=
+
+# Already have EP 1-10 in the app? FROM_EP=11 carries on from there.
+export FROM_EP=
+export TO_EP=
+
 export EP_KEYS=1
 export RESCAN_ALL=0
 
@@ -57,4 +64,8 @@ export MAX_ITEMS=0
 export NEWEST_FIRST=0
 export DRY_RUN=0
 
-exec python3 tg_video_to_s3.py "${1:-}"
+# Use the venv if one was created next to the script, else the system python.
+PY=python3
+[ -x "./venv/bin/python" ] && PY=./venv/bin/python
+
+exec "$PY" tg_video_to_s3.py "${1:-}"
