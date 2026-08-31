@@ -2,22 +2,37 @@
 
 ## ១. ដាក់ Secrets (Supabase → Settings → Edge Functions → Secrets)
 
+> ## ⚠️ មុននឹងដាក់ — ត្រូវដឹងថាលុយចូលគណនីណា
+>
+> **លុយចូលគណនីដែលចុះឈ្មោះជាមួយ `api_token` នៅលើ gateway** —
+> មិនមែនតាមតម្លៃដែលកូដផ្ញើទៅទេ។ បើមិនដូច្នេះ អ្នកណាក៏អាចប្តូរ
+> គណនីអ្នកដទៃបាន។
+>
+> ដូច្នេះ៖ **ចូល dashboard របស់ gateway ពិនិត្យថា token នេះជាប់នឹង
+> គណនីធនាគាររបស់អ្នក** មុននឹងបើកប្រើ។ បើវាជាប់នឹងគណនីអ្នកផ្សេង
+> លុយអតិថិជនទាំងអស់នឹងចូលគណនីអ្នកនោះ។
+>
+> សាកល្បង៖ ទិញ $0.10 មួយ រួចពិនិត្យថាលុយចូល**ធនាគាររបស់អ្នក**ឬអត់។
+
 **ចាំបាច់**
 
 ```
-KHQR_GATEWAY_TOKEN = 1590108099:36dfa58ec89bda8f089044bd7fe87bda
+KHQR_GATEWAY_TOKEN = <token របស់អ្នក ពី dashboard gateway>
 ```
 
 **ស្រេចចិត្ត** (បើមិនដាក់ វានឹងប្រើតម្លៃ default របស់ gateway)
 
 ```
 KHQR_GATEWAY_BASE           = https://mengsmm.store
-KHQR_GATEWAY_ACCOUNT        = chansocheat_vin@bkrt
-KHQR_GATEWAY_MERCHANT_NAME  = Socheat
+KHQR_GATEWAY_ACCOUNT        = <Bakong account របស់អ្នក>
+KHQR_GATEWAY_MERCHANT_NAME  = Nint_Anime
 KHQR_GATEWAY_MERCHANT_CITY  = Phnom Penh
-KHQR_GATEWAY_STORE_LABEL    = Socheat
+KHQR_GATEWAY_STORE_LABEL    = NINT ANIME
 KHQR_GATEWAY_TERMINAL_LABEL = NINT VIP
 ```
+
+> តម្លៃ ៥ ខាងលើគ្រាន់តែជា **ស្លាក** ដែល gateway *អាច* យកទៅដាក់ក្នុង QR
+> ប៉ុណ្ណោះ — វា**មិនកំណត់ថាលុយចូលណាទេ**។ លុយចូលតាម token ដដែល។
 
 > **Token មិនត្រូវដាក់ក្នុង `VITE_*` ជាដាច់ខាត។** `VITE_*` ត្រូវបាន bundle
 > ចូល app — អ្នកណាក៏អាចអានបាន។ Token នេះស្ថិតនៅតែក្នុង edge function
