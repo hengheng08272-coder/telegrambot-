@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Linux / VPS launcher TEMPLATE.
+#
+#   cp run-download.sh.template run-download.sh
+#   chmod +x run-download.sh
+#   ./run-download.sh          full history, then exit
+#   ./run-download.sh auto     full history, then keep watching for new videos
+#   ./run-download.sh watch    only watch for new videos
+#   ./run-download.sh list     print chat ids
+#   ./run-download.sh topics   list the group's topics (one show each)
+#   ./run-download.sh shows    group the videos by show name
+#   ./run-download.sh pick     choose which videos to download (1-5,8,12)
+#   ./run-download.sh links    reprint the link list for the Admin panel
+#   ./run-download.sh bench    measure the speed-up from more connections
+#
+# Fill in the COPY, never this template. run-download.sh is gitignored; this
+# file is tracked, so an api_hash or an S3 key typed in here gets pushed to
+# GitHub for everyone with access to the repo to read.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+# --- Telegram (my.telegram.org -> API development tools) ---
+export TG_API_ID=
+export TG_API_HASH=
+export TG_SESSION=tg_downloader
+export TG_SOURCE_CHAT=-1004468850700
+
+# --- storage: leave S3_BUCKET empty to just save into SAVE_DIR ---
+export SAVE_DIR=./downloads
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+export S3_BUCKET=
+export S3_PREFIX=telegram/
+export S3_ENDPOINT=
+export AWS_REGION=auto
+export S3_ADDRESSING=
+export PUBLIC_BASE_URL=
+
+# --- speed ---
+export TG_CONNECTIONS=8
+export TG_WORKERS=3
+export TG_UPLOADERS=3
+export UPLOAD_CHUNK_MB=32
+export UPLOAD_CONCURRENCY=12
+
+# --- choose WHICH videos (empty = all) ---
+export TG_TOPIC=
+export FILTER=
+export ONLY_IDS=
+export SINCE=
+export UNTIL=
+export MAX_MB=
+
+# Already have EP 1-10 in the app? FROM_EP=11 carries on from there.
+export FROM_EP=
+export TO_EP=
+
+export EP_KEYS=1
+export RESCAN_ALL=0
+
+# --- options ---
+export MIN_MB=0
+export MAX_ITEMS=0
+export NEWEST_FIRST=0
+export DRY_RUN=0
+
+# Use the venv if one was created next to the script, else the system python.
+PY=python3
+[ -x "./venv/bin/python" ] && PY=./venv/bin/python
+
+exec "$PY" tg_video_to_s3.py "${1:-}"

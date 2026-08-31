@@ -1,0 +1,95 @@
+@echo off
+REM TEMPLATE - install-windows.bat copies this to run-download.bat.
+REM Fill in run-download.bat, NEVER this file: run-download.bat is gitignored,
+REM this template is tracked, so an api_hash or an S3 key typed in here gets
+REM pushed to GitHub for everyone with access to the repo to read.
+title Telegram videos -> storage
+chcp 65001 >nul
+cd /d "%~dp0"
+
+REM ================= EDIT THIS BLOCK ONLY =================
+
+REM --- Telegram (my.telegram.org -> API development tools) ---
+set TG_API_ID=
+set TG_API_HASH=
+set TG_SESSION=tg_downloader
+
+REM --- which channel/group (run list-chats.bat to find the id) ---
+set TG_SOURCE_CHAT=
+
+REM --- storage ---
+REM Leave S3_BUCKET EMPTY to simply save the videos into the folder below.
+set SAVE_DIR=./downloads
+
+REM Or fill this in to push everything to S3 / R2 / Wasabi / Spaces / MinIO:
+set AWS_ACCESS_KEY_ID=
+set AWS_SECRET_ACCESS_KEY=
+set S3_BUCKET=
+set S3_PREFIX=telegram/
+
+REM The endpoint is the HOST ONLY - never add the bucket name to it, or every
+REM object lands under <bucket>/<bucket>/... and nothing can be played.
+REM Cloudflare R2:  endpoint = https://<ACCOUNT_ID>.r2.cloudflarestorage.com  region = auto
+REM Wasabi:         endpoint = https://s3.ap-southeast-1.wasabisys.com        region = ap-southeast-1
+REM DO Spaces:      endpoint = https://sgp1.digitaloceanspaces.com           region = sgp1
+REM MinIO / VPS:    endpoint = https://files.yourdomain.com   and set S3_ADDRESSING=path
+REM AWS S3:         leave S3_ENDPOINT empty
+set S3_ENDPOINT=
+set AWS_REGION=auto
+set S3_ADDRESSING=
+
+REM public link prefix (R2 public bucket / custom domain / CDN). Optional.
+set PUBLIC_BASE_URL=
+set URL_LIST_FILE=uploaded_urls.csv
+
+REM --- speed (see SETUP_KH.md; run run-bench.bat to tune) ---
+set TG_CONNECTIONS=4
+set TG_WORKERS=2
+set TG_UPLOADERS=2
+set PARALLEL_MIN_MB=8
+set UPLOAD_CHUNK_MB=16
+set UPLOAD_CONCURRENCY=8
+
+REM --- choose WHICH videos (leave empty = every video in the group) ---
+REM One group with many shows: run it once per show.
+REM   - group uses Topics?  run-topics.bat -> copy TG_TOPIC + S3_PREFIX here
+REM   - no topics?          run-shows.bat  -> copy FILTER  + S3_PREFIX here
+REM Always move S3_PREFIX with them, so each show gets its own folder and its
+REM own links_*.txt to paste into that show's Bulk import.
+set TG_TOPIC=
+set FILTER=
+set ONLY_IDS=
+set SINCE=
+set UNTIL=
+set MAX_MB=
+
+REM Already have EP 1-10 in the app? FROM_EP=11 takes it from there.
+REM (a file whose name carries no episode number is skipped while these are set)
+set FROM_EP=
+set TO_EP=
+
+set PICK_LIMIT=300
+set EP_KEYS=1
+set LINKS_FILE=
+set RESCAN_ALL=0
+
+REM --- options ---
+set MIN_MB=0
+set MAX_ITEMS=0
+set KEEP_LOCAL=0
+set NEWEST_FIRST=0
+set DRY_RUN=0
+
+REM ================= STOP EDITING HERE ====================
+
+if not exist tg_video_to_s3.py (
+  echo ERROR: tg_video_to_s3.py not found next to this .bat
+  echo Extract the ZIP to a real folder first - do NOT run from inside the zip.
+  pause
+  exit /b 1
+)
+
+REM %1 lets the other .bat files reuse these settings: list / watch / auto / bench
+python tg_video_to_s3.py %1
+echo.
+pause

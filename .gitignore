@@ -47,3 +47,24 @@ tools/aba-relay.service
 *.session-journal
 __pycache__/
 *.py[cod]
+
+# ---------------------------------------------------------------
+# Telegram video downloader — NEVER COMMIT THESE
+#
+# run-download.bat / .sh hold the Telegram api_hash and the S3 keys once
+# they are filled in, config.json holds the api_hash, and the .session
+# file is a COMPLETE LOGIN to that Telegram account. Only the *.template
+# copies belong in git.
+# ---------------------------------------------------------------
+tools/tg-video-downloader/run-download.bat
+tools/tg-video-downloader/run-download.sh
+tools/tg-video-downloader/config.json
+tools/tg-video-downloader/_tmp/
+tools/tg-video-downloader/_state/
+tools/tg-video-downloader/downloads/
+tools/tg-video-downloader/uploaded_urls.csv
+tools/tg-video-downloader/topics.txt
+tools/tg-video-downloader/topics.html
+tools/tg-video-downloader/shows.txt
+tools/tg-video-downloader/shows.html
+tools/tg-video-downloader/links_*.txt
