@@ -28,7 +28,7 @@ Function នេះប្រើ Secrets ដូចគ្នានឹង `notify-ne
 ```
 TELEGRAM_BOT_TOKEN
 TELEGRAM_GROUP_ID
-TELEGRAM_MINIAPP_URL = https://t.me/AnimetioMini_bot/App
+TELEGRAM_MINIAPP_URL = https://t.me/AnimetioMini_bot/app   (ស្រេចចិត្ត — បើមិនដាក់ ឬដាក់ខុស វាទាញឈ្មោះ bot ពី getMe ដោយខ្លួនឯង)
 ```
 
 ## ៣. តាំង Cron job (ហៅ function រៀងរាល់នាទី)
@@ -63,15 +63,42 @@ select cron.schedule(
 ## ៤. កំណត់ក្នុង Admin Panel
 
 Admin Panel → ប៊ូតុង **Telegram Auto-Post** (ក្បែរ Watch log)៖
-- **Enable auto-posting** — បើក/បិទ
-- **Post every (minutes)** — ចន្លោះពេលរវាងការផុសនីមួយៗ (ឧ. `180` = រៀងរាល់ ៣ម៉ោង)
-- **Shows per post** — ចំនួនរឿងផុសម្ដងៗ
-- **Post now (test)** — សាកល្បងផុសភ្លាមៗ ដោយមិនរង់ចាំដល់ម៉ោង ដើម្បីតេស្តមើលថា
-  Bot, Group ID, និង poster/caption ត្រឹមត្រូវឬអត់
+- **Enable auto-posting** — បើក/បិទ ការផុសតាមកាលវិភាគ
+- **Post every (minutes)** — ចន្លោះពេលរវាងការផុសនីមួយៗ គិតជា**នាទី**
+  (ឧ. `180` = រៀងរាល់ ៣ម៉ោង, `1440` = ១ដងក្នុង១ថ្ងៃ) — យ៉ាងតិច ៥ នាទី
+- **Shows per post** — ចំនួនរឿងផុសម្ដងៗ (១–១០)
+- **រឿងដែលត្រូវផុស** — ជ្រើសបាន ២ បែប៖
+  - **តាមវេនស្វ័យប្រវត្តិ** (ដើម) — រឿងទាំងអស់ (លើកលែង Coming soon) ផ្លាស់វេនគ្នា
+    រឿងណាមិនទាន់ផុសយូរជាងគេផុសមុន
+  - **ជ្រើសរើសដោយខ្លួនឯង** — ផុសតែរឿងក្នុងបញ្ជីដែលបងបន្ថែម តាមលំដាប់ដែលបងរៀប
+    (លេខ ១ ផុសមុនគេ) ដោយប្រើ ▲▼ ដើម្បីប្តូរលំដាប់ និង ✕ ដើម្បីដកចេញ។
+    ដល់ចុងបញ្ជី វាវិលមកដើមវិញ។ រឿង Coming soon ក៏ផុសដែរ បើបងដាក់ក្នុងបញ្ជីនេះ
+- **Next post in …** — ប្រាប់ថានៅសល់ប៉ុន្មាននាទីទៀតទើបផុសលើកក្រោយ
+  (គិតពី "ផុសចុងក្រោយ + ចន្លោះពេល") ព្រមទាំងម៉ោងផុសចុងក្រោយ
+- **Recent posts** — បញ្ជីរឿងចុងក្រោយដែល Bot ផុសរួច (ដើម្បីដឹងថាដំណើរការឬអត់)
+- **Post now (test)** — សាកល្បងផុសភ្លាមៗ ដោយមិនរង់ចាំដល់ម៉ោង។ វាដំណើរការ
+  ទោះបិទ **Enable auto-posting** ក៏ដោយ ហើយ**មិនប៉ះពាល់កាលវិភាគ**ទេ
+  (មិនរុញម៉ោងផុសបន្ទាប់) — បើ Telegram បដិសេធ វានឹងបង្ហាញមូលហេតុពិត
+  (ឧ. Bot មិនទាន់ក្នុង group, chat id ខុស)
+
+> ចំណាំ៖ ត្រូវចុច **Save settings** មុន ទើបចន្លោះពេលថ្មីមានប្រសិទ្ធភាព។ បើមាន
+> ការកែមិនទាន់រក្សាទុក Panel នឹងបង្ហាញ "Unsaved changes"។
 
 ## របៀបដំណើរការ
 
 Cron ហៅ function រៀងរាល់នាទី → function ពិនិត្យ `enabled` និងម៉ោងផុសចុងក្រោយ →
 បើដល់ពេល → ជ្រើសរើសរឿងណាដែលមិនទាន់ត្រូវផុស ឬយូរអង្វែងបំផុតតាំងពីផុសចុងក្រោយ
 (មើលពី `telegram_auto_post_log`) → ផុសទៅ group → កត់ត្រាទុកក្នុង log ដើម្បីវេន
-បន្ទាប់ជ្រើសរើសរឿងផ្សេង។
+បន្ទាប់ជ្រើសរើសរឿងផ្សេង → ធ្វើបច្ចុប្បន្នភាព `last_run_at` (តែពេលផុសតាម
+កាលវិភាគប៉ុណ្ណោះ ទេពេលចុច "Post now")។
+
+## បើវាមិនដំណើរការ (troubleshooting)
+
+| រោគសញ្ញា | មូលហេតុ / ដំណោះស្រាយ |
+| --- | --- |
+| Panel បង្ហាញ "Table telegram_auto_post_settings not found" | មិនទាន់ run migration — ចម្លង `database/telegram-auto-post-addition.sql` ទៅ SQL Editor |
+| ចុច Save ហើយតម្លៃត្រឡប់មកវិញដដែល | ត្រូវ run migration ជាថ្មី (វាមាន policy `admin_insert_telegram_auto_post_settings` ថ្មី) ហើយ login ជា admin (`profiles.is_admin = true`) |
+| "Post now" បង្ហាញ `Skipped: no_shows` | រឿងទាំងអស់ត្រូវបានដាក់ **Coming soon** |
+| "Post now" បង្ហាញ `រំលង៖ បញ្ជីរឿង...នៅទទេ` | បើក «ជ្រើសរើសដោយខ្លួនឯង» តែមិនទាន់បន្ថែមរឿង |
+| "Post now" បង្ហាញ Telegram refused … | មើលសារ៖ ភាគច្រើន Bot មិនទាន់ជាសមាជិក group ឬ `TELEGRAM_GROUP_ID` ខុស |
+| ផុសបានពេលចុច test តែមិនផុសតាមម៉ោង | ភ្លេចបើក **Enable auto-posting** ឬ cron job មិនទាន់ដំឡើង (ផ្នែកទី ៣) |

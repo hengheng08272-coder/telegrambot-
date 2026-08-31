@@ -27,11 +27,20 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 //      PAID/APPROVED and that the viewer's VIP actually unlocks.
 // =====================================================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+const corsHeaders = {  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
+
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
 
 function baseUrl(env: string) {
   return env === "production"
@@ -105,7 +114,7 @@ Deno.serve(async (req: Request) => {
     return ack();
   }
 
-  let payload: any;
+  let payload: Record<string, unknown> | null = null;
   try {
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
@@ -118,7 +127,7 @@ Deno.serve(async (req: Request) => {
     return ack();
   }
 
-  const tranId: string | undefined = payload?.tran_id;
+  const tranId = payload?.tran_id as string | undefined;
   if (!tranId) {
     console.log("[aba-payment-callback] no tran_id in payload:", payload);
     return ack();
@@ -165,6 +174,22 @@ Deno.serve(async (req: Request) => {
       return ack();
     }
 
+    // Claim first, grant second. Granting before the status update let a
+    // gateway callback and the 30s client fallback both add a month for
+    // the same payment.
+    const { data: claimed } = await admin
+      .from("payment_submissions")
+      .update({ status: "approved", auto_approved: true, admin_confirmed: true, reviewed_at: new Date().toISOString() })
+      .eq("id", sub.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+
+    if (!claimed) {
+      console.log(`[aba-payment-callback] ${tranId} was approved by another path first — no-op`);
+      return ack();
+    }
+
     const { data: tierRow } = await admin
       .from("pricing_tiers")
       .select("months")
@@ -192,27 +217,13 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     });
 
-    const { data: updated } = await admin
-      .from("payment_submissions")
-      .update({ status: "approved", auto_approved: true, reviewed_at: new Date().toISOString() })
-      .eq("id", sub.id)
-      .eq("status", "pending") // guard against a race with the client's own 30s auto-approve
-      .select("id")
-      .maybeSingle();
-
-    if (!updated) {
-      console.log(`[aba-payment-callback] ${tranId} was approved by another path first — no-op`);
-      return ack();
-    }
-
     console.log(`[aba-payment-callback] VIP granted via real ABA gateway: ${sub.id} (${sub.tier}, $${sub.amount})`);
 
     const mainBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (mainBotToken && adminChatId) {
+    for (const chatId of mainBotToken ? adminChatIds() : []) {
       await tg(
-        mainBotToken,
-        adminChatId,
+        mainBotToken!,
+        chatId,
         `✅ ទូទាត់ស្វ័យប្រវត្តិ — ផ្ទៀងផ្ទាត់ពិតតាម ABA PayWay Gateway\n` +
           `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
           `📦 ${sub.tier} — $${sub.amount}\n` +

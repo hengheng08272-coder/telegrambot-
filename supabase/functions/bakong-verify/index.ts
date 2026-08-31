@@ -60,6 +60,16 @@ const TIER_MONTHS_FALLBACK: Record<string, number> = { "1m": 1, "2m": 2, "3m": 3
 /** How long after a ticket opens a matching payment is still accepted. */
 const PAYMENT_GRACE_MS = 30 * 60 * 1000;
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 interface BakongEnvelope {
   responseCode?: number;
   responseMessage?: string;
@@ -199,7 +209,7 @@ Deno.serve(async (req: Request) => {
     // into the replay guard: whichever poll gets here first wins, and a
     // second attempt to spend the same payment is refused by Postgres
     // rather than granting a second month.
-    const { error: claimErr } = await admin
+    const { data: claimed, error: claimErr } = await admin
       .from("payment_submissions")
       .update({
         bakong_hash: tx.hash ?? `${md5}:${paidAt}`,
@@ -212,10 +222,18 @@ Deno.serve(async (req: Request) => {
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", submission_id)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
 
     if (claimErr) {
       return json({ ok: false, paid: true, granted: false, reason: "already-claimed", detail: claimErr.message });
+    }
+    // No error but no row either: another path (the 30s fallback, an ABA
+    // notification, the admin) approved this ticket first. Granting here
+    // too would hand out a second month for one payment.
+    if (!claimed) {
+      return json({ ok: true, paid: true, granted: false, reason: "already-approved" });
     }
 
     await admin.from("subscriptions").upsert({
@@ -227,19 +245,21 @@ Deno.serve(async (req: Request) => {
     });
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (botToken && adminChatId) {
+    const chatIds = adminChatIds();
+    if (botToken && chatIds.length > 0) {
       const text =
         "🏦 ការទូទាត់បានផ្ទៀងផ្ទាត់ដោយធនាគារ (Bakong)\n\n" +
         `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
         `📦 ${sub.tier} — $${sub.amount}\n` +
         `🔖 ${tx.hash ?? "-"}\n\n` +
         "មិនចាំបាច់ពិនិត្យទេ — ធនាគារបានបញ្ជាក់រួចហើយ។";
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: adminChatId, text }),
-      }).catch(() => {});
+      for (const chatId of chatIds) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text }),
+        }).catch(() => {});
+      }
     }
 
     return json({ ok: true, paid: true, granted: true, hash: tx.hash ?? null });

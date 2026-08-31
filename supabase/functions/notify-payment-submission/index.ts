@@ -28,6 +28,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 const TIER_LABEL: Record<string, string> = {
   "1m": "1 Month",
   "2m": "2 Months",
@@ -52,7 +62,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID")!;
+    const chatIds = adminChatIds();
 
     const headline =
       reason === "joined"
@@ -84,24 +94,30 @@ Deno.serve(async (req: Request) => {
       ]],
     };
 
-    let res: Response;
-    if (screenshot_url) {
-      res = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: adminChatId, photo: screenshot_url, caption, reply_markup: replyMarkup }),
-      });
-    } else {
-      res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: adminChatId, text: caption, reply_markup: replyMarkup }),
-      });
+    // One ticket per admin, each with its own working Approve/Reject
+    // buttons. The call only reports failure when NO admin could be
+    // reached — one bad id among several must not fail the whole notice.
+    let delivered = 0;
+    let lastError = "no admin chat id configured";
+    for (const chatId of chatIds) {
+      const res = screenshot_url
+        ? await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, photo: screenshot_url, caption, reply_markup: replyMarkup }),
+          })
+        : await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: caption, reply_markup: replyMarkup }),
+          });
+      const data: { ok: boolean; description?: string } = await res.json();
+      if (data.ok) delivered++;
+      else lastError = data.description ?? "telegram rejected the message";
     }
 
-    const data = await res.json();
-    if (!data.ok) {
-      return new Response(JSON.stringify({ error: data.description }), {
+    if (delivered === 0) {
+      return new Response(JSON.stringify({ error: lastError }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

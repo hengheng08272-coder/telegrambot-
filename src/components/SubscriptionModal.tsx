@@ -52,6 +52,8 @@ import {
   createAbaCheckout,
   type AbaCheckoutResult,
   checkBakongPayment,
+  createGatewayKhqr,
+  checkGatewayPayment,
   checkSubmissionStatus,
   getPaymentReceipt,
   type PaymentReceipt,
@@ -136,7 +138,9 @@ export default function SubscriptionModal({
   // whenever the owner hasn't configured Bakong, in which case everything
   // below falls back to the QR image they uploaded.
   const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
-  const [liveKhqr, setLiveKhqr] = useState<{ payload: string; md5: string; image: string } | null>(
+  const [liveKhqr, setLiveKhqr] = useState<
+    { payload: string; md5: string; image: string; source: 'bakong' | 'gateway' } | null
+  >(
     null,
   );
   const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
@@ -292,7 +296,19 @@ export default function SubscriptionModal({
       // own QR. bakong-verify writes the same status column, so the tick
       // above picks the result up either way.
       tick += 1;
-      if (liveKhqr && tick % 4 === 0) {
+      if (liveKhqr?.source === 'gateway') {
+        // The gateway is ours to poll and answers about one bill, so it
+        // is asked on every tick — three seconds from paying to unlocked.
+        const outcome = await checkGatewayPayment(pending.id);
+        if (recyclingRef.current) return;
+        if (outcome === 'granted') return setDecision('approved');
+        if (outcome === 'expired') {
+          // A lapsed QR will never be paid. Dropping it sends the effect
+          // above for a fresh one rather than counting down on a dead code.
+          setLiveKhqr(null);
+          return;
+        }
+      } else if (liveKhqr && tick % 4 === 0) {
         const outcome = await checkBakongPayment(pending.id, liveKhqr.md5);
         if (!recyclingRef.current && outcome === 'granted') setDecision('approved');
       }
@@ -466,10 +482,44 @@ export default function SubscriptionModal({
   // payment can never be matched against the wrong ticket.
   useEffect(() => {
     let cancelled = false;
-    if (!bakongConfig || !payTier) {
+    if (!payTier) {
       setLiveKhqr(null);
       return;
     }
+
+    // No Bakong account configured (the account id is blank in
+    // app_settings, which is the state this shipped in) means the app
+    // cannot build its own QR and nothing could auto-confirm. The
+    // gateway mints one for this exact ticket instead, and answers for
+    // it, so a payment still unlocks VIP without a screenshot.
+    if (!bakongConfig) {
+      if (!pending) {
+        setLiveKhqr(null);
+        return;
+      }
+      (async () => {
+        const issued = await createGatewayKhqr(pending.id);
+        if (cancelled || !issued) {
+          if (!cancelled) setLiveKhqr(null);
+          return;
+        }
+        // Drawn locally from the payload when possible: it costs no
+        // round trip and cannot show a different bill than the one being
+        // polled. The gateway's own PNG is the fallback.
+        const image = issued.qrString ? await renderQrDataUrl(issued.qrString) : null;
+        if (cancelled) return;
+        const src = image ?? issued.qrImageUrl;
+        setLiveKhqr(
+          src
+            ? { payload: issued.qrString, md5: issued.md5, image: src, source: 'gateway' }
+            : null,
+        );
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
     (async () => {
       const generated = await generateKhqr({
         config: bakongConfig,
@@ -486,7 +536,11 @@ export default function SubscriptionModal({
       if (cancelled) return;
       // Without an image there is nothing to show or scan, so this falls
       // back to the uploaded QR rather than half-applying.
-      setLiveKhqr(image ? { payload: generated.payload, md5: generated.md5, image } : null);
+      setLiveKhqr(
+        image
+          ? { payload: generated.payload, md5: generated.md5, image, source: 'bakong' }
+          : null,
+      );
     })();
     return () => {
       cancelled = true;

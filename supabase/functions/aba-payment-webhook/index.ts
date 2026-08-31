@@ -34,6 +34,38 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Bot-Api-Secret-Token",
 };
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+// Only the fields this function actually reads — a Telegram update
+// carries a great deal more, and none of it is trusted here anyway.
+type TgChat = { id?: number };
+type TgMessage = {
+  chat?: TgChat;
+  text?: string;
+  caption?: string;
+  from?: { id?: number };
+  sender_chat?: TgChat;
+  forward_from?: { id?: number };
+  forward_from_chat?: TgChat;
+  forward_origin?: { chat?: TgChat; sender_chat?: TgChat; sender_user?: { id?: number } };
+  is_automatic_forward?: boolean;
+  via_bot?: { username?: string };
+};
+type TgUpdate = {
+  message?: TgMessage;
+  channel_post?: TgMessage;
+  edited_message?: TgMessage;
+  edited_channel_post?: TgMessage;
+};
+
 const MATCH_WINDOW_MIN = 15;
 
 const AMOUNT_PATTERN = /(?:\$|USD)\s*([0-9]+(?:\.[0-9]{1,2})?)|([0-9]+(?:\.[0-9]{1,2})?)\s*(?:\$|USD)/i;
@@ -100,7 +132,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  let body: any;
+  let body: TgUpdate;
   try {
     body = await req.json();
   } catch {
@@ -308,10 +340,9 @@ Deno.serve(async (req: Request) => {
     console.log(`[SUCCESS] Auto-confirmed via ABA notification: ${sub.id} (tier: ${sub.tier}, $${amount})`);
 
     const mainBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (mainBotToken && adminChatId) {
-      await tg(mainBotToken, "sendMessage", {
-        chat_id: adminChatId,
+    for (const notifyChatId of mainBotToken ? adminChatIds() : []) {
+      await tg(mainBotToken!, "sendMessage", {
+        chat_id: notifyChatId,
         text:
           `⚡ Auto-confirmed via ABA notification\n` +
           `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +

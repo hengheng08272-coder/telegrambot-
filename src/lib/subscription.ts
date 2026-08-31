@@ -416,6 +416,75 @@ export async function cancelPaymentSubmission(submissionId: string): Promise<boo
 // Silent on failure by design — an unconfigured token, an offline
 // network or a payment that simply hasn't happened yet must all read as
 // "keep waiting", which is what the surrounding poll already does.
+// ---------- KHQR gateway ----------
+//
+// Used when the owner has not configured their own Bakong account (the
+// usual case): the gateway mints the QR for this exact ticket and then
+// answers whether that bill was paid, so auto-confirm works without an
+// NBC developer token. The api_token lives in a Supabase secret and is
+// never shipped to the browser — both calls go through the edge
+// function, which is also the only place allowed to write subscriptions.
+
+export interface GatewayKhqr {
+  qrString: string;
+  qrImageUrl: string | null;
+  md5: string;
+  billNumber: string;
+  expiresAt: string;
+}
+
+/** Mints the QR for a ticket. Null when the gateway is unconfigured or refuses. */
+export async function createGatewayKhqr(submissionId: string): Promise<GatewayKhqr | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('khqr-gateway', {
+      body: { action: 'generate', submission_id: submissionId },
+    });
+    if (error) return null;
+    const row = data as {
+      ok?: boolean;
+      qr_string?: string;
+      qr_image_url?: string | null;
+      md5?: string;
+      bill_number?: string;
+      expires_at?: string;
+    } | null;
+    if (!row?.ok || (!row.qr_string && !row.qr_image_url)) return null;
+    return {
+      qrString: row.qr_string ?? '',
+      qrImageUrl: row.qr_image_url ?? null,
+      md5: row.md5 ?? '',
+      billNumber: row.bill_number ?? '',
+      expiresAt: row.expires_at ?? '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Asks the gateway whether this ticket's bill has been paid.
+ *
+ * 'expired' is distinct from 'waiting' on purpose: a lapsed QR will never
+ * turn into a payment, so the sheet can stop pretending and offer a new
+ * one instead of counting down against a dead code.
+ */
+export async function checkGatewayPayment(
+  submissionId: string,
+): Promise<'granted' | 'waiting' | 'expired'> {
+  try {
+    const { data, error } = await supabase.functions.invoke('khqr-gateway', {
+      body: { action: 'check', submission_id: submissionId },
+    });
+    if (error) return 'waiting';
+    const row = data as { granted?: boolean; expired?: boolean } | null;
+    if (row?.granted) return 'granted';
+    if (row?.expired) return 'expired';
+    return 'waiting';
+  } catch {
+    return 'waiting';
+  }
+}
+
 export async function checkBakongPayment(
   submissionId: string,
   md5: string,

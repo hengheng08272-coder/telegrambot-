@@ -17,6 +17,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 // Fallback only -- live source of truth is pricing_tiers.months, editable
 // from Admin Panel -> Subscriptions -> "Duration".
 const TIER_MONTHS_FALLBACK: Record<string, number> = { "1m": 1, "2m": 2, "6m": 6, "12m": 12 };
@@ -46,6 +56,25 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true, alreadyHandled: true, status: sub.status }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Claim the ticket before granting anything: the old shape read the
+    // status, granted, then marked it approved, so two paths landing
+    // together (the 30s client fallback and an ABA notification, say)
+    // both read "pending" and both added a month — which is how a
+    // one-month payment turned into 61 days. This UPDATE ... WHERE
+    // status = 'pending' is atomic: exactly one caller gets a row back,
+    // and only that caller grants.
+    const { data: claimed } = await admin
+      .from("payment_submissions")
+      .update({ status: "approved", auto_approved: true, reviewed_at: new Date().toISOString() })
+      .eq("id", submission_id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+
+    if (!claimed) {
+      return new Response(JSON.stringify({ ok: true, alreadyHandled: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { data: tierRow } = await admin.from("pricing_tiers").select("months").eq("key", sub.tier).maybeSingle();
     const months = tierRow?.months ?? TIER_MONTHS_FALLBACK[sub.tier] ?? 1;
 
@@ -62,28 +91,29 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     });
 
-    await admin.from("payment_submissions").update({ status: "approved", auto_approved: true, reviewed_at: new Date().toISOString() }).eq("id", submission_id);
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (botToken && adminChatId) {
+    const chatIds = adminChatIds();
+    if (botToken && chatIds.length > 0) {
       const caption =
         "⚡ ការទូទាត់បានឆ្លងកាត់ការផ្ទៀងផ្ទាត់ស្វ័យប្រវត្តិ\n\n" +
         `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
         `📦 ${sub.tier} — $${sub.amount}\n\n` +
         NEEDS_CONFIRMATION_NOTE;
-      if (sub.screenshot_url) {
-        await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: adminChatId, photo: sub.screenshot_url, caption }),
-        });
-      } else {
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: adminChatId, text: caption }),
-        });
+      for (const chatId of chatIds) {
+        if (sub.screenshot_url) {
+          await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, photo: sub.screenshot_url, caption }),
+          });
+        } else {
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: caption }),
+          });
+        }
       }
     }
 

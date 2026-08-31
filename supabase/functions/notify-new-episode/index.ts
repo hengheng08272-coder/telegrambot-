@@ -10,8 +10,42 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 //   TELEGRAM_BOT_TOKEN     - from @BotFather
 //   TELEGRAM_GROUP_ID      - the VIP group's chat id (negative number,
 //                            e.g. -1001234567890)
-//   TELEGRAM_MINIAPP_URL   - e.g. https://t.me/YourBotName/app
-//                            (the Mini App link from BotFather, no query string)
+//   TELEGRAM_MINIAPP_URL   - optional. The Mini App link from BotFather,
+//                            e.g. https://t.me/YourBotName/app (no query
+//                            string). Anything that is not a t.me link is
+//                            ignored and the link is built from getMe.
+
+// The "watch now" button must be a Telegram deep link
+// (https://t.me/<bot>/<app>?startapp=...), not the site's own https URL.
+// TELEGRAM_MINIAPP_URL had been set to the Vercel address, so Telegram
+// treated the button as an ordinary web link: tapping it raised "Do you
+// want to open ...?" and threw the viewer into a browser, outside the
+// Mini App, with no Telegram identity and therefore no VIP.
+//
+// Rather than depend on that secret being right, the bot's own username
+// is read from getMe when it isn't — the bot token is already here, so
+// this needs no new configuration. TELEGRAM_MINIAPP_SHORT_NAME overrides
+// the "app" path segment if the Mini App is published under another one.
+async function miniAppBase(botToken: string): Promise<string> {
+  const configured = (Deno.env.get("TELEGRAM_MINIAPP_URL") ?? "").trim().replace(/\/+$/, "");
+  if (/^https:\/\/t\.me\//i.test(configured)) return configured;
+
+  const me = await fetch(`https://api.telegram.org/bot${botToken}/getMe`)
+    .then((r) => r.json())
+    .catch(() => null);
+  const username = me?.ok ? me.result?.username : null;
+  if (!username) {
+    console.warn(
+      "[MINIAPP] Could not resolve the bot username; falling back to " +
+        `TELEGRAM_MINIAPP_URL (${configured || "unset"}), which opens in a browser.`,
+    );
+    return configured;
+  }
+
+  const shortName =
+    (Deno.env.get("TELEGRAM_MINIAPP_SHORT_NAME") ?? "app").trim().replace(/^\/+|\/+$/g, "");
+  return `https://t.me/${username}${shortName ? `/${shortName}` : ""}`;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +73,7 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const groupId = Deno.env.get("TELEGRAM_GROUP_ID")!;
-    const miniAppUrl = Deno.env.get("TELEGRAM_MINIAPP_URL")!;
+    const miniAppUrl = await miniAppBase(botToken);
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
     const { data: show } = await admin

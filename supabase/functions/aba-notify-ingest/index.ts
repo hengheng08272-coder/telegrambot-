@@ -55,6 +55,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, x-aba-ingest-secret",
 };
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689") — every id listed gets the same admin
+// notifications, and a single id keeps behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 // A pending request is only eligible while it is this fresh, so an old
 // abandoned 'pending' row cannot grab a much later unrelated payment of
 // the same amount. Mirrors aba-payment-webhook.
@@ -346,10 +356,9 @@ Deno.serve(async (req: Request) => {
     );
 
     const mainBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (mainBotToken && adminChatId) {
-      await tg(mainBotToken, "sendMessage", {
-        chat_id: adminChatId,
+    for (const chatId of mainBotToken ? adminChatIds() : []) {
+      await tg(mainBotToken!, "sendMessage", {
+        chat_id: chatId,
         text:
           `⚡ Auto-confirmed (direct ABA notification)\n` +
           `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +

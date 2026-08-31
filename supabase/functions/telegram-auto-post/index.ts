@@ -13,14 +13,48 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // Required secrets (Supabase Dashboard -> Edge Functions -> Secrets):
 //   TELEGRAM_BOT_TOKEN     - from @BotFather
 //   TELEGRAM_GROUP_ID      - the VIP group's chat id (negative number)
-//   TELEGRAM_MINIAPP_URL   - e.g. https://t.me/AnimetioMini_bot/App
-//                            (no query string)
+//   TELEGRAM_MINIAPP_URL   - optional. A t.me Mini App link such as
+//                            https://t.me/AnimetioMini_bot/app (no query
+//                            string). Anything that is not a t.me link is
+//                            ignored and the link is built from getMe.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
+
+// The "watch now" button must be a Telegram deep link
+// (https://t.me/<bot>/<app>?startapp=...), not the site's own https URL.
+// TELEGRAM_MINIAPP_URL had been set to the Vercel address, so Telegram
+// treated the button as an ordinary web link: tapping it raised "Do you
+// want to open ...?" and threw the viewer into a browser, outside the
+// Mini App, with no Telegram identity and therefore no VIP.
+//
+// Rather than depend on that secret being right, the bot's own username
+// is read from getMe when it isn't — the bot token is already here, so
+// this needs no new configuration. TELEGRAM_MINIAPP_SHORT_NAME overrides
+// the "app" path segment if the Mini App is published under another one.
+async function miniAppBase(botToken: string): Promise<string> {
+  const configured = (Deno.env.get("TELEGRAM_MINIAPP_URL") ?? "").trim().replace(/\/+$/, "");
+  if (/^https:\/\/t\.me\//i.test(configured)) return configured;
+
+  const me = await fetch(`https://api.telegram.org/bot${botToken}/getMe`)
+    .then((r) => r.json())
+    .catch(() => null);
+  const username = me?.ok ? me.result?.username : null;
+  if (!username) {
+    console.warn(
+      "[MINIAPP] Could not resolve the bot username; falling back to " +
+        `TELEGRAM_MINIAPP_URL (${configured || "unset"}), which opens in a browser.`,
+    );
+    return configured;
+  }
+
+  const shortName =
+    (Deno.env.get("TELEGRAM_MINIAPP_SHORT_NAME") ?? "app").trim().replace(/^\/+|\/+$/g, "");
+  return `https://t.me/${username}${shortName ? `/${shortName}` : ""}`;
+}
 
 interface Show {
   id: string;
@@ -30,6 +64,7 @@ interface Show {
   type: "series" | "movie";
   status: string | null;
   is_free?: boolean;
+  created_at?: string | null;
 }
 
 async function tg(botToken: string, method: string, body: Record<string, unknown>) {
@@ -42,7 +77,15 @@ async function tg(botToken: string, method: string, body: Record<string, unknown
   if (!data.ok) {
     console.error(`Telegram API ${method} failed:`, JSON.stringify(data));
   }
-  return data;
+  return data as { ok: boolean; description?: string };
+}
+
+// Captions are sent with parse_mode HTML, so any of &, < or > coming out
+// of a title or synopsis has to be escaped — Telegram rejects the whole
+// message with "can't parse entities" otherwise, and a single show titled
+// e.g. "Fate & Zero" would silently never post.
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 // Telegram caps a photo caption at 1024 characters. The synopsis is the
@@ -51,6 +94,13 @@ async function tg(botToken: string, method: string, body: Record<string, unknown
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return text.slice(0, max - 1).trimEnd() + "…";
+}
+
+// Trimming already-escaped text can cut through an entity ("&amp;" ->
+// "&am"), which Telegram rejects just as it rejects a bare "&", so any
+// dangling one is dropped after the cut.
+function truncateEscaped(text: string, max: number): string {
+  return truncate(text, max).replace(/&[a-z]{0,5}(…)?$/i, (_match, ellipsis) => ellipsis ?? "");
 }
 
 Deno.serve(async (req: Request) => {
@@ -63,7 +113,7 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const groupId = Deno.env.get("TELEGRAM_GROUP_ID")!;
-    const miniAppUrl = Deno.env.get("TELEGRAM_MINIAPP_URL")!;
+    const miniAppUrl = await miniAppBase(botToken);
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     // `force: true` skips the interval check — used by the Admin Panel's
@@ -90,7 +140,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (!settings.enabled) {
+    // A forced run is an admin pressing "Post now (test)", so it goes
+    // through even while auto-posting is switched off — otherwise there is
+    // no way to check the bot token, group id and caption before enabling.
+    if (!settings.enabled && !force) {
       return new Response(JSON.stringify({ ok: true, skipped: "disabled" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -107,13 +160,42 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Every non-"coming soon" show is eligible — movies and series alike.
-    const { data: shows, error: showsErr } = await admin
-      .from("shows")
-      .select("id, title, synopsis, poster_url, type, status, is_free")
-      .eq("coming_soon", false);
+    // Two ways to choose what goes out, set from the Admin Panel:
+    //   rotate (default) — every non-"coming soon" show is eligible and
+    //                      the least recently posted one goes first;
+    //   queue            — only the shows the admin picked, walked in the
+    //                      admin's own order, wrapping at the end. A
+    //                      queued show posts even if it is marked coming
+    //                      soon: putting it in the list is a deliberate
+    //                      choice.
+    const queueMode = settings.selection_mode === "queue";
+    const SHOW_COLUMNS = "id, title, synopsis, poster_url, type, status, is_free, created_at";
 
-    if (showsErr || !shows || shows.length === 0) {
+    let queueOrder: string[] = [];
+    let shows: Show[] | null = null;
+
+    if (queueMode) {
+      const { data: queueRows } = await admin
+        .from("telegram_auto_post_queue")
+        .select("show_id, position")
+        .order("position", { ascending: true });
+      queueOrder = (queueRows ?? []).map((row) => row.show_id as string);
+
+      if (queueOrder.length === 0) {
+        return new Response(JSON.stringify({ ok: true, skipped: "empty_queue" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data } = await admin.from("shows").select(SHOW_COLUMNS).in("id", queueOrder);
+      shows = (data ?? []) as Show[];
+    } else {
+      const { data } = await admin.from("shows").select(SHOW_COLUMNS).eq("coming_soon", false);
+      shows = (data ?? []) as Show[];
+    }
+
+    if (!shows || shows.length === 0) {
       return new Response(JSON.stringify({ ok: true, skipped: "no_shows" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -132,13 +214,48 @@ Deno.serve(async (req: Request) => {
       if (!lastPosted.has(row.show_id)) lastPosted.set(row.show_id, new Date(row.posted_at).getTime());
     }
 
-    const ranked = (shows as Show[])
-      .slice()
-      .sort((a, b) => (lastPosted.get(a.id) ?? 0) - (lastPosted.get(b.id) ?? 0));
+    const perRun = Math.max(1, settings.shows_per_run);
+    let batch: Show[];
 
-    const batch = ranked.slice(0, Math.max(1, settings.shows_per_run));
+    if (queueMode) {
+      // Walk the admin's list in their order. The starting point is
+      // whatever comes after the most recently posted queue entry, so
+      // each run continues where the last one stopped and the list loops
+      // instead of always restarting from the top.
+      const byId = new Map(shows.map((show) => [show.id, show]));
+      const ordered = queueOrder.map((id) => byId.get(id)).filter((show): show is Show => !!show);
+
+      let startAt = 0;
+      let newestPost = -1;
+      ordered.forEach((show, index) => {
+        const posted = lastPosted.get(show.id);
+        if (posted !== undefined && posted > newestPost) {
+          newestPost = posted;
+          startAt = (index + 1) % ordered.length;
+        }
+      });
+
+      batch = [];
+      for (let i = 0; i < Math.min(perRun, ordered.length); i++) {
+        batch.push(ordered[(startAt + i) % ordered.length]);
+      }
+    } else {
+      // Least-recently-posted first; never-posted shows (0) come first of
+      // all. Shows that tie — every never-posted one, on the first run —
+      // are ordered by age so a run of several shows is deterministic
+      // instead of depending on whatever order PostgREST returned.
+      batch = shows
+        .slice()
+        .sort((a, b) => {
+          const diff = (lastPosted.get(a.id) ?? 0) - (lastPosted.get(b.id) ?? 0);
+          if (diff !== 0) return diff;
+          return new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime();
+        })
+        .slice(0, perRun);
+    }
 
     const posted: string[] = [];
+    const errors: string[] = [];
     for (const show of batch) {
       let episodeLine = "";
       if (show.type === "movie") {
@@ -161,10 +278,14 @@ Deno.serve(async (req: Request) => {
       }
 
       const deepLink = `${miniAppUrl}?startapp=show_${show.id}`;
-      const synopsis = show.synopsis ? truncate(show.synopsis, 500) : "";
+      const synopsis = show.synopsis ? escapeHtml(truncate(show.synopsis, 500)) : "";
 
-      const captionParts = [`🎬 <b>${show.title}</b>`, synopsis, episodeLine].filter(Boolean);
-      const caption = truncate(captionParts.join("\n\n"), 1024);
+      const captionParts = [
+        `🎬 <b>${escapeHtml(show.title)}</b>`,
+        synopsis,
+        escapeHtml(episodeLine),
+      ].filter(Boolean);
+      const caption = truncateEscaped(captionParts.join("\n\n"), 1024);
 
       const replyMarkup = { inline_keyboard: [[{ text: "ចូលទស្សនា 📺", url: deepLink }]] };
 
@@ -186,18 +307,35 @@ Deno.serve(async (req: Request) => {
       if (sendResult.ok) {
         await admin.from("telegram_auto_post_log").insert({ show_id: show.id });
         posted.push(show.id);
+      } else {
+        // Passed back to the Admin Panel so a misconfigured bot token or
+        // group id reads as "Bot is not a member of the group" instead of
+        // a silent "Posted 0 show(s)".
+        errors.push(`${show.title}: ${sendResult.description ?? "Telegram rejected the message"}`);
       }
     }
 
-    await admin
-      .from("telegram_auto_post_settings")
-      .update({ last_run_at: new Date().toISOString() })
-      .eq("id", 1);
+    // Only a scheduled run moves the clock. A forced test post used to
+    // reset last_run_at too, which silently pushed the next real post a
+    // full interval into the future every time the admin tested.
+    let nextDueAt: string | null = null;
+    if (!force) {
+      const now = new Date();
+      await admin
+        .from("telegram_auto_post_settings")
+        .update({ last_run_at: now.toISOString() })
+        .eq("id", 1);
+      nextDueAt = new Date(now.getTime() + settings.interval_minutes * 60_000).toISOString();
+    } else if (settings.last_run_at) {
+      nextDueAt = new Date(
+        new Date(settings.last_run_at).getTime() + settings.interval_minutes * 60_000,
+      ).toISOString();
+    }
 
-    return new Response(JSON.stringify({ ok: true, posted }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ ok: true, posted, errors, forced: force, mode: queueMode ? "queue" : "rotate", next_due_at: nextDueAt }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
