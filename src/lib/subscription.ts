@@ -27,10 +27,19 @@ export const PRICING_TIERS: PricingTier[] = [
 
 // Merges any admin edits (Admin Panel -> Subscriptions -> price/duration/
 // description/bonus-toggle fields) onto the hardcoded defaults above.
-// `months` is admin-editable too — the three server-side places that grant
-// VIP time (telegram-admin-bot, auto-approve-payment, aba-payment-webhook)
-// all read pricing_tiers.months live, so a change here takes effect
-// immediately with no code deploy needed.
+// `months` is admin-editable too — every place that grants VIP time reads
+// pricing_tiers.months live, so a change here takes effect immediately
+// with no code deploy needed. There are eight of them, not the three this
+// comment used to name: seven edge functions (telegram-admin-bot,
+// auto-approve-payment, confirm-payment-proof, bakong-verify,
+// aba-payment-callback, aba-payment-webhook, aba-notify-ingest) plus the
+// admin's own Approve button in PaymentsPanel — which was reading the
+// hardcoded seed below instead, so the one path the admin drove by hand
+// was the one path that ignored what the admin had configured.
+//
+// All eight grant months * 30 DAYS rather than calendar months: it is
+// the day count the plans are sold as, and setMonth() quietly overflows
+// (31 Jan + 1 month lands on 3 Mar).
 export async function getEffectivePricingTiers(): Promise<PricingTier[]> {
   const { data } = await supabase
     .from('pricing_tiers')
