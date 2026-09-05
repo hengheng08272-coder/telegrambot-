@@ -193,7 +193,17 @@ Deno.serve(async (req: Request) => {
       .from("subscriptions").select("expires_at").eq("telegram_user_id", sub.telegram_user_id).maybeSingle();
     const base_ = existing?.expires_at && new Date(existing.expires_at) > new Date()
       ? new Date(existing.expires_at) : new Date();
-    base_.setMonth(base_.getMonth() + months);
+    // A plan's duration is sold in months but granted in DAYS, at a flat
+    // 30 days per month (1 -> 30, 3 -> 90, 6 -> 180, 12 -> 360). Two
+    // reasons this is not setMonth():
+    //   1. It is the arithmetic the rest of the app already shows —
+    //      UsersPanel's remaining-days bar divides by months * 30, and
+    //      the plans are sold to viewers as a fixed day count.
+    //   2. setMonth() silently overflows on long months: buying on
+    //      31 Jan and adding 1 month lands on 3 Mar, because 31 Feb does
+    //      not exist — the buyer quietly loses 3 days. Adding days can
+    //      never do that.
+    base_.setDate(base_.getDate() + months * 30);
 
     // Claim the bank's transaction id FIRST. The unique index turns this
     // into the replay guard: whichever poll gets here first wins, and a

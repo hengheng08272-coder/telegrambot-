@@ -21,8 +21,19 @@ interface Submission {
   submitted_at: string;
 }
 
-function tierMonths(tierKey: string): number {
-  return PRICING_TIERS.find((t) => t.key === tierKey)?.months ?? 1;
+
+// How many months this plan grants, read live from `pricing_tiers` at
+// approval time. The hardcoded PRICING_TIERS entry is only the fallback
+// for a tier that has no row yet — resolving it fresh (rather than at
+// mount) also means an approval made minutes after the admin edits a
+// plan's duration in the Subscriptions panel uses the new value.
+async function resolveTierMonths(tierKey: string): Promise<number> {
+  const { data } = await supabase
+    .from('pricing_tiers')
+    .select('months')
+    .eq('key', tierKey)
+    .maybeSingle();
+  return data?.months ?? PRICING_TIERS.find((t) => t.key === tierKey)?.months ?? 1;
 }
 
 export default function PaymentsPanel({ onClose }: Props) {
@@ -57,6 +68,8 @@ export default function PaymentsPanel({ onClose }: Props) {
     setBusyId(sub.id);
     setError('');
 
+    const months = await resolveTierMonths(sub.tier);
+
     // Extend from whichever is later: now, or their current expiry (so
     // renewing before it runs out stacks on top instead of resetting).
     const { data: existing } = await supabase
@@ -68,7 +81,19 @@ export default function PaymentsPanel({ onClose }: Props) {
     const base = existing?.expires_at && new Date(existing.expires_at) > new Date()
       ? new Date(existing.expires_at)
       : new Date();
-    base.setMonth(base.getMonth() + tierMonths(sub.tier));
+    // Duration comes off the LIVE pricing_tiers row, never the hardcoded
+    // PRICING_TIERS seed. This used to read the seed, which meant every
+    // approval made from this panel granted the code's idea of the plan
+    // (e.g. '2m' = 1 month) while the same approval made by the Telegram
+    // bot or any webhook granted the admin's configured duration — the
+    // one path the admin touches by hand was the one path that ignored
+    // what the admin had configured.
+    //
+    // Days, not calendar months, for the same reasons as the edge
+    // functions: months * 30 matches the day counts the plans are sold
+    // as and what the remaining-days bar draws, and setMonth() quietly
+    // overflows (31 Jan + 1 month lands on 3 Mar).
+    base.setDate(base.getDate() + months * 30);
 
     const { error: upsertErr } = await supabase.from('subscriptions').upsert({
       telegram_user_id: sub.telegram_user_id,

@@ -12,6 +12,8 @@ import {
   Check,
   Ban,
   Plus,
+  Gift,
+  Wallet,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import AdminPanelShell, { PanelTabs } from '@/components/AdminPanelShell';
@@ -33,6 +35,17 @@ interface SubRow {
 
 const PRESET_DAYS = [7, 30, 90];
 
+// A manual grant is either a routine top-up or a discretionary gift.
+// They do the same arithmetic; they are kept apart so the audit log can
+// answer "was this owed, or was this a present?" later on.
+type GrantKind = 'extend' | 'bonus';
+
+// Newest approved payment per subscriber, used as the "paid on" date.
+// `subscriptions` has no start column and `updated_at` cannot stand in
+// for one — it is re-stamped by every extend, revoke and bonus, so on an
+// account that has been topped up even once it reads as the date of the
+// last admin action rather than the date money changed hands.
+
 export default function UsersPanel({ onClose }: Props) {
   const [rows, setRows] = useState<SubRow[]>([]);
   const [tiers, setTiers] = useState<PricingTier[]>([]);
@@ -45,7 +58,13 @@ export default function UsersPanel({ onClose }: Props) {
   const [customOpenId, setCustomOpenId] = useState<string | null>(null);
   const [customDays, setCustomDays] = useState('');
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+  // Which card has its bonus-gift input open, and what is typed in it.
+  const [bonusOpenId, setBonusOpenId] = useState<string | null>(null);
+  const [bonusDays, setBonusDays] = useState('');
+  const [bonusNote, setBonusNote] = useState('');
+  const [paidOn, setPaidOn] = useState<Map<string, string>>(new Map());
   const customInputRef = useRef<HTMLInputElement>(null);
+  const bonusInputRef = useRef<HTMLInputElement>(null);
 
   const DAY = 86_400_000;
   const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / DAY);
@@ -57,16 +76,32 @@ export default function UsersPanel({ onClose }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const [subsRes, tierData] = await Promise.all([
+    const [subsRes, tierData, paymentsRes] = await Promise.all([
       supabase
         .from('subscriptions')
         .select('telegram_user_id, telegram_username, tier, expires_at, updated_at')
         .order('expires_at', { ascending: false }),
       getEffectivePricingTiers(),
+      supabase
+        .from('payment_submissions')
+        .select('telegram_user_id, submitted_at, reviewed_at')
+        .eq('status', 'approved')
+        .order('submitted_at', { ascending: false }),
     ]);
     if (subsRes.error) setError(subsRes.error.message);
     setRows(subsRes.data ?? []);
     setTiers(tierData);
+
+    // Rows arrive newest-first, so the first one seen for an account is
+    // its latest payment — later (older) rows for the same account are
+    // skipped rather than overwriting it.
+    const latest = new Map<string, string>();
+    for (const p of paymentsRes.data ?? []) {
+      if (!latest.has(p.telegram_user_id)) {
+        latest.set(p.telegram_user_id, p.reviewed_at ?? p.submitted_at);
+      }
+    }
+    setPaidOn(latest);
     setLoading(false);
   };
 
@@ -74,25 +109,56 @@ export default function UsersPanel({ onClose }: Props) {
     load();
   }, []);
 
-  const extend = async (row: SubRow, days: number) => {
+  // Adds days to a subscription and writes the audit row. `kind` only
+  // changes what the log says — a bonus day and an extend day are worth
+  // exactly the same to the subscriber, and both stack on whichever is
+  // later, their current expiry or today, so topping up an account early
+  // never costs it the time it already had.
+  const grant = async (row: SubRow, days: number, kind: GrantKind, note?: string) => {
     if (!days || days <= 0) return;
     setBusyId(row.telegram_user_id);
     setError('');
     const base = new Date(row.expires_at) > new Date() ? new Date(row.expires_at) : new Date();
     base.setDate(base.getDate() + days);
+    const expiresAfter = base.toISOString();
+
     const { error: err } = await supabase
       .from('subscriptions')
-      .update({ expires_at: base.toISOString(), updated_at: new Date().toISOString() })
+      .update({ expires_at: expiresAfter, updated_at: new Date().toISOString() })
       .eq('telegram_user_id', row.telegram_user_id);
-    setBusyId(null);
     if (err) {
+      setBusyId(null);
       setError(err.message);
       return;
     }
+
+    // Best-effort, deliberately after the grant and deliberately not
+    // fatal: if vip-day-grants-addition.sql has not been run yet, the
+    // insert fails and the admin still gets the outcome they asked for.
+    // Losing the log entry is a bookkeeping problem; refusing to give a
+    // subscriber days they were promised is a customer-facing one.
+    const { data: auth } = await supabase.auth.getUser();
+    await supabase.from('vip_day_grants').insert({
+      telegram_user_id: row.telegram_user_id,
+      telegram_username: row.telegram_username,
+      kind,
+      days,
+      note: note?.trim() || null,
+      expires_before: row.expires_at,
+      expires_after: expiresAfter,
+      granted_by: auth?.user?.id ?? null,
+    });
+
+    setBusyId(null);
     setCustomOpenId(null);
     setCustomDays('');
+    setBonusOpenId(null);
+    setBonusDays('');
+    setBonusNote('');
     load();
   };
+
+  const extend = (row: SubRow, days: number) => grant(row, days, 'extend');
 
   const revoke = async (row: SubRow) => {
     setBusyId(row.telegram_user_id);
@@ -116,11 +182,27 @@ export default function UsersPanel({ onClose }: Props) {
     void extend(row, n);
   };
 
+  const handleBonusSubmit = (row: SubRow) => {
+    const n = parseInt(bonusDays, 10);
+    if (!Number.isFinite(n) || n <= 0 || n > 3650) return;
+    void grant(row, n, 'bonus', bonusNote);
+  };
+
   const openCustom = (id: string) => {
     setCustomOpenId(id);
     setCustomDays('');
+    setBonusOpenId(null);
     setConfirmRevokeId(null);
     setTimeout(() => customInputRef.current?.focus(), 50);
+  };
+
+  const openBonus = (id: string) => {
+    setBonusOpenId(id);
+    setBonusDays('');
+    setBonusNote('');
+    setCustomOpenId(null);
+    setConfirmRevokeId(null);
+    setTimeout(() => bonusInputRef.current?.focus(), 50);
   };
 
   const counts = {
@@ -161,7 +243,7 @@ export default function UsersPanel({ onClose }: Props) {
   return (
     <AdminPanelShell
       title="Users"
-      subtitle="Search by Telegram ID, @username, or plan name — extend or revoke VIP"
+      subtitle="Search by Telegram ID, @username, or plan name — extend, gift bonus days, or revoke VIP"
       icon={<User className="h-4 w-4" />}
       accent="#4C6FFF"
       maxWidth="max-w-[1000px]"
@@ -257,7 +339,9 @@ export default function UsersPanel({ onClose }: Props) {
             const price = tierPrice(row.tier);
             const isBusy = busyId === row.telegram_user_id;
             const isCustomOpen = customOpenId === row.telegram_user_id;
+            const isBonusOpen = bonusOpenId === row.telegram_user_id;
             const isConfirmRevoke = confirmRevokeId === row.telegram_user_id;
+            const paidDate = paidOn.get(row.telegram_user_id) ?? null;
 
             return (
               <div
@@ -302,7 +386,7 @@ export default function UsersPanel({ onClose }: Props) {
                 </div>
 
                 {/* ── Info grid: plan / expiry / days-left ── */}
-                <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {/* Plan */}
                   <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
                     <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-white/30">
@@ -314,6 +398,22 @@ export default function UsersPanel({ onClose }: Props) {
                         ${price}{months != null ? ` · ${months}ខែ` : ''}
                       </p>
                     )}
+                  </div>
+
+                  {/* Paid on — the date money actually changed hands, taken
+                      from the newest approved payment. Blank rather than
+                      guessed for an account granted VIP by hand, which has
+                      no payment row to read. */}
+                  <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
+                    <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-white/30">
+                      <Wallet className="h-2.5 w-2.5" /> បង់ថ្ងៃ
+                    </div>
+                    {paidDate ? (
+                      <p className="mt-0.5 text-[12px] font-bold text-white/85">{fmtDate(paidDate)}</p>
+                    ) : (
+                      <p className="mt-0.5 text-[12px] font-bold text-white/25">—</p>
+                    )}
+                    {!paidDate && <p className="text-[10px] text-white/25">ផ្ដល់ដោយដៃ</p>}
                   </div>
 
                   {/* Expiry date */}
@@ -389,6 +489,22 @@ export default function UsersPanel({ onClose }: Props) {
                     <Plus className="h-3 w-3" /> ផ្សេងទៀត
                   </button>
 
+                  {/* Bonus gift — same arithmetic as an extend, kept as its
+                      own button (and its own colour) so a present is never
+                      logged as a routine top-up, and so it is hard to hand
+                      one out by reflex while clicking through +7s. */}
+                  <button
+                    onClick={() => (isBonusOpen ? setBonusOpenId(null) : openBonus(row.telegram_user_id))}
+                    disabled={isBusy}
+                    className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition disabled:opacity-40 ${
+                      isBonusOpen
+                        ? 'border-[#F5C563]/45 bg-[#F5C563]/15 text-[#F5C563]'
+                        : 'border-[#F5C563]/20 bg-[#F5C563]/[0.06] text-[#F5C563]/80 hover:bg-[#F5C563]/15'
+                    }`}
+                  >
+                    <Gift className="h-3 w-3" /> Bonus
+                  </button>
+
                   {/* Revoke */}
                   <button
                     onClick={() => setConfirmRevokeId(row.telegram_user_id)}
@@ -427,6 +543,54 @@ export default function UsersPanel({ onClose }: Props) {
                       {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                       បន្ថែម
                     </button>
+                  </div>
+                )}
+
+                {/* ── Bonus gift input (expandable) ── */}
+                {isBonusOpen && (
+                  <div className="mt-2.5 space-y-2 rounded-lg border border-[#F5C563]/25 bg-[#F5C563]/[0.06] p-2.5">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#F5C563]/80">
+                      <Gift className="h-3 w-3" /> ថ្ងៃរង្វាន់ (កត់ត្រាដាច់ដោយឡែកពីការបន្ថែមធម្មតា)
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={bonusInputRef}
+                        type="number"
+                        min={1}
+                        max={3650}
+                        value={bonusDays}
+                        onChange={(e) => setBonusDays(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleBonusSubmit(row);
+                          }
+                        }}
+                        placeholder="ចំនួនថ្ងៃ..."
+                        className="w-24 shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#F5C563]/50"
+                      />
+                      <input
+                        type="text"
+                        value={bonusNote}
+                        onChange={(e) => setBonusNote(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleBonusSubmit(row);
+                          }
+                        }}
+                        placeholder="មូលហេតុ (ស្រេចចិត្ត)…"
+                        className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#F5C563]/50"
+                      />
+                      <button
+                        onClick={() => handleBonusSubmit(row)}
+                        disabled={isBusy || !bonusDays || parseInt(bonusDays, 10) <= 0}
+                        className="flex shrink-0 items-center gap-1 rounded-lg bg-gradient-to-r from-[#F5C563] to-[#B98430] px-3 py-2 text-[11px] font-bold text-[#0A101E] transition hover:brightness-110 disabled:opacity-40"
+                      >
+                        {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Gift className="h-3 w-3" />}
+                        ផ្ដល់
+                      </button>
+                    </div>
                   </div>
                 )}
 
