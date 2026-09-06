@@ -22,7 +22,7 @@ import {
 } from '@/lib/khqr';
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { getHiddenTierKeys, setHiddenTierKeys, PRICING_TIERS } from '@/lib/subscription';
-import { fetchAbaMerchantName, saveAbaMerchantName } from '@/lib/api';
+import { fetchAbaMerchantName, saveAbaMerchantName, errorMessage } from '@/lib/api';
 import {
   fetchBakongConfig,
   generateKhqrDetailed,
@@ -264,7 +264,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongSaved(true);
       window.setTimeout(() => setBakongSaved(false), 2000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not clear Bakong settings');
+      setError(errorMessage(e, 'Could not clear Bakong settings'));
     } finally {
       setBakongSaving(false);
     }
@@ -287,7 +287,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongSaved(true);
       window.setTimeout(() => setBakongSaved(false), 2000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not save Bakong settings');
+      setError(errorMessage(e, 'Could not save Bakong settings'));
     } finally {
       setBakongSaving(false);
     }
@@ -303,7 +303,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setAbaSaved(true);
       setTimeout(() => setAbaSaved(false), 2000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to save ABA merchant name');
+      setError(errorMessage(e, 'Failed to save ABA merchant name'));
     } finally {
       setAbaSaving(false);
     }
@@ -321,7 +321,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       await setHiddenTierKeys(next);
       setHiddenKeys(next);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to change plan visibility');
+      setError(errorMessage(e, 'Failed to change plan visibility'));
     } finally {
       setHiddenBusyTier(null);
     }

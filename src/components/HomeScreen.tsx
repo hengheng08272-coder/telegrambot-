@@ -23,7 +23,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
-import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, type ShowEpisodeInfo } from '@/lib/api';
+import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, errorMessage, type ShowEpisodeInfo } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
@@ -199,7 +199,7 @@ export default function HomeScreen({
         });
       } catch (e: unknown) {
         if (!active) return;
-        setError(e instanceof Error ? e.message : 'Failed to load content');
+        setError(errorMessage(e, 'Failed to load content'));
       } finally {
         if (active) setLoading(false);
       }

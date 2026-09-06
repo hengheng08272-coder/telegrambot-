@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Megaphone, Send, Trash2, Eye, EyeOff, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
-import { fetchTickerMessage, saveTickerMessage } from '@/lib/api';
+import { fetchTickerMessage, saveTickerMessage, errorMessage } from '@/lib/api';
 import AdminPanelShell from '@/components/AdminPanelShell';
 
 interface Props {
@@ -47,7 +47,7 @@ export default function AnnouncementsPanel({ onClose }: Props) {
       setTickerSaved(true);
       setTimeout(() => setTickerSaved(false), 2000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to save ticker text');
+      setError(errorMessage(e, 'Failed to save ticker text'));
     } finally {
       setTickerSaving(false);
     }

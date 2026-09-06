@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Send, Save, Bot } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
-import { fetchTelegramAutoPostSettings, saveTelegramAutoPostSettings } from '@/lib/api';
+import { fetchTelegramAutoPostSettings, saveTelegramAutoPostSettings, errorMessage } from '@/lib/api';
 import AdminPanelShell from '@/components/AdminPanelShell';
 
 interface Props {
@@ -48,7 +48,7 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to save settings');
+      setError(errorMessage(e, 'Failed to save settings'));
     } finally {
       setSaving(false);
     }
@@ -80,7 +80,7 @@ export default function TelegramAutoPostPanel({ onClose }: Props) {
       }
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to post');
+      setError(errorMessage(e, 'Failed to post'));
     } finally {
       setPosting(false);
     }

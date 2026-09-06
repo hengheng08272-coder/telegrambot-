@@ -5,6 +5,7 @@ import {
   addBlockedTelegramUser,
   removeBlockedTelegramUser,
   type BlockedTelegramUser,
+  errorMessage,
 } from '@/lib/api';
 import AdminPanelShell from '@/components/AdminPanelShell';
 
@@ -28,7 +29,7 @@ export default function BlockedUsersPanel({ onClose }: Props) {
       const data = await fetchBlockedTelegramUsers();
       setItems(data);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load blocked users');
+      setError(errorMessage(e, 'Failed to load blocked users'));
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ export default function BlockedUsersPanel({ onClose }: Props) {
       setReasonDraft('');
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to add');
+      setError(errorMessage(e, 'Failed to add'));
     } finally {
       setAdding(false);
     }
@@ -70,7 +71,7 @@ export default function BlockedUsersPanel({ onClose }: Props) {
       await removeBlockedTelegramUser(id);
       await load();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to remove');
+      setError(errorMessage(e, 'Failed to remove'));
     }
   };
 

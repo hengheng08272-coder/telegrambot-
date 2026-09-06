@@ -12,7 +12,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Episode } from '@/lib/types';
-import { fetchShowById, fetchEpisodesByShow, fetchAllShows } from '@/lib/api';
+import { fetchShowById, fetchEpisodesByShow, fetchAllShows, errorMessage } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
@@ -72,7 +72,7 @@ export default function ShowDetailScreen({
         setEpisodes(eps);
       } catch (e: unknown) {
         if (!active) return;
-        setError(e instanceof Error ? e.message : 'Failed to load show');
+        setError(errorMessage(e, 'Failed to load show'));
       } finally {
         if (active) setLoading(false);
       }
