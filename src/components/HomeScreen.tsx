@@ -34,7 +34,7 @@ import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
-import { seasonFranchises } from '@/lib/seasons';
+import { seasonFranchises, nextPaidSeason, parseSeason } from '@/lib/seasons';
 
 interface HomeScreenProps {
   onSelectShow: (show: Show) => void;
@@ -281,6 +281,18 @@ export default function HomeScreen({
   // uses. Each franchise gets its own row below, rather than all of them
   // sharing one rail: in a shared rail the two seasons of a show sat
   // under the same truncated title and read as a duplicate card.
+  // A free show that continues into a paid season is the whole point of
+  // the free row — the card says so rather than leaving the viewer to
+  // discover it after finishing the last free episode.
+  const continuesAt = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const show of freeShows) {
+      const next = nextPaidSeason(show, shows);
+      if (next) out[show.id] = parseSeason(next.title).season ?? 1;
+    }
+    return out;
+  }, [freeShows, shows]);
+
   const franchises = useMemo(
     () => seasonFranchises(shows.filter((s) => !s.coming_soon)),
     [shows],
@@ -688,6 +700,7 @@ export default function HomeScreen({
                 title={t.freeRowLabel ?? 'Free to Watch'}
                 shows={freeShows}
                 onSelectShow={onSelectShow}
+                continuesAt={continuesAt}
                 onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
                 viewAllLabel={t.viewAll}
                 tag={{ label: t.unlockAllTag, tone: 'free' }}
@@ -743,39 +756,6 @@ export default function HomeScreen({
                 onViewAll={() => setViewAll({ title: t.completedRowLabel ?? 'Completed Series', shows: completedShows })}
                 viewAllLabel={t.viewAll}
               />
-            )}
-            {/* One row per multi-season series, under a single section
-                heading. A shared rail put "ប្រហារព្រះ រដូវកាល 1" and
-                "រដូវកាល 2" next to each other under the same truncated
-                title, which read as the same card twice; giving each
-                series its own row makes the seasons obviously belong to
-                one show and puts them in watch order. */}
-            {franchises.length > 0 && (
-              <section className="mt-9">
-                <div
-                  className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
-                  aria-hidden
-                />
-                <div className="mb-1 flex items-center gap-2">
-                  <span className="h-4 w-[3px] shrink-0 rounded-sm bg-[#4E86FF]" aria-hidden />
-                  <Layers className="h-5 w-5 shrink-0 text-[#4E86FF]" />
-                  <h2 className="truncate text-lg font-bold tracking-tight">{t.seasonsRowLabel}</h2>
-                </div>
-                {franchises.map((f) => (
-                  <RailRow
-                    key={f.base}
-                    subRow
-                    episodeNumbers={episodeNumbers}
-                    title={f.base}
-                    tag={{ label: `${f.entries.length} ${t.seasonsCountLabel}`, tone: 'info' }}
-                    shows={f.entries.map((e) => e.show)}
-                    seasons={Object.fromEntries(
-                      f.entries.map((e) => [e.show.id, { season: e.season, base: f.base }]),
-                    )}
-                    onSelectShow={onSelectShow}
-                  />
-                ))}
-              </section>
             )}
             <RailRow
               episodeNumbers={episodeNumbers}
@@ -842,6 +822,40 @@ export default function HomeScreen({
                 />
               );
             })}
+
+            {/* One row per multi-season series, under a single section
+                heading. A shared rail put "ប្រហារព្រះ រដូវកាល 1" and
+                "រដូវកាល 2" next to each other under the same truncated
+                title, which read as the same card twice; giving each
+                series its own row makes the seasons obviously belong to
+                one show and puts them in watch order. */}
+            {franchises.length > 0 && (
+              <section className="mt-9">
+                <div
+                  className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
+                  aria-hidden
+                />
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="h-4 w-[3px] shrink-0 rounded-sm bg-[#4E86FF]" aria-hidden />
+                  <Layers className="h-5 w-5 shrink-0 text-[#4E86FF]" />
+                  <h2 className="truncate text-lg font-bold tracking-tight">{t.seasonsRowLabel}</h2>
+                </div>
+                {franchises.map((f) => (
+                  <RailRow
+                    key={f.base}
+                    subRow
+                    episodeNumbers={episodeNumbers}
+                    title={f.base}
+                    tag={{ label: `${f.entries.length} ${t.seasonsCountLabel}`, tone: 'info' }}
+                    shows={f.entries.map((e) => e.show)}
+                    seasons={Object.fromEntries(
+                      f.entries.map((e) => [e.show.id, { season: e.season, base: f.base }]),
+                    )}
+                    onSelectShow={onSelectShow}
+                  />
+                ))}
+              </section>
+            )}
 
             {/* Coming Soon moved to the bottom of the browse list — it's
                 not-yet-watchable content, so it now sits after everything
@@ -1562,6 +1576,8 @@ interface RailRowProps {
   /** Per-card season numbers, keyed by show id. Only the seasons row
    *  passes this — see ShowCard's `seasonNumber`. */
   seasons?: Record<string, { season: number; base: string }>;
+  /** show id -> season number of the paid season that follows. */
+  continuesAt?: Record<string, number>;
   /** A row nested under another heading: smaller title, no divider rule,
    *  tighter spacing. Used for the per-series season rows, which sit as a
    *  group under one "series with seasons" heading and would otherwise
@@ -1569,7 +1585,7 @@ interface RailRowProps {
   subRow?: boolean;
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel, accent = '#F5C563', seasons, subRow }: RailRowProps) {
+function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel, accent = '#F5C563', seasons, subRow, continuesAt }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
@@ -1668,6 +1684,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
             seasonNumber={seasons?.[s.id]?.season}
             displayTitle={seasons?.[s.id]?.base}
             titleFromSeason={subRow}
+            continuesAtSeason={continuesAt?.[s.id]}
           />
         ))}
       </div>

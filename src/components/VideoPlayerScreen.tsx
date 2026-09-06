@@ -97,7 +97,6 @@ export default function VideoPlayerScreen({
   /* One-shot guard for the "first touch takes you fullscreen" behaviour
      below, plus a note of whether the viewer left fullscreen deliberately —
      in which case we never drag them back into it. */
-  const autoFsTriedRef = useRef(false);
   const userExitedFsRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
@@ -266,13 +265,12 @@ export default function VideoPlayerScreen({
   // viewer's first touch on the player is what actually takes them there.
   // It fires once; if they then leave fullscreen on purpose, that's
   // remembered and we never pull them back in.
-  const maybeAutoFullscreen = () => {
-    if (autoFsTriedRef.current || userExitedFsRef.current) return;
-    autoFsTriedRef.current = true;
-    if (nativeFullscreenElement()) return;
-    void enterFullscreen();
-  };
-
+  // Tapping the picture no longer grabs fullscreen. It used to fire on
+  // the first pointerdown anywhere in the player, so the first tap a
+  // viewer made — usually just to bring the controls up — swallowed the
+  // screen and cropped the picture instead, and undoing it cost two more
+  // taps. Fullscreen is now only entered from the button that says so,
+  // or from the landscape rotation below, which is an unambiguous ask.
   // Rotating the phone to landscape while watching is an unambiguous "make
   // this big" — worth one more fullscreen attempt (some browsers honour it
   // during the resulting gesture window), and harmless where it's refused.
@@ -643,7 +641,6 @@ export default function VideoPlayerScreen({
     <div
       className="player-root player-immersive"
       data-hidden={chromeHidden}
-      onPointerDown={maybeAutoFullscreen}
     >
       <div
         ref={containerRef}
@@ -819,9 +816,11 @@ export default function VideoPlayerScreen({
               // the page, and at 14px the show name and episode title ran
               // straight under the clock and the signal icons. Fullscreen
               // has no status bar to clear, so it keeps the tighter inset.
-              : isFullscreen
-                ? 'pt-[max(env(safe-area-inset-top,0px),14px)]'
-                : 'pt-[max(env(safe-area-inset-top,0px),44px)]'
+              // The 44px floor applies in fullscreen too. Telegram's
+              // fullscreen hides its own header but Android still draws
+              // the status bar over the page, so exempting fullscreen
+              // put the title straight back under the clock.
+              : 'pt-[max(env(safe-area-inset-top,0px),44px)]'
           } ${locked ? 'pointer-events-none opacity-0' : ''}`}
           data-hidden={chromeHidden}
         >

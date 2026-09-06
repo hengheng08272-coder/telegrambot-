@@ -88,3 +88,31 @@ export function seasonFranchises(shows: Show[]): SeasonFranchise[] {
     b.entries.length - a.entries.length || a.base.localeCompare(b.base),
   );
 }
+
+/**
+ * For a free show, the next season that is NOT free — the thing a viewer
+ * finishing the free season is about to want.
+ *
+ * The free row is a hook, not a gift: two of the three shows opened up
+ * are season 1 of a series whose season 2 stays behind the membership.
+ * Saying so on the card turns "here is something free" into "watch this,
+ * then join to keep going", which is the actual offer. Returns null when
+ * there is nothing to continue to, so the hint only appears where it is
+ * true.
+ */
+export function nextPaidSeason(show: Show, all: Show[]): Show | null {
+  if (!show.is_free) return null;
+  const { base, season } = parseSeason(show.title);
+  const current = season ?? 1;
+
+  let best: { show: Show; season: number } | null = null;
+  for (const other of all) {
+    if (other.id === show.id || other.is_free || other.coming_soon) continue;
+    const info = parseSeason(other.title);
+    if (info.base !== base) continue;
+    const n = info.season ?? 1;
+    if (n <= current) continue;
+    if (!best || n < best.season) best = { show: other, season: n };
+  }
+  return best?.show ?? null;
+}
