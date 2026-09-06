@@ -521,7 +521,7 @@ export const appText = {
     popularSeason: 'ពេញនិយមរដូវនេះ',
     freeWatching: 'មើលឥតគិតថ្លៃ',
     freeBadge: 'ឥតគិតថ្លៃ',
-    vipBadge: 'VIP',
+    vipBadge: 'សមាជិក',
     viewsLabel: 'ចំនួនមើល',
     comingSoonLabel: 'មកដល់ឆាប់ៗនេះ',
     completedRowLabel: 'រឿងចប់',

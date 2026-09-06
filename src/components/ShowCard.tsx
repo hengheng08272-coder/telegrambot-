@@ -28,6 +28,10 @@ interface ShowCardProps {
   /** Franchise name with the season marker removed — used as the card's
    *  visible title in the seasons row. */
   displayTitle?: string;
+  /** Season number of the paid season that follows this (free) one.
+   *  Renders a gold "season N · members" line under the title — the
+   *  reason the free row exists, said out loud on the card. */
+  continuesAtSeason?: number;
   /** Drop the caption entirely and let the season pill be the label.
    *  Inside a per-series season row the heading above already names the
    *  show, so repeating it under every card says the same thing three
@@ -35,7 +39,7 @@ interface ShowCardProps {
   titleFromSeason?: boolean;
 }
 
-export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle, titleFromSeason }: ShowCardProps) {
+export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle, titleFromSeason, continuesAtSeason }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
   const { lang } = useLang();
@@ -221,6 +225,16 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
           <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
             {displayTitle ?? show.title}
           </h3>
+          {continuesAtSeason !== undefined && (
+            // The crown is already this app's mark for "needs a
+            // membership", so spelling it out next to the icon wrapped the
+            // chip onto a second line and left the cards in the row at
+            // different heights. Icon plus season number says it in one.
+            <span className="mt-1 inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-[#F5C563]/12 px-1.5 py-[2px] text-[9.5px] font-bold leading-none text-[#F5C563] ring-1 ring-inset ring-[#F5C563]/30">
+              <Crown className="h-2.5 w-2.5 shrink-0" />
+              {t.seasonShort}{continuesAtSeason}
+            </span>
+          )}
           {seasonNumber !== undefined && (
             // A filled pill, not plain text. Two seasons of one franchise
             // sit side by side in this rail under the same (often
