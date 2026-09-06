@@ -19,9 +19,18 @@ interface ShowCardProps {
   /** Bigger poster + deeper drop shadow — used for the Top 10 rail so it
    *  reads with the same weight as the hero banner above it. */
   large?: boolean;
+  /** Season number, shown as a small chip under the title. Only the
+   *  seasons row passes this: everywhere else the season is already part
+   *  of the title text, and repeating it would say the same thing twice.
+   *  The seasons row strips the marker off the title so the franchise
+   *  name lines up down the rail, and this chip carries the number. */
+  seasonNumber?: number;
+  /** Franchise name with the season marker removed — used as the card's
+   *  visible title in the seasons row. */
+  displayTitle?: string;
 }
 
-export default function ShowCard({ show, onClick, latestEpisode, rank, large }: ShowCardProps) {
+export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
   const { lang } = useLang();
@@ -199,8 +208,18 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large }: 
       {!rank && (
         <div className="mt-2 px-0.5">
           <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
-            {show.title}
+            {displayTitle ?? show.title}
           </h3>
+          {seasonNumber !== undefined && (
+            // A filled pill, not plain text. Two seasons of one franchise
+            // sit side by side in this rail under the same (often
+            // truncated) name, so the season number is the only thing
+            // telling the cards apart — it has to carry more weight than
+            // the title does, not less.
+            <span className="mt-1 inline-flex items-center rounded-md bg-[#2050D8]/22 px-1.5 py-[2px] text-[10px] font-black leading-none text-[#7FA6FF] ring-1 ring-inset ring-[#2050D8]/40">
+              {t.seasonShort}{seasonNumber}
+            </span>
+          )}
         </div>
       )}
     </button>
