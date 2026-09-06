@@ -80,22 +80,19 @@ export async function getAvailableBonusSpin(): Promise<BonusSpinInfo | null> {
   // "has an approved purchase" instead (which is what this used to do)
   // kept offering the draw to accounts whose membership lapsed months
   // ago, since an approved payment stays approved forever.
-  const { data: subscription } = await supabase
-    .from('subscriptions')
-    .select('expires_at')
-    .eq('telegram_user_id', telegramUserId)
-    .maybeSingle();
+  const { data: subRows } = await supabase.rpc('get_my_subscription', {
+    p_telegram_user_id: telegramUserId,
+  });
+  const subscription = (subRows as { expires_at: string }[] | null)?.[0];
   if (!subscription?.expires_at || new Date(subscription.expires_at) <= new Date()) return null;
 
-  const { data } = await supabase
-    .from('payment_submissions')
-    .select('id, tier')
-    .eq('telegram_user_id', telegramUserId)
-    .eq('status', 'approved')
-    .eq('bonus_spin_claimed', false)
-    .order('submitted_at', { ascending: false });
+  const { data } = await supabase.rpc('get_my_unclaimed_bonus_purchases', {
+    p_telegram_user_id: telegramUserId,
+  });
 
-  const candidates = (data ?? []).filter((row) => BONUS_POOLS[row.tier]);
+  const candidates = ((data ?? []) as { id: string; tier: string }[]).filter(
+    (row) => BONUS_POOLS[row.tier],
+  );
   if (candidates.length === 0) return null;
 
   // The admin can turn a tier's bonus off from Admin Panel -> Subscriptions

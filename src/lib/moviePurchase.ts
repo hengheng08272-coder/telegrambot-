@@ -31,39 +31,31 @@ export interface MoviePurchase {
 // `purchasedMovieIds.has(show.id)` with no extra round trip.
 export async function getMyMoviePurchases(): Promise<Set<string>> {
   const { id } = getIdentity();
-  const { data } = await supabase
-    .from('movie_purchases')
-    .select('show_id')
-    .eq('telegram_user_id', id)
-    .eq('status', 'approved');
-  return new Set((data ?? []).map((row) => row.show_id as string));
+  const { data } = await supabase.rpc('get_my_movie_purchases', {
+    p_telegram_user_id: id,
+  });
+  return new Set(((data ?? []) as { show_id: string }[]).map((row) => row.show_id));
 }
 
 export async function hasPurchasedMovie(showId: string): Promise<boolean> {
   const { id } = getIdentity();
-  const { data } = await supabase
-    .from('movie_purchases')
-    .select('id')
-    .eq('telegram_user_id', id)
-    .eq('show_id', showId)
-    .eq('status', 'approved')
-    .maybeSingle();
-  return !!data;
+  // Reuses the same scoped RPC as getMyMoviePurchases rather than adding
+  // a second one for a question the first already answers.
+  const { data } = await supabase.rpc('get_my_movie_purchases', {
+    p_telegram_user_id: id,
+  });
+  return ((data ?? []) as { show_id: string }[]).some((row) => row.show_id === showId);
 }
 
 // A pending ticket for THIS show, if one is already open — so reopening
 // the purchase modal resumes it instead of creating a duplicate.
 export async function getPendingMoviePurchase(showId: string): Promise<MoviePurchase | null> {
   const { id } = getIdentity();
-  const { data } = await supabase
-    .from('movie_purchases')
-    .select('id, show_id, status, amount, submitted_at')
-    .eq('telegram_user_id', id)
-    .eq('show_id', showId)
-    .eq('status', 'pending')
-    .order('submitted_at', { ascending: false })
-    .maybeSingle();
-  return data ?? null;
+  const { data } = await supabase.rpc('get_my_pending_movie_purchase', {
+    p_telegram_user_id: id,
+    p_show_id: showId,
+  });
+  return (data as MoviePurchase[] | null)?.[0] ?? null;
 }
 
 // Opens a ticket the moment the viewer taps "Buy" — same "create first,
@@ -73,19 +65,14 @@ export async function submitMoviePurchaseIntent(
   showId: string,
 ): Promise<{ error: string | null; id: string | null }> {
   const { id, username } = getIdentity();
-  const { data: inserted, error } = await supabase
-    .from('movie_purchases')
-    .insert({
-      telegram_user_id: id,
-      telegram_username: username,
-      show_id: showId,
-      amount: MOVIE_PRICE,
-      status: 'pending',
-    })
-    .select('id')
-    .single();
+  const { data: newId, error } = await supabase.rpc('create_movie_purchase', {
+    p_telegram_user_id: id,
+    p_telegram_username: username,
+    p_show_id: showId,
+    p_amount: MOVIE_PRICE,
+  });
   if (error) return { error: error.message, id: null };
-  return { error: null, id: inserted.id };
+  return { error: null, id: newId as string };
 }
 
 // Attaches the receipt and grants the unlock immediately (same
@@ -115,8 +102,11 @@ export async function attachMovieScreenshot(
 }
 
 export async function checkMoviePurchaseStatus(id: string): Promise<MoviePurchase['status'] | null> {
-  const { data } = await supabase.from('movie_purchases').select('status').eq('id', id).maybeSingle();
-  return data?.status ?? null;
+  const { data } = await supabase.rpc('get_my_movie_purchase_status', {
+    p_telegram_user_id: getIdentity().id,
+    p_purchase_id: id,
+  });
+  return (data as MoviePurchase['status'] | null) ?? null;
 }
 
 export async function getMovieQr(): Promise<{ imageUrl: string | null; khqrString: string | null }> {

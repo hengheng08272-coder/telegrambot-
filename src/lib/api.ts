@@ -231,19 +231,15 @@ export async function checkTelegramUserBlocked(
   telegramId: number,
   username: string | null,
 ): Promise<{ blocked: boolean; reason: string | null }> {
-  const idStr = String(telegramId);
-  const usernameLower = username ? username.toLowerCase() : null;
-  const orFilter = usernameLower
-    ? `telegram_user_id.eq.${idStr},telegram_username.eq.${usernameLower}`
-    : `telegram_user_id.eq.${idStr}`;
-  const { data, error } = await supabase
-    .from('blocked_telegram_users')
-    .select('reason')
-    .or(orFilter)
-    .limit(1)
-    .maybeSingle();
-  if (error) return { blocked: false, reason: null }; // table may not exist yet on older deploys
-  return { blocked: !!data, reason: data?.reason ?? null };
+  // Asks only about this one viewer. Reading the table directly would
+  // hand any caller the whole blocklist, which the anon key made public.
+  const { data, error } = await supabase.rpc('is_telegram_user_blocked', {
+    p_telegram_user_id: String(telegramId),
+    p_telegram_username: username ? username.toLowerCase() : null,
+  });
+  if (error) return { blocked: false, reason: null }; // older deploys may not have the function yet
+  const row = (data as { blocked: boolean; reason: string | null }[] | null)?.[0];
+  return { blocked: !!row?.blocked, reason: row?.reason ?? null };
 }
 
 export async function fetchBlockedTelegramUsers(): Promise<BlockedTelegramUser[]> {

@@ -91,11 +91,13 @@ export interface SubscriptionDetail extends SubscriptionStatus {
 // left, and out of how long" in one round trip.
 export async function getSubscriptionDetail(): Promise<SubscriptionDetail> {
   const { id } = getIdentity();
-  const { data } = await supabase
-    .from('subscriptions')
-    .select('expires_at, tier, updated_at')
-    .eq('telegram_user_id', id)
-    .maybeSingle();
+  // Via an RPC that filters by identity server-side rather than a direct
+  // table read: `subscriptions` used to be readable in bulk by anyone
+  // holding the anon key, which is public by design.
+  const { data: rows } = await supabase.rpc('get_my_subscription', {
+    p_telegram_user_id: id,
+  });
+  const data = (rows as { expires_at: string; tier: string; updated_at: string }[] | null)?.[0];
 
   if (!data?.expires_at) {
     return { subscribed: false, expiresAt: null, tier: null, startedAt: null };
@@ -123,12 +125,10 @@ export interface PaymentHistoryRow {
 // should degrade rather than error out.
 export async function getMyPayments(limit = 20): Promise<PaymentHistoryRow[]> {
   const { id } = getIdentity();
-  const { data } = await supabase
-    .from('payment_submissions')
-    .select('*')
-    .eq('telegram_user_id', id)
-    .order('submitted_at', { ascending: false })
-    .limit(limit);
+  const { data } = await supabase.rpc('get_my_payments', {
+    p_telegram_user_id: id,
+    p_limit: limit,
+  });
   return (data ?? []) as PaymentHistoryRow[];
 }
 
@@ -165,11 +165,10 @@ export async function setHiddenTierKeys(keys: Iterable<string>): Promise<void> {
 
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   const { id } = getIdentity();
-  const { data } = await supabase
-    .from('subscriptions')
-    .select('expires_at, tier')
-    .eq('telegram_user_id', id)
-    .maybeSingle();
+  const { data: rows } = await supabase.rpc('get_my_subscription', {
+    p_telegram_user_id: id,
+  });
+  const data = (rows as { expires_at: string; tier: string }[] | null)?.[0];
 
   if (!data?.expires_at) return { subscribed: false, expiresAt: null, tier: null };
   const subscribed = new Date(data.expires_at) > new Date();
@@ -264,26 +263,21 @@ export async function getPendingSubmission(): Promise<PaymentSubmission | null> 
   // row pending. That error came back as "no pending submission at all",
   // so the modal forgot a live ticket and opened yet another one. Newest
   // row wins instead.
-  const { data } = await supabase
-    .from('payment_submissions')
-    .select('id, status, tier, amount, submitted_at, telegram_user_id, telegram_username')
-    .eq('telegram_user_id', id)
-    .eq('status', 'pending')
-    .order('submitted_at', { ascending: false })
-    .limit(1);
-  return data?.[0] ?? null;
+  const { data } = await supabase.rpc('get_my_pending_payment', {
+    p_telegram_user_id: id,
+  });
+  return (data as PaymentSubmission[] | null)?.[0] ?? null;
 }
 
 // Polled every few seconds while the "waiting on admin" screen is up, so
 // it can flip to "you're VIP now" the instant the admin (or the 30s
 // auto-approve fallback) decides.
 export async function checkSubmissionStatus(id: string): Promise<PaymentSubmission['status'] | null> {
-  const { data } = await supabase
-    .from('payment_submissions')
-    .select('status')
-    .eq('id', id)
-    .maybeSingle();
-  return data?.status ?? null;
+  const { data } = await supabase.rpc('get_my_payment_status', {
+    p_telegram_user_id: getIdentity().id,
+    p_submission_id: id,
+  });
+  return (data as PaymentSubmission['status'] | null) ?? null;
 }
 
 // Everything a payer expects to see on a confirmation screen once the
@@ -302,14 +296,14 @@ export interface PaymentReceipt {
 }
 
 export async function getPaymentReceipt(submissionId: string): Promise<PaymentReceipt | null> {
-  const { data } = await supabase
-    .from('payment_submissions')
-    .select('*')
-    .eq('id', submissionId)
-    .maybeSingle();
+  const { data: rows } = await supabase.rpc('get_my_payment_receipt', {
+    p_telegram_user_id: getIdentity().id,
+    p_submission_id: submissionId,
+  });
+  const data = (rows as Record<string, unknown>[] | null)?.[0];
   if (!data) return null;
 
-  const row = data as Record<string, unknown>;
+  const row = data;
   const status = await getSubscriptionStatus();
   return {
     id: String(row.id),
@@ -350,19 +344,19 @@ export async function submitPaymentIntent(opts: {
 }): Promise<{ error: string | null; id: string | null }> {
   const { id, username } = getIdentity();
 
-  const { data: inserted, error: insertErr } = await supabase
-    .from('payment_submissions')
-    .insert({
-      telegram_user_id: id,
-      telegram_username: username,
-      tier: opts.tierKey,
-      amount: opts.amount,
-      screenshot_url: null,
-      status: 'pending',
-    })
-    .select('id')
-    .single();
+  // Via an RPC rather than insert().select('id'): reading the new row
+  // back needs SELECT on payment_submissions, and that privilege is what
+  // made the whole payment history public. The function returns the new
+  // id and nothing else.
+  const { data: newId, error: insertErr } = await supabase.rpc('create_payment_submission', {
+    p_telegram_user_id: id,
+    p_telegram_username: username,
+    p_tier: opts.tierKey,
+    p_amount: opts.amount,
+    p_screenshot_url: null,
+  });
   if (insertErr) return { error: insertErr.message, id: null };
+  const inserted = { id: newId as string };
 
   if (opts.notifyAdmin) {
     notifyPendingSubmission({
@@ -391,6 +385,7 @@ export async function submitPaymentIntent(opts: {
 export async function expireStaleSubmission(submissionId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('expire_stale_payment_submission', {
     p_submission_id: submissionId,
+    p_telegram_user_id: getIdentity().id,
   });
   if (error) return false;
   return data === true;
@@ -409,6 +404,7 @@ export async function expireStaleSubmission(submissionId: string): Promise<boole
 export async function cancelPaymentSubmission(submissionId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('cancel_payment_submission', {
     p_submission_id: submissionId,
+    p_telegram_user_id: getIdentity().id,
   });
   if (error) return false;
   return data === true;
@@ -513,19 +509,15 @@ export async function submitPayment(opts: {
 
   const { data: pub } = supabase.storage.from('payment-proofs').getPublicUrl(path);
 
-  const { data: inserted, error: insertErr } = await supabase
-    .from('payment_submissions')
-    .insert({
-      telegram_user_id: id,
-      telegram_username: username,
-      tier: opts.tierKey,
-      amount: opts.amount,
-      screenshot_url: pub.publicUrl,
-      status: 'pending',
-    })
-    .select('id')
-    .single();
+  const { data: newId, error: insertErr } = await supabase.rpc('create_payment_submission', {
+    p_telegram_user_id: id,
+    p_telegram_username: username,
+    p_tier: opts.tierKey,
+    p_amount: opts.amount,
+    p_screenshot_url: pub.publicUrl,
+  });
   if (insertErr) return { error: insertErr.message };
+  const inserted = { id: newId as string };
 
   // Fire-and-forget: tells the admin's Telegram immediately with an
   // Approve/Reject button. If this fails the submission still exists and
