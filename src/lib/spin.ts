@@ -13,24 +13,6 @@ export interface RewardTier {
   weight: number;
 }
 
-// The general free-forever spin every viewer gets once, regardless of
-// whether they ever buy VIP. Finer day increments for variety, plus a
-// 1-month jackpot capped at the first 5 winners overall.
-export const SPIN_TIERS: RewardTier[] = [
-  { key: '1d', label: '1 day', days: 1, weight: 30 },
-  { key: '2d', label: '2 days', days: 2, weight: 22 },
-  { key: '3d', label: '3 days', days: 3, weight: 16 },
-  { key: '5d', label: '5 days', days: 5, weight: 12 },
-  { key: '7d', label: '7 days', days: 7, weight: 8 },
-  { key: '10d', label: '10 days', days: 10, weight: 5 },
-  { key: '15d', label: '15 days', days: 15, weight: 3 },
-  { key: '20d', label: '20 days', days: 20, weight: 1.5 },
-  { key: '1m', label: '1 month', days: 30, weight: 0.5 },
-];
-
-const JACKPOT_KEY = '1m';
-const JACKPOT_MAX_WINNERS = 5;
-
 // Marketing bonus spin, unlocked once per approved VIP purchase.
 //
 // Capped at 10 bonus days per person, by the owner's decision. Every
@@ -64,16 +46,6 @@ export const BONUS_POOLS: Record<string, RewardTier[]> = {
   '12m': BONUS_POOL,
 };
 
-function pickWeightedReward(pool: RewardTier[]): RewardTier {
-  const total = pool.reduce((sum, t) => sum + t.weight, 0);
-  let roll = Math.random() * total;
-  for (const tier of pool) {
-    if (roll < tier.weight) return tier;
-    roll -= tier.weight;
-  }
-  return pool[0];
-}
-
 function getTelegramIdentity(): { id: string; username: string | null } {
   const user = getTelegramWebApp()?.initDataUnsafe?.user;
   if (user) {
@@ -85,44 +57,6 @@ function getTelegramIdentity(): { id: string; username: string | null } {
     localStorage.setItem('nint_spin_device_id', deviceId);
   }
   return { id: deviceId, username: null };
-}
-
-// One free spin, ever, per Telegram account — enforced by the unique
-// (telegram_user_id, source='free') index in the database as a backstop.
-export async function claimSpin(): Promise<{ data: SpinResult | null; error: string | null }> {
-  const { id: telegramUserId, username } = getTelegramIdentity();
-
-  const { data: existing, error: checkErr } = await supabase
-    .from('spin_claims')
-    .select('id')
-    .eq('telegram_user_id', telegramUserId)
-    .eq('source', 'free')
-    .maybeSingle();
-
-  if (checkErr) return { data: null, error: checkErr.message };
-  if (existing) return { data: null, error: 'already_used' };
-
-  const { count: jackpotWinners } = await supabase
-    .from('spin_claims')
-    .select('id', { count: 'exact', head: true })
-    .eq('reward_label', SPIN_TIERS.find((t) => t.key === JACKPOT_KEY)!.label);
-
-  const pool = (jackpotWinners ?? 0) >= JACKPOT_MAX_WINNERS
-    ? SPIN_TIERS.filter((t) => t.key !== JACKPOT_KEY)
-    : SPIN_TIERS;
-
-  const tier = pickWeightedReward(pool);
-
-  const { error: insertErr } = await supabase.from('spin_claims').insert({
-    telegram_user_id: telegramUserId,
-    telegram_username: username,
-    source: 'free',
-    reward_days: tier.days,
-    reward_label: tier.label,
-  });
-
-  if (insertErr) return { data: null, error: insertErr.message };
-  return { data: { reward_days: tier.days, reward_label: tier.label }, error: null };
 }
 
 export interface BonusSpinInfo {
