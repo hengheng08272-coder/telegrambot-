@@ -296,7 +296,14 @@ export default function ShowDetailScreen({
             ) : (
               <div className="space-y-3">
                 {episodes.map((ep) => {
-                  const locked = !subscribed && !ep.is_free_preview;
+                  // `shows.is_free` means the WHOLE show is free — that is
+                  // what free-content-addition.sql documents it as, and what
+                  // the FREE badge on every card and the home screen's free
+                  // row have always claimed. This gate only ever read the
+                  // per-episode flag, so marking a show free put a green
+                  // "free to watch" badge on a show whose every episode
+                  // still opened the VIP paywall.
+                  const locked = !subscribed && !show.is_free && !ep.is_free_preview;
                   return (
                   <button
                     key={ep.id}
