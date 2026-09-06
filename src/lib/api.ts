@@ -10,6 +10,35 @@ interface ShowWithGenreData extends Omit<Show, 'genres'> {
   show_genres: ShowGenreJoin[];
 }
 
+/**
+ * Supabase rejects a query with a `PostgrestError` — a plain object with
+ * `message`/`code`/`hint`, NOT an `Error` instance. Anywhere the UI wrote
+ * `e instanceof Error ? e.message : 'something failed'`, that test was
+ * always false and the real reason was thrown away.
+ *
+ * That is not hypothetical: a missing `GRANT SELECT ON episodes TO anon`
+ * made every show fail to open for signed-out viewers, and the screen
+ * said only "Failed to load show" while the server had been answering
+ * `permission denied for table episodes` with the exact fix in its hint.
+ *
+ * Use this instead of an `instanceof Error` test on anything that came
+ * out of a Supabase call.
+ */
+export function errorMessage(e: unknown, fallback: string): string {
+  if (e instanceof Error && e.message) return e.message;
+  if (e && typeof e === 'object') {
+    const err = e as { message?: unknown; hint?: unknown; code?: unknown };
+    const parts = [err.message, err.hint].filter(
+      (v): v is string => typeof v === 'string' && v.trim().length > 0,
+    );
+    if (parts.length) {
+      const code = typeof err.code === 'string' && err.code ? ` (${err.code})` : '';
+      return `${parts.join(' — ')}${code}`;
+    }
+  }
+  return fallback;
+}
+
 export async function fetchShowcaseShows(limit = 8): Promise<Show[]> {
   const { data, error } = await supabase
     .from('shows')
@@ -133,7 +162,15 @@ export async function fetchShowEpisodeInfo(): Promise<Record<string, ShowEpisode
     .from('episodes')
     .select('show_id, created_at, episode_number')
     .order('created_at', { ascending: false });
-  if (error) return {};
+  if (error) {
+    // Used to `return {}` silently, which is how a total loss of read
+    // access to `episodes` still looked like a perfectly healthy home
+    // screen — every "EP n" badge just quietly vanished. The rail can
+    // still render without this data, so don't throw; but never let the
+    // failure pass unrecorded again.
+    console.error('[fetchShowEpisodeInfo] episode lookup failed:', error);
+    return {};
+  }
   const info: Record<string, ShowEpisodeInfo> = {};
   for (const ep of data ?? []) {
     const current = info[ep.show_id];
