@@ -4,6 +4,7 @@ import type { Show } from '@/lib/types';
 import Badge from '@/components/Badge';
 import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import { useLang } from '@/lib/useLang';
+import { parseSeason } from '@/lib/seasons';
 import { appText } from '@/lib/appTranslations';
 
 interface ShowCardProps {
@@ -39,6 +40,18 @@ interface ShowCardProps {
   titleFromSeason?: boolean;
 }
 
+/**
+ * Green means "watchable now", gold means "needs a membership" — the same
+ * two colours the access badge on the poster already uses. The season
+ * chips take their colour from this rather than from a fixed blue, which
+ * in this app reads as "a movie you can buy" and said nothing about
+ * whether the season was open.
+ */
+const ACCESS_CHIP = {
+  free: 'bg-[#2FD98C]/14 text-[#2FD98C] ring-[#2FD98C]/35',
+  member: 'bg-[#F5C563]/12 text-[#F5C563] ring-[#F5C563]/30',
+} as const;
+
 export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle, titleFromSeason, continuesAtSeason }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -48,6 +61,11 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
   // Added within the last week — a plain fact read off created_at, not an
   // admin toggle, so it clears on its own instead of needing to be turned
   // off by hand once a title stops being new.
+  // The season this card is, read off its own title. Only surfaced on a
+  // free show: the free row's offer is "this season is free", and saying
+  // which one is the difference between an offer and a vague promise.
+  const ownSeason = parseSeason(show.title).season;
+
   const isNew =
     !!show.created_at && Date.now() - new Date(show.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
 
@@ -198,6 +216,17 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
               {show.is_free ? t.freeBadge : t.vipBadge}
             </Badge>
           )}
+          {/* Which season is the free one, stacked under the FREE badge.
+              "Free" on a series that runs to several seasons is ambiguous
+              on its own — this makes the offer exact. Skipped in a franchise
+              row, where the caption pill below already carries the season. */}
+          {!show.coming_soon && show.is_free && ownSeason !== null && seasonNumber === undefined && (
+            <span
+              className={`absolute left-1.5 top-[26px] inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-[3px] text-[9.5px] font-bold leading-none shadow-[0_2px_8px_rgba(2,4,10,0.5)] ring-1 ring-inset backdrop-blur-sm ${ACCESS_CHIP.free}`}
+            >
+              {t.seasonShort}{ownSeason}
+            </span>
+          )}
           {!show.coming_soon && show.type === 'movie' && show.is_free && (
             <Badge tone="free" onArt className="absolute left-1.5 top-1.5">
               {t.freeBadge}
@@ -215,10 +244,19 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
         </div>
       </div>
       {!rank && titleFromSeason && seasonNumber !== undefined ? (
+        // Inside a franchise row the heading already names the show, so the
+        // season number is the whole caption — and it carries the row's one
+        // useful signal in its colour: green seasons are watchable now, gold
+        // ones need a membership.
         <div className="mt-2 px-0.5">
-          <p className="truncate text-[13px] font-bold text-white/95 transition group-hover:text-[#4E86FF]">
+          <span
+            className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-[3px] text-[11px] font-black leading-none ring-1 ring-inset ${
+              show.is_free ? ACCESS_CHIP.free : ACCESS_CHIP.member
+            }`}
+          >
+            {!show.is_free && <Crown className="h-2.5 w-2.5 shrink-0" />}
             {t.seasonShort}{seasonNumber}
-          </p>
+          </span>
         </div>
       ) : !rank ? (
         <div className="mt-2 px-0.5">
@@ -230,18 +268,24 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
             // membership", so spelling it out next to the icon wrapped the
             // chip onto a second line and left the cards in the row at
             // different heights. Icon plus season number says it in one.
-            <span className="mt-1 inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-[#F5C563]/12 px-1.5 py-[2px] text-[9.5px] font-bold leading-none text-[#F5C563] ring-1 ring-inset ring-[#F5C563]/30">
+            <span className={`mt-1 inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-[2px] text-[9.5px] font-bold leading-none ring-1 ring-inset ${ACCESS_CHIP.member}`}>
               <Crown className="h-2.5 w-2.5 shrink-0" />
               {t.seasonShort}{continuesAtSeason}
             </span>
           )}
           {seasonNumber !== undefined && (
-            // A filled pill, not plain text. Two seasons of one franchise
-            // sit side by side in this rail under the same (often
-            // truncated) name, so the season number is the only thing
-            // telling the cards apart — it has to carry more weight than
-            // the title does, not less.
-            <span className="mt-1 inline-flex items-center rounded-md bg-[#2050D8]/22 px-1.5 py-[2px] text-[10px] font-black leading-none text-[#7FA6FF] ring-1 ring-inset ring-[#2050D8]/40">
+            // A filled pill, not plain text: two seasons of one franchise
+            // sit side by side under the same (often truncated) title, so
+            // the number is the only thing telling the cards apart. Its
+            // colour is the season's own access, so a franchise row reads
+            // at a glance as "green ones I can watch, gold ones I cannot"
+            // — which is exactly the question that row is there to answer.
+            <span
+              className={`mt-1 inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-[2px] text-[10px] font-black leading-none ring-1 ring-inset ${
+                show.is_free ? ACCESS_CHIP.free : ACCESS_CHIP.member
+              }`}
+            >
+              {!show.is_free && <Crown className="h-2.5 w-2.5 shrink-0" />}
               {t.seasonShort}{seasonNumber}
             </span>
           )}
