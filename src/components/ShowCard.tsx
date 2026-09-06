@@ -28,9 +28,14 @@ interface ShowCardProps {
   /** Franchise name with the season marker removed — used as the card's
    *  visible title in the seasons row. */
   displayTitle?: string;
+  /** Drop the caption entirely and let the season pill be the label.
+   *  Inside a per-series season row the heading above already names the
+   *  show, so repeating it under every card says the same thing three
+   *  times and pushes the one distinguishing bit — the season — down. */
+  titleFromSeason?: boolean;
 }
 
-export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle }: ShowCardProps) {
+export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle, titleFromSeason }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
   const { lang } = useLang();
@@ -205,7 +210,13 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
           )}
         </div>
       </div>
-      {!rank && (
+      {!rank && titleFromSeason && seasonNumber !== undefined ? (
+        <div className="mt-2 px-0.5">
+          <p className="truncate text-[13px] font-bold text-white/95 transition group-hover:text-[#4E86FF]">
+            {t.seasonShort}{seasonNumber}
+          </p>
+        </div>
+      ) : !rank ? (
         <div className="mt-2 px-0.5">
           <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
             {displayTitle ?? show.title}
@@ -221,7 +232,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
             </span>
           )}
         </div>
-      )}
+      ) : null}
     </button>
   );
 }
