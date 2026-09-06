@@ -10,7 +10,7 @@ import {
   Loader2,
   RotateCcw,
   RotateCw,
-  ChevronRight,
+  SkipForward,
   X,
   ListVideo,
   Check,
@@ -814,7 +814,14 @@ export default function VideoPlayerScreen({
           className={`player-chrome player-safe-x absolute inset-x-0 top-0 z-10 player-scrim-top pb-10 ${
             isInTelegram() && !isFullscreen
               ? 'pt-14'
-              : 'pt-[max(env(safe-area-inset-top,0px),14px)]'
+              // 44px floor, not 14px. Android WebViews routinely report
+              // safe-area-inset-top as 0 even with a status bar drawn over
+              // the page, and at 14px the show name and episode title ran
+              // straight under the clock and the signal icons. Fullscreen
+              // has no status bar to clear, so it keeps the tighter inset.
+              : isFullscreen
+                ? 'pt-[max(env(safe-area-inset-top,0px),14px)]'
+                : 'pt-[max(env(safe-area-inset-top,0px),44px)]'
           } ${locked ? 'pointer-events-none opacity-0' : ''}`}
           data-hidden={chromeHidden}
         >
@@ -912,7 +919,12 @@ export default function VideoPlayerScreen({
             <button onClick={() => skip(10)} className="player-btn h-10 w-10" aria-label="Forward 10s">
               <RotateCw className="h-[18px] w-[18px]" />
             </button>
-            <div className="group/vol flex items-center">
+            {/* Mute is a desktop-only control on the bar. A phone has
+                hardware volume keys, so on mobile this only takes space
+                away from the two things a viewer actually reaches for —
+                the episode list and the next episode — and it moves into
+                the overflow menu there instead. */}
+            <div className="group/vol hidden items-center sm:flex">
               <button
                 onClick={toggleMute}
                 className="player-btn h-10 w-10"
@@ -958,7 +970,7 @@ export default function VideoPlayerScreen({
                     setMoreOpen(false);
                     setSpeedOpen((o) => !o);
                   }}
-                  className={`player-btn h-10 min-w-10 px-2 text-[11px] font-bold ${
+                  className={`player-btn hidden h-10 min-w-10 px-2 text-[11px] font-bold sm:inline-flex ${
                     speed !== 1 ? 'text-[#4E86FF]' : ''
                   }`}
                   aria-label={t.playbackSpeed}
@@ -997,6 +1009,44 @@ export default function VideoPlayerScreen({
                 )}
               </div>
 
+              {/* The two controls a viewer of a series actually reaches
+                  for, promoted onto the bar itself and visible on a phone.
+                  Both used to be reachable only by opening the overflow
+                  menu first (episode list) or not at all below the `sm`
+                  breakpoint (next episode) — which on a phone, the only
+                  place this app runs, meant the player had no visible way
+                  to change episode at all. */}
+              {allEpisodes.length > 0 && onSwitchEpisode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMoreOpen(false);
+                    setSpeedOpen(false);
+                    setEpisodeListOpen(true);
+                  }}
+                  className="player-btn h-10 gap-1.5 px-3 text-[11px] font-bold"
+                  aria-label={t.episodesHeading}
+                  title={t.episodesHeading}
+                >
+                  <ListVideo className="h-[18px] w-[18px]" />
+                  <span className="hidden xs:inline">{t.episodesHeading}</span>
+                </button>
+              )}
+
+              {nextEpisode && onSwitchEpisode && (
+                <button
+                  onClick={() => onSwitchEpisode(nextEpisode)}
+                  className="player-btn h-10 gap-1 bg-[#2050D8]/25 px-3 text-[11px] font-bold text-white ring-1 ring-inset ring-[#2050D8]/45"
+                  aria-label={t.nextEpisode}
+                  title={t.nextEpisode}
+                >
+                  <SkipForward className="h-[16px] w-[16px]" />
+                  <span className="hidden xs:inline">
+                    {t.episodeLabel} {nextEpisode.episode_number}
+                  </span>
+                </button>
+              )}
+
               {/* Overflow menu: lock, fit/fill, and the full episode list —
                   everything else a viewer sets once and leaves alone,
                   grouped behind a single icon instead of competing for
@@ -1025,6 +1075,46 @@ export default function VideoPlayerScreen({
                     onClick={(e) => e.stopPropagation()}
                     className="absolute bottom-12 right-0 z-30 w-56 overflow-hidden rounded-xl border border-white/[0.12] bg-black/85 p-1.5 backdrop-blur-xl sheet-in"
                   >
+                    {/* Mute and speed are on the bar from `sm` up; on a
+                        phone they live here instead, so the bar keeps its
+                        space for playback and episode navigation. */}
+                    <button
+                      onClick={() => {
+                        toggleMute();
+                        setMoreOpen(false);
+                        revealControls();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-white/85 transition hover:bg-white/10 sm:hidden"
+                    >
+                      {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      {muted || volume === 0 ? t.unmute : t.mute}
+                    </button>
+
+                    <div className="px-3 py-2 sm:hidden">
+                      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-white/40">
+                        <Gauge className="h-3.5 w-3.5" /> {t.playbackSpeed}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SPEEDS.map((sp) => (
+                          <button
+                            key={sp}
+                            onClick={() => {
+                              setSpeed(sp);
+                              setMoreOpen(false);
+                              revealControls();
+                            }}
+                            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                              sp === speed
+                                ? 'bg-[#2050D8]/20 text-[#93B2FF]'
+                                : 'bg-white/[0.06] text-white/75 hover:bg-white/10'
+                            }`}
+                          >
+                            {sp}×
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     <button
                       onClick={() => {
                         setMoreOpen(false);
@@ -1046,30 +1136,10 @@ export default function VideoPlayerScreen({
                       <Crop className="h-4 w-4" /> {fillScreen ? t.zoomFit : t.zoomFill}
                     </button>
 
-                    {allEpisodes.length > 0 && onSwitchEpisode && (
-                      <button
-                        onClick={() => {
-                          setMoreOpen(false);
-                          setEpisodeListOpen(true);
-                        }}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-white/85 transition hover:bg-white/10"
-                      >
-                        <ListVideo className="h-4 w-4" /> {t.episodesHeading}
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
 
-              {nextEpisode && onSwitchEpisode && (
-                <button
-                  onClick={() => onSwitchEpisode(nextEpisode)}
-                  className="player-btn hidden h-10 gap-1 px-3.5 text-xs font-bold sm:inline-flex"
-                  aria-label="Next episode"
-                >
-                  {t.episodeLabel} {nextEpisode.episode_number} <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              )}
               <button
                 onClick={toggleFullscreen}
                 className="player-btn h-11 w-11"

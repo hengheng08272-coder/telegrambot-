@@ -17,6 +17,9 @@ import {
   Check,
   Play,
   Clock,
+  Layers,
+  ListVideo,
+  Radio,
   Calendar,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
@@ -31,6 +34,7 @@ import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
+import { seasonalShows, parseSeason } from '@/lib/seasons';
 
 interface HomeScreenProps {
   onSelectShow: (show: Show) => void;
@@ -270,6 +274,37 @@ export default function HomeScreen({
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
   const completedShows = shows.filter((s) => s.type === 'series' && s.status === 'completed');
   const oneOffMovies = shows.filter((s) => s.type === 'movie' && !s.coming_soon);
+
+  // Series that run to more than one season, or that announce a season
+  // number even when the earlier ones are not in the catalog yet. The
+  // season lives in the title text rather than a column, so this is
+  // parsed — see lib/seasons.ts for the five spellings the data uses.
+  const seasonEntries = useMemo(
+    () => seasonalShows(shows.filter((s) => !s.coming_soon)),
+    [shows],
+  );
+  const seasonShows = seasonEntries.map((e) => e.show);
+  const seasonMeta = Object.fromEntries(
+    seasonEntries.map((e) => [e.show.id, { season: e.season, base: parseSeason(e.show.title).base }]),
+  );
+
+  // The long ones. A viewer with an evening free wants the shows they can
+  // actually sink into, and episode count is the honest signal for that —
+  // it needs no admin curation and cannot go stale.
+  const bingeShows = useMemo(
+    () =>
+      shows
+        .filter((s) => !s.coming_soon && (episodeNumbers[s.id] ?? 0) >= 20)
+        .sort((a, b) => (episodeNumbers[b.id] ?? 0) - (episodeNumbers[a.id] ?? 0))
+        .slice(0, 14),
+    [shows, episodeNumbers],
+  );
+
+  // Still releasing. Separated from the Completed row so the two answer
+  // opposite questions: "what can I finish tonight" vs "what do I follow".
+  const ongoingShows = shows.filter(
+    (s) => s.type === 'series' && s.status !== 'completed' && !s.coming_soon,
+  );
   // The single movie the panel leads with — most-watched first (same
   // real play-count signal `trending` uses above), so the one card the
   // row spends its height on is the one most people already want.
@@ -638,6 +673,27 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-3">
+            {/* Free-to-watch leads the page. Everything below it needs a
+                membership, so the one row a signed-out viewer can act on
+                immediately goes first rather than three rows down — and it
+                gets the showcase panel treatment (in green, not the
+                Movies row's gold) so it reads as an offer, not a filter.
+                Empty until shows are marked "unlock all" (shows.is_free)
+                in Admin -> Shows; the row hides itself until then. */}
+            {freeShows.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                panel
+                accent="#2FD98C"
+                icon={<Gift className="h-5 w-5 text-[#2FD98C]" />}
+                title={t.freeRowLabel ?? 'Free to Watch'}
+                shows={freeShows}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
+                viewAllLabel={t.viewAll}
+                tag={{ label: t.unlockAllTag, tone: 'free' }}
+              />
+            )}
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
                 without repeating it as a second ranked row underneath. */}
@@ -678,18 +734,6 @@ export default function HomeScreen({
                 onSelectShow={onSelectShow}
               />
             )}
-            {freeShows.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                icon={<Gift className="h-5 w-5 text-[#2FD98C]" />}
-                title={t.freeRowLabel ?? 'Free to Watch'}
-                shows={freeShows}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
-                viewAllLabel={t.viewAll}
-                tag={{ label: t.freeBadge, tone: 'free' }}
-              />
-            )}
             {completedShows.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
@@ -698,6 +742,24 @@ export default function HomeScreen({
                 shows={completedShows}
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.completedRowLabel ?? 'Completed Series', shows: completedShows })}
+                viewAllLabel={t.viewAll}
+              />
+            )}
+            {/* Series with seasons. The season number lives in the title
+                text, so the row strips it off the card title and shows it
+                as a chip instead — that way the franchise name lines up
+                down the rail and "S1, S2" reads as an order to watch in,
+                rather than each card repeating the full title. Franchises
+                with the most seasons come first. */}
+            {seasonShows.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                icon={<Layers className="h-5 w-5 text-[#4E86FF]" />}
+                title={t.seasonsRowLabel}
+                shows={seasonShows}
+                seasons={seasonMeta}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.seasonsRowLabel, shows: seasonShows })}
                 viewAllLabel={t.viewAll}
               />
             )}
@@ -726,6 +788,29 @@ export default function HomeScreen({
               viewAllLabel={t.viewAll}
               tag={{ label: t.hotTag ?? 'HOT', tone: 'mark' }}
             />
+
+            {bingeShows.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                icon={<ListVideo className="h-5 w-5 text-white/45" />}
+                title={t.bingeRowLabel}
+                shows={bingeShows}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.bingeRowLabel, shows: bingeShows })}
+                viewAllLabel={t.viewAll}
+              />
+            )}
+            {ongoingShows.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                icon={<Radio className="h-5 w-5 text-white/45" />}
+                title={t.ongoingRowLabel}
+                shows={ongoingShows}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.ongoingRowLabel, shows: ongoingShows })}
+                viewAllLabel={t.viewAll}
+              />
+            )}
 
             {genres.map((g) => {
               const list = showsByGenre(g.slug);
@@ -1444,9 +1529,17 @@ interface RailRowProps {
    *  strip rather than just another rail, without needing taller cards
    *  to read as "featured". Used for the Movies row. */
   panel?: boolean;
+  /** Accent colour for the panel treatment and the header's leading rule.
+   *  Defaults to the gold the Movies panel has always used; the free row
+   *  passes green so the two showcase strips stay distinguishable at a
+   *  glance rather than both reading as "the gold one". */
+  accent?: string;
+  /** Per-card season numbers, keyed by show id. Only the seasons row
+   *  passes this — see ShowCard's `seasonNumber`. */
+  seasons?: Record<string, { season: number; base: string }>;
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel }: RailRowProps) {
+function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel, accent = '#F5C563', seasons }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
@@ -1457,8 +1550,19 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
         ranked
           ? 'relative mt-8 overflow-hidden rounded-xl'
           : panel
-            ? 'mt-9 overflow-hidden rounded-2xl border border-[#F5C563]/15 bg-gradient-to-br from-[#2A2010]/70 via-[#151926]/40 to-transparent px-3 pb-1 pt-4 sm:px-4'
+            ? 'mt-9 overflow-hidden rounded-2xl border px-3 pb-1 pt-4 sm:px-4'
             : 'mt-9'
+      }
+      style={
+        panel
+          ? {
+              borderColor: `${accent}26`,
+              // A wash of the row's own accent rather than a flat card:
+              // enough to separate the strip from the page, not enough to
+              // compete with the poster art sitting on it.
+              background: `linear-gradient(135deg, ${accent}1F 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
+            }
+          : undefined
       }
     >
       {!ranked && !panel && (
@@ -1491,7 +1595,11 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           <div className="flex min-w-0 items-center gap-2">
             {/* A quiet rule, not another colour: the row's identity
                 comes from its title and its covers. */}
-            <span className="h-4 w-[3px] shrink-0 rounded-sm bg-white/20" aria-hidden />
+            <span
+              className="h-4 w-[3px] shrink-0 rounded-sm"
+              style={{ background: panel ? accent : 'rgba(255,255,255,0.2)' }}
+              aria-hidden
+            />
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
             <h2 className="truncate text-lg font-bold tracking-tight">{title}</h2>
             {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
@@ -1518,6 +1626,8 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
             latestEpisode={episodeNumbers?.[s.id]}
             rank={ranked ? i + 1 : undefined}
             large={large}
+            seasonNumber={seasons?.[s.id]?.season}
+            displayTitle={seasons?.[s.id]?.base}
           />
         ))}
       </div>

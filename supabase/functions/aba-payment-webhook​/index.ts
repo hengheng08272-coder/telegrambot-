@@ -295,7 +295,19 @@ Deno.serve(async (req: Request) => {
       existing?.expires_at && new Date(existing.expires_at) > new Date()
         ? new Date(existing.expires_at)
         : new Date();
-    base.setMonth(base.getMonth() + (tierForAmount.months ?? TIER_MONTHS_FALLBACK[sub.tier] ?? 1));
+    // A plan's duration is sold in months but granted in DAYS, at a flat
+    // 30 days per month (1 -> 30, 3 -> 90, 6 -> 180, 12 -> 360). Two
+    // reasons this is not setMonth():
+    //   1. It is the arithmetic the rest of the app already shows —
+    //      UsersPanel's remaining-days bar divides by months * 30, and
+    //      the plans are sold to viewers as a fixed day count.
+    //   2. setMonth() silently overflows on long months: buying on
+    //      31 Jan and adding 1 month lands on 3 Mar, because 31 Feb does
+    //      not exist — the buyer quietly loses 3 days. Adding days can
+    //      never do that.
+    base.setDate(
+      base.getDate() + (tierForAmount.months ?? TIER_MONTHS_FALLBACK[sub.tier] ?? 1) * 30,
+    );
 
     await admin.from("subscriptions").upsert({
       telegram_user_id: sub.telegram_user_id,

@@ -9,6 +9,23 @@ interface Props {
   onClaimed: (rewardLabel: string, days: number) => void;
 }
 
+// The edge function answers with a machine-readable reason so the viewer
+// gets told what actually happened ("your VIP has lapsed") instead of a
+// flat "try again" that never comes good.
+function messageForReason(reason: string, t: (typeof appText)[keyof typeof appText]): string {
+  switch (reason) {
+    case 'already_used':
+      return t.spinAlreadyUsed;
+    case 'not_vip':
+    case 'not_approved':
+      return t.spinNotVipActive;
+    case 'bonus_disabled':
+      return t.spinBonusDisabled;
+    default:
+      return t.spinError;
+  }
+}
+
 // Diverse wedge palette pulled from the NINT ANIME brand: blood red,
 // near-black, ember orange, chrome silver, with gold reserved for
 // whichever slice is the top prize in a given pool.
@@ -55,7 +72,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
 
     if (err || !data) {
       setSpinning(false);
-      setError(err === 'already_used' ? t.spinAlreadyUsed : t.spinError);
+      setError(messageForReason(err ?? '', t));
       return;
     }
 
@@ -188,7 +205,8 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
               <div className="mx-auto flex w-fit items-center gap-2 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-4 py-1.5">
                 <PartyPopper className="h-4 w-4 text-[#F5C563]" />
                 <p className="text-base font-bold text-[#F5C563]">
-                  {t.spinWonPrefix} {result.label} {t.spinWonSuffixVip}
+                  {t.spinWonPrefix} {result.days} {lang === 'km' ? 'ថ្ងៃ' : 'days'}{' '}
+                  {t.spinWonSuffixVip}
                 </p>
               </div>
               <button

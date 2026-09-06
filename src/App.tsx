@@ -24,6 +24,11 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { getSubscriptionStatus } from '@/lib/subscription';
 import { getMyMoviePurchases } from '@/lib/moviePurchase';
 import { getAvailableBonusSpin } from '@/lib/spin';
+
+// Which bonus draw this device has already auto-opened. Stores the
+// submission id, not a boolean, so a viewer who buys again gets their
+// next draw popped rather than being silently skipped forever.
+const BONUS_SPIN_SHOWN_KEY = 'nint_bonus_spin_shown_for';
 import { recordReferralIfPresent } from '@/lib/referral';
 import { initTelegramApp, isInTelegram, registerBackButtonHandler, unregisterBackButtonHandler, showBackButton, hideBackButton, getStartParam, hapticTap, hapticSuccess, getCurrentTelegramProfile } from '@/lib/telegram';
 
@@ -98,7 +103,18 @@ function App() {
       // pill has nothing left to point at.
       if (s.subscribed) setVerifyingPayment(false);
     });
-    getAvailableBonusSpin().then((info) => setBonusSpinReady(!!info));
+    getAvailableBonusSpin().then((info) => {
+      setBonusSpinReady(!!info);
+      // Show an eligible VIP their draw on open rather than waiting for
+      // them to notice the gift badge. Keyed on the submission id and
+      // remembered locally so it pops once per unclaimed draw — the
+      // badge stays as the way back in after that, so a viewer who
+      // dismissed it has not lost anything.
+      if (info && localStorage.getItem(BONUS_SPIN_SHOWN_KEY) !== info.submissionId) {
+        localStorage.setItem(BONUS_SPIN_SHOWN_KEY, info.submissionId);
+        setShowSpin(true);
+      }
+    });
   };
   useEffect(() => {
     refreshSubscription();
@@ -375,7 +391,13 @@ function App() {
         {showSpin && (
           <LuckyDrawModal
             onClose={() => setShowSpin(false)}
-            onClaimed={() => hapticSuccess()}
+            onClaimed={() => {
+              hapticSuccess();
+              // The days are already on the account by the time this
+              // fires — re-read so days-left and the gift badge reflect
+              // the win without waiting for a reload.
+              refreshSubscription();
+            }}
           />
         )}
         {subscriptionSheet}
@@ -450,7 +472,10 @@ function App() {
       {showSpin && (
         <LuckyDrawModal
           onClose={() => setShowSpin(false)}
-          onClaimed={() => hapticSuccess()}
+          onClaimed={() => {
+            hapticSuccess();
+            refreshSubscription();
+          }}
         />
       )}
       {showBuyMovie && (
