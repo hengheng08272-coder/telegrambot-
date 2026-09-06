@@ -443,7 +443,7 @@ export const appText = {
     promoEyebrow: 'New member gift',
     promoGuestTitle: 'Join & Win Free VIP',
     promoGuestBody:
-      'Create an account and become a VIP member to unlock a free lucky draw — win up to 6 months of VIP, on us.',
+      'Create an account and become a VIP member to unlock a free lucky draw — win up to 10 extra VIP days, on us.',
     promoGuestCta: 'Sign up now',
     promoSpinTitle: 'Your Gift Is Ready',
     promoSpinBody:
@@ -907,7 +907,7 @@ export const appText = {
     promoEyebrow: 'អំណោយសមាជិកថ្មី',
     promoGuestTitle: 'ចុះឈ្មោះ ឈ្នះ VIP ឥតគិតថ្លៃ',
     promoGuestBody:
-      'បង្កើតគណនី ហើយក្លាយជាសមាជិក VIP ដើម្បីដោះសោការចាប់រង្វាន់ឥតគិតថ្លៃ — ឈ្នះរហូតដល់ ៦ខែ VIP។',
+      'បង្កើតគណនី ហើយក្លាយជាសមាជិក VIP ដើម្បីដោះសោការចាប់រង្វាន់ឥតគិតថ្លៃ — ឈ្នះរហូតដល់ ១០ ថ្ងៃ VIP បន្ថែម។',
     promoGuestCta: 'ចុះឈ្មោះឥឡូវនេះ',
     promoSpinTitle: 'អំណោយរបស់អ្នករួចរាល់ហើយ',
     promoSpinBody:

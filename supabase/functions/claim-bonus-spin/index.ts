@@ -16,9 +16,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // Doing the whole thing here fixes both at once: the pool, the roll,
 // the eligibility check and the grant are all server-side, and the
 // client's only input is which submission it wants to spin for.
-//
-// Requires no extra secrets beyond the SUPABASE_* pair every function
-// already gets.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,59 +30,38 @@ interface RewardTier {
   weight: number;
 }
 
-// Authoritative copy of the reward pools. lib/spin.ts keeps a matching
+// Authoritative copy of the reward pool. lib/spin.ts keeps a matching
 // copy purely to DRAW THE WHEEL -- the slices the viewer sees have to
 // match the ones that can actually come up. Only this file decides what
 // is won, so a tampered client can change what the wheel looks like and
 // nothing else. Keep the two in sync when editing either.
+//
+// Capped at 10 bonus days per person, by the owner's decision, and every
+// plan draws from the SAME pool: the bonus is a thank-you on top of a
+// plan that was already paid for, not a second product.
+//
+// MAX_REWARD_DAYS below is the hard ceiling, enforced on the drawn
+// reward rather than trusted from the table -- so an edit to the pool
+// that slips a bigger prize in can never grant more than the cap.
+const MAX_REWARD_DAYS = 10;
+
+const BONUS_POOL: RewardTier[] = [
+  { key: "1d", label: "1 day", days: 1, weight: 30 },
+  { key: "2d", label: "2 days", days: 2, weight: 22 },
+  { key: "3d", label: "3 days", days: 3, weight: 18 },
+  { key: "5d", label: "5 days", days: 5, weight: 14 },
+  { key: "7d", label: "7 days", days: 7, weight: 10 },
+  { key: "10d", label: "10 days", days: 10, weight: 6 },
+];
+
+// A tier has to be listed here to offer a draw at all. They all point at
+// the one pool; the map is what keeps "which plans get a draw" a
+// separate decision from "what can be won".
 const BONUS_POOLS: Record<string, RewardTier[]> = {
-  // 1 Month / $3 -- 1 to 30 bonus days.
-  "1m": [
-    { key: "1d", label: "1 day", days: 1, weight: 30 },
-    { key: "3d", label: "3 days", days: 3, weight: 22 },
-    { key: "5d", label: "5 days", days: 5, weight: 16 },
-    { key: "7d", label: "7 days", days: 7, weight: 12 },
-    { key: "10d", label: "10 days", days: 10, weight: 8 },
-    { key: "15d", label: "15 days", days: 15, weight: 5 },
-    { key: "20d", label: "20 days", days: 20, weight: 3 },
-    { key: "25d", label: "25 days", days: 25, weight: 2 },
-    { key: "30d", label: "30 days", days: 30, weight: 2 },
-  ],
-  // Big Bonus / $5 -- 30 to 100 bonus days.
-  "2m": [
-    { key: "30d", label: "30 days", days: 30, weight: 28 },
-    { key: "40d", label: "40 days", days: 40, weight: 20 },
-    { key: "50d", label: "50 days", days: 50, weight: 16 },
-    { key: "60d", label: "60 days", days: 60, weight: 12 },
-    { key: "70d", label: "70 days", days: 70, weight: 9 },
-    { key: "80d", label: "80 days", days: 80, weight: 7 },
-    { key: "90d", label: "90 days", days: 90, weight: 5 },
-    { key: "100d", label: "100 days", days: 100, weight: 3 },
-  ],
-  // 6 Months / $16 -- 20 to 120 bonus days. The longer plans had no pool
-  // at all before, which meant the people who spent the most were the
-  // only ones the draw never applied to.
-  "6m": [
-    { key: "20d", label: "20 days", days: 20, weight: 26 },
-    { key: "30d", label: "30 days", days: 30, weight: 20 },
-    { key: "40d", label: "40 days", days: 40, weight: 16 },
-    { key: "50d", label: "50 days", days: 50, weight: 13 },
-    { key: "60d", label: "60 days", days: 60, weight: 10 },
-    { key: "80d", label: "80 days", days: 80, weight: 7 },
-    { key: "100d", label: "100 days", days: 100, weight: 5 },
-    { key: "120d", label: "120 days", days: 120, weight: 3 },
-  ],
-  // 12 Months / $27 -- 40 to 200 bonus days.
-  "12m": [
-    { key: "40d", label: "40 days", days: 40, weight: 26 },
-    { key: "60d", label: "60 days", days: 60, weight: 20 },
-    { key: "80d", label: "80 days", days: 80, weight: 16 },
-    { key: "100d", label: "100 days", days: 100, weight: 13 },
-    { key: "120d", label: "120 days", days: 120, weight: 10 },
-    { key: "150d", label: "150 days", days: 150, weight: 7 },
-    { key: "180d", label: "180 days", days: 180, weight: 5 },
-    { key: "200d", label: "200 days", days: 200, weight: 3 },
-  ],
+  "1m": BONUS_POOL,
+  "2m": BONUS_POOL,
+  "6m": BONUS_POOL,
+  "12m": BONUS_POOL,
 };
 
 function pickWeightedReward(pool: RewardTier[]): RewardTier {
@@ -178,12 +154,20 @@ Deno.serve(async (req: Request) => {
     if (claimErr) return json({ error: claimErr.message }, 500);
     if (!claimed || claimed.length === 0) return json({ error: "already_used" }, 409);
 
-    const reward = pickWeightedReward(pool);
+    const drawn = pickWeightedReward(pool);
+    // The cap is applied to the DRAWN reward, not assumed from the pool,
+    // so it holds even if the table above is edited to include a bigger
+    // prize. Label follows the granted number so the viewer is never
+    // told they won more days than were added.
+    const rewardDays = Math.min(drawn.days, MAX_REWARD_DAYS);
+    const rewardLabel = rewardDays === drawn.days
+      ? drawn.label
+      : `${rewardDays} day${rewardDays === 1 ? "" : "s"}`;
 
     // Stack on top of whatever is left, never overwrite it -- the whole
     // point of the bonus is that it is time ADDED to the membership.
     const base = expiresAt > new Date() ? new Date(expiresAt) : new Date();
-    base.setDate(base.getDate() + reward.days);
+    base.setDate(base.getDate() + rewardDays);
     const newExpiresAt = base.toISOString();
 
     const { error: grantErr } = await admin
@@ -209,13 +193,13 @@ Deno.serve(async (req: Request) => {
       telegram_user_id: sub.telegram_user_id,
       telegram_username: sub.telegram_username,
       source: `purchase:${sub.id}`,
-      reward_days: reward.days,
-      reward_label: reward.label,
+      reward_days: rewardDays,
+      reward_label: rewardLabel,
     });
 
     return json({
-      reward_days: reward.days,
-      reward_label: reward.label,
+      reward_days: rewardDays,
+      reward_label: rewardLabel,
       expires_at: newExpiresAt,
     });
   } catch (e) {

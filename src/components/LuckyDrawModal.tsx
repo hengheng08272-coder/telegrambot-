@@ -56,9 +56,10 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
   const pool: RewardTier[] = bonusInfo ? BONUS_POOLS[bonusInfo.tier] ?? [] : [];
   const segmentDeg = pool.length ? 360 / pool.length : 0;
   const wedgeColors = pool.map((_, i) => WEDGE_PALETTE[i % WEDGE_PALETTE.length]);
-  // Wheel scales up and labels shrink a touch as the pool grows (7 slices
-  // for the Big Bonus tier vs. 3-6 for the others), so every slice stays
-  // legible instead of the text overlapping at the rim.
+  // Wheel scales up and labels shrink a touch as the pool grows, so every
+  // slice stays legible instead of the text overlapping at the rim. Every
+  // plan currently draws the same 6-slice pool (see BONUS_POOL), but the
+  // sizing stays pool-driven so a different pool doesn't break the layout.
   const wheelSize = pool.length >= 8 ? 312 : pool.length >= 6 ? 288 : 256;
   const labelRadius = pool.length >= 8 ? 132 : pool.length >= 6 ? 122 : 108;
   const labelFontPx = pool.length >= 8 ? 9 : pool.length >= 6 ? 10 : 11;

@@ -31,64 +31,37 @@ export const SPIN_TIERS: RewardTier[] = [
 const JACKPOT_KEY = '1m';
 const JACKPOT_MAX_WINNERS = 5;
 
-// Marketing bonus spin, unlocked once per approved VIP purchase. The
-// reward range scales with what they paid for — buying the pricier plan
-// gets access to a bigger bonus-day range, on top of the plan itself.
-// Only tiers listed here grant a bonus spin; a tier with no entry here
-// just doesn't offer one.
+// Marketing bonus spin, unlocked once per approved VIP purchase.
+//
+// Capped at 10 bonus days per person, by the owner's decision. Every
+// plan draws from the SAME pool: the bonus is a thank-you on top of a
+// plan that was already paid for, not a second product, and one shared
+// pool means the odds are the same for a $3 buyer and a $27 one and
+// there is only one table to keep in sync.
+//
+// A tier still has to be listed in BONUS_POOLS to offer a draw at all,
+// and the admin can switch any tier's bonus off from Admin Panel ->
+// Subscriptions (pricing_tiers.bonus_enabled) without touching code.
 //
 // This copy exists to DRAW THE WHEEL — the slices the viewer sees have
 // to be the ones that can actually come up. It does not decide anything:
 // the roll, the eligibility check and the grant all happen inside the
 // claim-bonus-spin edge function, which keeps the authoritative copy of
-// these pools. Keep the two in sync when editing either.
+// this pool. Keep the two in sync when editing either.
+export const BONUS_POOL: RewardTier[] = [
+  { key: '1d', label: '1 day', days: 1, weight: 30 },
+  { key: '2d', label: '2 days', days: 2, weight: 22 },
+  { key: '3d', label: '3 days', days: 3, weight: 18 },
+  { key: '5d', label: '5 days', days: 5, weight: 14 },
+  { key: '7d', label: '7 days', days: 7, weight: 10 },
+  { key: '10d', label: '10 days', days: 10, weight: 6 },
+];
+
 export const BONUS_POOLS: Record<string, RewardTier[]> = {
-  // 1 Month / $3 — 1 to 30 bonus days, finer steps at the low end so the
-  // wheel feels lively even on the cheaper tier.
-  '1m': [
-    { key: '1d', label: '1 day', days: 1, weight: 30 },
-    { key: '3d', label: '3 days', days: 3, weight: 22 },
-    { key: '5d', label: '5 days', days: 5, weight: 16 },
-    { key: '7d', label: '7 days', days: 7, weight: 12 },
-    { key: '10d', label: '10 days', days: 10, weight: 8 },
-    { key: '15d', label: '15 days', days: 15, weight: 5 },
-    { key: '20d', label: '20 days', days: 20, weight: 3 },
-    { key: '25d', label: '25 days', days: 25, weight: 2 },
-    { key: '30d', label: '30 days', days: 30, weight: 2 },
-  ],
-  // 1 Month Big Bonus / $5 — 30 to 100 bonus days.
-  '2m': [
-    { key: '30d', label: '30 days', days: 30, weight: 28 },
-    { key: '40d', label: '40 days', days: 40, weight: 20 },
-    { key: '50d', label: '50 days', days: 50, weight: 16 },
-    { key: '60d', label: '60 days', days: 60, weight: 12 },
-    { key: '70d', label: '70 days', days: 70, weight: 9 },
-    { key: '80d', label: '80 days', days: 80, weight: 7 },
-    { key: '90d', label: '90 days', days: 90, weight: 5 },
-    { key: '100d', label: '100 days', days: 100, weight: 3 },
-  ],
-  // 6 Months / $16 — 20 to 120 bonus days.
-  '6m': [
-    { key: '20d', label: '20 days', days: 20, weight: 26 },
-    { key: '30d', label: '30 days', days: 30, weight: 20 },
-    { key: '40d', label: '40 days', days: 40, weight: 16 },
-    { key: '50d', label: '50 days', days: 50, weight: 13 },
-    { key: '60d', label: '60 days', days: 60, weight: 10 },
-    { key: '80d', label: '80 days', days: 80, weight: 7 },
-    { key: '100d', label: '100 days', days: 100, weight: 5 },
-    { key: '120d', label: '120 days', days: 120, weight: 3 },
-  ],
-  // 12 Months / $27 — 40 to 200 bonus days.
-  '12m': [
-    { key: '40d', label: '40 days', days: 40, weight: 26 },
-    { key: '60d', label: '60 days', days: 60, weight: 20 },
-    { key: '80d', label: '80 days', days: 80, weight: 16 },
-    { key: '100d', label: '100 days', days: 100, weight: 13 },
-    { key: '120d', label: '120 days', days: 120, weight: 10 },
-    { key: '150d', label: '150 days', days: 150, weight: 7 },
-    { key: '180d', label: '180 days', days: 180, weight: 5 },
-    { key: '200d', label: '200 days', days: 200, weight: 3 },
-  ],
+  '1m': BONUS_POOL,
+  '2m': BONUS_POOL,
+  '6m': BONUS_POOL,
+  '12m': BONUS_POOL,
 };
 
 function pickWeightedReward(pool: RewardTier[]): RewardTier {
