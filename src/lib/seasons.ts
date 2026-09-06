@@ -50,45 +50,41 @@ export function parseSeason(title: string): SeasonInfo {
 export interface SeasonEntry {
   show: Show;
   season: number;
-  /** How many seasons of this franchise the catalog currently carries. */
-  siblings: number;
+}
+
+export interface SeasonFranchise {
+  /** Franchise name, with the season marker stripped off. */
+  base: string;
+  /** Its seasons, in order. Always two or more — see below. */
+  entries: SeasonEntry[];
 }
 
 /**
- * Every show that belongs to a franchise worth showing as a series with
- * seasons, ordered so the seasons of one franchise sit next to each
- * other and run 1, 2, 3.
+ * Shows grouped into franchises that actually have more than one season
+ * in the catalog, each franchise ordered 1, 2, 3.
  *
- * A franchise qualifies when it has more than one season in the catalog,
- * OR when its single entry is explicitly numbered (a lone "រដូវកាលទី ៥"
- * still tells the viewer they are looking at a long-running series, even
- * while the earlier seasons are missing). A one-off with no marker is
- * not a franchise and is left out.
+ * Two or more is the whole bar. A lone "រដូវកាលទី ៥" with no earlier
+ * seasons present has nothing to pick between, so a row of its own would
+ * be a row with one card in it; those titles stay in the ordinary rows.
+ * Franchises with the most seasons come first.
  */
-export function seasonalShows(shows: Show[]): SeasonEntry[] {
-  const groups = new Map<string, { show: Show; season: number | null }[]>();
+export function seasonFranchises(shows: Show[]): SeasonFranchise[] {
+  const groups = new Map<string, SeasonEntry[]>();
   for (const show of shows) {
     const { base, season } = parseSeason(show.title);
+    const entry = { show, season: season ?? 1 };
     const list = groups.get(base);
-    if (list) list.push({ show, season });
-    else groups.set(base, [{ show, season }]);
+    if (list) list.push(entry);
+    else groups.set(base, [entry]);
   }
 
-  const out: SeasonEntry[] = [];
-  for (const entries of groups.values()) {
-    const numbered = entries.some((e) => e.season !== null);
-    if (entries.length < 2 && !numbered) continue;
-    const sorted = [...entries].sort((a, b) => (a.season ?? 1) - (b.season ?? 1));
-    for (const e of sorted) {
-      out.push({ show: e.show, season: e.season ?? 1, siblings: entries.length });
-    }
+  const out: SeasonFranchise[] = [];
+  for (const [base, entries] of groups) {
+    if (entries.length < 2) continue;
+    out.push({ base, entries: [...entries].sort((a, b) => a.season - b.season) });
   }
 
-  // Franchises the viewer can actually binge in order come first: more
-  // seasons available beats a lone high-numbered season.
-  return out.sort((a, b) => {
-    if (b.siblings !== a.siblings) return b.siblings - a.siblings;
-    const base = parseSeason(a.show.title).base.localeCompare(parseSeason(b.show.title).base);
-    return base !== 0 ? base : a.season - b.season;
-  });
+  return out.sort((a, b) =>
+    b.entries.length - a.entries.length || a.base.localeCompare(b.base),
+  );
 }

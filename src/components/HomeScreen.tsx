@@ -34,7 +34,7 @@ import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
-import { seasonalShows, parseSeason } from '@/lib/seasons';
+import { seasonFranchises } from '@/lib/seasons';
 
 interface HomeScreenProps {
   onSelectShow: (show: Show) => void;
@@ -275,17 +275,15 @@ export default function HomeScreen({
   const completedShows = shows.filter((s) => s.type === 'series' && s.status === 'completed');
   const oneOffMovies = shows.filter((s) => s.type === 'movie' && !s.coming_soon);
 
-  // Series that run to more than one season, or that announce a season
-  // number even when the earlier ones are not in the catalog yet. The
-  // season lives in the title text rather than a column, so this is
-  // parsed — see lib/seasons.ts for the five spellings the data uses.
-  const seasonEntries = useMemo(
-    () => seasonalShows(shows.filter((s) => !s.coming_soon)),
+  // One group per series that actually has several seasons in the
+  // catalog. The season lives in the title text rather than a column, so
+  // this is parsed — see lib/seasons.ts for the five spellings the data
+  // uses. Each franchise gets its own row below, rather than all of them
+  // sharing one rail: in a shared rail the two seasons of a show sat
+  // under the same truncated title and read as a duplicate card.
+  const franchises = useMemo(
+    () => seasonFranchises(shows.filter((s) => !s.coming_soon)),
     [shows],
-  );
-  const seasonShows = seasonEntries.map((e) => e.show);
-  const seasonMeta = Object.fromEntries(
-    seasonEntries.map((e) => [e.show.id, { season: e.season, base: parseSeason(e.show.title).base }]),
   );
 
   // The long ones. A viewer with an evening free wants the shows they can
@@ -602,6 +600,7 @@ export default function HomeScreen({
             heroGenre={showsById.get(hero.id)?.genres?.[0]?.name}
             heroRank={trendingRank.get(hero.id)}
             heroIsFree={showsById.get(hero.id)?.is_free ?? hero.is_free ?? false}
+            heroIsMovie={(showsById.get(hero.id)?.type ?? hero.type) === 'movie'}
             onSelectShow={onSelectShow}
             onPrev={prevSlide}
             onNext={nextSlide}
@@ -745,23 +744,38 @@ export default function HomeScreen({
                 viewAllLabel={t.viewAll}
               />
             )}
-            {/* Series with seasons. The season number lives in the title
-                text, so the row strips it off the card title and shows it
-                as a chip instead — that way the franchise name lines up
-                down the rail and "S1, S2" reads as an order to watch in,
-                rather than each card repeating the full title. Franchises
-                with the most seasons come first. */}
-            {seasonShows.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                icon={<Layers className="h-5 w-5 text-[#4E86FF]" />}
-                title={t.seasonsRowLabel}
-                shows={seasonShows}
-                seasons={seasonMeta}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.seasonsRowLabel, shows: seasonShows })}
-                viewAllLabel={t.viewAll}
-              />
+            {/* One row per multi-season series, under a single section
+                heading. A shared rail put "ប្រហារព្រះ រដូវកាល 1" and
+                "រដូវកាល 2" next to each other under the same truncated
+                title, which read as the same card twice; giving each
+                series its own row makes the seasons obviously belong to
+                one show and puts them in watch order. */}
+            {franchises.length > 0 && (
+              <section className="mt-9">
+                <div
+                  className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
+                  aria-hidden
+                />
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="h-4 w-[3px] shrink-0 rounded-sm bg-[#4E86FF]" aria-hidden />
+                  <Layers className="h-5 w-5 shrink-0 text-[#4E86FF]" />
+                  <h2 className="truncate text-lg font-bold tracking-tight">{t.seasonsRowLabel}</h2>
+                </div>
+                {franchises.map((f) => (
+                  <RailRow
+                    key={f.base}
+                    subRow
+                    episodeNumbers={episodeNumbers}
+                    title={f.base}
+                    tag={{ label: `${f.entries.length} ${t.seasonsCountLabel}`, tone: 'info' }}
+                    shows={f.entries.map((e) => e.show)}
+                    seasons={Object.fromEntries(
+                      f.entries.map((e) => [e.show.id, { season: e.season, base: f.base }]),
+                    )}
+                    onSelectShow={onSelectShow}
+                  />
+                ))}
+              </section>
             )}
             <RailRow
               episodeNumbers={episodeNumbers}
@@ -989,6 +1003,7 @@ type TranslationText = {
   movie: string;
   series: string;
   freeBadge: string;
+  movieOneOff: string;
   top10Label?: string;
   featuredLabel?: string;
   vipBadge?: string;
@@ -1009,6 +1024,7 @@ interface CoverflowHeroProps {
    *  ranked-numeral treatment entirely. */
   heroRank?: number;
   heroIsFree: boolean;
+  heroIsMovie: boolean;
   onSelectShow: (s: Show) => void;
   onPrev: () => void;
   onNext: () => void;
@@ -1025,6 +1041,7 @@ function CoverflowHero({
   heroGenre,
   heroRank,
   heroIsFree,
+  heroIsMovie,
   onSelectShow,
   onPrev,
   onNext,
@@ -1163,18 +1180,26 @@ function CoverflowHero({
                     screen enforces, so the cover never over-promises.
                     Skipped on a Coming Soon cover, where neither label
                     means anything until episodes exist. */}
+                {/* Three answers, not two. This used to be `free ? FREE :
+                    VIP`, which meant a standalone film — bought once for a
+                    flat price, not gated behind a membership — was labelled
+                    VIP on the one cover the page leads with. Both featured
+                    movies in the catalog were mislabelled that way. The
+                    order matches ShowCard's, so a title carries the same
+                    badge in the hero and in every rail. */}
                 <div className="absolute right-1.5 top-1.5">
                   {heroIsFree ? (
-                    <span className="rounded-md bg-emerald-500/85 px-1.5 py-0.5 text-[9.5px] font-bold text-white backdrop-blur-sm">
+                    <Badge tone="free" onArt>
                       {t.freeBadge}
-                    </span>
+                    </Badge>
+                  ) : heroIsMovie ? (
+                    <Badge tone="price" onArt className="whitespace-nowrap">
+                      {t.movieOneOff}
+                    </Badge>
                   ) : (
-                    <span
-                      className="flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9.5px] font-black text-black backdrop-blur-sm"
-                      style={{ background: 'linear-gradient(135deg, #FFE7B0, #F5C563 45%, #C08F33)' }}
-                    >
-                      👑 {t.vipBadge ?? 'VIP'}
-                    </span>
+                    <Badge tone="vip" onArt icon={<Crown className="h-3 w-3" />}>
+                      {t.vipBadge ?? 'VIP'}
+                    </Badge>
                   )}
                 </div>
               </>
@@ -1537,9 +1562,14 @@ interface RailRowProps {
   /** Per-card season numbers, keyed by show id. Only the seasons row
    *  passes this — see ShowCard's `seasonNumber`. */
   seasons?: Record<string, { season: number; base: string }>;
+  /** A row nested under another heading: smaller title, no divider rule,
+   *  tighter spacing. Used for the per-series season rows, which sit as a
+   *  group under one "series with seasons" heading and would otherwise
+   *  each shout as loudly as a top-level rail. */
+  subRow?: boolean;
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel, accent = '#F5C563', seasons }: RailRowProps) {
+function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel, accent = '#F5C563', seasons, subRow }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
@@ -1551,7 +1581,9 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           ? 'relative mt-8 overflow-hidden rounded-xl'
           : panel
             ? 'mt-9 overflow-hidden rounded-2xl border px-3 pb-1 pt-4 sm:px-4'
-            : 'mt-9'
+            : subRow
+              ? 'mt-3'
+              : 'mt-9'
       }
       style={
         panel
@@ -1565,7 +1597,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           : undefined
       }
     >
-      {!ranked && !panel && (
+      {!ranked && !panel && !subRow && (
         <div
           className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
           aria-hidden
@@ -1591,17 +1623,24 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
           )}
         </div>
       ) : (
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className={`flex items-center justify-between gap-2 ${subRow ? 'mb-1.5 pl-3' : 'mb-3'}`}>
           <div className="flex min-w-0 items-center gap-2">
             {/* A quiet rule, not another colour: the row's identity
-                comes from its title and its covers. */}
-            <span
-              className="h-4 w-[3px] shrink-0 rounded-sm"
-              style={{ background: panel ? accent : 'rgba(255,255,255,0.2)' }}
-              aria-hidden
-            />
+                comes from its title and its covers. A sub-row is already
+                inside a titled section, so it drops the rule entirely. */}
+            {!subRow && (
+              <span
+                className="h-4 w-[3px] shrink-0 rounded-sm"
+                style={{ background: panel ? accent : 'rgba(255,255,255,0.2)' }}
+                aria-hidden
+              />
+            )}
             {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-            <h2 className="truncate text-lg font-bold tracking-tight">{title}</h2>
+            {subRow ? (
+              <h3 className="truncate text-[13.5px] font-bold text-white/90">{title}</h3>
+            ) : (
+              <h2 className="truncate text-lg font-bold tracking-tight">{title}</h2>
+            )}
             {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
           </div>
           {onViewAll && (
@@ -1628,6 +1667,7 @@ function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onVi
             large={large}
             seasonNumber={seasons?.[s.id]?.season}
             displayTitle={seasons?.[s.id]?.base}
+            titleFromSeason={subRow}
           />
         ))}
       </div>
