@@ -93,20 +93,6 @@ const GENRE_EMOJI: Record<string, string> = {
 };
 const genreEmoji = (slug: string) => GENRE_EMOJI[slug.toLowerCase()] ?? '🎬';
 
-// Custom clapperboard glyph for the "New Release" row — drawn in the same
-// stroke convention as the lucide set we use everywhere else (24x24,
-// currentColor, 2px rounded strokes) so it sits next to Flame/Gift/Clock
-// without looking like a different icon family.
-function ClapperIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M3 8.6 20 5l1 4-17 3.6z" />
-      <path d="M4 12h16v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
-      <path d="m7.5 8.3 2-4.2M12.5 7.3l2-4.2M17.3 6.3l1.7-3.6" />
-    </svg>
-  );
-}
-
 export default function HomeScreen({
   onSelectShow,
   onOpenProfile,
@@ -319,10 +305,13 @@ export default function HomeScreen({
     const franchiseShows = take(franchises.flatMap((f) => f.entries.map((e) => e.show)));
 
     // Then the general rows, from the remainder.
-    const newest = take(
-      [...live].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')),
-      10,
-    );
+    //
+    // There is no "New Release" row any more. Ordering by created_at
+    // ranked shows by when the admin uploaded them, not by when they are
+    // new: the 44 live shows arrived across 9 days in bulk batches, 12 of
+    // them on one day. The row was sorting upload sessions and calling
+    // the top of the pile new.
+    //
     // Real play counts (see increment_show_view_count), not an
     // admin-typed rating and not the first ten rows PostgREST happened
     // to return, which is what "Popular" used to be.
@@ -334,15 +323,27 @@ export default function HomeScreen({
       14,
     );
 
-    return { movies, free, completed, franchiseShows, newest, popular, binge, claimed };
+    return { movies, free, completed, franchiseShows, popular, binge, claimed };
   }, [live, freeShows, completedShows, oneOffMovies, franchises, episodeNumbers]);
 
-  // Anything no row claimed. Genre rows draw from the same remainder, so
-  // this is computed after them in render order but from the same set:
-  // with no genres in the catalogue today it is simply everything left.
-  const leftovers = useMemo(
-    () => live.filter((s) => !rows.claimed.has(s.id)),
-    [live, rows],
+  // The catalogue. Every live show, in one row, in the position the
+  // "New Release" rail used to hold.
+  //
+  // The app is a few weeks old with 44 titles, all uploaded in a handful
+  // of sittings, so the useful question on the home screen is not "what
+  // arrived most recently" — it is "show me what there is". This is the
+  // one row that answers it, and it is deliberately NOT filtered against
+  // `claimed`: a shelf called "all shows" that quietly omits the free
+  // ones and the most-watched ones is not a catalogue, it is a fourth
+  // themed rail wearing a catalogue's name.
+  //
+  // That is not the repetition the themed rows were guilty of. Those
+  // were four near-identical general rails each claiming to be about
+  // something; a catalogue below them is the standard shape and is read
+  // as "and here is everything".
+  const allShows = useMemo(
+    () => [...live].sort((a, b) => a.title.localeCompare(b.title, 'km')),
+    [live],
   );
 
   // The single movie the panel leads with — most-watched first, so the
@@ -803,25 +804,21 @@ export default function HomeScreen({
                 viewAllLabel={t.viewAll}
               />
             )}
-            {rows.newest.length > 0 && (
-            <RailRow
-              episodeNumbers={episodeNumbers}
-              role="mark"
-              icon={
-                <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
-                  <ClapperIcon className="h-5 w-5" />
-                  <span
-                    className="absolute -right-1 -top-1 h-2 w-2 animate-badge-pop rounded-full bg-current ring-2 ring-[#0A101E]"
-                    aria-hidden
-                  />
-                </span>
-              }
-              title={t.newRelease}
-              shows={rows.newest}
-              onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
-              viewAllLabel={t.viewAll}
-            />
+            {/* The catalogue, where "New Release" used to be. Every live
+                show, A–Z, so a viewer who just wants to see what exists
+                has one place to look instead of piecing it together from
+                four themed rails. */}
+            {allShows.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                role="plain"
+                icon={<Layers className="h-5 w-5" />}
+                title={t.allShowsTitle}
+                shows={allShows}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.allShowsTitle, shows: allShows })}
+                viewAllLabel={t.viewAll}
+              />
             )}
             {rows.popular.length > 0 && (
             <RailRow
@@ -907,25 +904,6 @@ export default function HomeScreen({
                   />
                 ))}
               </section>
-            )}
-
-            {/* Whatever no row above claimed.
-                Deduplication means a show can only be in one rail, so
-                without this the ones that matched nothing in particular
-                would simply vanish from the home screen — reachable only
-                through search. This is the floor that guarantees every
-                live title is on the page exactly once. */}
-            {leftovers.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                role="plain"
-                icon={<Layers className="h-5 w-5" />}
-                title={t.allShowsTitle}
-                shows={leftovers}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.allShowsTitle, shows: leftovers })}
-                viewAllLabel={t.viewAll}
-              />
             )}
 
             {/* Coming Soon moved to the bottom of the browse list — it's
