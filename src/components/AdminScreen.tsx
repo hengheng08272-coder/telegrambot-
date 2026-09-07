@@ -37,6 +37,8 @@ import BanLogPanel from '@/components/BanLogPanel';
 import WatchLogPanel from '@/components/WatchLogPanel';
 import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
 import PaymentsPanel from '@/components/PaymentsPanel';
+import ArtworkPicker from '@/components/ArtworkPicker';
+import type { PreparedImage } from '@/lib/imageSizing';
 import SubscriptionsPanel from '@/components/SubscriptionsPanel';
 import UsersPanel from '@/components/UsersPanel';
 import TelegramAutoPostPanel from '@/components/TelegramAutoPostPanel';
@@ -297,8 +299,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     is_free: false,
     trailer_url: '',
   });
-  const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [posterFile, setPosterFile] = useState<PreparedImage | null>(null);
+  const [bannerFile, setBannerFile] = useState<PreparedImage | null>(null);
   const [creatingShow, setCreatingShow] = useState(false);
 
   // Edit existing show
@@ -312,8 +314,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [editTrailerUrl, setEditTrailerUrl] = useState('');
   const [episodeLockBusyId, setEpisodeLockBusyId] = useState<string | null>(null);
   const [bulkLockBusyShowId, setBulkLockBusyShowId] = useState<string | null>(null);
-  const [editPosterFile, setEditPosterFile] = useState<File | null>(null);
-  const [editBannerFile, setEditBannerFile] = useState<File | null>(null);
+  const [editPosterFile, setEditPosterFile] = useState<PreparedImage | null>(null);
+  const [editBannerFile, setEditBannerFile] = useState<PreparedImage | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
 
@@ -668,11 +670,16 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     await loadShows();
   };
 
+  // The artwork arriving here has already been cropped to its preset and
+  // re-encoded by ArtworkPicker (see lib/imageSizing) — this only puts the
+  // finished file in the bucket. Doing the resize at pick time rather than
+  // at save time is what lets Admin see the crop before committing to it.
   const uploadImage = async (
     bucket: 'posters',
-    file: File,
+    art: PreparedImage,
     pathPrefix: string,
   ): Promise<string | null> => {
+    const file = art.file;
     const ext = file.name.split('.').pop() || 'jpg';
     const path = `${pathPrefix}-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage
@@ -1761,29 +1768,19 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                  Poster (vertical card image)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-white/70 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2.5 file:py-1 file:text-white"
-                />
-              </div>
+              <ArtworkPicker
+                kind="poster"
+                label="Poster (vertical card image)"
+                value={posterFile}
+                onChange={setPosterFile}
+              />
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                  Banner (wide hero image)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setBannerFile(e.target.files?.[0] ?? null)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-white/70 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2.5 file:py-1 file:text-white"
-                />
-              </div>
+              <ArtworkPicker
+                kind="banner"
+                label="Banner (wide hero image)"
+                value={bannerFile}
+                onChange={setBannerFile}
+              />
 
               <label className="flex items-center gap-2 text-sm text-white/70">
                 <input
@@ -1958,53 +1955,25 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 </p>
               </div>
 
-              {/* Current images preview */}
-              <div className="flex gap-3">
-                {editShow.poster_url && (
-                  <div className="flex-1">
-                    <label className="mb-1 block text-[11px] font-semibold text-white/60">Current poster</label>
-                    <img
-                      src={editShow.poster_url}
-                      alt="Poster"
-                      className="h-24 w-16 rounded-lg object-cover ring-1 ring-white/10"
-                    />
-                  </div>
-                )}
-                {editShow.banner_url && (
-                  <div className="flex-1">
-                    <label className="mb-1 block text-[11px] font-semibold text-white/60">Current banner</label>
-                    <img
-                      src={editShow.banner_url}
-                      alt="Banner"
-                      className="h-24 w-40 rounded-lg object-cover ring-1 ring-white/10"
-                    />
-                  </div>
-                )}
-              </div>
+              {/* Replace artwork — the frame shows what is on the show
+                  today and swaps to the new crop the moment one is
+                  picked, so there is no separate "current image" strip
+                  saying the same thing twice. */}
+              <ArtworkPicker
+                kind="poster"
+                label="Poster (vertical card image)"
+                currentUrl={editShow.poster_url}
+                value={editPosterFile}
+                onChange={setEditPosterFile}
+              />
 
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                  Replace poster (vertical card image)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setEditPosterFile(e.target.files?.[0] ?? null)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-white/70 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2.5 file:py-1 file:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[11px] font-semibold text-white/60">
-                  Replace banner (wide hero image)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setEditBannerFile(e.target.files?.[0] ?? null)}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-xs text-white/70 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2.5 file:py-1 file:text-white"
-                />
-              </div>
+              <ArtworkPicker
+                kind="banner"
+                label="Banner (wide hero image)"
+                currentUrl={editShow.banner_url}
+                value={editBannerFile}
+                onChange={setEditBannerFile}
+              />
 
               <div className="flex gap-2 pt-2">
                 <button

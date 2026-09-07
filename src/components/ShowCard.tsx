@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Play, Clock, Crown } from 'lucide-react';
 import type { Show } from '@/lib/types';
 import Badge from '@/components/Badge';
@@ -69,17 +69,31 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
   const isNew =
     !!show.created_at && Date.now() - new Date(show.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
 
-  // Subtle pointer-driven 3D tilt — works for mouse hover and for a
-  // finger resting/dragging on the card (Pointer Events unify both).
-  // Mutates the DOM node directly instead of going through React state so
-  // it stays smooth at 60fps even while scrolling a rail full of these.
+  // Subtle pointer-driven 3D tilt — mouse only.
+  //
+  // Pointer Events unify mouse and finger, which is exactly the problem:
+  // on a phone this fired on the drag that scrolls the rail, so every
+  // card under the finger was being re-composited on a 3D layer during
+  // the one interaction that has to stay at frame rate. Tilting a card
+  // the finger is trying to flick past is not an effect anyone asked
+  // for. So the handlers only attach where there is a real cursor —
+  // which is also the only place a hover tilt means anything.
+  const [canTilt, setCanTilt] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)');
+    setCanTilt(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setCanTilt(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = tiltRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width - 0.5;
     const py = (e.clientY - rect.top) / rect.height - 0.5;
-    el.style.transform = `perspective(700px) rotateX(${(-py * 12).toFixed(2)}deg) rotateY(${(px * 12).toFixed(2)}deg)`;
+    el.style.transform = `perspective(700px) rotateX(${(-py * 10).toFixed(2)}deg) rotateY(${(px * 10).toFixed(2)}deg)`;
   };
   const resetTilt = () => {
     const el = tiltRef.current;
@@ -113,18 +127,20 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
       )}
       <div
         ref={tiltRef}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={resetTilt}
-        onPointerUp={resetTilt}
-        onPointerCancel={resetTilt}
+        onPointerMove={canTilt ? handlePointerMove : undefined}
+        onPointerLeave={canTilt ? resetTilt : undefined}
         className="relative z-10"
         style={{ transition: 'transform 0.35s ease-out', transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }}
       >
+        {/* The poster frame. Its lit state is the row's colour, not one
+            fixed blue: `--row-accent` is published by the RailRow this
+            card sits in (see lib/rowAccent), so a cover in the free row
+            lifts in green and one in the movies row in gold. The
+            fallback keeps a card outside any rail — the search grid, the
+            View All grid — on the brand blue it has always used. */}
         <div
-          className={`aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] group-hover:ring-2 group-hover:ring-[#2050D8]/60 ${
-            large
-              ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)] group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.8)]'
-              : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)] group-hover:shadow-[0_20px_44px_rgba(0,0,0,0.7)]'
+          className={`poster-frame aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] ${
+            large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
           }`}
         >
           {!loaded && <div className="absolute inset-0 skeleton-shimmer bg-[#151926]" />}
@@ -132,6 +148,13 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
             src={show.poster_url ?? ''}
             alt={show.title}
             loading="lazy"
+            decoding="async"
+            // The box is already `aspect-[2/3]`, so these do not affect
+            // layout — they tell the browser the intrinsic ratio before
+            // the bytes arrive, which is what stops a rail from
+            // reflowing card by card as its posters decode.
+            width={600}
+            height={900}
             onLoad={() => setLoaded(true)}
             className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${
               loaded ? 'img-fade loaded' : 'img-fade'
