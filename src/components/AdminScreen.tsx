@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import {
+  AlignLeft,
   ArrowLeft,
   Upload,
   Plus,
@@ -38,6 +39,7 @@ import WatchLogPanel from '@/components/WatchLogPanel';
 import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
 import PaymentsPanel from '@/components/PaymentsPanel';
 import ArtworkPicker from '@/components/ArtworkPicker';
+import SynopsisPanel from '@/components/SynopsisPanel';
 import type { PreparedImage } from '@/lib/imageSizing';
 import SubscriptionsPanel from '@/components/SubscriptionsPanel';
 import UsersPanel from '@/components/UsersPanel';
@@ -252,6 +254,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       .catch(() => setGroupMembers(null));
   }, []);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [synopsisOpen, setSynopsisOpen] = useState(false);
   const [banLogOpen, setBanLogOpen] = useState(false);
   const [watchLogOpen, setWatchLogOpen] = useState(false);
   const [suspiciousOpen, setSuspiciousOpen] = useState(false);
@@ -919,6 +922,15 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             <UsersIcon className="h-3.5 w-3.5" /> Users
           </button>
           <span className="mx-1 h-4 w-px shrink-0 bg-white/10" aria-hidden />
+          {/* Sits next to Auto-Post on purpose: one writes what the group
+              posts say, the other sends them. A post for a show with no
+              synopsis is a poster, a title and a price and nothing else. */}
+          <button
+            onClick={() => setSynopsisOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
+          >
+            <AlignLeft className="h-3.5 w-3.5" /> Synopsis
+          </button>
           <button
             onClick={() => setTelegramAutoPostOpen(true)}
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
@@ -2089,6 +2101,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       />
 
       {announcementsOpen && <AnnouncementsPanel onClose={() => setAnnouncementsOpen(false)} />}
+      {synopsisOpen && <SynopsisPanel onClose={() => setSynopsisOpen(false)} />}
       {telegramAutoPostOpen && <TelegramAutoPostPanel onClose={() => setTelegramAutoPostOpen(false)} />}
       {blockedUsersOpen && <BlockedUsersPanel onClose={() => setBlockedUsersOpen(false)} />}
       {banLogOpen && <BanLogPanel onClose={() => setBanLogOpen(false)} />}
