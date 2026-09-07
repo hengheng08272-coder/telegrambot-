@@ -35,6 +35,7 @@ import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
 import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
 import { seasonFranchises, nextPaidSeason, parseSeason } from '@/lib/seasons';
+import { ROW_ACCENT, tint, type RowRole } from '@/lib/rowAccent';
 
 interface HomeScreenProps {
   onSelectShow: (show: Show) => void;
@@ -105,13 +106,6 @@ function ClapperIcon({ className }: { className?: string }) {
       <path d="m7.5 8.3 2-4.2M12.5 7.3l2-4.2M17.3 6.3l1.7-3.6" />
     </svg>
   );
-}
-
-// "12345" -> "12.3K", "2100000" -> "2.1M" — used for the hero's view count.
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
-  return String(n);
 }
 
 export default function HomeScreen({
@@ -695,8 +689,8 @@ export default function HomeScreen({
               <RailRow
                 episodeNumbers={episodeNumbers}
                 panel
-                accent="#2FD98C"
-                icon={<Gift className="h-5 w-5 text-[#2FD98C]" />}
+                role="free"
+                icon={<Gift className="h-5 w-5" />}
                 title={t.freeRowLabel ?? 'Free to Watch'}
                 shows={freeShows}
                 onSelectShow={onSelectShow}
@@ -719,16 +713,27 @@ export default function HomeScreen({
                 screen without scrolling. The rest of the catalog is one
                 tap away behind "View All" whenever there's more than one. */}
             {featuredMovie && (
-              <section className="mt-9 overflow-hidden rounded-2xl border border-[#F5C563]/15 bg-gradient-to-br from-[#2A2010]/70 via-[#151926]/40 to-transparent px-3 pb-3 pt-4 sm:px-4">
+              <section
+                className="rail-section mt-8 overflow-hidden rounded-2xl border px-3 pb-3 pt-4 sm:px-4"
+                style={{
+                  borderColor: tint(ROW_ACCENT.vip, 0.15),
+                  background: `linear-gradient(135deg, ${tint(ROW_ACCENT.vip, 0.12)} 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
+                }}
+              >
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
-                    <Film className="h-5 w-5 shrink-0 text-[#F5C563]" />
-                    <h2 className="truncate text-lg font-bold tracking-tight">{t.navMovies}</h2>
+                    <span
+                      className="h-4 w-[3px] shrink-0 rounded-sm"
+                      style={{ background: ROW_ACCENT.vip, boxShadow: `0 0 10px ${tint(ROW_ACCENT.vip, 0.5)}` }}
+                      aria-hidden
+                    />
+                    <Film className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.vip }} />
+                    <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.navMovies}</h2>
                   </div>
                   {oneOffMovies.length > 1 && (
                     <button
                       onClick={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
-                      className="shrink-0 text-xs font-semibold text-[#9AA4BD] transition hover:text-[#2050D8]"
+                      className="shrink-0 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
                     >
                       {t.viewAll}
                     </button>
@@ -740,7 +745,8 @@ export default function HomeScreen({
             {recommended.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<Star className="h-5 w-5 text-white/45" />}
+                role="guide"
+                icon={<Star className="h-5 w-5" />}
                 title={t.recommendedForYou ?? 'Recommended for You'}
                 shows={recommended}
                 onSelectShow={onSelectShow}
@@ -749,7 +755,8 @@ export default function HomeScreen({
             {completedShows.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<Check className="h-5 w-5 text-[#2FD98C]" />}
+                role="free"
+                icon={<Check className="h-5 w-5" />}
                 title={t.completedRowLabel ?? 'Completed Series'}
                 shows={completedShows}
                 onSelectShow={onSelectShow}
@@ -759,10 +766,14 @@ export default function HomeScreen({
             )}
             <RailRow
               episodeNumbers={episodeNumbers}
+              role="mark"
               icon={
-                <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center text-[#E6231F]">
+                <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
                   <ClapperIcon className="h-5 w-5" />
-                  <span className="absolute -right-1 -top-1 h-2 w-2 animate-badge-pop rounded-full bg-[#E6231F] ring-2 ring-[#0A101E]" aria-hidden />
+                  <span
+                    className="absolute -right-1 -top-1 h-2 w-2 animate-badge-pop rounded-full bg-current ring-2 ring-[#0A101E]"
+                    aria-hidden
+                  />
                 </span>
               }
               title={t.newRelease}
@@ -774,7 +785,8 @@ export default function HomeScreen({
             />
             <RailRow
               episodeNumbers={episodeNumbers}
-              icon={<Flame className="h-5 w-5 text-white/45" />}
+              role="mark"
+              icon={<Flame className="h-5 w-5" />}
               title={t.popularSeason}
               shows={shows.slice(0, 10)}
               onSelectShow={onSelectShow}
@@ -786,7 +798,8 @@ export default function HomeScreen({
             {bingeShows.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<ListVideo className="h-5 w-5 text-white/45" />}
+                role="guide"
+                icon={<ListVideo className="h-5 w-5" />}
                 title={t.bingeRowLabel}
                 shows={bingeShows}
                 onSelectShow={onSelectShow}
@@ -797,7 +810,8 @@ export default function HomeScreen({
             {ongoingShows.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<Radio className="h-5 w-5 text-white/45" />}
+                role="mark"
+                icon={<Radio className="h-5 w-5" />}
                 title={t.ongoingRowLabel}
                 shows={ongoingShows}
                 onSelectShow={onSelectShow}
@@ -830,15 +844,22 @@ export default function HomeScreen({
                 series its own row makes the seasons obviously belong to
                 one show and puts them in watch order. */}
             {franchises.length > 0 && (
-              <section className="mt-9">
+              <section className="rail-section mt-8" style={{ '--row-accent': ROW_ACCENT.guide } as React.CSSProperties}>
                 <div
-                  className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
+                  className="mb-4 h-px w-full"
+                  style={{
+                    background: `linear-gradient(90deg, ${tint(ROW_ACCENT.guide, 0.55)} 0%, ${tint(ROW_ACCENT.guide, 0.14)} 22%, rgba(255,255,255,0.05) 55%, transparent 100%)`,
+                  }}
                   aria-hidden
                 />
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="h-4 w-[3px] shrink-0 rounded-sm bg-[#4E86FF]" aria-hidden />
-                  <Layers className="h-5 w-5 shrink-0 text-[#4E86FF]" />
-                  <h2 className="truncate text-lg font-bold tracking-tight">{t.seasonsRowLabel}</h2>
+                  <span
+                    className="h-4 w-[3px] shrink-0 rounded-sm"
+                    style={{ background: ROW_ACCENT.guide, boxShadow: `0 0 10px ${tint(ROW_ACCENT.guide, 0.5)}` }}
+                    aria-hidden
+                  />
+                  <Layers className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.guide }} />
+                  <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.seasonsRowLabel}</h2>
                 </div>
                 {franchises.map((f) => (
                   <RailRow
@@ -864,7 +885,8 @@ export default function HomeScreen({
             {comingSoon.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                icon={<Clock className="h-5 w-5 text-white/45" />}
+                role="mark"
+                icon={<Clock className="h-5 w-5" />}
                 title={t.comingSoonLabel}
                 shows={comingSoon}
                 onSelectShow={onSelectShow}
@@ -1124,6 +1146,10 @@ function CoverflowHero({
             aria-hidden
             className={`hero-bg ${bgLoaded ? 'loaded' : ''} absolute inset-0 h-full w-full scale-125 object-cover blur-3xl`}
             onLoad={() => setBgLoaded(true)}
+            // Decorative, and blurred past recognition — it must never
+            // hold up the decode of the poster it sits behind.
+            decoding="async"
+            fetchPriority="low"
             draggable={false}
           />
         )}
@@ -1166,6 +1192,12 @@ function CoverflowHero({
             <img
               src={hero.poster_url ?? hero.banner_url ?? ''}
               alt={hero.title}
+              // The largest thing above the fold, so it is the one image
+              // on this screen worth asking the browser to hurry.
+              fetchPriority="high"
+              decoding="async"
+              width={600}
+              height={900}
               className="h-full w-full object-cover"
               draggable={false}
             />
@@ -1329,7 +1361,7 @@ function CoverflowHero({
           The centered show gets a lit ring; everything else sits at
           reduced opacity until tapped. */}
       {shows.length > 1 && (
-        <div className="relative z-10 mx-auto mt-3 flex max-w-[1400px] gap-2 overflow-x-auto px-0.5 pb-1 sm:mt-4 sm:gap-2.5" style={{ scrollbarWidth: 'none' }}>
+        <div className="rail-scroller no-scrollbar relative z-10 mx-auto mt-3 flex max-w-[1400px] gap-2 overflow-x-auto px-0.5 pb-1 sm:mt-4 sm:gap-2.5">
           {shows.map((s, i) => (
             <button
               key={s.id}
@@ -1347,6 +1379,10 @@ function CoverflowHero({
               <img
                 src={s.poster_url ?? s.banner_url ?? ''}
                 alt={s.title}
+                loading="lazy"
+                decoding="async"
+                width={600}
+                height={900}
                 className="h-full w-full object-cover"
                 draggable={false}
               />
@@ -1382,52 +1418,17 @@ function CoverflowHero({
           <div
             key={index}
             className="hero-progress-fill h-full"
+            // Not blue. Blue in this app means "press me", and a
+            // countdown bar is the one thing on the hero that cannot be
+            // pressed — it just reports where the carousel has got to.
             style={{
               animationDuration: `${HERO_AUTO_MS}ms`,
-              background: '#2050D8',
+              background: 'rgba(255,255,255,0.75)',
             }}
           />
         </div>
       )}
     </section>
-  );
-}
-
-// Small, fixed set of rising ember sparks — purely decorative, positioned
-// with a deterministic spread (not random on every render, so they don't
-// jump around on re-render) and staggered delays/durations for a natural,
-// non-uniform drift.
-const EMBER_SEEDS = [
-  { left: '8%', delay: '0s', duration: '4.2s', size: 3, drift: '10px' },
-  { left: '18%', delay: '1.1s', duration: '5.1s', size: 2, drift: '-8px' },
-  { left: '30%', delay: '2.4s', duration: '4.6s', size: 3, drift: '14px' },
-  { left: '46%', delay: '0.6s', duration: '5.4s', size: 2, drift: '-12px' },
-  { left: '58%', delay: '1.8s', duration: '4.8s', size: 3, drift: '8px' },
-  { left: '70%', delay: '3s', duration: '5.2s', size: 2, drift: '-10px' },
-  { left: '82%', delay: '0.9s', duration: '4.4s', size: 3, drift: '12px' },
-  { left: '92%', delay: '2.1s', duration: '5s', size: 2, drift: '-9px' },
-];
-
-function EmberParticles() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {EMBER_SEEDS.map((e, i) => (
-        <span
-          key={i}
-          className="ember-particle"
-          style={
-            {
-              left: e.left,
-              width: e.size,
-              height: e.size,
-              animationDelay: e.delay,
-              animationDuration: e.duration,
-              '--ember-drift': e.drift,
-            } as React.CSSProperties & Record<string, string | number>
-          }
-        />
-      ))}
-    </div>
   );
 }
 
@@ -1538,41 +1539,31 @@ function NavLink({ label, active, onClick, highlight }: NavLinkProps) {
 
 interface RailRowProps {
   title: string;
+  /** A lucide icon at `h-5 w-5`, with NO colour class of its own — the
+   *  row's role decides the colour, so an icon that arrives already
+   *  painted is the exact drift this component exists to stop. */
   icon?: React.ReactNode;
   /** Optional decorative emoji shown instead of a lucide icon — used for
    *  genre rows so each one reads with a bit of its own personality. */
   emoji?: string;
+  /** What this row IS, which is what decides its colour. See
+   *  lib/rowAccent — rows pick a role, never a hex value. */
+  role?: RowRole;
   shows: Show[];
   onSelectShow: (s: Show) => void;
   /** show id -> newest episode number, for each card's EP badge. */
   episodeNumbers?: Record<string, number>;
   onViewAll?: () => void;
   viewAllLabel?: string;
-  /** When true, stamps each card with its 1-based position as a big
-   *  shadow numeral behind the card — the "Top 10" treatment. Card size
-   *  stays the same compact size as every other row; only the numeral is
-   *  oversized. */
-  ranked?: boolean;
   /** Small colored tag chip shown next to the row title (e.g. NEW / HOT /
-   *  FREE) — echoes the "Row: <colored label>" treatment from the mockup,
-   *  giving every row its own at-a-glance identity instead of a uniform
-   *  plain heading. { label, color } — color is any CSS color value. */
+   *  FREE) — gives every row its own at-a-glance identity instead of a
+   *  uniform plain heading. */
   tag?: { label: string; tone?: BadgeTone };
-  /** Bigger poster cards — used for the Movies row so each one-off film
-   *  reads as a premium pick worth its price, not a compact rail item
-   *  lost among the series rows (there are only ever a handful of movies,
-   *  so the row can afford the extra size). */
-  large?: boolean;
   /** Wraps the row in a slim gradient banner panel instead of the plain
    *  divider-line header — gives the row its own identity as a showcase
    *  strip rather than just another rail, without needing taller cards
-   *  to read as "featured". Used for the Movies row. */
+   *  to read as "featured". Used for the Free and Movies rows. */
   panel?: boolean;
-  /** Accent colour for the panel treatment and the header's leading rule.
-   *  Defaults to the gold the Movies panel has always used; the free row
-   *  passes green so the two showcase strips stay distinguishable at a
-   *  glance rather than both reading as "the gold one". */
-  accent?: string;
   /** Per-card season numbers, keyed by show id. Only the seasons row
    *  passes this — see ShowCard's `seasonNumber`. */
   seasons?: Record<string, { season: number; base: string }>;
@@ -1585,102 +1576,105 @@ interface RailRowProps {
   subRow?: boolean;
 }
 
-function RailRow({ title, icon, emoji, shows, onSelectShow, episodeNumbers, onViewAll, viewAllLabel, ranked, tag, large, panel, accent = '#F5C563', seasons, subRow, continuesAt }: RailRowProps) {
+function RailRow({
+  title,
+  icon,
+  emoji,
+  role = 'plain',
+  shows,
+  onSelectShow,
+  episodeNumbers,
+  onViewAll,
+  viewAllLabel,
+  tag,
+  panel,
+  seasons,
+  subRow,
+  continuesAt,
+}: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
   }, []);
+  const accent = ROW_ACCENT[role];
 
   return (
     <section
-      className={
-        ranked
-          ? 'relative mt-8 overflow-hidden rounded-xl'
-          : panel
-            ? 'mt-9 overflow-hidden rounded-2xl border px-3 pb-1 pt-4 sm:px-4'
-            : subRow
-              ? 'mt-3'
-              : 'mt-9'
-      }
+      // `rail-section` is what keeps a page of eleven rails scrolling at
+      // frame rate: it lets the browser skip layout and paint for rows
+      // that are nowhere near the viewport. `--row-accent` is read by
+      // every ShowCard inside, so a card lights up in its own row's
+      // colour rather than one hard-coded blue.
+      className={`rail-section ${panel ? 'mt-8 overflow-hidden rounded-2xl border px-3 pb-1 pt-4 sm:px-4' : subRow ? 'mt-3' : 'mt-8'}`}
       style={
-        panel
-          ? {
-              borderColor: `${accent}26`,
-              // A wash of the row's own accent rather than a flat card:
-              // enough to separate the strip from the page, not enough to
-              // compete with the poster art sitting on it.
-              background: `linear-gradient(135deg, ${accent}1F 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
-            }
-          : undefined
+        {
+          '--row-accent': accent,
+          ...(panel
+            ? {
+                borderColor: tint(accent, 0.15),
+                // A wash of the row's own accent rather than a flat card:
+                // enough to separate the strip from the page, not enough to
+                // compete with the poster art sitting on it.
+                background: `linear-gradient(135deg, ${tint(accent, 0.12)} 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
+              }
+            : null),
+        } as React.CSSProperties
       }
     >
-      {!ranked && !panel && !subRow && (
+      {/* The rule above the row carries the row's colour at its left edge
+          and dissolves into nothing — so scrolling the page reads as a
+          sequence of coloured openings rather than eleven identical grey
+          hairlines. */}
+      {!panel && !subRow && (
         <div
-          className="mb-4 h-px w-full bg-gradient-to-r from-white/[0.14] via-white/[0.05] to-transparent"
+          className="mb-4 h-px w-full"
+          style={{
+            background: `linear-gradient(90deg, ${tint(accent, 0.55)} 0%, ${tint(accent, 0.14)} 22%, rgba(255,255,255,0.05) 55%, transparent 100%)`,
+          }}
           aria-hidden
         />
       )}
-      {ranked ? (
-        // Centered, Netflix-style row header — the "View All" link moves
-        // to its own row underneath instead of crowding the centered
-        // title on the same line.
-        <div className="px-3 pt-5 text-center">
-          <div className="mb-1 flex items-center justify-center gap-2">
-            {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-            <h2 className="text-xl font-black tracking-wide text-white">{title}</h2>
-            {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
-          </div>
-          {onViewAll && (
-            <button
-              onClick={onViewAll}
-              className="text-xs font-semibold text-[#9AA4BD] transition hover:text-[#2050D8]"
-            >
-              {viewAllLabel}
-            </button>
+      <div className={`flex items-center justify-between gap-2 ${subRow ? 'mb-1.5 pl-3' : 'mb-3'}`}>
+        <div className="flex min-w-0 items-center gap-2">
+          {/* The one solid block of the row's colour on the whole screen.
+              A sub-row is already inside a titled section, so it drops
+              the rule entirely rather than repeating its parent's. */}
+          {!subRow && (
+            <span
+              className="h-4 w-[3px] shrink-0 rounded-sm"
+              style={{ background: accent, boxShadow: `0 0 10px ${tint(accent, 0.5)}` }}
+              aria-hidden
+            />
           )}
-        </div>
-      ) : (
-        <div className={`flex items-center justify-between gap-2 ${subRow ? 'mb-1.5 pl-3' : 'mb-3'}`}>
-          <div className="flex min-w-0 items-center gap-2">
-            {/* A quiet rule, not another colour: the row's identity
-                comes from its title and its covers. A sub-row is already
-                inside a titled section, so it drops the rule entirely. */}
-            {!subRow && (
-              <span
-                className="h-4 w-[3px] shrink-0 rounded-sm"
-                style={{ background: panel ? accent : 'rgba(255,255,255,0.2)' }}
-                aria-hidden
-              />
-            )}
-            {icon ?? (emoji && <span className="text-base leading-none">{emoji}</span>)}
-            {subRow ? (
-              <h3 className="truncate text-[13.5px] font-bold text-white/90">{title}</h3>
-            ) : (
-              <h2 className="truncate text-lg font-bold tracking-tight">{title}</h2>
-            )}
-            {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
-          </div>
-          {onViewAll && (
-            <button
-              onClick={onViewAll}
-              className="shrink-0 text-xs font-semibold text-[#9AA4BD] transition hover:text-[#2050D8]"
-            >
-              {viewAllLabel}
-            </button>
+          {icon ? (
+            <span className="flex shrink-0 items-center" style={{ color: accent }} aria-hidden>
+              {icon}
+            </span>
+          ) : (
+            emoji && <span className="text-base leading-none">{emoji}</span>
           )}
+          {subRow ? (
+            <h3 className="truncate text-[13px] font-bold text-white/90">{title}</h3>
+          ) : (
+            <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{title}</h2>
+          )}
+          {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
         </div>
-      )}
-      <div
-        ref={scrollerRef}
-        className={`no-scrollbar flex overflow-x-auto pb-3 ${ranked ? 'gap-5 px-3 pt-4' : 'gap-3'}`}
-      >
-        {shows.map((s, i) => (
+        {onViewAll && (
+          <button
+            onClick={onViewAll}
+            className="shrink-0 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
+          >
+            {viewAllLabel}
+          </button>
+        )}
+      </div>
+      <div ref={scrollerRef} className="rail-scroller no-scrollbar flex gap-3 overflow-x-auto pb-3">
+        {shows.map((s) => (
           <ShowCard
             key={s.id}
             show={s}
             onClick={onSelectShow}
             latestEpisode={episodeNumbers?.[s.id]}
-            rank={ranked ? i + 1 : undefined}
-            large={large}
             seasonNumber={seasons?.[s.id]?.season}
             displayTitle={seasons?.[s.id]?.base}
             titleFromSeason={subRow}

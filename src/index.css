@@ -254,6 +254,74 @@ h3 {
   background: #2a3556;
 }
 
+/* ── Home-screen rails ────────────────────────────────────────────────
+   The home screen is eleven or more of these stacked down one page, each
+   holding a scroller full of poster images. Two properties do most of the
+   work of keeping that scrolling at frame rate.
+
+   `content-visibility: auto` lets the browser skip layout, style and
+   paint for a row that is nowhere near the viewport — with a dozen rails
+   below the fold that is the difference between a scroll that glides and
+   one that catches. `contain-intrinsic-size: auto <h>` gives it a height
+   to reserve in the meantime, and the `auto` keyword makes it remember
+   the row's real height once rendered, so the scrollbar stops shifting
+   after the first pass. The reserved height is one rail: header, a 2:3
+   cover at the rail's card width, and the caption under it. */
+.rail-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}
+
+/* The horizontal scroller inside a rail.
+
+   `overscroll-behavior-x: contain` is the important one on a phone:
+   without it, flicking a rail past its last card hands the gesture to the
+   page, which in a Telegram web view is the swipe that closes the mini
+   app. Snapping is `proximity`, not `mandatory` — a rail should settle
+   tidily when a flick nearly lands on a card, never fight a deliberate
+   long drag across ten of them. */
+.rail-scroller {
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.rail-scroller > * {
+  scroll-snap-align: start;
+}
+
+/* A poster's lit state takes its colour from the row it sits in —
+   `--row-accent`, published by RailRow (see src/lib/rowAccent.ts). Cards
+   outside a rail inherit nothing and fall back to the brand blue, which
+   is what every card used before rows had colours of their own.
+
+   Kept in CSS rather than inline on the element because the hover ring
+   and the coloured drop shadow both need the value, and a `group-hover:`
+   Tailwind class cannot read a custom property for an arbitrary shadow. */
+.poster-frame {
+  --accent: var(--row-accent, #2050d8);
+  --ring: color-mix(in srgb, var(--accent) 62%, transparent);
+}
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .poster-frame {
+    --ring: var(--accent);
+  }
+}
+/* One box-shadow carries the whole lit state: the 2px ring, the lift
+   shadow, and a soft bloom of the row's colour under the card. It has to
+   be one declaration — a `group-hover:ring-2` utility would be writing
+   box-shadow too, and the last one wins rather than the two combining.
+   The ring is drawn outset, not inset: an inset shadow paints under the
+   element's content, so on a card whose content is a full-bleed poster
+   it would be invisible. */
+.group:hover .poster-frame,
+.group:focus-visible .poster-frame {
+  box-shadow:
+    0 0 0 2px var(--ring),
+    0 20px 44px rgba(0, 0, 0, 0.7),
+    0 0 26px -6px var(--ring);
+}
+
 /* Hide scrollbars on horizontal rails while keeping scroll */
 .no-scrollbar {
   -ms-overflow-style: none;
