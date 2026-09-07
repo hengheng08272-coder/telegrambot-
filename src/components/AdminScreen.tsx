@@ -213,18 +213,43 @@ function parseBulkEpisodeList(
 export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [shows, setShows] = useState<ShowWithEpisodes[]>([]);
   const watchingNow = usePresenceCount();
-  const [watchesToday, setWatchesToday] = useState<number | null>(null);
+
+  /** Audience numbers, from the admin_audience_stats view. */
+  interface AudienceStats {
+    viewers_today: number;
+    plays_today: number;
+    viewers_7d: number;
+    viewers_all_time: number;
+    bot_users: number;
+  }
+  const [audience, setAudience] = useState<AudienceStats | null>(null);
+  const [groupMembers, setGroupMembers] = useState<number | null>(null);
 
   // Quick overview numbers for the owner — pulled once on mount, not
   // meant to be a live dashboard, just a glance at how the app is doing.
+  //
+  // This used to be one `count: 'exact'` on watch_log labelled "Watched
+  // today", which counts ROWS — episode plays. One viewer finishing
+  // twenty episodes read as twenty people, so the panel said ~680 while
+  // the real number of humans that day was ~24. That gap is what sent
+  // the owner looking for hundreds of missing members who never existed.
+  // The view does the count(DISTINCT ...) that PostgREST cannot express,
+  // and does it in Phnom Penh's day, not UTC's.
   useEffect(() => {
-    const since = new Date();
-    since.setHours(0, 0, 0, 0);
     supabase
-      .from('watch_log')
-      .select('id', { count: 'exact', head: true })
-      .gte('started_at', since.toISOString())
-      .then(({ count }) => setWatchesToday(count ?? 0));
+      .from('admin_audience_stats')
+      .select('*')
+      .maybeSingle()
+      .then(({ data }) => setAudience((data as AudienceStats | null) ?? null));
+
+    // Group size lives at Telegram, not here, and reading it needs the
+    // bot token — hence the function hop. It sits beside the app's own
+    // audience numbers so "how many watch" and "how many joined" can
+    // finally be compared instead of guessed at.
+    supabase.functions
+      .invoke('group-stats')
+      .then(({ data }) => setGroupMembers((data as { member_count: number | null } | null)?.member_count ?? null))
+      .catch(() => setGroupMembers(null));
   }, []);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
   const [banLogOpen, setBanLogOpen] = useState(false);
@@ -931,16 +956,39 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           analytics dashboard. Total shows/episodes come from data already
           loaded for the list below; watching-now reuses the same
           Realtime Presence count shown on the public home screen. */}
-      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-3 px-4 pt-4 sm:grid-cols-4 sm:px-8">
+      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-3 px-4 pt-4 sm:grid-cols-3 sm:px-8 lg:grid-cols-6">
         {[
-          { label: 'Shows', value: shows.length },
-          { label: 'Episodes', value: shows.reduce((sum, s) => sum + s.episodes.length, 0) },
-          { label: 'Watching now', value: watchingNow },
-          { label: "Watched today", value: watchesToday ?? '—' },
+          { label: 'Shows', value: shows.length, hint: null },
+          { label: 'Episodes', value: shows.reduce((sum, s) => sum + s.episodes.length, 0), hint: null },
+          { label: 'Watching now', value: watchingNow, hint: 'live' },
+          // People, not plays. The play count stays as the sub-line: it
+          // still says how hard the catalogue is being used, it just no
+          // longer pretends to be an audience size.
+          {
+            label: 'Viewers today',
+            value: audience?.viewers_today ?? '—',
+            hint: audience ? `${audience.plays_today} plays` : null,
+          },
+          // The two numbers the owner actually wanted side by side.
+          {
+            label: 'Bot followers',
+            value: audience?.bot_users ?? '—',
+            // Only counts people who press /start from the day
+            // recording was added — there is no way to recover who had
+            // already started the bot before that, because Telegram
+            // does not expose a bot's subscriber list.
+            hint: 'recorded from 7 Sep 2026',
+          },
+          {
+            label: 'Group members',
+            value: groupMembers ?? '—',
+            hint: audience ? `${audience.viewers_all_time} ever watched` : null,
+          },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
             <p className="text-2xl font-black text-white">{stat.value}</p>
             <p className="text-xs text-white/40">{stat.label}</p>
+            {stat.hint && <p className="mt-0.5 text-[11px] text-white/25">{stat.hint}</p>}
           </div>
         ))}
       </div>

@@ -13,10 +13,13 @@ when the day-granting bug was fixed:
 | `aba-payment-callback` | `adminChatIds()`; claim-before-grant |
 | `aba-payment-webhook` | `adminChatIds()`; `aba_trx_id` replay guard with migration fallback |
 | `aba-notify-ingest` | `adminChatIds()`; same replay guard |
-| `telegram-admin-bot` | `adminChatIds()`; `auto_expired` ticket revival; movie confirm/revoke |
+| ~~`telegram-admin-bot`~~ | **Reconciled 7 Sep 2026** — live v49 was pulled with `get_edge_function`, the follower-recording change applied on top of it, and v50 deployed. The repo file now matches production. |
 
 Production also has two functions with no file here at all:
 `episode-stream` and `khqr-gateway`.
+
+`group-stats` was created from this repo (7 Sep 2026), so that one is in
+sync by construction.
 
 ## Before touching any of them
 

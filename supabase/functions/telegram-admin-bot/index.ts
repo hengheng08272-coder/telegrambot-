@@ -15,6 +15,21 @@ interface TgUser {
 
 const TIER_MONTHS_FALLBACK: Record<string, number> = { "1m": 1, "2m": 2, "3m": 3, "6m": 6, "12m": 12 };
 
+// TELEGRAM_ADMIN_CHAT_ID may hold more than one id, separated by commas or
+// spaces ("111111,7777639689"). Every listed id receives the admin
+// notices and may press the Approve/Reject buttons; a single id keeps
+// behaving exactly as before.
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+function isAdminChat(chatId: string | null): boolean {
+  return chatId !== null && adminChatIds().includes(chatId);
+}
+
 async function tg(botToken: string, method: string, body: Record<string, unknown>) {
   const res = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
     method: "POST",
@@ -38,7 +53,7 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const groupId = Deno.env.get("TELEGRAM_GROUP_ID")!;
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID")!;
+    const chatIds = adminChatIds();
     const miniAppUrl = Deno.env.get("TELEGRAM_MINIAPP_URL")!;
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
@@ -59,10 +74,12 @@ Deno.serve(async (req: Request) => {
           performed_by: actor?.username ?? (actor ? String(actor.id) : null),
         });
 
-        await tg(botToken, "sendMessage", {
-          chat_id: adminChatId,
-          text: KICK_NOTICE(user, actor),
-        });
+        for (const chatId of chatIds) {
+          await tg(botToken, "sendMessage", {
+            chat_id: chatId,
+            text: KICK_NOTICE(user, actor),
+          });
+        }
       }
 
       return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -118,7 +135,7 @@ Deno.serve(async (req: Request) => {
       // pay_approve / pay_reject: submission is still genuinely pending --
       // nothing has been granted yet, this IS the approval decision.
       if ((action === "pay_approve" || action === "pay_reject") && submissionId) {
-        if (callbackChatId !== adminChatId) {
+        if (!isAdminChat(callbackChatId)) {
           await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Not authorized.", show_alert: true });
           return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -143,22 +160,38 @@ Deno.serve(async (req: Request) => {
         }
 
         if (action === "pay_approve") {
+          // Claim the ticket in one atomic step before granting. Reading
+          // the status and granting afterwards let the admin's tap and an
+          // automatic path (ABA notification, the 30s fallback) both add
+          // a month for a single payment.
+          const { data: claimed } = await admin
+            .from("payment_submissions")
+            .update({ status: "approved", admin_confirmed: true, auto_expired: false, reviewed_at: new Date().toISOString() })
+            .eq("id", submissionId)
+            .in("status", revivable ? ["pending", "rejected"] : ["pending"])
+            .select("id")
+            .maybeSingle();
+
+          if (!claimed) {
+            await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Already handled." });
+            return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+
           const { data: tierRow } = await admin.from("pricing_tiers").select("months").eq("key", sub.tier).maybeSingle();
           const months = tierRow?.months ?? TIER_MONTHS_FALLBACK[sub.tier] ?? 1;
 
           const { data: existing } = await admin.from("subscriptions").select("expires_at").eq("telegram_user_id", sub.telegram_user_id).maybeSingle();
 
           const base = existing?.expires_at && new Date(existing.expires_at) > new Date() ? new Date(existing.expires_at) : new Date();
-          // A plan's duration is sold in months but granted in DAYS, at a flat
-          // 30 days per month (1 -> 30, 3 -> 90, 6 -> 180, 12 -> 360). Two
-          // reasons this is not setMonth():
-          //   1. It is the arithmetic the rest of the app already shows —
-          //      UsersPanel's remaining-days bar divides by months * 30, and
-          //      the plans are sold to viewers as a fixed day count.
+          // A plan's duration is sold in months but granted in DAYS, at a
+          // flat 30 days per month (1 -> 30, 3 -> 90, 6 -> 180, 12 -> 360).
+          // Two reasons this is not setMonth():
+          //   1. It is the arithmetic the rest of the app already shows --
+          //      UsersPanel's remaining-days bar divides by months * 30,
+          //      and the plans are sold as a fixed day count.
           //   2. setMonth() silently overflows on long months: buying on
-          //      31 Jan and adding 1 month lands on 3 Mar, because 31 Feb does
-          //      not exist — the buyer quietly loses 3 days. Adding days can
-          //      never do that.
+          //      31 Jan and adding 1 month lands on 3 Mar, because 31 Feb
+          //      does not exist -- the buyer quietly loses 3 days.
           base.setDate(base.getDate() + months * 30);
 
           await admin.from("subscriptions").upsert({
@@ -168,7 +201,6 @@ Deno.serve(async (req: Request) => {
             expires_at: base.toISOString(),
             updated_at: new Date().toISOString(),
           });
-          await admin.from("payment_submissions").update({ status: "approved", admin_confirmed: true, auto_expired: false, reviewed_at: new Date().toISOString() }).eq("id", submissionId);
 
           await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: revivable ? "Approved (reopened)" : "Approved" });
           await stampDecision("APPROVED");
@@ -190,7 +222,7 @@ Deno.serve(async (req: Request) => {
       // PaymentsPanel's confirmAuto/revokeAuto so both entry points
       // (Telegram buttons and the Admin Panel) behave identically.
       if ((action === "pay_confirm" || action === "pay_revoke") && submissionId) {
-        if (callbackChatId !== adminChatId) {
+        if (!isAdminChat(callbackChatId)) {
           await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Not authorized.", show_alert: true });
           return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -229,7 +261,7 @@ Deno.serve(async (req: Request) => {
       // back (sets status to rejected, which is what hasPurchasedMovie
       // checks against).
       if ((action === "movie_confirm" || action === "movie_revoke") && submissionId) {
-        if (callbackChatId !== adminChatId) {
+        if (!isAdminChat(callbackChatId)) {
           await tg(botToken, "answerCallbackQuery", { callback_query_id: cq.id, text: "Not authorized.", show_alert: true });
           return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -269,12 +301,6 @@ Deno.serve(async (req: Request) => {
     if (text === "/start" && fromChatId) {
       const adminUsername = Deno.env.get("TELEGRAM_ADMIN_USERNAME");
       const bannerUrl = Deno.env.get("TELEGRAM_START_BANNER_URL");
-      // Where "Support" points. Set TELEGRAM_SUPPORT_URL to a t.me link
-      // (a person, a group, or a channel) — no redeploy needed once the
-      // variable exists. Falls back to the admin's own username when
-      // that is configured, and the row is left out entirely when
-      // neither is: Telegram rejects a url button with no URL, and a
-      // button that errors is worse than a button that isn't there.
       const supportUrl =
         Deno.env.get("TELEGRAM_SUPPORT_URL") ||
         (adminUsername ? `https://t.me/${adminUsername}` : null);
@@ -283,22 +309,53 @@ Deno.serve(async (req: Request) => {
       // stops to ask "Open link?" and then opens the Mini App as an
       // ordinary web page in the browser -- outside Telegram, with no
       // initData, so the viewer is not signed in. A `web_app` button
-      // opens it in place inside Telegram: no prompt, no URL shown, and
-      // the Mini App gets its Telegram identity.
-      //
-      // Telegram only accepts web_app buttons in private chats, and
-      // rejects the whole sendMessage call in a group -- which would
-      // mean no welcome at all for a /start typed in a group. So the
-      // plain link stays as the fallback there.
+      // opens it in place inside Telegram.
       const isPrivateChat = msg?.chat?.type === "private";
+
+      // Remember the follower.
+      //
+      // This is the only place the app ever learns that a person exists
+      // as a bot user. Before it, /start replied and forgot: "how many
+      // followers do I have" had no answer anywhere in the system, and
+      // the Admin panel's "Watched today" was standing in for it while
+      // actually counting episode plays -- so one viewer watching twenty
+      // episodes read as twenty people.
+      //
+      // Keyed on the USER, not the chat: /start typed inside a group
+      // arrives with chat.id = the group, so keying on the chat would
+      // file an entire group as a single follower. Private chats only,
+      // because a private /start is precisely what gives the bot
+      // permission to message that person later -- a /start shouted in a
+      // group grants no such permission and must not inflate the count.
+      //
+      // `started_at` is left out of the payload on purpose: PostgREST's
+      // ON CONFLICT sets only the columns it is given, so the original
+      // join date survives every later /start.
+      //
+      // Failure here is swallowed. The welcome message is what the
+      // person came for; bookkeeping must never be the reason they get
+      // silence instead.
+      if (isPrivateChat && msg?.from?.id) {
+        try {
+          const { error: botUserError } = await admin.from("bot_users").upsert(
+            {
+              telegram_user_id: String(msg.from.id),
+              telegram_username: msg.from.username ?? null,
+              first_name: msg.from.first_name ?? null,
+              last_seen_at: new Date().toISOString(),
+            },
+            { onConflict: "telegram_user_id" },
+          );
+          if (botUserError) console.error("bot_users upsert failed:", botUserError.message);
+        } catch (e) {
+          console.error("bot_users upsert threw:", String(e));
+        }
+      }
+
       const openAppButton = isPrivateChat
         ? { text: OPEN_APP_BTN, web_app: { url: miniAppUrl } }
         : { text: OPEN_APP_BTN, url: miniAppUrl };
 
-      // Two buttons, one job each: go in, or get help. Subscribe led to
-      // the same Mini App as Open App, and About/Preview were reading
-      // material in front of a door the viewer had already decided to
-      // walk through.
       const keyboard = [
         [openAppButton],
         supportUrl ? [{ text: SUPPORT_BTN, url: supportUrl }] : [],
@@ -313,7 +370,7 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (text && fromChatId === adminChatId) {
+    if (text && isAdminChat(fromChatId)) {
       const banMatch = text.match(/^\/ban\s+(\d+)\s*(.*)$/);
       const unbanMatch = text.match(/^\/unban\s+(\d+)\s*$/);
 
@@ -323,9 +380,9 @@ Deno.serve(async (req: Request) => {
 
         if (result.ok) {
           await admin.from("ban_log").insert({ telegram_user_id: userId, action: "banned", reason: reason || null, source: "admin_command", performed_by: fromChatId });
-          await tg(botToken, "sendMessage", { chat_id: adminChatId, text: `Ban user ${userId} success${reason ? ` (${reason})` : ""}` });
+          await tg(botToken, "sendMessage", { chat_id: fromChatId, text: `Ban user ${userId} success${reason ? ` (${reason})` : ""}` });
         } else {
-          await tg(botToken, "sendMessage", { chat_id: adminChatId, text: `Ban failed: ${result.description}` });
+          await tg(botToken, "sendMessage", { chat_id: fromChatId, text: `Ban failed: ${result.description}` });
         }
       } else if (unbanMatch) {
         const [, userId] = unbanMatch;
@@ -333,9 +390,9 @@ Deno.serve(async (req: Request) => {
 
         if (result.ok) {
           await admin.from("ban_log").insert({ telegram_user_id: userId, action: "unbanned", source: "admin_command", performed_by: fromChatId });
-          await tg(botToken, "sendMessage", { chat_id: adminChatId, text: `Unban user ${userId} success` });
+          await tg(botToken, "sendMessage", { chat_id: fromChatId, text: `Unban user ${userId} success` });
         } else {
-          await tg(botToken, "sendMessage", { chat_id: adminChatId, text: `Unban failed: ${result.description}` });
+          await tg(botToken, "sendMessage", { chat_id: fromChatId, text: `Unban failed: ${result.description}` });
         }
       }
     }
@@ -349,25 +406,24 @@ Deno.serve(async (req: Request) => {
 function KICK_NOTICE(user: TgUser, actor?: TgUser) {
   const who = user.username ? "@" + user.username : (user.first_name ?? String(user.id));
   const by = actor ? (actor.username ? "@" + actor.username : String(actor.id)) : null;
-  return "\u1793 kick/ban \u1785\u17c1\u1789\u1796\u17b8 group\n" + who + "\n" + user.id + "\n" + (by ? "\u1792\u17d2\u179c\u17be\u178a\u17c4\u1799: " + by + "\n" : "");
+  return "ន kick/ban ចេញពី group\n" + who + "\n" + user.id + "\n" + (by ? "ធ្វើដោយ: " + by + "\n" : "");
 }
 
-const SUBSCRIBE_BTN = "\u1787\u17b6\u179c VIP";
-const OPEN_APP_BTN = "\u1794\u17be\u1780 Mini App";
-// "\u1787\u17c6\u1793\u17bd\u1799" — Support.
-const SUPPORT_BTN = "\ud83d\udcac \u1787\u17c6\u1793\u17bd\u1799 / Support";
-const BACK_TO_PAYMENT_BTN = "\u178f\u17d2\u179a\u179b\u1794\u17cb\u1791\u17c5\u1794\u1784\u17cb\u1794\u17d2\u179a\u17b6\u1780\u17cb";
+const SUBSCRIBE_BTN = "ជាវ VIP";
+const OPEN_APP_BTN = "បើក Mini App";
+const SUPPORT_BTN = "💬 ជំនួយ / Support";
+const BACK_TO_PAYMENT_BTN = "ត្រលប់ទៅបង់ប្រាក់";
 
 const START_CAPTION =
-  "\u179f\u17bc\u1798\u179f\u17d2\u179c\u17b6\u1782\u1798\u1793\u17cd\u1798\u1780\u1780\u17b6\u1793\u17cb NINT ANIME!\n\n" +
-  "\u1798\u17be\u179b\u179a\u17bd\u1785 Anime HD \u1797\u17b6\u179f\u17b6\u1781\u17d2\u1798\u17c2\u179a \u179c\u1782\u17d2\u1782\u1790\u17d2\u1798\u17b8\u17d7\u179a\u17b6\u179b\u17cb\u1790\u17d2\u1784\u17c3\n\n" +
-  "\u1787\u17d2\u179a\u17be\u179f\u179a\u17be\u179f\u1781\u17b6\u1784\u1780\u17d2\u179a\u17c4\u1798 \u178a\u17be\u1798\u17d2\u1794\u17b8\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798";
+  "សូមស្វាគមន៍មកកាន់ NINT ANIME!\n\n" +
+  "មើលរួច Anime HD ភាសាខ្មែរ វគ្គថ្មីៗរាល់ថ្ងៃ\n\n" +
+  "ជ្រើសរើសខាងក្រោម ដើម្បីចាប់ផ្តើម";
 
 const ABOUT_TEXT =
-  "\u17a2\u17c6\u1796\u17b8 NINT ANIME\n\n" +
-  "NINT ANIME \u1787\u17b6\u1780\u1793\u17d2\u179b\u17c2\u1784\u1791\u179f\u17d2\u179f\u1793\u17b6\u1797\u17b6\u1796\u1799\u1793\u17d2\u178f Anime HD \u1797\u17b6\u179f\u17b6\u1781\u17d2\u1798\u17c2\u179a\n\n" +
-  "\u1782\u17bb\u178e\u1797\u17b6\u1796 HD, \u1797\u17b6\u179f\u17b6\u1781\u17d2\u1798\u17c2\u179a, \u1782\u17d2\u1798\u17b6\u1793\u1794\u17d2\u179a\u17b6\u1780\u17cb, \u179c\u1782\u17d2\u1782\u1790\u17d2\u1798\u17b8\u17d7\u179a\u17b6\u179b\u17cb\u1790\u17d2\u1784\u17c3, \u1785\u17b6\u1794\u17cb\u179a\u1784\u17d2\u179c\u17b6\u1793\u17cb\u1790\u17d2\u1784\u17c3\u1794\u1793\u17d2\u1790\u17c2\u1798 \u1793\u17c5\u1796\u17c1\u179b\u1791\u17b7\u1789 VIP";
+  "អំពី NINT ANIME\n\n" +
+  "NINT ANIME ជាកន្លែងទស្សនាភាពយន្ត Anime HD ភាសាខ្មែរ\n\n" +
+  "គុណភាព HD, ភាសាខ្មែរ, គ្មានប្រាក់, វគ្គថ្មីៗរាល់ថ្ងៃ, ចាប់រង្វាន់ថ្ងៃបន្ថែម នៅពេលទិញ VIP";
 
 const PREVIEW_TEXT =
-  "NINT ANIME \u2014 \u1787\u17b6\u1798\u17bd\u1799\u179c\u1782\u17d2\u1782\u1790\u17d2\u1798\u17b8\u17d7\u179a\u17b6\u179b\u17cb\u1790\u17d2\u1784\u17c3 \u1782\u17bb\u178e\u1797\u17b6\u1796 HD \u1782\u17d2\u1798\u17b6\u1793\u1794\u17d2\u179a\u17b6\u1780\u17cb!\n\n" +
-  "\u1785\u1784\u17cb\u1798\u17be\u179b\u1796\u17c1\u1789? \u1791\u17bc\u1791\u17b6\u178f\u17cb\u178a\u17be\u1798\u17d2\u1794\u17b8\u178a\u17c4\u179f\u179f\u17c4 VIP \u17a5\u178b\u17bc\u179c\u1793\u17c1\u17c7";
+  "NINT ANIME — ជាមួយវគ្គថ្មីៗរាល់ថ្ងៃ គុណភាព HD គ្មានប្រាក់!\n\n" +
+  "ចង់មើលពេញ? ទូទាត់ដើម្បីដោសសោ VIP ឥឋូវនេះ";
