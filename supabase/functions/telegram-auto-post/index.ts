@@ -41,25 +41,70 @@ const corsHeaders = {
 // is read from getMe when it isn't — the bot token is already here, so
 // this needs no new configuration. TELEGRAM_MINIAPP_SHORT_NAME overrides
 // the "app" path segment if the Mini App is published under another one.
-async function miniAppBase(botToken: string): Promise<string> {
+async function miniAppBase(botToken: string): Promise<{ base: string; source: string; note: string | null }> {
   const configured = (Deno.env.get("TELEGRAM_MINIAPP_URL") ?? "").trim().replace(/\/+$/, "");
-  if (/^https:\/\/t\.me\//i.test(configured)) return configured;
+  const shortName =
+    (Deno.env.get("TELEGRAM_MINIAPP_SHORT_NAME") ?? "").trim().replace(/^\/+|\/+$/g, "");
 
   const me = await fetch(`https://api.telegram.org/bot${botToken}/getMe`)
     .then((r) => r.json())
     .catch(() => null);
-  const username = me?.ok ? me.result?.username : null;
-  if (!username) {
-    console.warn(
-      "[MINIAPP] Could not resolve the bot username; falling back to " +
-        `TELEGRAM_MINIAPP_URL (${configured || "unset"}), which opens in a browser.`,
-    );
-    return configured;
+  const username: string | null = me?.ok ? (me.result?.username ?? null) : null;
+  // Telegram's own answer to "does this bot have a Main Mini App?".
+  // A Main Mini App has NO short name and is opened with a bare
+  // https://t.me/<bot>?startapp=... — appending a path segment to it
+  // points at a named app that does not exist, and the button silently
+  // does nothing when tapped. That is exactly what was happening: the
+  // short name was unset, so the old code defaulted it to "app" and
+  // built https://t.me/<bot>/app for a bot whose app has no name.
+  const hasMainApp: boolean = me?.ok ? me.result?.has_main_web_app === true : false;
+
+  // A configured t.me link is checked, not trusted. The old test was
+  // `/^https:\/\/t\.me\//` and nothing more, so ANY t.me address came
+  // back as-is -- including the group link (https://t.me/nintplex), the
+  // single easiest wrong value to paste into a variable with this name.
+  if (/^https:\/\/t\.me\//i.test(configured)) {
+    try {
+      const parts = new URL(configured).pathname.split("/").filter(Boolean);
+      if (username && parts[0]?.toLowerCase() === username.toLowerCase()) {
+        return {
+          base: `https://t.me/${parts[0]}${parts[1] ? `/${parts[1]}` : ""}`,
+          source: "TELEGRAM_MINIAPP_URL",
+          note: null,
+        };
+      }
+    } catch {
+      // not a parseable URL -- fall through
+    }
   }
 
-  const shortName =
-    (Deno.env.get("TELEGRAM_MINIAPP_SHORT_NAME") ?? "app").trim().replace(/^\/+|\/+$/g, "");
-  return `https://t.me/${username}${shortName ? `/${shortName}` : ""}`;
+  if (!username) {
+    return {
+      base: configured,
+      source: "TELEGRAM_MINIAPP_URL (getMe failed)",
+      note:
+        "Could not resolve the bot username from getMe, so the button falls back to " +
+        `TELEGRAM_MINIAPP_URL (${configured || "unset"}), which opens in a browser outside Telegram.`,
+    };
+  }
+
+  // An explicitly configured short name wins: the owner has told us the
+  // app is named, and getMe cannot report a named app's short name.
+  if (shortName) {
+    return {
+      base: `https://t.me/${username}/${shortName}`,
+      source: "getMe + TELEGRAM_MINIAPP_SHORT_NAME",
+      note: `Short name "${shortName}" is taken on trust — Telegram has no API to list a bot's Mini Apps, so if it is wrong the button does nothing. Check BotFather → /myapps.`,
+    };
+  }
+
+  return {
+    base: `https://t.me/${username}`,
+    source: hasMainApp ? "getMe (Main Mini App)" : "getMe (no app found)",
+    note: hasMainApp
+      ? null
+      : `@${username} reports no Main Mini App and TELEGRAM_MINIAPP_SHORT_NAME is unset, so this link opens the bot's chat rather than the app. Set the short name, or publish a Main Mini App in BotFather.`,
+  };
 }
 
 interface Show {
@@ -119,7 +164,12 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const groupId = Deno.env.get("TELEGRAM_GROUP_ID")!;
-    const miniAppUrl = await miniAppBase(botToken);
+    const miniApp = await miniAppBase(botToken);
+    const miniAppUrl = miniApp.base;
+    if (miniApp.note) console.warn("[MINIAPP]", miniApp.note);
+    // Echoed on every response, including the skipped ones, so the exact
+    // link the buttons will carry can be read without sending a post.
+    const miniAppInfo = { miniapp_base: miniApp.base, miniapp_source: miniApp.source, miniapp_note: miniApp.note };
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     // `force: true` skips the interval check — used by the Admin Panel's
@@ -140,7 +190,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (settingsErr || !settings) {
-      return new Response(JSON.stringify({ ok: true, skipped: "no_settings_row" }), {
+      return new Response(JSON.stringify({ ok: true, skipped: "no_settings_row", ...miniAppInfo }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -150,7 +200,7 @@ Deno.serve(async (req: Request) => {
     // through even while auto-posting is switched off — otherwise there is
     // no way to check the bot token, group id and caption before enabling.
     if (!settings.enabled && !force) {
-      return new Response(JSON.stringify({ ok: true, skipped: "disabled" }), {
+      return new Response(JSON.stringify({ ok: true, skipped: "disabled", ...miniAppInfo }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -160,7 +210,7 @@ Deno.serve(async (req: Request) => {
       const dueAt = new Date(settings.last_run_at).getTime() + settings.interval_minutes * 60_000;
       if (Date.now() < dueAt) {
         return new Response(
-          JSON.stringify({ ok: true, skipped: "not_due", due_at: new Date(dueAt).toISOString() }),
+          JSON.stringify({ ok: true, skipped: "not_due", due_at: new Date(dueAt).toISOString(), ...miniAppInfo }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
@@ -188,7 +238,7 @@ Deno.serve(async (req: Request) => {
       queueOrder = (queueRows ?? []).map((row) => row.show_id as string);
 
       if (queueOrder.length === 0) {
-        return new Response(JSON.stringify({ ok: true, skipped: "empty_queue" }), {
+        return new Response(JSON.stringify({ ok: true, skipped: "empty_queue", ...miniAppInfo }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -202,7 +252,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!shows || shows.length === 0) {
-      return new Response(JSON.stringify({ ok: true, skipped: "no_shows" }), {
+      return new Response(JSON.stringify({ ok: true, skipped: "no_shows", ...miniAppInfo }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -394,7 +444,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, posted, errors, forced: force, mode: queueMode ? "queue" : "rotate", next_due_at: nextDueAt }),
+      JSON.stringify({ ok: true, posted, errors, forced: force, mode: queueMode ? "queue" : "rotate", next_due_at: nextDueAt, ...miniAppInfo }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {

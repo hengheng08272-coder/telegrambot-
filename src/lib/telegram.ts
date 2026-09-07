@@ -159,11 +159,30 @@ export function getSupportLink(): string | null {
 // open the subscribe sheet instead of playing, same as any other entry
 // point. Needs VITE_TELEGRAM_BOT_USERNAME configured (bot username, no
 // @); without it, falls back to sharing the current page URL instead of
+// The bot's Mini App link, with or without a short name.
+//
+// This bot publishes a MAIN Mini App, which has no short name at all and
+// is opened with a bare https://t.me/<bot>?startapp=... Appending "/app"
+// to that — which every link here used to do — points at a named app
+// that does not exist, so the link silently does nothing when tapped.
+// That is why the "watch this" links out of the app and out of the group
+// posts were dead.
+//
+// VITE_TELEGRAM_MINIAPP_SHORT_NAME is honoured when it is set to a real
+// short name, for the case where the app is published as a named one.
+// Left unset (the correct setting for a Main Mini App) the path segment
+// is simply omitted.
+function miniAppLink(botUsername: string, param: string): string {
+  const shortName = (import.meta.env.VITE_TELEGRAM_MINIAPP_SHORT_NAME as string | undefined)?.trim();
+  const base = `https://t.me/${botUsername}${shortName ? `/${shortName}` : ''}`;
+  return `${base}?startapp=${param}`;
+}
+
 // a proper deep link.
 export async function shareShow(showId: string, title: string): Promise<'shared' | 'copied' | 'failed'> {
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
   const deepLink = botUsername
-    ? `https://t.me/${botUsername}/app?startapp=show_${showId}`
+    ? miniAppLink(botUsername, `show_${showId}`)
     : window.location.href;
 
   const tg = getTelegramWebApp();
@@ -200,7 +219,7 @@ export function getReferralLink(): string | null {
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
   const user = getCurrentTelegramUser();
   if (!botUsername || !user) return null;
-  return `https://t.me/${botUsername}/app?startapp=ref_${user.id}`;
+  return miniAppLink(botUsername, `ref_${user.id}`);
 }
 
 // Shares the viewer's referral link with a friend. Unlike inviteFriend
