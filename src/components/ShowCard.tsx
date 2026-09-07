@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Clock, Crown } from 'lucide-react';
+import { Play, Clock, Crown, Check } from 'lucide-react';
 import type { Show } from '@/lib/types';
 import Badge from '@/components/Badge';
 import { MOVIE_PRICE } from '@/lib/moviePurchase';
@@ -198,6 +198,20 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
           {show.type === 'movie' && !show.is_free && !show.coming_soon && (
             <Badge tone="price" onArt className="absolute bottom-1.5 left-1.5">
               ${MOVIE_PRICE}
+            </Badge>
+          )}
+          {/* Finished, marked on the show instead of in a row of its own.
+              A whole rail for "completed" spends a screenful saying one
+              boolean; the fact belongs on the cover, next to the episode
+              count it qualifies — "52 episodes" and "it is all there" are
+              one thought.
+
+              Neutral, not green: green means free in this app and these
+              covers sit in rails beside FREE badges, so a green "ចប់" on
+              a members-only series would read as the wrong promise. */}
+          {!show.coming_soon && show.status === 'completed' && (
+            <Badge tone="info" onArt icon={<Check className="h-3 w-3" />} className="absolute bottom-1.5 right-1.5">
+              {t.completedTag}
             </Badge>
           )}
           {/* Coming Soon marker — announced/promoted but no episodes yet

@@ -119,7 +119,12 @@ export default function HomeScreen({
   const [error, setError] = useState<string | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
   const [query, setQuery] = useState('');
-  const [interacting, setInteracting] = useState(false);
+  // The hero stops rotating for good once the viewer takes control of it.
+  // It used to pause for 3.5 seconds and then carry on, so tapping a
+  // thumbnail to look at a show meant the carousel slid away from it a
+  // moment later — the one moment the viewer had said what they wanted to
+  // see is the one moment it should not move.
+  const [autoStopped, setAutoStopped] = useState(false);
   // `movies: true` switches the drill-down to the wide film cards. There
   // are only ever a handful of standalone movies, so they get a shelf
   // built for a handful rather than a grid built for hundreds.
@@ -133,7 +138,6 @@ export default function HomeScreen({
 
   const touchStartX = useRef(0);
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // "Continue Watching" — read once per mount (this screen fully
   // unmounts/remounts on navigation, so a fresh read here already stays
@@ -218,15 +222,11 @@ export default function HomeScreen({
   const nextSlide = useCallback(() => goToSlide(heroIndex + 1), [heroIndex, goToSlide]);
   const prevSlide = useCallback(() => goToSlide(heroIndex - 1), [heroIndex, goToSlide]);
 
-  const pauseThenResume = useCallback(() => {
-    setInteracting(true);
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => setInteracting(false), 3500);
-  }, []);
+  const stopAuto = useCallback(() => setAutoStopped(true), []);
 
-  // Auto-advance the centered card every ~5.5s, pause while interacting
+  // Auto-advance the centered card until the viewer touches it.
   useEffect(() => {
-    if (bannerShows.length <= 1 || interacting) {
+    if (bannerShows.length <= 1 || autoStopped) {
       if (autoTimer.current) clearInterval(autoTimer.current);
       return;
     }
@@ -234,7 +234,7 @@ export default function HomeScreen({
     return () => {
       if (autoTimer.current) clearInterval(autoTimer.current);
     };
-  }, [bannerShows.length, interacting, heroIndex, goToSlide]);
+  }, [bannerShows.length, autoStopped, heroIndex, goToSlide]);
 
   const hero = bannerShows[heroIndex];
 
@@ -248,7 +248,9 @@ export default function HomeScreen({
   const comingSoon = shows.filter((s) => s.coming_soon);
   const live = shows.filter((s) => !s.coming_soon);
   const freeShows = live.filter((s) => s.is_free);
-  const completedShows = live.filter((s) => s.type === 'series' && s.status === 'completed');
+  // No "Completed" row any more: a finished series is marked on its own
+  // cover (see ShowCard) rather than given a screenful of its own, so it
+  // stays in whichever rail it belongs to and carries the fact with it.
   const oneOffMovies = live.filter((s) => s.type === 'movie');
 
   // One group per series that actually has several seasons in the
@@ -301,7 +303,6 @@ export default function HomeScreen({
     // showcase panels; franchises get a section of their own.
     const movies = take(oneOffMovies);
     const free = take(freeShows);
-    const completed = take(completedShows);
     const franchiseShows = take(franchises.flatMap((f) => f.entries.map((e) => e.show)));
 
     // Then the general rows, from the remainder.
@@ -323,8 +324,8 @@ export default function HomeScreen({
       14,
     );
 
-    return { movies, free, completed, franchiseShows, popular, binge, claimed };
-  }, [live, freeShows, completedShows, oneOffMovies, franchises, episodeNumbers]);
+    return { movies, free, franchiseShows, popular, binge, claimed };
+  }, [live, freeShows, oneOffMovies, franchises, episodeNumbers]);
 
   // The catalogue. Every live show, in one row, in the position the
   // "New Release" rail used to hold.
@@ -649,12 +650,22 @@ export default function HomeScreen({
             heroIsFree={showsById.get(hero.id)?.is_free ?? hero.is_free ?? false}
             heroIsMovie={(showsById.get(hero.id)?.type ?? hero.type) === 'movie'}
             onSelectShow={onSelectShow}
-            onPrev={prevSlide}
-            onNext={nextSlide}
-            onGoTo={goToSlide}
+            autoStopped={autoStopped}
+            onPrev={() => {
+              stopAuto();
+              prevSlide();
+            }}
+            onNext={() => {
+              stopAuto();
+              nextSlide();
+            }}
+            onGoTo={(i) => {
+              stopAuto();
+              goToSlide(i);
+            }}
             onTouchStart={(x) => {
               touchStartX.current = x;
-              pauseThenResume();
+              stopAuto();
             }}
             onTouchEnd={(x) => {
               const dx = x - touchStartX.current;
@@ -790,18 +801,6 @@ export default function HomeScreen({
                 title={t.recommendedForYou ?? 'Recommended for You'}
                 shows={recommended}
                 onSelectShow={onSelectShow}
-              />
-            )}
-            {rows.completed.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                role="free"
-                icon={<Check className="h-5 w-5" />}
-                title={t.completedRowLabel ?? 'Completed Series'}
-                shows={rows.completed}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.completedRowLabel ?? 'Completed Series', shows: rows.completed })}
-                viewAllLabel={t.viewAll}
               />
             )}
             {/* The catalogue, where "New Release" used to be. Every live
@@ -1093,6 +1092,9 @@ interface CoverflowHeroProps {
   onNext: () => void;
   onGoTo: (i: number) => void;
   onTouchStart: (x: number) => void;
+  /** Once true the carousel has been handed to the viewer: the countdown
+   *  bar goes away with the countdown it was counting. */
+  autoStopped: boolean;
   onTouchEnd: (x: number) => void;
   t: TranslationText;
 }
@@ -1111,6 +1113,7 @@ function CoverflowHero({
   onGoTo,
   onTouchStart,
   onTouchEnd,
+  autoStopped,
   t,
 }: CoverflowHeroProps) {
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -1447,7 +1450,7 @@ function CoverflowHero({
           time, doubling as the position indicator. Keyed on the index so
           it restarts cleanly every time the centered show changes,
           whether from the timer or a manual swipe/tap. */}
-      {shows.length > 1 && (
+      {shows.length > 1 && !autoStopped && (
         <div className="absolute inset-x-0 bottom-0 z-30 h-[3px] w-full overflow-hidden bg-white/10">
           <div
             key={index}
