@@ -19,13 +19,12 @@ import {
   Clock,
   Layers,
   ListVideo,
-  Radio,
   Calendar,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, errorMessage, type ShowEpisodeInfo } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
-import Badge, { type BadgeTone } from '@/components/Badge';
+import Badge from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
@@ -260,21 +259,18 @@ export default function HomeScreen({
   // Top 10 now reflects real audience behavior — actual play counts
   // (see increment_show_view_count) — instead of an admin-typed rating
   // number, so it genuinely shows which shows viewers watch the most.
-  const trending = [...shows].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).slice(0, 10);
-  const newReleases = [...shows]
-    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-    .slice(0, 10);
   const comingSoon = shows.filter((s) => s.coming_soon);
-  const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
-  const completedShows = shows.filter((s) => s.type === 'series' && s.status === 'completed');
-  const oneOffMovies = shows.filter((s) => s.type === 'movie' && !s.coming_soon);
+  const live = shows.filter((s) => !s.coming_soon);
+  const freeShows = live.filter((s) => s.is_free);
+  const completedShows = live.filter((s) => s.type === 'series' && s.status === 'completed');
+  const oneOffMovies = live.filter((s) => s.type === 'movie');
 
   // One group per series that actually has several seasons in the
   // catalog. The season lives in the title text rather than a column, so
   // this is parsed — see lib/seasons.ts for the five spellings the data
-  // uses. Each franchise gets its own row below, rather than all of them
-  // sharing one rail: in a shared rail the two seasons of a show sat
-  // under the same truncated title and read as a duplicate card.
+  // uses.
+  const franchises = useMemo(() => seasonFranchises(live), [live]);
+
   // A free show that continues into a paid season is the whole point of
   // the free row — the card says so rather than leaving the viewer to
   // discover it after finishing the last free episode.
@@ -287,32 +283,74 @@ export default function HomeScreen({
     return out;
   }, [freeShows, shows]);
 
-  const franchises = useMemo(
-    () => seasonFranchises(shows.filter((s) => !s.coming_soon)),
-    [shows],
+  // ── Every show appears in exactly one rail ───────────────────────────
+  //
+  // Before this, it appeared in most of them. "Airing Now" matched 42 of
+  // the 44 live shows, so it was the whole catalogue under a heading that
+  // told you nothing; "Popular" was `shows.slice(0, 10)`, an arbitrary
+  // slice that overlapped New Release almost entirely; and the fifteen
+  // shows with seasons had their own section AND sat in every rail above
+  // it. Scrolling the page meant meeting the same covers four times.
+  //
+  // So the rows now claim shows in order of how specific they are. A row
+  // with a real reason to exist — this is free, this is a film, this is a
+  // series with seasons — takes its shows out of the pool first, and the
+  // general rows below draw from whatever is left.
+  //
+  // "Airing Now" is gone rather than deduplicated: with 42 of 44 shows
+  // ongoing, the label carries no information at all. Completed and the
+  // genre rows stay in the code and hide themselves while their data is
+  // empty (0 completed shows, 0 genres today) — they cost nothing and
+  // come back on their own the moment the catalogue has either.
+  const rows = useMemo(() => {
+    const claimed = new Set<string>();
+    const take = <T extends { id: string }>(list: T[], limit?: number): T[] => {
+      const picked = list.filter((s) => !claimed.has(s.id));
+      const out = limit ? picked.slice(0, limit) : picked;
+      for (const s of out) claimed.add(s.id);
+      return out;
+    };
+
+    // Claimed first, in order of specificity. Movies and the free row are
+    // showcase panels; franchises get a section of their own.
+    const movies = take(oneOffMovies);
+    const free = take(freeShows);
+    const completed = take(completedShows);
+    const franchiseShows = take(franchises.flatMap((f) => f.entries.map((e) => e.show)));
+
+    // Then the general rows, from the remainder.
+    const newest = take(
+      [...live].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')),
+      10,
+    );
+    // Real play counts (see increment_show_view_count), not an
+    // admin-typed rating and not the first ten rows PostgREST happened
+    // to return, which is what "Popular" used to be.
+    const popular = take([...live].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)), 10);
+    const binge = take(
+      live
+        .filter((s) => (episodeNumbers[s.id] ?? 0) >= 20)
+        .sort((a, b) => (episodeNumbers[b.id] ?? 0) - (episodeNumbers[a.id] ?? 0)),
+      14,
+    );
+
+    return { movies, free, completed, franchiseShows, newest, popular, binge, claimed };
+  }, [live, freeShows, completedShows, oneOffMovies, franchises, episodeNumbers]);
+
+  // Anything no row claimed. Genre rows draw from the same remainder, so
+  // this is computed after them in render order but from the same set:
+  // with no genres in the catalogue today it is simply everything left.
+  const leftovers = useMemo(
+    () => live.filter((s) => !rows.claimed.has(s.id)),
+    [live, rows],
   );
 
-  // The long ones. A viewer with an evening free wants the shows they can
-  // actually sink into, and episode count is the honest signal for that —
-  // it needs no admin curation and cannot go stale.
-  const bingeShows = useMemo(
-    () =>
-      shows
-        .filter((s) => !s.coming_soon && (episodeNumbers[s.id] ?? 0) >= 20)
-        .sort((a, b) => (episodeNumbers[b.id] ?? 0) - (episodeNumbers[a.id] ?? 0))
-        .slice(0, 14),
-    [shows, episodeNumbers],
-  );
+  // The single movie the panel leads with — most-watched first, so the
+  // one card the row spends its height on is the one most people want.
+  const featuredMovie = [...rows.movies].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))[0];
 
-  // Still releasing. Separated from the Completed row so the two answer
-  // opposite questions: "what can I finish tonight" vs "what do I follow".
-  const ongoingShows = shows.filter(
-    (s) => s.type === 'series' && s.status !== 'completed' && !s.coming_soon,
-  );
-  // The single movie the panel leads with — most-watched first (same
-  // real play-count signal `trending` uses above), so the one card the
-  // row spends its height on is the one most people already want.
-  const featuredMovie = [...oneOffMovies].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))[0];
+  // Real play counts, used for the hero's rank chip.
+  const trending = [...live].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).slice(0, 10);
 
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
   // joined) — this looks the hero's genre + Top 10 rank up against the
@@ -346,7 +384,9 @@ export default function HomeScreen({
     const picks: ShowWithGenres[] = [];
     for (const slug of topGenres) {
       for (const s of showsByGenre(slug)) {
-        if (watchedIds.has(s.id) || seen.has(s.id)) continue;
+        // Skip what a dedicated row already claimed, on top of what the
+        // viewer has already watched.
+        if (watchedIds.has(s.id) || seen.has(s.id) || rows.claimed.has(s.id)) continue;
         seen.add(s.id);
         picks.push(s);
         if (picks.length >= 10) break;
@@ -354,7 +394,7 @@ export default function HomeScreen({
       if (picks.length >= 10) break;
     }
     return picks;
-  }, [continueItems, showsById, showsByGenre]);
+  }, [continueItems, showsById, showsByGenre, rows]);
 
   if (loading) {
     return (
@@ -685,19 +725,18 @@ export default function HomeScreen({
                 Movies row's gold) so it reads as an offer, not a filter.
                 Empty until shows are marked "unlock all" (shows.is_free)
                 in Admin -> Shows; the row hides itself until then. */}
-            {freeShows.length > 0 && (
+            {rows.free.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
                 panel
                 role="free"
                 icon={<Gift className="h-5 w-5" />}
                 title={t.freeRowLabel ?? 'Free to Watch'}
-                shows={freeShows}
+                shows={rows.free}
                 onSelectShow={onSelectShow}
                 continuesAt={continuesAt}
-                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
+                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: rows.free })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.unlockAllTag, tone: 'free' }}
               />
             )}
             {/* The ranked/numeral "Top 10" rail was removed per request —
@@ -752,18 +791,19 @@ export default function HomeScreen({
                 onSelectShow={onSelectShow}
               />
             )}
-            {completedShows.length > 0 && (
+            {rows.completed.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
                 role="free"
                 icon={<Check className="h-5 w-5" />}
                 title={t.completedRowLabel ?? 'Completed Series'}
-                shows={completedShows}
+                shows={rows.completed}
                 onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.completedRowLabel ?? 'Completed Series', shows: completedShows })}
+                onViewAll={() => setViewAll({ title: t.completedRowLabel ?? 'Completed Series', shows: rows.completed })}
                 viewAllLabel={t.viewAll}
               />
             )}
+            {rows.newest.length > 0 && (
             <RailRow
               episodeNumbers={episodeNumbers}
               role="mark"
@@ -777,51 +817,43 @@ export default function HomeScreen({
                 </span>
               }
               title={t.newRelease}
-              shows={newReleases}
+              shows={rows.newest}
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
-              tag={{ label: t.newTag ?? 'NEW', tone: 'mark' }}
             />
+            )}
+            {rows.popular.length > 0 && (
             <RailRow
               episodeNumbers={episodeNumbers}
               role="mark"
               icon={<Flame className="h-5 w-5" />}
               title={t.popularSeason}
-              shows={shows.slice(0, 10)}
+              shows={rows.popular}
               onSelectShow={onSelectShow}
               onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
               viewAllLabel={t.viewAll}
-              tag={{ label: t.hotTag ?? 'HOT', tone: 'mark' }}
             />
+            )}
 
-            {bingeShows.length > 0 && (
+            {rows.binge.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
                 role="guide"
                 icon={<ListVideo className="h-5 w-5" />}
                 title={t.bingeRowLabel}
-                shows={bingeShows}
+                shows={rows.binge}
                 onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.bingeRowLabel, shows: bingeShows })}
-                viewAllLabel={t.viewAll}
-              />
-            )}
-            {ongoingShows.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                role="mark"
-                icon={<Radio className="h-5 w-5" />}
-                title={t.ongoingRowLabel}
-                shows={ongoingShows}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.ongoingRowLabel, shows: ongoingShows })}
+                onViewAll={() => setViewAll({ title: t.bingeRowLabel, shows: rows.binge })}
                 viewAllLabel={t.viewAll}
               />
             )}
 
             {genres.map((g) => {
-              const list = showsByGenre(g.slug);
+              // From the remainder, like every other general row — a
+              // genre rail full of covers already shown three rows up is
+              // the repetition this whole pass exists to remove.
+              const list = showsByGenre(g.slug).filter((s) => !rows.claimed.has(s.id));
               if (list.length === 0) return null;
               return (
                 <RailRow
@@ -867,7 +899,6 @@ export default function HomeScreen({
                     subRow
                     episodeNumbers={episodeNumbers}
                     title={f.base}
-                    tag={{ label: `${f.entries.length} ${t.seasonsCountLabel}`, tone: 'info' }}
                     shows={f.entries.map((e) => e.show)}
                     seasons={Object.fromEntries(
                       f.entries.map((e) => [e.show.id, { season: e.season, base: f.base }]),
@@ -876,6 +907,25 @@ export default function HomeScreen({
                   />
                 ))}
               </section>
+            )}
+
+            {/* Whatever no row above claimed.
+                Deduplication means a show can only be in one rail, so
+                without this the ones that matched nothing in particular
+                would simply vanish from the home screen — reachable only
+                through search. This is the floor that guarantees every
+                live title is on the page exactly once. */}
+            {leftovers.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                role="plain"
+                icon={<Layers className="h-5 w-5" />}
+                title={t.allShowsTitle}
+                shows={leftovers}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.allShowsTitle, shows: leftovers })}
+                viewAllLabel={t.viewAll}
+              />
             )}
 
             {/* Coming Soon moved to the bottom of the browse list — it's
@@ -892,7 +942,6 @@ export default function HomeScreen({
                 onSelectShow={onSelectShow}
                 onViewAll={() => setViewAll({ title: t.comingSoonLabel, shows: comingSoon })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.freshTag ?? 'SOON', tone: 'mark' }}
               />
             )}
 
@@ -1253,8 +1302,15 @@ function CoverflowHero({
           </div>
         </button>
 
-        {/* Title + meta + actions */}
-        <div className="min-w-0 flex-1 text-left">
+        {/* Title + meta + actions.
+            The height is reserved, not measured. Every slide has a title
+            of one or two lines and a genre line that may or may not
+            exist, so switching slides changed this column's height and
+            shoved the whole page — the thumbnail strip, and every rail
+            below it — up or down under the finger that had just tapped a
+            thumbnail. Holding the tallest case means the carousel changes
+            its picture and nothing else moves. */}
+        <div className="flex min-h-[172px] min-w-0 flex-1 flex-col justify-center text-left sm:min-h-[196px]">
           <span className="relative -top-1 mb-1 flex flex-wrap items-center gap-1.5">
             <Badge tone="mark" icon={<Flame className="h-3 w-3" />} className="px-2 py-1 text-[11px]">
               {t.featuredLabel ?? 'កំពុងពេញនិយម'}
@@ -1555,10 +1611,6 @@ interface RailRowProps {
   episodeNumbers?: Record<string, number>;
   onViewAll?: () => void;
   viewAllLabel?: string;
-  /** Small colored tag chip shown next to the row title (e.g. NEW / HOT /
-   *  FREE) — gives every row its own at-a-glance identity instead of a
-   *  uniform plain heading. */
-  tag?: { label: string; tone?: BadgeTone };
   /** Wraps the row in a slim gradient banner panel instead of the plain
    *  divider-line header — gives the row its own identity as a showcase
    *  strip rather than just another rail, without needing taller cards
@@ -1586,7 +1638,6 @@ function RailRow({
   episodeNumbers,
   onViewAll,
   viewAllLabel,
-  tag,
   panel,
   seasons,
   subRow,
@@ -1633,18 +1684,13 @@ function RailRow({
           aria-hidden
         />
       )}
+      {/* A row heading is an icon and a name. Nothing else.
+          It used to be four things: a 3px colour bar, the icon, the name,
+          and a tag chip — and the chip usually repeated the name it sat
+          next to ("ពេញនិយមរដូវនេះ" beside a badge reading "ពេញនិយម").
+          The row's colour still reads, because the icon carries it. */}
       <div className={`flex items-center justify-between gap-2 ${subRow ? 'mb-1.5 pl-3' : 'mb-3'}`}>
         <div className="flex min-w-0 items-center gap-2">
-          {/* The one solid block of the row's colour on the whole screen.
-              A sub-row is already inside a titled section, so it drops
-              the rule entirely rather than repeating its parent's. */}
-          {!subRow && (
-            <span
-              className="h-4 w-[3px] shrink-0 rounded-sm"
-              style={{ background: accent, boxShadow: `0 0 10px ${tint(accent, 0.5)}` }}
-              aria-hidden
-            />
-          )}
           {icon ? (
             <span className="flex shrink-0 items-center" style={{ color: accent }} aria-hidden>
               {icon}
@@ -1657,7 +1703,6 @@ function RailRow({
           ) : (
             <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{title}</h2>
           )}
-          {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
         </div>
         {onViewAll && (
           <button
