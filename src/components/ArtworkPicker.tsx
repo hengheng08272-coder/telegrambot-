@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, Loader2, X } from 'lucide-react';
-import { prepareShowImage, formatBytes, IMAGE_PRESETS, type ImageKind, type PreparedImage } from '@/lib/imageSizing';
+import { AlertTriangle, ImagePlus, Loader2, X } from 'lucide-react';
+import {
+  prepareShowImage,
+  formatBytes,
+  IMAGE_PRESETS,
+  MIN_SOURCE,
+  type ImageKind,
+  type PreparedImage,
+} from '@/lib/imageSizing';
 
 interface Props {
   kind: ImageKind;
@@ -56,6 +63,14 @@ export default function ArtworkPicker({ kind, label, currentUrl, value, onChange
   };
 
   const shown = previewUrl ?? currentUrl ?? null;
+
+  // A resize cannot invent detail. If the picked file is smaller than the
+  // slot needs on a 3x phone, the cover will be soft however good the
+  // rest of the pipeline is, and the only fix is a bigger source file —
+  // so say that here, at the moment there is still a chance to pick a
+  // different one, rather than discovering it on the home screen.
+  const min = MIN_SOURCE[kind];
+  const tooSmall = value !== null && (value.width < min.width || value.height < min.height);
 
   return (
     <div>
@@ -118,7 +133,24 @@ export default function ArtworkPicker({ kind, label, currentUrl, value, onChange
             </p>
           ) : (
             <p className="mt-1.5 text-[11px] text-white/35">
-              Cropped to {preset.label} and re-encoded before upload — any size or shape is fine.
+              Cropped to {preset.label} and re-encoded before upload. Pick a source at least{' '}
+              <span className="tabular-nums">
+                {min.width}×{min.height}
+              </span>{' '}
+              — bigger is fine, smaller cannot be recovered.
+            </p>
+          )}
+
+          {tooSmall && (
+            <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-[#E6231F]/12 px-2 py-1.5 text-[11px] leading-snug text-[#FF8A80] ring-1 ring-inset ring-[#E6231F]/30">
+              <AlertTriangle className="mt-[1px] h-3 w-3 shrink-0" />
+              <span>
+                រូបភាពតូចពេក — <span className="tabular-nums">{value?.width}×{value?.height}</span>. ត្រូវការយ៉ាងតិច{' '}
+                <span className="tabular-nums">
+                  {min.width}×{min.height}
+                </span>{' '}
+                ទើបមិនព្រិល។ សូមរកឯកសារធំជាងនេះ។
+              </span>
             </p>
           )}
         </div>

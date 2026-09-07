@@ -4,6 +4,7 @@ import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import Badge from '@/components/Badge';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
+import { ROW_ACCENT, tint } from '@/lib/rowAccent';
 
 interface Props {
   show: Show;
@@ -18,117 +19,158 @@ interface Props {
 /**
  * A movie, given the room a movie deserves.
  *
- * There are only ever a handful of standalone films next to hundreds of
- * series episodes, so they were losing badly in a grid built for poster
- * thumbnails: three tiny covers per row, no way to tell a one-off film
- * from episode one of something, and no sign of the thing that actually
- * makes them an easy yes — they cost a dollar, once, with no membership.
+ * v31 — this used to be a small horizontal strip: a 76×112 poster
+ * thumbnail beside a column of text, with the film's own art blurred
+ * behind it. Two things were wrong with that.
  *
- * This card says all of that at a glance. The background is the film's
- * own artwork, blurred behind the sharp poster, so every card looks
- * different without a single new asset being uploaded — which matters
- * when the shelf is short enough that repetition would be obvious.
+ * The first was resolution. 76×112 CSS pixels is a thumbnail, and on a
+ * phone at 3× device pixel ratio the browser only ever needed ~228×336
+ * real pixels to draw it — so the card could never look sharp no matter
+ * how good the artwork was. Meanwhile every film in the catalogue already
+ * has a proper 16:9 banner (1280×720 on the current featured title), and
+ * that asset was being used only as a blurred smudge in the background.
+ * So the banner is now the card: full-bleed, at the aspect ratio it was
+ * authored in, roughly four times the drawn area it had before.
+ *
+ * The second was motion. The card scaled down on tap and its poster grew
+ * on hover, which on a phone reads as the card wobbling under the thumb
+ * at the exact moment the viewer is trying to hit it. Nothing here moves
+ * now: the pressed state is a brightness change, which reports the tap
+ * without shifting a single pixel.
+ *
+ * Colour comes from access, not decoration. A film you can watch free
+ * takes the green accent used by the free rail; a film that costs a
+ * dollar takes the blue that means "tappable" everywhere else in the
+ * app. One ring, one glow, one badge — all the same hue — so the card's
+ * colour states what the card costs.
  */
 export default function MovieCard({ show, onClick, hidePrice }: Props) {
   const { lang } = useLang();
   const t = appText[lang];
-  const art = show.poster_url ?? show.banner_url ?? '';
+
+  // The banner is the point of this card, so it leads. The poster is the
+  // fallback and gets cropped to 16:9 by object-cover — worse framing,
+  // but a card is better than a hole. 42 of 46 shows have a banner.
+  const art = show.banner_url ?? show.poster_url ?? '';
+  const accent = show.is_free ? ROW_ACCENT.free : ROW_ACCENT.guide;
 
   return (
     <button
       onClick={() => onClick(show)}
-      className="group relative w-full overflow-hidden rounded-2xl border border-white/10 text-left transition active:scale-[0.99] hover:border-white/20"
+      className="group relative block w-full overflow-hidden rounded-2xl text-left transition-[filter] duration-150 active:brightness-125"
+      style={{
+        // One combined shadow: the accent hairline ring, a soft accent
+        // bloom below it, and the drop shadow that lifts the card off
+        // the page. Written as box-shadow rather than a border so the
+        // ring sits outside the 16:9 box and never eats into the art.
+        boxShadow: `0 0 0 1px ${tint(accent, 0.35)}, 0 14px 34px -14px ${tint(accent, 0.45)}, 0 10px 30px rgba(0,0,0,0.55)`,
+      }}
     >
-      {/* The film's own art, blurred, as the card's ground. */}
-      <span aria-hidden className="absolute inset-0">
-        {art && (
+      <span className="relative block aspect-[16/9] w-full overflow-hidden bg-[#0B1020]">
+        {art ? (
           <img
             src={art}
-            alt=""
-            className="h-full w-full scale-125 object-cover opacity-40 blur-xl"
+            alt={show.title}
+            // A featured movie card is wide — it spans the whole content
+            // column — so on a 3× phone it is one of the largest images
+            // on the home screen. It is also above the fold in the
+            // movies section, so it decodes eagerly rather than lazily.
+            decoding="async"
+            width={1920}
+            height={1080}
+            className="h-full w-full object-cover"
             draggable={false}
           />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center">
+            <Film className="h-8 w-8 text-white/25" />
+          </span>
         )}
+
+        {/* Reading scrim. Steep at the bottom where the title sits,
+            almost clear across the top two thirds so the artwork is the
+            thing the eye lands on first. */}
         <span
+          aria-hidden
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(115deg, rgba(10,10,13,0.94) 20%, rgba(10,10,13,0.66) 62%, rgba(32,80,216,0.20) 100%)',
+              'linear-gradient(180deg, rgba(8,12,22,0.55) 0%, rgba(8,12,22,0.08) 30%, rgba(8,12,22,0.62) 72%, rgba(8,12,22,0.95) 100%)',
           }}
         />
-      </span>
 
-      <span className="relative flex items-stretch gap-3 p-3">
-        <span className="relative shrink-0 overflow-hidden rounded-xl shadow-[0_10px_26px_rgba(0,0,0,0.6)]">
-          {art ? (
-            <img
-              src={art}
-              alt={show.title}
-              className="h-[112px] w-[76px] object-cover transition duration-500 group-hover:scale-105"
-              draggable={false}
-            />
-          ) : (
-            <span className="flex h-[112px] w-[76px] items-center justify-center bg-white/5">
-              <Film className="h-5 w-5 text-white/40" />
-            </span>
-          )}
+        {/* What it is: one film, start to finish. The single fact that
+            separates these from every other cover in the app. */}
+        <span className="absolute left-2.5 top-2.5">
+          <Badge tone="info" onArt icon={<Film className="h-3 w-3" />}>
+            {t.movieOneOff}
+          </Badge>
         </span>
 
-        <span className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
-          <span className="min-w-0">
-            {/* What it is: one film, start to finish. The single fact
-                that separates these from every other cover in the app. */}
-            <Badge tone="info" onArt icon={<Film className="h-3 w-3" />}>
-              {t.movieOneOff}
-            </Badge>
-            <span className="mt-1.5 block truncate text-[13px] font-bold leading-snug text-white">
+        {/* Price, or the fact that there isn't one — skipped entirely
+            when hidePrice is set. The tilted ink-stamp treatment is
+            gone: at this size it was the loudest thing on the card, and
+            it sat where the artwork wanted to be. A plain pill in the
+            corner says the same number and lets the film be the image. */}
+        {!hidePrice && (
+          <span className="absolute right-2.5 top-2.5">
+            {show.is_free ? (
+              <Badge tone="free" onArt>
+                {t.freeBadge}
+              </Badge>
+            ) : (
+              <Badge tone="price" onArt className="whitespace-nowrap">
+                {t.movieOnlyPrice.replace('{price}', `$${MOVIE_PRICE}`)}
+              </Badge>
+            )}
+          </span>
+        )}
+
+        {/* Title block, sitting on the steep end of the scrim. */}
+        <span className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-3 sm:p-3.5">
+          <span className="min-w-0 flex-1">
+            <span
+              className="block text-[15px] font-black leading-[1.15] text-white sm:text-lg"
+              style={{
+                fontFamily: '"Anton", Battambang, Inter, sans-serif',
+                letterSpacing: '0.01em',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textShadow: '0 2px 12px rgba(0,0,0,0.85)',
+              }}
+            >
               {show.title}
             </span>
-            <span className="mt-1 flex items-center gap-2 text-[11px] text-white/50">
+            <span className="mt-1 flex items-center gap-2 text-[11px] font-semibold text-white/70 sm:text-xs">
               <span className="flex items-center gap-1 text-[#F5C563]">
-                <Star className="h-2.5 w-2.5 fill-[#F5C563]" />
+                <Star className="h-2.5 w-2.5 fill-[#F5C563] sm:h-3 sm:w-3" />
                 {Number(show.rating).toFixed(1)}
               </span>
               {show.release_year && (
                 <>
-                  <span className="h-2.5 w-px bg-white/20" aria-hidden />
+                  <span className="h-3 w-px bg-white/25" aria-hidden />
                   <span className="tabular-nums">{show.release_year}</span>
                 </>
               )}
             </span>
           </span>
 
-          {/* Price, or the fact that there isn't one — skipped entirely
-              when hidePrice is set. */}
-          <span className="mt-2 flex items-center justify-between gap-2">
-            {hidePrice ? (
-              <span aria-hidden />
-            ) : show.is_free ? (
-              <Badge tone="free" className="px-2 py-1 text-[11px]">
-                {t.freeBadge}
-              </Badge>
-            ) : (
-              // A stamped seal instead of the usual pill — the $ price is
-              // the one fact on this card that's supposed to jump out and
-              // read as "official, go ahead", the way a stamp does on a
-              // receipt. Double ring + a few degrees of tilt sells the
-              // ink-stamp read without needing an image asset.
-              <span
-                className="relative inline-flex shrink-0 flex-col items-center justify-center rounded-lg border-2 border-[#5B93FF] px-2.5 py-1 leading-none text-[#5B93FF]"
-                style={{
-                  transform: 'rotate(-8deg)',
-                  boxShadow: 'inset 0 0 0 2px rgba(91,147,255,0.4)',
-                }}
-              >
-                <span className="text-[13px] font-black tracking-tight">${MOVIE_PRICE}</span>
-                <span className="mt-0.5 text-[6.5px] font-bold uppercase tracking-[0.18em]">
-                  {t.movieOnlyPrice.replace('{price} ', '').replace('{price}', '')}
-                </span>
-              </span>
-            )}
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition group-hover:bg-white/20">
-              <Play className="h-3 w-3 fill-white" />
-            </span>
+          {/* The one affordance. Filled in the access accent, so a free
+              film's button is green and a paid one's is blue — the same
+              hue as this card's ring and its price badge. The glyph
+              flips to deep navy on the green fill: white on #2FD98C is
+              under 2:1 contrast and the arrow disappears. */}
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11"
+            style={{
+              background: accent,
+              color: show.is_free ? '#08111F' : '#FFFFFF',
+              boxShadow: `0 6px 18px ${tint(accent, 0.45)}`,
+            }}
+          >
+            <Play className="h-4 w-4 fill-current sm:h-[18px] sm:w-[18px]" />
           </span>
         </span>
       </span>

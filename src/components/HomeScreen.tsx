@@ -766,19 +766,25 @@ export default function HomeScreen({
             {featuredMovie && (
               <section
                 className="rail-section mt-8 overflow-hidden rounded-2xl border px-3 pb-3 pt-4 sm:px-4"
+                // Slate, not gold. The card inside now carries its own
+                // colour — blue when the film costs a dollar, green when
+                // it doesn't — and a gold-washed panel around a blue card
+                // is two accents fighting over 200 pixels. The panel's
+                // job is to hold the card, so it stays neutral and lets
+                // the card say what the film costs.
                 style={{
-                  borderColor: tint(ROW_ACCENT.vip, 0.15),
-                  background: `linear-gradient(135deg, ${tint(ROW_ACCENT.vip, 0.12)} 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
+                  borderColor: tint(ROW_ACCENT.plain, 0.15),
+                  background: `linear-gradient(135deg, ${tint(ROW_ACCENT.plain, 0.10)} 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
                 }}
               >
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
                     <span
                       className="h-4 w-[3px] shrink-0 rounded-sm"
-                      style={{ background: ROW_ACCENT.vip, boxShadow: `0 0 10px ${tint(ROW_ACCENT.vip, 0.5)}` }}
+                      style={{ background: ROW_ACCENT.plain, boxShadow: `0 0 10px ${tint(ROW_ACCENT.plain, 0.5)}` }}
                       aria-hidden
                     />
-                    <Film className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.vip }} />
+                    <Film className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.plain }} />
                     <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.navMovies}</h2>
                   </div>
                   {oneOffMovies.length > 1 && (
