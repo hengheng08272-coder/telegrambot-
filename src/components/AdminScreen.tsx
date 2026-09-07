@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import {
+  Check,
   AlignLeft,
   ArrowLeft,
   Upload,
@@ -325,6 +326,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     featured: false,
     coming_soon: false,
     is_free: false,
+    completed: false,
     trailer_url: '',
   });
   const [posterFile, setPosterFile] = useState<PreparedImage | null>(null);
@@ -339,6 +341,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [editViewCount, setEditViewCount] = useState('');
   const [editComingSoon, setEditComingSoon] = useState(false);
   const [editIsFree, setEditIsFree] = useState(false);
+  const [editCompleted, setEditCompleted] = useState(false);
   const [editTrailerUrl, setEditTrailerUrl] = useState('');
   const [episodeLockBusyId, setEpisodeLockBusyId] = useState<string | null>(null);
   const [bulkLockBusyShowId, setBulkLockBusyShowId] = useState<string | null>(null);
@@ -756,6 +759,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       featured: newShow.featured,
       coming_soon: newShow.coming_soon,
       is_free: newShow.is_free,
+      status: newShow.completed ? 'completed' : 'ongoing',
       trailer_url: newShow.trailer_url.trim() || null,
       poster_url,
       banner_url,
@@ -776,6 +780,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       featured: false,
       coming_soon: false,
       is_free: false,
+      completed: false,
       trailer_url: '',
     });
     setPosterFile(null);
@@ -792,6 +797,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setEditViewCount(show.view_count != null ? String(show.view_count) : '0');
     setEditComingSoon(show.coming_soon ?? false);
     setEditIsFree(show.is_free ?? false);
+    setEditCompleted(show.status === 'completed');
     setEditTrailerUrl(show.trailer_url ?? '');
     setEditPosterFile(null);
     setEditBannerFile(null);
@@ -814,6 +820,13 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       view_count: editViewCount.trim() ? parseInt(editViewCount, 10) || 0 : 0,
       coming_soon: editComingSoon,
       is_free: editIsFree,
+      // The one place shows.status can be set. It has a DEFAULT of
+      // 'ongoing' in the schema and, until now, no control anywhere in
+      // Admin — so every show in the catalogue was 'ongoing' forever,
+      // the "Completed" row on the home screen could never fill, and
+      // "Airing Now" matched 42 of 44 shows because nothing could ever
+      // leave it. Two values only, because two is all the app reads.
+      status: editCompleted ? 'completed' : 'ongoing',
       trailer_url: editTrailerUrl.trim() || null,
     };
 
@@ -1098,6 +1111,16 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         <span className="flex items-center gap-1">
                           <Crown className="h-3.5 w-3.5 text-[#F5C563]" />
                           {unlocked}/{show.episodes.length} unlocked
+                        </span>
+                      )}
+                      {/* Visible here so the state is checkable at a
+                          glance, not only from inside the edit modal —
+                          it decides which home-screen row the show
+                          lands in. */}
+                      {show.status === 'completed' && (
+                        <span className="flex items-center gap-1 text-[#2FD98C]">
+                          <Check className="h-3.5 w-3.5" />
+                          ចប់ហើយ
                         </span>
                       )}
                     </div>
@@ -1868,6 +1891,15 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 />
                 Free to watch (no VIP required — shows a FREE badge instead of the VIP crown)
               </label>
+
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={newShow.completed}
+                  onChange={(e) => setNewShow({ ...newShow, completed: e.target.checked })}
+                />
+                រឿងចប់ហើយ — Completed (every episode is out)
+              </label>
               <p className="-mt-2 pl-6 text-[11px] text-white/40">
                 Every episode is still VIP-locked by default even on a free show — unlock the
                 episodes you want playable from the episode list below (or use "Unlock all").
@@ -1997,6 +2029,20 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   onChange={(e) => setEditIsFree(e.target.checked)}
                 />
                 Free to watch (no VIP required — shows a FREE badge instead of the VIP crown)
+              </label>
+
+              {/* The switch that had no control anywhere in Admin.
+                  shows.status defaults to 'ongoing' and nothing could
+                  change it, so no show could ever finish: the home
+                  screen's "Completed" row was permanently empty and its
+                  "Airing Now" row matched 42 of 44 titles. */}
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editCompleted}
+                  onChange={(e) => setEditCompleted(e.target.checked)}
+                />
+                រឿងចប់ហើយ — Completed (every episode is out; moves it to the "រឿងចប់" row)
               </label>
 
               <div>
