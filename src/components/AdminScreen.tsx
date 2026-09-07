@@ -327,6 +327,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     coming_soon: false,
     is_free: false,
     completed: false,
+    poster_has_title: false,
     trailer_url: '',
   });
   const [posterFile, setPosterFile] = useState<PreparedImage | null>(null);
@@ -342,6 +343,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [editComingSoon, setEditComingSoon] = useState(false);
   const [editIsFree, setEditIsFree] = useState(false);
   const [editCompleted, setEditCompleted] = useState(false);
+  const [editPosterHasTitle, setEditPosterHasTitle] = useState(false);
   const [editTrailerUrl, setEditTrailerUrl] = useState('');
   const [episodeLockBusyId, setEpisodeLockBusyId] = useState<string | null>(null);
   const [bulkLockBusyShowId, setBulkLockBusyShowId] = useState<string | null>(null);
@@ -760,6 +762,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       coming_soon: newShow.coming_soon,
       is_free: newShow.is_free,
       status: newShow.completed ? 'completed' : 'ongoing',
+      poster_has_title: newShow.poster_has_title,
       trailer_url: newShow.trailer_url.trim() || null,
       poster_url,
       banner_url,
@@ -781,6 +784,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       coming_soon: false,
       is_free: false,
       completed: false,
+      poster_has_title: false,
       trailer_url: '',
     });
     setPosterFile(null);
@@ -798,6 +802,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setEditComingSoon(show.coming_soon ?? false);
     setEditIsFree(show.is_free ?? false);
     setEditCompleted(show.status === 'completed');
+    setEditPosterHasTitle(show.poster_has_title ?? false);
     setEditTrailerUrl(show.trailer_url ?? '');
     setEditPosterFile(null);
     setEditBannerFile(null);
@@ -827,6 +832,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       // "Airing Now" matched 42 of 44 shows because nothing could ever
       // leave it. Two values only, because two is all the app reads.
       status: editCompleted ? 'completed' : 'ongoing',
+      poster_has_title: editPosterHasTitle,
       trailer_url: editTrailerUrl.trim() || null,
     };
 
@@ -1856,6 +1862,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 label="Poster (vertical card image)"
                 value={posterFile}
                 onChange={setPosterFile}
+                safeZones={newShow.poster_has_title}
               />
 
               <ArtworkPicker
@@ -1900,6 +1907,20 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 />
                 រឿងចប់ហើយ — Completed (every episode is out)
               </label>
+
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={newShow.poster_has_title}
+                  onChange={(e) => setNewShow({ ...newShow, poster_has_title: e.target.checked })}
+                />
+                រូប Poster មានចំណងជើងស្រាប់ — the artwork already has the title painted on it
+              </label>
+              <p className="-mt-2 pl-6 text-[11px] text-white/40">
+                Tick this and the card stops printing its own caption under the poster, so the
+                name is not written twice. Keep the top 18% and bottom 16% of the artwork clear —
+                that is where the FREE/VIP, EP and ចប់ badges sit.
+              </p>
               <p className="-mt-2 pl-6 text-[11px] text-white/40">
                 Every episode is still VIP-locked by default even on a free show — unlock the
                 episodes you want playable from the episode list below (or use "Unlock all").
@@ -2045,6 +2066,23 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 រឿងចប់ហើយ — Completed (every episode is out; moves it to the "រឿងចប់" row)
               </label>
 
+              {/* Commissioned Khmer key art carries the show's name in
+                  the image. Without this the card printed the same name
+                  again underneath, truncated, and the Top 10 rail drew a
+                  third copy straight over the painted one. */}
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editPosterHasTitle}
+                  onChange={(e) => setEditPosterHasTitle(e.target.checked)}
+                />
+                រូប Poster មានចំណងជើងស្រាប់ — the artwork already has the title painted on it
+              </label>
+              <p className="-mt-2 pl-6 text-[11px] text-white/40">
+                The card drops its own caption. Keep the top 18% and bottom 16% of the artwork
+                clear — that is where the FREE/VIP, EP and ចប់ badges sit.
+              </p>
+
               <div>
                 <label className="mb-1 block text-[11px] font-semibold text-white/60">
                   Trailer URL (optional short preview clip)
@@ -2071,6 +2109,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 currentUrl={editShow.poster_url}
                 value={editPosterFile}
                 onChange={setEditPosterFile}
+                safeZones={editPosterHasTitle}
               />
 
               <ArtworkPicker

@@ -17,6 +17,11 @@ interface Props {
   currentUrl?: string | null;
   value: PreparedImage | null;
   onChange: (value: PreparedImage | null) => void;
+  /** Draw the badge safe zones over the preview. Set when the show is
+   *  marked as having its title painted into the artwork: those covers
+   *  have to be composed around the badges rather than under them, and
+   *  the only place to check that is here, before the file is saved. */
+  safeZones?: boolean;
 }
 
 /**
@@ -32,7 +37,7 @@ interface Props {
  * poster is a home-screen scrolling problem — and the "4.1 MB → 96 KB"
  * line makes that shrink visible rather than silent.
  */
-export default function ArtworkPicker({ kind, label, currentUrl, value, onChange }: Props) {
+export default function ArtworkPicker({ kind, label, currentUrl, value, onChange, safeZones }: Props) {
   const preset = IMAGE_PRESETS[kind];
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -82,13 +87,43 @@ export default function ArtworkPicker({ kind, label, currentUrl, value, onChange
       <div className="flex items-start gap-3">
         <div
           className="relative shrink-0 overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10"
-          style={{ width: kind === 'poster' ? 64 : 128, aspectRatio: `${preset.width} / ${preset.height}` }}
+          style={{
+            width: kind === 'poster' ? (safeZones ? 104 : 64) : 128,
+            aspectRatio: `${preset.width} / ${preset.height}`,
+          }}
         >
           {shown ? (
             <img src={shown} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-white/25">
               <ImagePlus className="h-4 w-4" />
+            </span>
+          )}
+          {/* Badge safe zones. The top strip carries FREE/VIP/NEW/SOON,
+              the bottom strip carries EP n and ចប់ — so a painted title
+              that strays into either gets a badge sitting on it. Drawn
+              as red hatching over the preview so the collision is
+              visible here instead of on the home screen. */}
+          {safeZones && (
+            <span aria-hidden className="pointer-events-none absolute inset-0">
+              <span
+                className="absolute inset-x-0 top-0"
+                style={{
+                  height: '18%',
+                  background:
+                    'repeating-linear-gradient(45deg, rgba(230,35,31,0.35) 0 4px, rgba(230,35,31,0.12) 4px 8px)',
+                  borderBottom: '1px solid rgba(230,35,31,0.6)',
+                }}
+              />
+              <span
+                className="absolute inset-x-0 bottom-0"
+                style={{
+                  height: '16%',
+                  background:
+                    'repeating-linear-gradient(45deg, rgba(230,35,31,0.35) 0 4px, rgba(230,35,31,0.12) 4px 8px)',
+                  borderTop: '1px solid rgba(230,35,31,0.6)',
+                }}
+              />
             </span>
           )}
           {busy && (

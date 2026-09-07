@@ -69,6 +69,18 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
   const isNew =
     !!show.created_at && Date.now() - new Date(show.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
 
+  // The poster already says the show's name, in commissioned Khmer
+  // lettering sized for the artwork. Anything the card prints on top of
+  // that — the caption underneath, the Top 10 overlay title — is the
+  // same words a second time, smaller and usually truncated. So when the
+  // artwork carries the title, the card stops writing one.
+  //
+  // The badges stay. They say things the artwork cannot: whether it is
+  // free, how many episodes there are, whether it is finished. That is
+  // why the poster spec (DESIGN_SYSTEM §3គ) reserves the top and bottom
+  // strips for them and puts the painted title in the middle band.
+  const artHasTitle = show.poster_has_title === true;
+
   // Subtle pointer-driven 3D tilt — mouse only.
   //
   // Pointer Events unify mouse and finger, which is exactly the problem:
@@ -161,13 +173,24 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
             }`}
           />
           {/* Bottom gradient — taller for ranked cards since it also has
-              to carry the title text now sitting on the poster itself. */}
+              to carry the title text now sitting on the poster itself.
+
+              A poster with the title painted into it gets a different
+              treatment: the usual wash starts at 50% and reaches 0.9,
+              which lands squarely on the band where the painted title
+              lives and greys out the one thing the artwork was
+              commissioned for. So that case gets two short strips
+              instead — just enough behind the badge corners to keep them
+              legible over busy art, and nothing at all across the middle
+              where the lettering sits. */}
           <div
             className="absolute inset-0"
             style={{
-              background: rank
-                ? 'linear-gradient(180deg, rgba(10,16,30,0) 35%, rgba(10,16,30,0.95) 100%)'
-                : 'linear-gradient(180deg, rgba(10,16,30,0) 50%, rgba(10,16,30,0.9) 100%)',
+              background: artHasTitle
+                ? 'linear-gradient(180deg, rgba(10,16,30,0.55) 0%, rgba(10,16,30,0) 17%, rgba(10,16,30,0) 84%, rgba(10,16,30,0.75) 100%)'
+                : rank
+                  ? 'linear-gradient(180deg, rgba(10,16,30,0) 35%, rgba(10,16,30,0.95) 100%)'
+                  : 'linear-gradient(180deg, rgba(10,16,30,0) 50%, rgba(10,16,30,0.9) 100%)',
             }}
           />
           {/* Title — overlaid directly on the poster for ranked (Top 10)
@@ -176,7 +199,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
               Single-line with an ellipsis when it's too long to fit, gold
               by default (not just on hover) to match the numeral behind
               it. */}
-          {rank && (
+          {rank && !artHasTitle && (
             <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
               <h3 className="truncate text-[13px] font-bold leading-tight text-[#FFE7B0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13px]">
                 {show.title}
@@ -280,7 +303,9 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
           )}
         </div>
       </div>
-      {!rank && titleFromSeason && seasonNumber !== undefined ? (
+      {!rank && artHasTitle && seasonNumber === undefined && continuesAtSeason === undefined ? null : !rank &&
+        titleFromSeason &&
+        seasonNumber !== undefined ? (
         // Inside a franchise row the heading already names the show, so the
         // season number is the whole caption — and it carries the row's one
         // useful signal in its colour: green seasons are watchable now, gold
@@ -297,9 +322,15 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
         </div>
       ) : !rank ? (
         <div className="mt-2 px-0.5">
-          <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
-            {displayTitle ?? show.title}
-          </h3>
+          {/* Suppressed when the artwork carries the name — but the
+              season chips below it are not, because a franchise row puts
+              two seasons of one show side by side and the painted title
+              is identical on both. */}
+          {!artHasTitle && (
+            <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
+              {displayTitle ?? show.title}
+            </h3>
+          )}
           {continuesAtSeason !== undefined && (
             // The crown is already this app's mark for "needs a
             // membership", so spelling it out next to the icon wrapped the
