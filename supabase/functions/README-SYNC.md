@@ -18,6 +18,12 @@ when the day-granting bug was fixed:
 Production also has two functions with no file here at all:
 `episode-stream` and `khqr-gateway`.
 
+`telegram-auto-post` was **also** behind production and was not on the
+list above — the repo copy predated queue mode, `force`, HTML escaping
+and the CORS fix. Reconciled the same way on 7 Sep 2026 (live v11 pulled,
+edited, v12 deployed). Treat the absence of a function from this table as
+"nobody has checked", not "in sync".
+
 `group-stats` was created from this repo (7 Sep 2026), so that one is in
 sync by construction.
 
