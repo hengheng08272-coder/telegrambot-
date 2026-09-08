@@ -42,8 +42,31 @@ interface Preset {
 }
 
 export const IMAGE_PRESETS: Record<ImageKind, Preset> = {
-  poster: { width: 600, height: 900, focusY: 0.42, quality: 0.86, label: '2:3 · 600×900' },
-  banner: { width: 1600, height: 900, focusY: 0.45, quality: 0.84, label: '16:9 · 1600×900' },
+  poster: { width: 720, height: 1080, focusY: 0.42, quality: 0.86, label: '2:3 · 720×1080' },
+  banner: { width: 1920, height: 1080, focusY: 0.45, quality: 0.84, label: '16:9 · 1920×1080' },
+};
+
+/**
+ * The smallest source that can still fill each slot at full sharpness.
+ *
+ * A resize never invents detail: feed this a 225×315 poster and it stays
+ * a 225×315 poster, because `resizeImage` refuses to upscale. So the
+ * quality ceiling of the whole app is set at upload time, by the file the
+ * admin picks — which is why ArtworkPicker warns when a source lands
+ * under these numbers rather than silently accepting a blurry cover.
+ *
+ * The numbers come from the largest place each shape is drawn, times the
+ * 3× pixel ratio of the phones this app actually runs on:
+ *
+ *   poster  the hero cover, 152 CSS px wide  →  456 real px
+ *   banner  the movie card, ~600 CSS px wide → 1800 real px
+ *
+ * Anything at or above the preset is ideal. Anything under the minimum
+ * will look soft no matter what the app does with it.
+ */
+export const MIN_SOURCE: Record<ImageKind, { width: number; height: number }> = {
+  poster: { width: 500, height: 750 },
+  banner: { width: 1280, height: 720 },
 };
 
 export interface PreparedImage {

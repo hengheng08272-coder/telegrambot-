@@ -314,11 +314,26 @@ export default function ShowDetailScreen({
                         : 'border-white/[0.06] bg-[#0E1017] hover:border-[#2050D8]/35 hover:bg-[#151926]'
                     }`}
                   >
-                    <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-xl sm:w-48">
+                    {/* Smaller than it was, and cropped from higher up.
+                        Not one episode in the catalogue has its own
+                        thumbnail, so every row here falls back to the
+                        show's banner — meaning a 913-episode list was
+                        913 copies of one picture, each at 160px wide,
+                        taking nearly half the width of a phone to say
+                        nothing. At this size the list reads as a list.
+
+                        `object-position` is biased above centre for the
+                        same reason lib/imageSizing crops posters that
+                        way: several banners in the catalogue are
+                        portrait artwork, and a centre crop of a portrait
+                        into a 16:9 box lands on the subject's waist. */}
+                    <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-xl bg-white/5 sm:w-36">
                       <img
-                        src={ep.thumbnail_url ?? show.banner_url ?? ''}
+                        src={ep.thumbnail_url || show.banner_url || show.poster_url || ''}
                         alt={ep.title}
                         loading="lazy"
+                        decoding="async"
+                        style={{ objectPosition: '50% 28%' }}
                         className={`h-full w-full object-cover transition group-hover:scale-105 ${
                           locked ? 'brightness-[0.45]' : ''
                         }`}

@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, Loader2, X } from 'lucide-react';
-import { prepareShowImage, formatBytes, IMAGE_PRESETS, type ImageKind, type PreparedImage } from '@/lib/imageSizing';
+import { AlertTriangle, ImagePlus, Loader2, X } from 'lucide-react';
+import {
+  prepareShowImage,
+  formatBytes,
+  IMAGE_PRESETS,
+  MIN_SOURCE,
+  type ImageKind,
+  type PreparedImage,
+} from '@/lib/imageSizing';
 
 interface Props {
   kind: ImageKind;
@@ -10,6 +17,11 @@ interface Props {
   currentUrl?: string | null;
   value: PreparedImage | null;
   onChange: (value: PreparedImage | null) => void;
+  /** Draw the badge safe zones over the preview. Set when the show is
+   *  marked as having its title painted into the artwork: those covers
+   *  have to be composed around the badges rather than under them, and
+   *  the only place to check that is here, before the file is saved. */
+  safeZones?: boolean;
 }
 
 /**
@@ -25,7 +37,7 @@ interface Props {
  * poster is a home-screen scrolling problem — and the "4.1 MB → 96 KB"
  * line makes that shrink visible rather than silent.
  */
-export default function ArtworkPicker({ kind, label, currentUrl, value, onChange }: Props) {
+export default function ArtworkPicker({ kind, label, currentUrl, value, onChange, safeZones }: Props) {
   const preset = IMAGE_PRESETS[kind];
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -57,6 +69,14 @@ export default function ArtworkPicker({ kind, label, currentUrl, value, onChange
 
   const shown = previewUrl ?? currentUrl ?? null;
 
+  // A resize cannot invent detail. If the picked file is smaller than the
+  // slot needs on a 3x phone, the cover will be soft however good the
+  // rest of the pipeline is, and the only fix is a bigger source file —
+  // so say that here, at the moment there is still a chance to pick a
+  // different one, rather than discovering it on the home screen.
+  const min = MIN_SOURCE[kind];
+  const tooSmall = value !== null && (value.width < min.width || value.height < min.height);
+
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -67,13 +87,36 @@ export default function ArtworkPicker({ kind, label, currentUrl, value, onChange
       <div className="flex items-start gap-3">
         <div
           className="relative shrink-0 overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10"
-          style={{ width: kind === 'poster' ? 64 : 128, aspectRatio: `${preset.width} / ${preset.height}` }}
+          style={{
+            width: kind === 'poster' ? (safeZones ? 104 : 64) : 128,
+            aspectRatio: `${preset.width} / ${preset.height}`,
+          }}
         >
           {shown ? (
             <img src={shown} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-white/25">
               <ImagePlus className="h-4 w-4" />
+            </span>
+          )}
+          {/* Badge safe zone. Only the top strip is reserved now: EP n
+              and ចប់ moved off the poster into the card's meta row, so
+              the bottom of the artwork is free and a painted title can
+              run all the way down. What still sits on the cover is the
+              access badge (ឥតគិតថ្លៃ / សមាជិក) top-left and ថ្មី /
+              ឆាប់ៗនេះ top-right. Drawn as red hatching so a collision
+              is visible here rather than on the home screen. */}
+          {safeZones && (
+            <span aria-hidden className="pointer-events-none absolute inset-0">
+              <span
+                className="absolute inset-x-0 top-0"
+                style={{
+                  height: '18%',
+                  background:
+                    'repeating-linear-gradient(45deg, rgba(230,35,31,0.35) 0 4px, rgba(230,35,31,0.12) 4px 8px)',
+                  borderBottom: '1px solid rgba(230,35,31,0.6)',
+                }}
+              />
             </span>
           )}
           {busy && (
@@ -118,7 +161,24 @@ export default function ArtworkPicker({ kind, label, currentUrl, value, onChange
             </p>
           ) : (
             <p className="mt-1.5 text-[11px] text-white/35">
-              Cropped to {preset.label} and re-encoded before upload — any size or shape is fine.
+              Cropped to {preset.label} and re-encoded before upload. Pick a source at least{' '}
+              <span className="tabular-nums">
+                {min.width}×{min.height}
+              </span>{' '}
+              — bigger is fine, smaller cannot be recovered.
+            </p>
+          )}
+
+          {tooSmall && (
+            <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-[#E6231F]/12 px-2 py-1.5 text-[11px] leading-snug text-[#FF8A80] ring-1 ring-inset ring-[#E6231F]/30">
+              <AlertTriangle className="mt-[1px] h-3 w-3 shrink-0" />
+              <span>
+                រូបភាពតូចពេក — <span className="tabular-nums">{value?.width}×{value?.height}</span>. ត្រូវការយ៉ាងតិច{' '}
+                <span className="tabular-nums">
+                  {min.width}×{min.height}
+                </span>{' '}
+                ទើបមិនព្រិល។ សូមរកឯកសារធំជាងនេះ។
+              </span>
             </p>
           )}
         </div>

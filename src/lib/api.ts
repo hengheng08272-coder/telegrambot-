@@ -99,12 +99,19 @@ export interface TelegramAutoPostSettings {
   interval_minutes: number;
   shows_per_run: number;
   last_run_at: string | null;
+  /** 'rotate' walks the whole catalogue least-recently-posted first;
+   *  'queue' posts only the shows in telegram_auto_post_queue, in the
+   *  admin's own order. The edge function has honoured this since queue
+   *  mode was added, but the panel never showed it — so a project sitting
+   *  in 'queue' with eight entries posted the same eight titles every
+   *  run with no visible reason and no way to change it. */
+  selection_mode: 'rotate' | 'queue';
 }
 
 export async function fetchTelegramAutoPostSettings(): Promise<TelegramAutoPostSettings | null> {
   const { data, error } = await supabase
     .from('telegram_auto_post_settings')
-    .select('enabled, interval_minutes, shows_per_run, last_run_at')
+    .select('enabled, interval_minutes, shows_per_run, last_run_at, selection_mode')
     .eq('id', 1)
     .maybeSingle();
   if (error) return null; // table may not exist yet on older deploys
@@ -112,7 +119,7 @@ export async function fetchTelegramAutoPostSettings(): Promise<TelegramAutoPostS
 }
 
 export async function saveTelegramAutoPostSettings(
-  settings: Pick<TelegramAutoPostSettings, 'enabled' | 'interval_minutes' | 'shows_per_run'>,
+  settings: Pick<TelegramAutoPostSettings, 'enabled' | 'interval_minutes' | 'shows_per_run' | 'selection_mode'>,
 ): Promise<void> {
   const { error } = await supabase
     .from('telegram_auto_post_settings')

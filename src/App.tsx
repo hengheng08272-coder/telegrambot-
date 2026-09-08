@@ -174,6 +174,10 @@ function App() {
   // referral link (?startapp=ref_<telegram_id>, see lib/referral.ts and
   // AccountScreen's "Invite & Earn" card) instead tags this viewer as
   // referred by that person — it doesn't change what screen they land on.
+  // `vip` opens the payment sheet: it is what the "ជាវ VIP" button on
+  // every auto-post in the group links to, and dropping someone on the
+  // home screen to hunt for the crown loses most of the intent that made
+  // them tap a button with a price on it.
   useEffect(() => {
     initTelegramApp();
     const startParam = getStartParam();
@@ -185,6 +189,8 @@ function App() {
     } else if (startParam?.startsWith('ref_')) {
       const referrerId = startParam.slice('ref_'.length);
       recordReferralIfPresent(referrerId);
+    } else if (startParam === 'vip') {
+      setShowSubscribe(true);
     }
   }, []);
 

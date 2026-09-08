@@ -21,6 +21,10 @@ export interface Show {
   view_count?: number;
   is_free?: boolean;
   coming_soon?: boolean;
+  /** The poster artwork already has the show's name painted into it, so
+   *  the card suppresses its own caption rather than saying it twice in
+   *  a worse typeface. See ShowCard and DESIGN_SYSTEM §3គ. */
+  poster_has_title?: boolean;
   trailer_url?: string | null;
   created_at?: string;
   genres?: Genre[];

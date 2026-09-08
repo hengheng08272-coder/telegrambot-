@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import {
+  Check,
+  AlignLeft,
   ArrowLeft,
   Upload,
   Plus,
@@ -38,6 +40,7 @@ import WatchLogPanel from '@/components/WatchLogPanel';
 import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
 import PaymentsPanel from '@/components/PaymentsPanel';
 import ArtworkPicker from '@/components/ArtworkPicker';
+import SynopsisPanel from '@/components/SynopsisPanel';
 import type { PreparedImage } from '@/lib/imageSizing';
 import SubscriptionsPanel from '@/components/SubscriptionsPanel';
 import UsersPanel from '@/components/UsersPanel';
@@ -213,20 +216,46 @@ function parseBulkEpisodeList(
 export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [shows, setShows] = useState<ShowWithEpisodes[]>([]);
   const watchingNow = usePresenceCount();
-  const [watchesToday, setWatchesToday] = useState<number | null>(null);
+
+  /** Audience numbers, from the admin_audience_stats view. */
+  interface AudienceStats {
+    viewers_today: number;
+    plays_today: number;
+    viewers_7d: number;
+    viewers_all_time: number;
+    bot_users: number;
+  }
+  const [audience, setAudience] = useState<AudienceStats | null>(null);
+  const [groupMembers, setGroupMembers] = useState<number | null>(null);
 
   // Quick overview numbers for the owner — pulled once on mount, not
   // meant to be a live dashboard, just a glance at how the app is doing.
+  //
+  // This used to be one `count: 'exact'` on watch_log labelled "Watched
+  // today", which counts ROWS — episode plays. One viewer finishing
+  // twenty episodes read as twenty people, so the panel said ~680 while
+  // the real number of humans that day was ~24. That gap is what sent
+  // the owner looking for hundreds of missing members who never existed.
+  // The view does the count(DISTINCT ...) that PostgREST cannot express,
+  // and does it in Phnom Penh's day, not UTC's.
   useEffect(() => {
-    const since = new Date();
-    since.setHours(0, 0, 0, 0);
     supabase
-      .from('watch_log')
-      .select('id', { count: 'exact', head: true })
-      .gte('started_at', since.toISOString())
-      .then(({ count }) => setWatchesToday(count ?? 0));
+      .from('admin_audience_stats')
+      .select('*')
+      .maybeSingle()
+      .then(({ data }) => setAudience((data as AudienceStats | null) ?? null));
+
+    // Group size lives at Telegram, not here, and reading it needs the
+    // bot token — hence the function hop. It sits beside the app's own
+    // audience numbers so "how many watch" and "how many joined" can
+    // finally be compared instead of guessed at.
+    supabase.functions
+      .invoke('group-stats')
+      .then(({ data }) => setGroupMembers((data as { member_count: number | null } | null)?.member_count ?? null))
+      .catch(() => setGroupMembers(null));
   }, []);
   const [announcementsOpen, setAnnouncementsOpen] = useState(false);
+  const [synopsisOpen, setSynopsisOpen] = useState(false);
   const [banLogOpen, setBanLogOpen] = useState(false);
   const [watchLogOpen, setWatchLogOpen] = useState(false);
   const [suspiciousOpen, setSuspiciousOpen] = useState(false);
@@ -297,6 +326,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     featured: false,
     coming_soon: false,
     is_free: false,
+    completed: false,
+    poster_has_title: false,
     trailer_url: '',
   });
   const [posterFile, setPosterFile] = useState<PreparedImage | null>(null);
@@ -311,6 +342,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [editViewCount, setEditViewCount] = useState('');
   const [editComingSoon, setEditComingSoon] = useState(false);
   const [editIsFree, setEditIsFree] = useState(false);
+  const [editCompleted, setEditCompleted] = useState(false);
+  const [editPosterHasTitle, setEditPosterHasTitle] = useState(false);
   const [editTrailerUrl, setEditTrailerUrl] = useState('');
   const [episodeLockBusyId, setEpisodeLockBusyId] = useState<string | null>(null);
   const [bulkLockBusyShowId, setBulkLockBusyShowId] = useState<string | null>(null);
@@ -728,6 +761,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       featured: newShow.featured,
       coming_soon: newShow.coming_soon,
       is_free: newShow.is_free,
+      status: newShow.completed ? 'completed' : 'ongoing',
+      poster_has_title: newShow.poster_has_title,
       trailer_url: newShow.trailer_url.trim() || null,
       poster_url,
       banner_url,
@@ -748,6 +783,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       featured: false,
       coming_soon: false,
       is_free: false,
+      completed: false,
+      poster_has_title: false,
       trailer_url: '',
     });
     setPosterFile(null);
@@ -764,6 +801,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
     setEditViewCount(show.view_count != null ? String(show.view_count) : '0');
     setEditComingSoon(show.coming_soon ?? false);
     setEditIsFree(show.is_free ?? false);
+    setEditCompleted(show.status === 'completed');
+    setEditPosterHasTitle(show.poster_has_title ?? false);
     setEditTrailerUrl(show.trailer_url ?? '');
     setEditPosterFile(null);
     setEditBannerFile(null);
@@ -786,6 +825,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       view_count: editViewCount.trim() ? parseInt(editViewCount, 10) || 0 : 0,
       coming_soon: editComingSoon,
       is_free: editIsFree,
+      // The one place shows.status can be set. It has a DEFAULT of
+      // 'ongoing' in the schema and, until now, no control anywhere in
+      // Admin — so every show in the catalogue was 'ongoing' forever,
+      // the "Completed" row on the home screen could never fill, and
+      // "Airing Now" matched 42 of 44 shows because nothing could ever
+      // leave it. Two values only, because two is all the app reads.
+      status: editCompleted ? 'completed' : 'ongoing',
+      poster_has_title: editPosterHasTitle,
       trailer_url: editTrailerUrl.trim() || null,
     };
 
@@ -894,6 +941,15 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             <UsersIcon className="h-3.5 w-3.5" /> Users
           </button>
           <span className="mx-1 h-4 w-px shrink-0 bg-white/10" aria-hidden />
+          {/* Sits next to Auto-Post on purpose: one writes what the group
+              posts say, the other sends them. A post for a show with no
+              synopsis is a poster, a title and a price and nothing else. */}
+          <button
+            onClick={() => setSynopsisOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
+          >
+            <AlignLeft className="h-3.5 w-3.5" /> Synopsis
+          </button>
           <button
             onClick={() => setTelegramAutoPostOpen(true)}
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
@@ -931,16 +987,39 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           analytics dashboard. Total shows/episodes come from data already
           loaded for the list below; watching-now reuses the same
           Realtime Presence count shown on the public home screen. */}
-      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-3 px-4 pt-4 sm:grid-cols-4 sm:px-8">
+      <div className="mx-auto grid max-w-[1200px] grid-cols-2 gap-3 px-4 pt-4 sm:grid-cols-3 sm:px-8 lg:grid-cols-6">
         {[
-          { label: 'Shows', value: shows.length },
-          { label: 'Episodes', value: shows.reduce((sum, s) => sum + s.episodes.length, 0) },
-          { label: 'Watching now', value: watchingNow },
-          { label: "Watched today", value: watchesToday ?? '—' },
+          { label: 'Shows', value: shows.length, hint: null },
+          { label: 'Episodes', value: shows.reduce((sum, s) => sum + s.episodes.length, 0), hint: null },
+          { label: 'Watching now', value: watchingNow, hint: 'live' },
+          // People, not plays. The play count stays as the sub-line: it
+          // still says how hard the catalogue is being used, it just no
+          // longer pretends to be an audience size.
+          {
+            label: 'Viewers today',
+            value: audience?.viewers_today ?? '—',
+            hint: audience ? `${audience.plays_today} plays` : null,
+          },
+          // The two numbers the owner actually wanted side by side.
+          {
+            label: 'Bot followers',
+            value: audience?.bot_users ?? '—',
+            // Only counts people who press /start from the day
+            // recording was added — there is no way to recover who had
+            // already started the bot before that, because Telegram
+            // does not expose a bot's subscriber list.
+            hint: 'recorded from 7 Sep 2026',
+          },
+          {
+            label: 'Group members',
+            value: groupMembers ?? '—',
+            hint: audience ? `${audience.viewers_all_time} ever watched` : null,
+          },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
             <p className="text-2xl font-black text-white">{stat.value}</p>
             <p className="text-xs text-white/40">{stat.label}</p>
+            {stat.hint && <p className="mt-0.5 text-[11px] text-white/25">{stat.hint}</p>}
           </div>
         ))}
       </div>
@@ -1038,6 +1117,16 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                         <span className="flex items-center gap-1">
                           <Crown className="h-3.5 w-3.5 text-[#F5C563]" />
                           {unlocked}/{show.episodes.length} unlocked
+                        </span>
+                      )}
+                      {/* Visible here so the state is checkable at a
+                          glance, not only from inside the edit modal —
+                          it decides which home-screen row the show
+                          lands in. */}
+                      {show.status === 'completed' && (
+                        <span className="flex items-center gap-1 text-[#2FD98C]">
+                          <Check className="h-3.5 w-3.5" />
+                          ចប់ហើយ
                         </span>
                       )}
                     </div>
@@ -1773,6 +1862,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 label="Poster (vertical card image)"
                 value={posterFile}
                 onChange={setPosterFile}
+                safeZones={newShow.poster_has_title}
               />
 
               <ArtworkPicker
@@ -1808,6 +1898,29 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 />
                 Free to watch (no VIP required — shows a FREE badge instead of the VIP crown)
               </label>
+
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={newShow.completed}
+                  onChange={(e) => setNewShow({ ...newShow, completed: e.target.checked })}
+                />
+                រឿងចប់ហើយ — Completed (every episode is out)
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={newShow.poster_has_title}
+                  onChange={(e) => setNewShow({ ...newShow, poster_has_title: e.target.checked })}
+                />
+                រូប Poster មានចំណងជើងស្រាប់ — the artwork already has the title painted on it
+              </label>
+              <p className="-mt-2 pl-6 text-[11px] text-white/40">
+                Tick this and the card stops printing its own caption under the poster, so the
+                name is not written twice. Keep the top 18% of the artwork clear — that is where
+                the FREE/VIP and NEW badges sit. The bottom is free: EP and ចប់ are under the card.
+              </p>
               <p className="-mt-2 pl-6 text-[11px] text-white/40">
                 Every episode is still VIP-locked by default even on a free show — unlock the
                 episodes you want playable from the episode list below (or use "Unlock all").
@@ -1939,6 +2052,38 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 Free to watch (no VIP required — shows a FREE badge instead of the VIP crown)
               </label>
 
+              {/* The switch that had no control anywhere in Admin.
+                  shows.status defaults to 'ongoing' and nothing could
+                  change it, so no show could ever finish: the home
+                  screen's "Completed" row was permanently empty and its
+                  "Airing Now" row matched 42 of 44 titles. */}
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editCompleted}
+                  onChange={(e) => setEditCompleted(e.target.checked)}
+                />
+                រឿងចប់ហើយ — Completed (every episode is out; moves it to the "រឿងចប់" row)
+              </label>
+
+              {/* Commissioned Khmer key art carries the show's name in
+                  the image. Without this the card printed the same name
+                  again underneath, truncated, and the Top 10 rail drew a
+                  third copy straight over the painted one. */}
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editPosterHasTitle}
+                  onChange={(e) => setEditPosterHasTitle(e.target.checked)}
+                />
+                រូប Poster មានចំណងជើងស្រាប់ — the artwork already has the title painted on it
+              </label>
+              <p className="-mt-2 pl-6 text-[11px] text-white/40">
+                The card drops its own caption. Keep the top 18% of the artwork clear — that is
+                where the FREE/VIP and NEW badges sit. The bottom is free: EP and ចប់ are under
+                the card.
+              </p>
+
               <div>
                 <label className="mb-1 block text-[11px] font-semibold text-white/60">
                   Trailer URL (optional short preview clip)
@@ -1965,6 +2110,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 currentUrl={editShow.poster_url}
                 value={editPosterFile}
                 onChange={setEditPosterFile}
+                safeZones={editPosterHasTitle}
               />
 
               <ArtworkPicker
@@ -2041,6 +2187,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       />
 
       {announcementsOpen && <AnnouncementsPanel onClose={() => setAnnouncementsOpen(false)} />}
+      {synopsisOpen && <SynopsisPanel onClose={() => setSynopsisOpen(false)} />}
       {telegramAutoPostOpen && <TelegramAutoPostPanel onClose={() => setTelegramAutoPostOpen(false)} />}
       {blockedUsersOpen && <BlockedUsersPanel onClose={() => setBlockedUsersOpen(false)} />}
       {banLogOpen && <BanLogPanel onClose={() => setBanLogOpen(false)} />}

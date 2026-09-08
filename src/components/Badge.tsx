@@ -34,7 +34,18 @@ interface Props {
 }
 
 const TONES: Record<BadgeTone, string> = {
-  vip: 'text-[#211A0E] bg-gradient-to-br from-[#FFE7B0] via-[#F5C563] to-[#B98430]',
+  // Gold text on a gold tint, not dark text on solid gold.
+  //
+  // `vip` was the only status tone painted as a filled gradient, so on a
+  // rail where most covers need a membership it read as a row of bright
+  // gold stickers competing with the artwork they sit on — the loudest
+  // thing on screen saying the least surprising thing. Tinted, it now
+  // matches `free` and `mark`, and matches the gold season chip
+  // ShowCard already used two lines further down its own card.
+  //
+  // `price` stays filled on purpose: it is not a status, it is an offer,
+  // and it appears on two movies rather than half the catalogue.
+  vip: 'text-[#F5C563] bg-[#F5C563]/14 ring-1 ring-inset ring-[#F5C563]/32',
   free: 'text-[#2FD98C] bg-[#2FD98C]/16 ring-1 ring-inset ring-[#2FD98C]/35',
   price: 'text-white bg-gradient-to-br from-[#2050D8] to-[#0E2560]',
   mark: 'text-[#FF6B60] bg-[#E6231F]/16 ring-1 ring-inset ring-[#E6231F]/40',
