@@ -60,7 +60,6 @@ interface HomeScreenProps {
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
 
-const HERO_AUTO_MS = 6000;
 
 // Small, purely-cosmetic emoji lookup for genre rail headers — gives each
 // row a bit of personality at a glance without needing extra icon assets.
@@ -124,7 +123,6 @@ export default function HomeScreen({
   // thumbnail to look at a show meant the carousel slid away from it a
   // moment later — the one moment the viewer had said what they wanted to
   // see is the one moment it should not move.
-  const [autoStopped, setAutoStopped] = useState(false);
   // `movies: true` switches the drill-down to the wide film cards. There
   // are only ever a handful of standalone movies, so they get a shelf
   // built for a handful rather than a grid built for hundreds.
@@ -137,7 +135,6 @@ export default function HomeScreen({
   const [episodeInfo, setEpisodeInfo] = useState<Record<string, ShowEpisodeInfo>>({});
 
   const touchStartX = useRef(0);
-  const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // "Continue Watching" — read once per mount (this screen fully
   // unmounts/remounts on navigation, so a fresh read here already stays
@@ -222,19 +219,18 @@ export default function HomeScreen({
   const nextSlide = useCallback(() => goToSlide(heroIndex + 1), [heroIndex, goToSlide]);
   const prevSlide = useCallback(() => goToSlide(heroIndex - 1), [heroIndex, goToSlide]);
 
-  const stopAuto = useCallback(() => setAutoStopped(true), []);
-
-  // Auto-advance the centered card until the viewer touches it.
-  useEffect(() => {
-    if (bannerShows.length <= 1 || autoStopped) {
-      if (autoTimer.current) clearInterval(autoTimer.current);
-      return;
-    }
-    autoTimer.current = setInterval(() => goToSlide(heroIndex + 1), HERO_AUTO_MS);
-    return () => {
-      if (autoTimer.current) clearInterval(autoTimer.current);
-    };
-  }, [bannerShows.length, autoStopped, heroIndex, goToSlide]);
+  // The banner does not move by itself. There is no timer here any more.
+  //
+  // It used to advance every six seconds, then stop for good once the
+  // viewer touched it. That still meant the first thing the home screen
+  // did was change under the reader — the title being read slid away
+  // mid-sentence, and a tap aimed at a cover landed on whatever had just
+  // rotated into its place. A carousel that moves on its own is a
+  // carousel that has to be caught.
+  //
+  // So it is locked. The banner shows one title and keeps showing it.
+  // The thumbnail strip, the arrows and the swipe still change it — but
+  // only when a hand asks.
 
   const hero = bannerShows[heroIndex];
 
@@ -650,22 +646,11 @@ export default function HomeScreen({
             heroIsFree={showsById.get(hero.id)?.is_free ?? hero.is_free ?? false}
             heroIsMovie={(showsById.get(hero.id)?.type ?? hero.type) === 'movie'}
             onSelectShow={onSelectShow}
-            autoStopped={autoStopped}
-            onPrev={() => {
-              stopAuto();
-              prevSlide();
-            }}
-            onNext={() => {
-              stopAuto();
-              nextSlide();
-            }}
-            onGoTo={(i) => {
-              stopAuto();
-              goToSlide(i);
-            }}
+            onPrev={prevSlide}
+            onNext={nextSlide}
+            onGoTo={goToSlide}
             onTouchStart={(x) => {
               touchStartX.current = x;
-              stopAuto();
             }}
             onTouchEnd={(x) => {
               const dx = x - touchStartX.current;
@@ -1100,7 +1085,6 @@ interface CoverflowHeroProps {
   onTouchStart: (x: number) => void;
   /** Once true the carousel has been handed to the viewer: the countdown
    *  bar goes away with the countdown it was counting. */
-  autoStopped: boolean;
   onTouchEnd: (x: number) => void;
   t: TranslationText;
 }
@@ -1119,11 +1103,9 @@ function CoverflowHero({
   onGoTo,
   onTouchStart,
   onTouchEnd,
-  autoStopped,
   t,
 }: CoverflowHeroProps) {
   const [bgLoaded, setBgLoaded] = useState(false);
-  const ambienceRef = useRef<HTMLDivElement>(null);
   const [inList, setInList] = useState(() => isInWatchlist(hero.id));
   const bg = hero.banner_url ?? hero.poster_url ?? '';
 
@@ -1134,34 +1116,16 @@ function CoverflowHero({
     setInList(isInWatchlist(hero.id));
   }, [hero.id]);
 
-  // Ambient background drifts a little slower than the page and fades out
-  // as the viewer scrolls past the hero. This writes straight to the DOM
-  // node inside a single rAF instead of storing scrollY in state: the old
-  // version re-rendered the whole hero — including a `blur-3xl` poster,
-  // which is one of the most expensive things a phone GPU can be asked to
-  // repaint — on every scroll event, which is what made scrolling feel
-  // like it was skidding. The drift is also gentler now (0.18 rather than
-  // 0.35), so the backdrop never appears to outrun the finger.
-  useEffect(() => {
-    let ticking = false;
-    const apply = () => {
-      ticking = false;
-      const el = ambienceRef.current;
-      if (!el) return;
-      const y = window.scrollY;
-      const heroHeightPx = Math.min(window.innerHeight * 0.32, 280);
-      el.style.transform = `translate3d(0, ${Math.min(y * 0.18, 80)}px, 0)`;
-      el.style.opacity = String(Math.max(1 - y / heroHeightPx, 0));
-    };
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(apply);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    apply();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  // The ambient backdrop used to drift and fade against the page as the
+  // viewer scrolled — a parallax on a scroll listener. It went with the
+  // auto-advance: the banner is locked now, and a locked banner whose
+  // background still slides around underneath the artwork is only
+  // half-locked. It is a still image behind a still card.
+  //
+  // Dropping it also gives back the frame budget the effect cost. It
+  // repainted a `blur-3xl` poster — one of the most expensive things a
+  // phone GPU can be asked to redraw — on every scroll frame, which is
+  // exactly when the page can least afford it.
 
   return (
     <section
@@ -1171,8 +1135,7 @@ function CoverflowHero({
     >
       {/* Blurred ambient background driven by the centered show */}
       <div
-        ref={ambienceRef}
-        className="pointer-events-none absolute inset-0 will-change-transform"
+        className="pointer-events-none absolute inset-0"
       >
         {bg && (
           <img
@@ -1213,7 +1176,7 @@ function CoverflowHero({
         <button
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
-          className="hero-card-enter relative z-10 shrink-0"
+          className="relative z-10 shrink-0"
           style={{ width: '32%', maxWidth: 152 }}
         >
           {/* Lantern-glow poster card — a warm double-ring frame (jade
@@ -1452,25 +1415,11 @@ function CoverflowHero({
         <ChevronRight className="h-6 w-6" />
       </button>
 
-      {/* Thin auto-play countdown bar — fills up over each slide's dwell
-          time, doubling as the position indicator. Keyed on the index so
-          it restarts cleanly every time the centered show changes,
-          whether from the timer or a manual swipe/tap. */}
-      {shows.length > 1 && !autoStopped && (
-        <div className="absolute inset-x-0 bottom-0 z-30 h-[3px] w-full overflow-hidden bg-white/10">
-          <div
-            key={index}
-            className="hero-progress-fill h-full"
-            // Not blue. Blue in this app means "press me", and a
-            // countdown bar is the one thing on the hero that cannot be
-            // pressed — it just reports where the carousel has got to.
-            style={{
-              animationDuration: `${HERO_AUTO_MS}ms`,
-              background: 'rgba(255,255,255,0.75)',
-            }}
-          />
-        </div>
-      )}
+      {/* The auto-play countdown bar is gone with the timer it counted.
+          It reported how long until the banner moved on its own, and the
+          banner no longer does that — a progress bar that never fills is
+          worse than no bar at all. Position is already legible from the
+          thumbnail strip, where the current cover is the lit one. */}
     </section>
   );
 }
