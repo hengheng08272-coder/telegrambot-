@@ -269,7 +269,10 @@ h3 {
    cover at the rail's card width, and the caption under it. */
 .rail-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 260px;
+  /* Raised with the card size: a 124px cover is 186px of poster
+     plus a title and meta row, so a rail is now ~320px tall. Guessing
+     260 here made the scrollbar jump as each rail came into view. */
+  contain-intrinsic-size: auto 320px;
 }
 
 /* The horizontal scroller inside a rail.

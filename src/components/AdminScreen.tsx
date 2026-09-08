@@ -1918,8 +1918,8 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
               </label>
               <p className="-mt-2 pl-6 text-[11px] text-white/40">
                 Tick this and the card stops printing its own caption under the poster, so the
-                name is not written twice. Keep the top 18% and bottom 16% of the artwork clear —
-                that is where the FREE/VIP, EP and ចប់ badges sit.
+                name is not written twice. Keep the top 18% of the artwork clear — that is where
+                the FREE/VIP and NEW badges sit. The bottom is free: EP and ចប់ are under the card.
               </p>
               <p className="-mt-2 pl-6 text-[11px] text-white/40">
                 Every episode is still VIP-locked by default even on a free show — unlock the
@@ -2079,8 +2079,9 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 រូប Poster មានចំណងជើងស្រាប់ — the artwork already has the title painted on it
               </label>
               <p className="-mt-2 pl-6 text-[11px] text-white/40">
-                The card drops its own caption. Keep the top 18% and bottom 16% of the artwork
-                clear — that is where the FREE/VIP, EP and ចប់ badges sit.
+                The card drops its own caption. Keep the top 18% of the artwork clear — that is
+                where the FREE/VIP and NEW badges sit. The bottom is free: EP and ចប់ are under
+                the card.
               </p>
 
               <div>

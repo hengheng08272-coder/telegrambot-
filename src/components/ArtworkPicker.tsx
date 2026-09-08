@@ -99,11 +99,13 @@ export default function ArtworkPicker({ kind, label, currentUrl, value, onChange
               <ImagePlus className="h-4 w-4" />
             </span>
           )}
-          {/* Badge safe zones. The top strip carries FREE/VIP/NEW/SOON,
-              the bottom strip carries EP n and ចប់ — so a painted title
-              that strays into either gets a badge sitting on it. Drawn
-              as red hatching over the preview so the collision is
-              visible here instead of on the home screen. */}
+          {/* Badge safe zone. Only the top strip is reserved now: EP n
+              and ចប់ moved off the poster into the card's meta row, so
+              the bottom of the artwork is free and a painted title can
+              run all the way down. What still sits on the cover is the
+              access badge (ឥតគិតថ្លៃ / សមាជិក) top-left and ថ្មី /
+              ឆាប់ៗនេះ top-right. Drawn as red hatching so a collision
+              is visible here rather than on the home screen. */}
           {safeZones && (
             <span aria-hidden className="pointer-events-none absolute inset-0">
               <span
@@ -113,15 +115,6 @@ export default function ArtworkPicker({ kind, label, currentUrl, value, onChange
                   background:
                     'repeating-linear-gradient(45deg, rgba(230,35,31,0.35) 0 4px, rgba(230,35,31,0.12) 4px 8px)',
                   borderBottom: '1px solid rgba(230,35,31,0.6)',
-                }}
-              />
-              <span
-                className="absolute inset-x-0 bottom-0"
-                style={{
-                  height: '16%',
-                  background:
-                    'repeating-linear-gradient(45deg, rgba(230,35,31,0.35) 0 4px, rgba(230,35,31,0.12) 4px 8px)',
-                  borderTop: '1px solid rgba(230,35,31,0.6)',
                 }}
               />
             </span>
