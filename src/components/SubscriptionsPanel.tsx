@@ -9,6 +9,8 @@ import {
   Save,
   ShieldCheck,
   Tag,
+  ToggleLeft,
+  ToggleRight,
   Upload,
   Zap,
 } from 'lucide-react';
@@ -21,7 +23,13 @@ import {
   readKhqrMerchant,
 } from '@/lib/khqr';
 import { supabase } from '@/lib/supabase/supabaseClient';
-import { getHiddenTierKeys, setHiddenTierKeys, PRICING_TIERS } from '@/lib/subscription';
+import {
+  getHiddenTierKeys,
+  setHiddenTierKeys,
+  getAbaPaymentEnabled,
+  setAbaPaymentEnabled,
+  PRICING_TIERS,
+} from '@/lib/subscription';
 import { fetchAbaMerchantName, saveAbaMerchantName, errorMessage } from '@/lib/api';
 import {
   fetchBakongConfig,
@@ -156,6 +164,31 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [bakongPreviewError, setBakongPreviewError] = useState('');
   const [abaSaving, setAbaSaving] = useState(false);
   const [abaSaved, setAbaSaved] = useState(false);
+
+  // Kill switch for the "Pay with ABA Mobile" button — for when ABA's own
+  // KHQR rail is down (confirmable in minutes with the $1 preview above)
+  // rather than anything wrong in this app. Defaults to true so the panel
+  // never flashes "disabled" before the real value loads.
+  const [abaPaymentEnabled, setAbaPaymentEnabledState] = useState(true);
+  const [abaPaymentToggleSaving, setAbaPaymentToggleSaving] = useState(false);
+
+  useEffect(() => {
+    getAbaPaymentEnabled().then(setAbaPaymentEnabledState);
+  }, []);
+
+  const toggleAbaPayment = async () => {
+    const next = !abaPaymentEnabled;
+    setAbaPaymentToggleSaving(true);
+    setError('');
+    try {
+      await setAbaPaymentEnabled(next);
+      setAbaPaymentEnabledState(next);
+    } catch (e: unknown) {
+      setError(errorMessage(e, 'Could not change ABA payment status'));
+    } finally {
+      setAbaPaymentToggleSaving(false);
+    }
+  };
 
   useEffect(() => {
     fetchBakongConfig().then((cfg) => {
@@ -570,6 +603,53 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       }
     >
       {section === 'qr' && (
+        <>
+        <div
+          className={`mb-5 rounded-xl border p-4 ${
+            abaPaymentEnabled
+              ? 'border-white/10 bg-white/[0.03]'
+              : 'border-[#FF6B60]/30 bg-[#FF6B60]/[0.06]'
+          }`}
+        >
+          <p
+            className={`mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${
+              abaPaymentEnabled ? 'text-white/60' : 'text-[#FF6B60]'
+            }`}
+          >
+            <Zap className="h-3.5 w-3.5" /> ស្ថានភាព ការទូទាត់ ABA
+          </p>
+          <p className="mb-3 max-w-2xl text-[11px] leading-relaxed text-white/50">
+            បើ ABA KHQR មិនដំណើរការ (ធនាគារមានបញ្ហា, maintenance ។ល។) បិទប៊ូតុងនេះបាន — ប៊ូតុង
+            «ទូទាត់តាម ABA Mobile» នឹងបង្ហាញថាបិទដំណើរការជាបណ្ដោះអាសន្នដល់សមាជិក ហើយណែនាំឲ្យប្រើ
+            «ធនាគារផ្សេងទៀត (KHQR)» ជំនួសវិញ (QR ដដែល ស្កេនបានគ្រប់ធនាគារ)។ បើកវិញភ្លាមពេល ABA
+            ដំណើរការធម្មតា។
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={toggleAbaPayment}
+              disabled={abaPaymentToggleSaving}
+              className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
+                abaPaymentEnabled
+                  ? 'border-[#2FD98C]/30 bg-[#2FD98C]/10 text-[#2FD98C] hover:bg-[#2FD98C]/20'
+                  : 'border-[#FF6B60]/30 bg-[#FF6B60]/10 text-[#FF6B60] hover:bg-[#FF6B60]/20'
+              }`}
+            >
+              {abaPaymentToggleSaving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : abaPaymentEnabled ? (
+                <ToggleRight className="h-4 w-4" />
+              ) : (
+                <ToggleLeft className="h-4 w-4" />
+              )}
+              {abaPaymentEnabled ? 'ABA កំពុងដំណើរការ' : 'ABA បិទដំណើរការ'}
+            </button>
+            <span className="text-[11px] text-white/40">
+              {abaPaymentEnabled
+                ? 'ចុចដើម្បីបិទ ប្រសិនបើ ABA KHQR មិនដំណើរការ'
+                : 'ចុចដើម្បីបើកឲ្យប្រើ ABA ធម្មតាវិញ'}
+            </span>
+          </div>
+        </div>
         <div className="mb-5 rounded-xl border border-[#2FD98C]/25 bg-[#2FD98C]/[0.04] p-4">
           <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#2FD98C]">
             <QrCode className="h-3.5 w-3.5" /> Bakong KHQR — បង្កើត QR ដោយស្វ័យប្រវត្តិ
@@ -805,6 +885,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             </div>
           )}
         </div>
+        </>
       )}
 
       {section === 'auto' && (

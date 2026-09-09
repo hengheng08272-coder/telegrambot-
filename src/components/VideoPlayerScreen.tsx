@@ -117,6 +117,7 @@ export default function VideoPlayerScreen({
   const [episodeListOpen, setEpisodeListOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [locked, setLocked] = useState(false);
+  const [devtoolsWarning, setDevtoolsWarning] = useState(false);
   const [speed, setSpeed] = useState(1);
   // Lock, speed, fit/fill, and the full episode list are all "set once,
   // rarely touched again" controls — grouped behind one overflow sheet
@@ -376,6 +377,34 @@ export default function VideoPlayerScreen({
       })
       .then(() => {});
   }, [episode.id, show.id, show.title]);
+
+  // Best-effort friction for paid/VIP episodes only — free previews never
+  // run this. A docked or undocked DevTools panel changes the gap between
+  // the browser's outer window and the page's inner viewport; polling for
+  // that gap is a common, if imperfect, way to notice it's open. This is
+  // NOT real protection (resizing the window, an undocked panel on a
+  // second monitor, or simply calling the API outside the browser all
+  // slip past it) — the actual content boundary is still whatever the
+  // server hands out. It only buys a warning + a paused video for the
+  // casual "let me pop devtools and grab the file" viewer.
+  useEffect(() => {
+    const isPaidContent = !(show.is_free || episode.is_free_preview);
+    if (!isPaidContent) {
+      setDevtoolsWarning(false);
+      return;
+    }
+    const GAP_THRESHOLD = 160;
+    const check = () => {
+      const widthGap = window.outerWidth - window.innerWidth;
+      const heightGap = window.outerHeight - window.innerHeight;
+      const open = widthGap > GAP_THRESHOLD || heightGap > GAP_THRESHOLD;
+      setDevtoolsWarning(open);
+      if (open) videoRef.current?.pause();
+    };
+    check();
+    const id = window.setInterval(check, 1000);
+    return () => window.clearInterval(id);
+  }, [show.is_free, episode.is_free_preview, episode.id]);
 
   // Bumps the show's real view_count (see increment_show_view_count) once
   // per episode open — same trigger as the watch-log entry above, just a
@@ -782,6 +811,15 @@ export default function VideoPlayerScreen({
             >
               {t.goBack}
             </button>
+          </div>
+        )}
+
+        {/* DevTools deterrent — paid episodes only, see the effect above. */}
+        {devtoolsWarning && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center">
+            <AlertTriangle className="h-9 w-9 text-[#FFC24D]" />
+            <p className="text-sm font-semibold text-white">{t.devtoolsWarningTitle}</p>
+            <p className="max-w-xs text-xs text-white/50">{t.devtoolsWarningDesc}</p>
           </div>
         )}
 

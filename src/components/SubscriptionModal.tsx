@@ -42,6 +42,7 @@ import {
   PRICING_TIERS,
   getEffectivePricingTiers,
   getHiddenTierKeys,
+  getAbaPaymentEnabled,
   type PricingTier,
   submitPaymentIntent,
   attachScreenshotToSubmission,
@@ -215,6 +216,10 @@ export default function SubscriptionModal({
 
   // Loaded from app_settings, not hardcoded — see getHiddenTierKeys().
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+  // Admin kill switch for the "Pay with ABA Mobile" method — see
+  // getAbaPaymentEnabled(). Defaults true so the button doesn't flash
+  // disabled before this loads.
+  const [abaPaymentEnabled, setAbaPaymentEnabled] = useState(true);
   const visibleTiers = useMemo(
     () => tiers.filter((tr) => !hiddenKeys.has(tr.key)),
     [tiers, hiddenKeys],
@@ -254,6 +259,7 @@ export default function SubscriptionModal({
     getQrCodes().then(setQrImages);
     getPayLinks().then(setPayLinks);
     getKhqrStrings().then(setStoredKhqr);
+    getAbaPaymentEnabled().then(setAbaPaymentEnabled);
     // Both are needed before a plan can be preselected, so they resolve
     // together rather than racing each other into setState.
     Promise.all([getEffectivePricingTiers(), getHiddenTierKeys()]).then(([rows, hidden]) => {
@@ -618,6 +624,7 @@ export default function SubscriptionModal({
   // Confirm/Revoke buttons).
   const handleSelectMethod = async (mode: 'auto' | 'manual') => {
     if (!tier) return;
+    if (mode === 'auto' && !abaPaymentEnabled) return;
     setError('');
     setSubmitting(true);
     const { error: err, id } = await submitPaymentIntent({
@@ -1235,38 +1242,62 @@ export default function SubscriptionModal({
               {t.subSelectPayment}
             </h2>
 
+            {!abaPaymentEnabled && (
+              <p className="mb-3 flex items-start gap-2 rounded-xl border border-[#FF6B60]/25 bg-[#FF6B60]/[0.06] px-3 py-2.5 text-[11px] leading-relaxed text-[#FF6B60]">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {t.subAbaDisabledNotice}
+              </p>
+            )}
+
             <div className="space-y-3">
-              {/* ABA blue lives here and nowhere else. */}
+              {/* ABA blue lives here and nowhere else — unless the admin
+                  has flipped the kill switch (ABA's own KHQR rail is
+                  down), in which case this button goes inert and grey and
+                  the other-banks route below is what's left to tap. */}
               <button
                 type="button"
                 onClick={() => handleSelectMethod('auto')}
-                disabled={submitting}
+                disabled={submitting || !abaPaymentEnabled}
                 className="co-row flex w-full items-center gap-3 px-4 py-4 text-left disabled:opacity-50"
-                style={{ borderColor: 'var(--co-aba-line)', backgroundColor: 'var(--co-aba-soft)' }}
+                style={
+                  abaPaymentEnabled
+                    ? { borderColor: 'var(--co-aba-line)', backgroundColor: 'var(--co-aba-soft)' }
+                    : undefined
+                }
               >
                 <span
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--co-r-chip)]"
-                  style={{
-                    backgroundColor: 'var(--co-aba-soft)',
-                    boxShadow: 'inset 0 0 0 1px var(--co-aba-line)',
-                  }}
+                  style={
+                    abaPaymentEnabled
+                      ? { backgroundColor: 'var(--co-aba-soft)', boxShadow: 'inset 0 0 0 1px var(--co-aba-line)' }
+                      : { backgroundColor: 'rgba(255,255,255,0.06)' }
+                  }
                 >
-                  <Zap className="h-5 w-5" style={{ color: 'var(--co-aba)' }} />
+                  <Zap
+                    className="h-5 w-5"
+                    style={{ color: abaPaymentEnabled ? 'var(--co-aba)' : 'var(--co-text-faint)' }}
+                  />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold text-[color:var(--co-text)]">
                       {t.subMethodAbaTitle}
                     </span>
-                    <span
-                      className="rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
-                      style={{ backgroundColor: 'var(--co-brand-soft)', color: '#a9c0ff' }}
-                    >
-                      {t.subRecommended}
-                    </span>
+                    {abaPaymentEnabled ? (
+                      <span
+                        className="rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
+                        style={{ backgroundColor: 'var(--co-brand-soft)', color: '#a9c0ff' }}
+                      >
+                        {t.subRecommended}
+                      </span>
+                    ) : (
+                      <span className="rounded-md bg-[#FF6B60]/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#FF6B60]">
+                        {t.subAbaDisabledBadge}
+                      </span>
+                    )}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-[color:var(--co-text-dim)]">
-                    {t.subMethodAbaDesc}
+                    {abaPaymentEnabled ? t.subMethodAbaDesc : t.subAbaDisabledNotice}
                   </span>
                 </span>
                 {submitting ? (

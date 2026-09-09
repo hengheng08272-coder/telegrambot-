@@ -163,6 +163,33 @@ export async function setHiddenTierKeys(keys: Iterable<string>): Promise<void> {
   if (error) throw error;
 }
 
+// Kill switch for the "Pay with ABA Mobile" method, for the times ABA's
+// KHQR rail itself is down (an admin can confirm this in minutes by
+// testing the $1 preview, long before affected members start messaging
+// support). Absent row = enabled, so older deploys with no row here
+// behave exactly as before — only an explicit 'false' turns the button
+// off and points viewers at the "other banks (KHQR)" method instead.
+const ABA_PAYMENT_ENABLED_SETTING_KEY = 'aba_payment_enabled';
+
+export async function getAbaPaymentEnabled(): Promise<boolean> {
+  const { data } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', ABA_PAYMENT_ENABLED_SETTING_KEY)
+    .maybeSingle();
+  return data?.value !== 'false';
+}
+
+export async function setAbaPaymentEnabled(enabled: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('app_settings')
+    .upsert(
+      { key: ABA_PAYMENT_ENABLED_SETTING_KEY, value: enabled ? 'true' : 'false' },
+      { onConflict: 'key' },
+    );
+  if (error) throw error;
+}
+
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   const { id } = getIdentity();
   const { data: rows } = await supabase.rpc('get_my_subscription', {

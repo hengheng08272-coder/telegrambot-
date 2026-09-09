@@ -368,7 +368,10 @@ export default function UsersPanel({ onClose }: Props) {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-bold text-white">
-                        {row.telegram_username ? '@' + row.telegram_username : row.telegram_user_id}
+                        {/* Already the full "@handle" (or name/id fallback)
+                            label the client writes at payment time — see
+                            WatchLogPanel's note on the same value. */}
+                        {row.telegram_username || row.telegram_user_id}
                       </p>
                       <p className="truncate text-[10px] text-white/30">
                         ID {row.telegram_user_id}
