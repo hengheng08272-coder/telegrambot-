@@ -94,20 +94,6 @@ const GENRE_EMOJI: Record<string, string> = {
 };
 const genreEmoji = (slug: string) => GENRE_EMOJI[slug.toLowerCase()] ?? '🎬';
 
-// Custom clapperboard glyph for the "New Release" row — drawn in the same
-// stroke convention as the lucide set we use everywhere else (24x24,
-// currentColor, 2px rounded strokes) so it sits next to Flame/Gift/Clock
-// without looking like a different icon family.
-function ClapperIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M3 8.6 20 5l1 4-17 3.6z" />
-      <path d="M4 12h16v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
-      <path d="m7.5 8.3 2-4.2M12.5 7.3l2-4.2M17.3 6.3l1.7-3.6" />
-    </svg>
-  );
-}
-
 export default function HomeScreen({
   onSelectShow,
   onOpenProfile,
@@ -261,12 +247,8 @@ export default function HomeScreen({
   // (see increment_show_view_count) — instead of an admin-typed rating
   // number, so it genuinely shows which shows viewers watch the most.
   const trending = [...shows].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).slice(0, 10);
-  const newReleases = [...shows]
-    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-    .slice(0, 10);
   const comingSoon = shows.filter((s) => s.coming_soon);
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
-  const completedShows = shows.filter((s) => s.type === 'series' && s.status === 'completed');
   const oneOffMovies = shows.filter((s) => s.type === 'movie' && !s.coming_soon);
 
   // One group per series that actually has several seasons in the
@@ -304,8 +286,10 @@ export default function HomeScreen({
     [shows, episodeNumbers],
   );
 
-  // Still releasing. Separated from the Completed row so the two answer
-  // opposite questions: "what can I finish tonight" vs "what do I follow".
+  // Still releasing, as opposed to a finished series — that finished/still
+  // going distinction no longer gets its own row (a completed show now
+  // just carries a "ចប់ / Complete" tag on its card, wherever it turns up),
+  // but this row still answers "what do I follow" on its own terms.
   const ongoingShows = shows.filter(
     (s) => s.type === 'series' && s.status !== 'completed' && !s.coming_soon,
   );
@@ -752,37 +736,6 @@ export default function HomeScreen({
                 onSelectShow={onSelectShow}
               />
             )}
-            {completedShows.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                role="free"
-                icon={<Check className="h-5 w-5" />}
-                title={t.completedRowLabel ?? 'Completed Series'}
-                shows={completedShows}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.completedRowLabel ?? 'Completed Series', shows: completedShows })}
-                viewAllLabel={t.viewAll}
-              />
-            )}
-            <RailRow
-              episodeNumbers={episodeNumbers}
-              role="mark"
-              icon={
-                <span className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center">
-                  <ClapperIcon className="h-5 w-5" />
-                  <span
-                    className="absolute -right-1 -top-1 h-2 w-2 animate-badge-pop rounded-full bg-current ring-2 ring-[#0A101E]"
-                    aria-hidden
-                  />
-                </span>
-              }
-              title={t.newRelease}
-              shows={newReleases}
-              onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
-              viewAllLabel={t.viewAll}
-              tag={{ label: t.newTag ?? 'NEW', tone: 'mark' }}
-            />
             <RailRow
               episodeNumbers={episodeNumbers}
               role="mark"

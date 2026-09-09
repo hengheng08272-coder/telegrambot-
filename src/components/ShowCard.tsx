@@ -291,10 +291,15 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
           {/* Off the poster and down here with the title it actually
               describes, instead of stamped over the artwork — plain
               muted text, not another pill, since this is the fourth or
-              fifth coloured thing on some cards already. */}
+              fifth coloured thing on some cards already. A finished
+              series says so right here too ("EP 24 · Complete") — there
+              is no separate Completed row any more, so this is the only
+              place left that tells a viewer a show has already ended
+              rather than still releasing. */}
           {show.type !== 'movie' && !!latestEpisode && (
-            <p className="mt-0.5 text-[10.5px] font-semibold text-white/40">
+            <p className="mt-0.5 truncate text-[10.5px] font-semibold text-white/40">
               {t.epShort} {latestEpisode}
+              {show.status === 'completed' && <> · {t.completedTag}</>}
             </p>
           )}
           {continuesAtSeason !== undefined && (
