@@ -36,6 +36,7 @@ import {
   type BakongConfig,
 } from '@/lib/bakong';
 import { compressReceipt } from '@/lib/imageCompress';
+import KhqrCard from '@/components/KhqrCard';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -1628,41 +1629,58 @@ export default function SubscriptionModal({
                 <div className="mt-4">
                   {qrSrc ? (
                     <>
-                      {/* The bare QR pattern alone reads as untrustworthy —
-                          a real bank-issued KHQR always carries the KHQR
-                          mark plus the payee name right next to the code,
-                          which is exactly what a viewer checks before
-                          scanning. This mirrors that: the logo is shown
-                          unconditionally (same asset the method-picker
-                          button already uses), the name only when one is
-                          actually known — decoded from the payload itself
-                          when possible, falling back to the Bakong config
-                          name, so an uploaded image with no readable KHQR
-                          text still shows nothing false. */}
-                      <div className="mx-auto mb-2.5 flex max-w-[220px] flex-col items-center gap-1">
-                        <img
-                          src="/assets/khqr-logo.png"
-                          alt="KHQR"
-                          className="h-5 w-auto object-contain"
-                        />
-                        {(payeeName ?? bakongConfig?.merchantName) && (
-                          <span className="truncate text-[12px] font-bold uppercase tracking-wide text-[color:var(--co-text)]">
-                            {payeeName ?? bakongConfig?.merchantName}
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setQrZoom(true)}
-                        aria-label={t.subQrTapHint}
-                        className="mx-auto block rounded-[var(--co-r-btn)] bg-white p-2 transition active:scale-[0.98]"
-                      >
-                        <img
-                          src={qrSrc}
-                          alt="KHQR"
-                          className="h-[148px] w-[148px] object-contain"
-                        />
-                      </button>
+                      {liveKhqr ? (
+                        // A generated QR (Bakong config / pasted template)
+                        // renders as a bare black-and-white square with no
+                        // chrome of its own — KhqrCard draws the same red
+                        // "KHQR" ticket band + name + amount a bank-issued
+                        // one already has printed on it, so a generated QR
+                        // reads exactly as trustworthy as an uploaded one.
+                        <button
+                          type="button"
+                          onClick={() => setQrZoom(true)}
+                          aria-label={t.subQrTapHint}
+                          className="mx-auto block transition active:scale-[0.98]"
+                        >
+                          <KhqrCard
+                            merchantName={payeeName ?? bakongConfig?.merchantName ?? planLabel(payTier)}
+                            amount={payTier.price}
+                            qrDataUrl={liveKhqr.image}
+                          />
+                        </button>
+                      ) : (
+                        <>
+                          {/* An admin-uploaded image is usually already a
+                              whole ticket graphic (a bank app screenshot),
+                              so it isn't wrapped in another one — just a
+                              small KHQR mark + name above it, when a name
+                              is actually known from the payload. */}
+                          <div className="mx-auto mb-2.5 flex max-w-[220px] flex-col items-center gap-1">
+                            <img
+                              src="/assets/khqr-logo.png"
+                              alt="KHQR"
+                              className="h-5 w-auto object-contain"
+                            />
+                            {(payeeName ?? bakongConfig?.merchantName) && (
+                              <span className="truncate text-[12px] font-bold uppercase tracking-wide text-[color:var(--co-text)]">
+                                {payeeName ?? bakongConfig?.merchantName}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setQrZoom(true)}
+                            aria-label={t.subQrTapHint}
+                            className="mx-auto block rounded-[var(--co-r-btn)] bg-white p-2 transition active:scale-[0.98]"
+                          >
+                            <img
+                              src={qrSrc}
+                              alt="KHQR"
+                              className="h-[148px] w-[148px] object-contain"
+                            />
+                          </button>
+                        </>
+                      )}
                       <p className="mx-auto mt-2.5 max-w-[16rem] text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
                         {t.subQrTapHint}
                       </p>
