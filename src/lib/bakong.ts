@@ -445,11 +445,11 @@ function drawKhqrBadge(canvas: HTMLCanvasElement): void {
   // of the code's width stays comfortably inside that budget.
   const outerR = canvas.width * 0.12;
 
-  // A hairline shadow ring first, the way a printed sticker badge sits
-  // very slightly proud of the page instead of looking pasted flat on.
-  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  // A soft shadow first, the way a printed sticker badge sits very
+  // slightly proud of the page instead of looking pasted flat on.
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
   ctx.beginPath();
-  ctx.arc(cx, cy + outerR * 0.03, outerR * 1.04, 0, Math.PI * 2);
+  ctx.arc(cx, cy + outerR * 0.05, outerR * 1.04, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = '#FFFFFF';
@@ -457,17 +457,42 @@ function drawKhqrBadge(canvas: HTMLCanvasElement): void {
   ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#E11B24';
+  // A flat single red read as a sticker cut out of paper -- a radial
+  // gradient offset toward the upper-left (a light source) plus a
+  // slightly darker rim gives the disc actual roundness, the way a
+  // glossy enamel pin catches light instead of sitting dead flat.
+  const discR = outerR * 0.86;
+  const gradient = ctx.createRadialGradient(
+    cx - discR * 0.32,
+    cy - discR * 0.38,
+    discR * 0.08,
+    cx,
+    cy,
+    discR * 1.15,
+  );
+  gradient.addColorStop(0, '#FF5A57');
+  gradient.addColorStop(0.55, '#E43A3A');
+  gradient.addColorStop(1, '#B01F24');
+  ctx.fillStyle = gradient;
   ctx.beginPath();
-  ctx.arc(cx, cy, outerR * 0.86, 0, Math.PI * 2);
+  ctx.arc(cx, cy, discR, 0, Math.PI * 2);
   ctx.fill();
 
+  // A hairline rim ties the disc's edge down crisply against the white
+  // ring, which the gradient alone leaves a touch soft.
+  ctx.strokeStyle = 'rgba(120,10,14,0.35)';
+  ctx.lineWidth = Math.max(1, outerR * 0.02);
+  ctx.stroke();
+
   ctx.fillStyle = '#FFFFFF';
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = outerR * 0.08;
+  ctx.shadowOffsetY = outerR * 0.03;
   // The app's own initial, not "QR" or a currency mark -- a real KHQR's
   // centre mark names the network that issued it, so a generated QR's
   // own badge should name whose QR it is (this app's) rather than
   // describe the code type or imply an issuer it doesn't carry.
-  ctx.font = `800 ${Math.round(outerR * 0.62)}px system-ui, sans-serif`;
+  ctx.font = `800 ${Math.round(outerR * 0.6)}px system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('N', cx, cy + outerR * 0.04);
