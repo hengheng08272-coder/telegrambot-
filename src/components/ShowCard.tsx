@@ -139,7 +139,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
             fallback keeps a card outside any rail — the search grid, the
             View All grid — on the brand blue it has always used. */}
         <div
-          className={`poster-frame aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] ${
+          className={`poster-frame aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
             large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
           }`}
         >
@@ -156,9 +156,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
             width={600}
             height={900}
             onLoad={() => setLoaded(true)}
-            className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${
-              loaded ? 'img-fade loaded' : 'img-fade'
-            }`}
+            className={`h-full w-full object-cover ${loaded ? 'img-fade loaded' : 'img-fade'}`}
           />
           {/* Bottom gradient — taller for ranked cards since it also has
               to carry the title text now sitting on the poster itself. */}

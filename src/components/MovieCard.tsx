@@ -40,7 +40,7 @@ export default function MovieCard({ show, onClick, hidePrice }: Props) {
   return (
     <button
       onClick={() => onClick(show)}
-      className="group relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#12141C] text-left transition active:scale-[0.99] hover:border-white/20"
+      className="group relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#12141C] text-left transition hover:border-white/20"
     >
       {/* A quiet accent glow, not the film's own art — see the note above
           on why a second, blurred poster copy was dropped. */}
@@ -63,7 +63,7 @@ export default function MovieCard({ show, onClick, hidePrice }: Props) {
             <img
               src={art}
               alt={show.title}
-              className="h-[112px] w-[76px] object-cover transition duration-500 group-hover:scale-105"
+              className="h-[112px] w-[76px] object-cover"
               draggable={false}
             />
           ) : (
