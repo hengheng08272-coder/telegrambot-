@@ -418,17 +418,30 @@ export async function renderQrDataUrl(payload: string): Promise<string | null> {
       scale: 8,
       color: { dark: '#000000', light: '#FFFFFF' },
     });
-    drawKhqrBadge(canvas);
+    await drawKhqrBadge(canvas);
     return canvas.toDataURL('image/png');
   } catch {
     return null;
   }
 }
 
+/** Loads an <img>, resolving null instead of rejecting on any failure --
+ *  a missing/broken badge asset should never take the whole QR down with
+ *  it. */
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+const BAKONG_MARK_SRC = '/assets/bakong-mark.png';
+
 /**
- * Draws the small round mark every real KHQR carries dead centre -- white
- * ring, red disc, the Bakong eight-point rosette + "C" glyph -- directly
- * onto the rendered QR canvas.
+ * Draws the small round mark every real KHQR carries dead centre --
+ * the actual Bakong logo file -- directly onto the rendered QR canvas.
  *
  * Reproducing the actual Bakong mark, not a stand-in, is deliberate here:
  * the underlying account this app generates KHQR payloads for is itself
@@ -436,32 +449,9 @@ export async function renderQrDataUrl(payload: string): Promise<string | null> {
  * the "Bakong KHQR" admin panel), so every payload this draws onto really
  * is a genuine KHQR under the scheme that mark identifies -- the same
  * reason ABA, Wing, and every other participating bank's own KHQR carries
- * it too. Drawn as vector paths rather than a pasted image file because
- * no source asset ships with the repo; if a proper logo file is added
- * later (public/assets/bakong-mark.png), prefer drawing that instead for
- * a pixel-exact match.
+ * it too.
  */
-function drawEightPointStarPath(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  outerR: number,
-  innerR: number,
-): void {
-  const points = 8;
-  const step = Math.PI / points;
-  ctx.beginPath();
-  for (let i = 0; i < points * 2; i++) {
-    const r = i % 2 === 0 ? outerR : innerR;
-    const angle = i * step;
-    const x = cx + r * Math.sin(angle);
-    const y = cy - r * Math.cos(angle);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-}
-function drawKhqrBadge(canvas: HTMLCanvasElement): void {
+async function drawKhqrBadge(canvas: HTMLCanvasElement): Promise<void> {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const cx = canvas.width / 2;
@@ -477,62 +467,26 @@ function drawKhqrBadge(canvas: HTMLCanvasElement): void {
   ctx.arc(cx, cy + outerR * 0.05, outerR * 1.04, 0, Math.PI * 2);
   ctx.fill();
 
+  // A thin white ring behind the mark itself -- the source file's red
+  // disc runs edge to edge with no margin of its own, so without this
+  // the badge would sit flush against whatever QR module happens to be
+  // behind it instead of standing apart from the code.
   ctx.fillStyle = '#FFFFFF';
   ctx.beginPath();
   ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
   ctx.fill();
 
-  // A flat single red read as a sticker cut out of paper -- a radial
-  // gradient offset toward the upper-left (a light source) plus a
-  // slightly darker rim gives the disc actual roundness, the way a
-  // glossy enamel pin catches light instead of sitting dead flat.
-  const discR = outerR * 0.86;
-  const gradient = ctx.createRadialGradient(
-    cx - discR * 0.32,
-    cy - discR * 0.38,
-    discR * 0.08,
-    cx,
-    cy,
-    discR * 1.15,
-  );
-  gradient.addColorStop(0, '#FF5A57');
-  gradient.addColorStop(0.55, '#E43A3A');
-  gradient.addColorStop(1, '#B01F24');
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(cx, cy, discR, 0, Math.PI * 2);
-  ctx.fill();
-
-  // A hairline rim ties the disc's edge down crisply against the white
-  // ring, which the gradient alone leaves a touch soft.
-  ctx.strokeStyle = 'rgba(120,10,14,0.35)';
-  ctx.lineWidth = Math.max(1, outerR * 0.02);
-  ctx.stroke();
-
-  ctx.shadowColor = 'rgba(0,0,0,0.3)';
-  ctx.shadowBlur = outerR * 0.06;
-  ctx.shadowOffsetY = outerR * 0.02;
-
-  // The eight-point rosette outline -- a thick white stroke traced
-  // around the star's path, red showing through on both sides of the
-  // line (inside near the "C" and outside toward the disc's rim), the
-  // same construction a die-struck seal uses.
-  ctx.strokeStyle = '#FFFFFF';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = discR * 0.15;
-  drawEightPointStarPath(ctx, cx, cy, discR * 0.78, discR * 0.42);
-  ctx.stroke();
-
-  // The "C" -- a ring with a gap on the right, exactly wide enough that
-  // it reads as a letterform rather than a plain circle.
-  ctx.strokeStyle = '#FFFFFF';
-  ctx.lineCap = 'butt';
-  ctx.lineWidth = discR * 0.2;
-  ctx.beginPath();
-  ctx.arc(cx, cy, discR * 0.32, (-56 * Math.PI) / 180, (56 * Math.PI) / 180, true);
-  ctx.stroke();
-
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
+  const mark = await loadImage(BAKONG_MARK_SRC);
+  const size = outerR * 1.72;
+  if (mark) {
+    ctx.drawImage(mark, cx - size / 2, cy - size / 2, size, size);
+  } else {
+    // Asset failed to load (offline first paint, bad deploy, etc.) --
+    // a plain red disc is a reasonable fallback so the QR still reads
+    // as "this has a badge" rather than showing a blank white circle.
+    ctx.fillStyle = '#E11B24';
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR * 0.86, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
