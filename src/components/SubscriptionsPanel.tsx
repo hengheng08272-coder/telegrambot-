@@ -595,9 +595,9 @@ export default function SubscriptionsPanel({ onClose }: Props) {
           active={section}
           onChange={setSection}
           tabs={[
-            { key: 'plans', label: 'គម្រោង & តម្លៃ', icon: <Tag className="h-3.5 w-3.5" /> },
-            { key: 'qr', label: 'QR & Deep link', icon: <QrCode className="h-3.5 w-3.5" /> },
-            { key: 'auto', label: 'ABA Auto-confirm', icon: <Zap className="h-3.5 w-3.5" /> },
+            { key: 'plans', label: 'គម្រោង & តម្លៃ', icon: <Tag className="h-3.5 w-3.5" />, dot: !abaPaymentEnabled },
+            { key: 'qr', label: 'QR & Deep link', icon: <QrCode className="h-3.5 w-3.5" />, dot: !abaPaymentEnabled },
+            { key: 'auto', label: 'ABA Auto-confirm', icon: <Zap className="h-3.5 w-3.5" />, dot: !abaPaymentEnabled },
           ]}
         />
       }
@@ -628,12 +628,18 @@ export default function SubscriptionsPanel({ onClose }: Props) {
             <button
               onClick={toggleAbaPayment}
               disabled={abaPaymentToggleSaving}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
+              className={`relative flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
                 abaPaymentEnabled
                   ? 'border-[#2FD98C]/30 bg-[#2FD98C]/10 text-[#2FD98C] hover:bg-[#2FD98C]/20'
                   : 'border-[#FF6B60]/30 bg-[#FF6B60]/10 text-[#FF6B60] hover:bg-[#FF6B60]/20'
               }`}
             >
+              {!abaPaymentEnabled && (
+                <span className="absolute -right-1 -top-1 flex h-3 w-3" aria-hidden>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF6B60] opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full border border-[#0B0C10] bg-[#FF6B60]" />
+                </span>
+              )}
               {abaPaymentToggleSaving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : abaPaymentEnabled ? (
@@ -1033,6 +1039,15 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                         <span className="shrink-0 rounded bg-white/[0.07] px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wide text-white/35">
                           {tier.key}
                         </span>
+                        {!abaPaymentEnabled && (
+                          <span
+                            className="flex shrink-0 items-center gap-1 rounded bg-[#FF6B60]/12 px-1.5 py-0.5 text-[9.5px] font-bold text-[#FF6B60]"
+                            title="ABA បិទដំណើរការជាបណ្ដោះអាសន្ន"
+                          >
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#FF6B60]" aria-hidden />
+                            ABA បិទបណ្ដោះអាសន្ន
+                          </span>
+                        )}
                       </div>
                       <p className="truncate text-xs text-white/55">
                         {edit.label_km.trim() || '—'}

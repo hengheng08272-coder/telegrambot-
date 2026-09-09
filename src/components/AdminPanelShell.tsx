@@ -133,7 +133,7 @@ export function PanelTabs<T extends string>({
   onChange,
   accent = '#F5C563',
 }: {
-  tabs: { key: T; label: string; icon?: ReactNode; badge?: number }[];
+  tabs: { key: T; label: string; icon?: ReactNode; badge?: number; dot?: boolean }[];
   active: T;
   onChange: (key: T) => void;
   accent?: string;
@@ -146,7 +146,7 @@ export function PanelTabs<T extends string>({
           <button
             key={tab.key}
             onClick={() => onChange(tab.key)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-bold transition ${
+            className={`relative flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-bold transition ${
               isActive ? '' : 'border-white/10 bg-white/[0.04] text-white/55 hover:bg-white/[0.08] hover:text-white/80'
             }`}
             style={
@@ -155,6 +155,12 @@ export function PanelTabs<T extends string>({
                 : undefined
             }
           >
+            {tab.dot && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5" aria-hidden>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF6B60] opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full border border-[#0B0C10] bg-[#FF6B60]" />
+              </span>
+            )}
             {tab.icon}
             {tab.label}
             {typeof tab.badge === 'number' && tab.badge > 0 && (
