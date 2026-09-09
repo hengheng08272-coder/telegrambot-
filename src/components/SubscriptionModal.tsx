@@ -1628,6 +1628,29 @@ export default function SubscriptionModal({
                 <div className="mt-4">
                   {qrSrc ? (
                     <>
+                      {/* The bare QR pattern alone reads as untrustworthy —
+                          a real bank-issued KHQR always carries the KHQR
+                          mark plus the payee name right next to the code,
+                          which is exactly what a viewer checks before
+                          scanning. This mirrors that: the logo is shown
+                          unconditionally (same asset the method-picker
+                          button already uses), the name only when one is
+                          actually known — decoded from the payload itself
+                          when possible, falling back to the Bakong config
+                          name, so an uploaded image with no readable KHQR
+                          text still shows nothing false. */}
+                      <div className="mx-auto mb-2.5 flex max-w-[220px] flex-col items-center gap-1">
+                        <img
+                          src="/assets/khqr-logo.png"
+                          alt="KHQR"
+                          className="h-5 w-auto object-contain"
+                        />
+                        {(payeeName ?? bakongConfig?.merchantName) && (
+                          <span className="truncate text-[12px] font-bold uppercase tracking-wide text-[color:var(--co-text)]">
+                            {payeeName ?? bakongConfig?.merchantName}
+                          </span>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={() => setQrZoom(true)}
