@@ -441,9 +441,16 @@ function drawKhqrBadge(canvas: HTMLCanvasElement): void {
   if (!ctx) return;
   const cx = canvas.width / 2;
   const cy = canvas.height / 2;
-  // 'H' correction survives up to ~30% obscured; a badge spanning ~22%
+  // 'H' correction survives up to ~30% obscured; a badge spanning ~24%
   // of the code's width stays comfortably inside that budget.
-  const outerR = canvas.width * 0.11;
+  const outerR = canvas.width * 0.12;
+
+  // A hairline shadow ring first, the way a printed sticker badge sits
+  // very slightly proud of the page instead of looking pasted flat on.
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  ctx.beginPath();
+  ctx.arc(cx, cy + outerR * 0.03, outerR * 1.04, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.fillStyle = '#FFFFFF';
   ctx.beginPath();
@@ -452,15 +459,16 @@ function drawKhqrBadge(canvas: HTMLCanvasElement): void {
 
   ctx.fillStyle = '#E11B24';
   ctx.beginPath();
-  ctx.arc(cx, cy, outerR * 0.82, 0, Math.PI * 2);
+  ctx.arc(cx, cy, outerR * 0.86, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = '#FFFFFF';
-  // "QR" rather than a currency mark or letter mnemonic -- this app
-  // prices everything in USD, never Riel, and the badge should not
-  // imply an issuer or currency it does not carry.
-  ctx.font = `900 ${Math.round(outerR * 0.62)}px system-ui, sans-serif`;
+  // The app's own initial, not "QR" or a currency mark -- a real KHQR's
+  // centre mark names the network that issued it, so a generated QR's
+  // own badge should name whose QR it is (this app's) rather than
+  // describe the code type or imply an issuer it doesn't carry.
+  ctx.font = `900 ${Math.round(outerR * 0.92)}px system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('QR', cx, cy + outerR * 0.04);
+  ctx.fillText('N', cx, cy + outerR * 0.04);
 }
