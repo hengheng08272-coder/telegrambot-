@@ -391,7 +391,7 @@ export default function HomeScreen({
                 {[0, 1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className="aspect-[2/3] w-28 shrink-0 animate-pulse rounded-lg bg-white/5 sm:w-36"
+                    className="aspect-[2/3] w-28 shrink-0 animate-pulse rounded-xl bg-white/5 sm:w-36"
                     style={{ animationDelay: `${(row * 6 + i) * 60}ms` }}
                   />
                 ))}
@@ -966,7 +966,7 @@ export default function HomeScreen({
                       }}
                       className="text-left"
                     >
-                      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-[#151926] ring-1 ring-white/5">
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/5">
                         <img
                           src={s.poster_url ?? ''}
                           alt={s.title}

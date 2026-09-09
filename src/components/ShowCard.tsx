@@ -104,7 +104,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
     <button
       onClick={() => onClick(show)}
       className={`group relative shrink-0 text-left ${
-        large ? 'w-[128px] sm:w-[164px]' : rank ? 'w-[122px] sm:w-[160px]' : 'w-[104px] sm:w-[124px]'
+        large ? 'w-[128px] sm:w-[164px]' : rank ? 'w-[122px] sm:w-[160px]' : 'w-[112px] sm:w-[136px]'
       } ${rank ? 'pl-8 sm:pl-10' : ''}`}
     >
       {rank && (
@@ -139,7 +139,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
             fallback keeps a card outside any rail — the search grid, the
             View All grid — on the brand blue it has always used. */}
         <div
-          className={`poster-frame aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] ${
+          className={`poster-frame aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out group-hover:z-20 group-hover:-translate-y-2 group-hover:scale-[1.04] ${
             large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
           }`}
         >
@@ -183,11 +183,13 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
               </h3>
             </div>
           )}
-          {/* View-count badge — real play counts (see increment_show_view_count),
-              not an admin-typed rating, so this is what actually drives
-              Top 10 and shows the owner which titles viewers watch most. */}
-          {show.type !== 'movie' && !!latestEpisode && (
-            <Badge tone="info" onArt className={`absolute left-1.5 z-[2] ${rank ? 'bottom-9' : 'bottom-1.5'}`}>
+          {/* Episode badge — ranked (Top 10) cards have nowhere else to put
+              it, since the title itself already sits on the artwork there.
+              Every other row moves this off the poster entirely (see the
+              caption block below) so the cover reads as pure art and the
+              number sits with the title text it actually describes. */}
+          {rank && show.type !== 'movie' && !!latestEpisode && (
+            <Badge tone="info" onArt className="absolute bottom-9 left-1.5 z-[2]">
               EP {latestEpisode}
             </Badge>
           )}
@@ -286,6 +288,15 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
           <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
             {displayTitle ?? show.title}
           </h3>
+          {/* Off the poster and down here with the title it actually
+              describes, instead of stamped over the artwork — plain
+              muted text, not another pill, since this is the fourth or
+              fifth coloured thing on some cards already. */}
+          {show.type !== 'movie' && !!latestEpisode && (
+            <p className="mt-0.5 text-[10.5px] font-semibold text-white/40">
+              {t.epShort} {latestEpisode}
+            </p>
+          )}
           {continuesAtSeason !== undefined && (
             // The crown is already this app's mark for "needs a
             // membership", so spelling it out next to the icon wrapped the

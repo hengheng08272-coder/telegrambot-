@@ -467,7 +467,7 @@ function drawKhqrBadge(canvas: HTMLCanvasElement): void {
   // centre mark names the network that issued it, so a generated QR's
   // own badge should name whose QR it is (this app's) rather than
   // describe the code type or imply an issuer it doesn't carry.
-  ctx.font = `900 ${Math.round(outerR * 0.92)}px system-ui, sans-serif`;
+  ctx.font = `800 ${Math.round(outerR * 0.62)}px system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('N', cx, cy + outerR * 0.04);
