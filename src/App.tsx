@@ -434,16 +434,29 @@ function App() {
 
   if (screen.name === 'player') {
     return (
-      <VideoPlayerScreen
-        episode={screen.episode}
-        show={screen.show}
-        onBack={() => setScreen({ name: 'detail', show: screen.show })}
-        onSwitchEpisode={(ep) => {
-          hapticTap();
-          addToContinueWatching(screen.show, ep, ep.episode_number - 1);
-          setScreen({ name: 'player', episode: ep, show: screen.show });
-        }}
-      />
+      <>
+        <VideoPlayerScreen
+          episode={screen.episode}
+          show={screen.show}
+          onBack={() => setScreen({ name: 'detail', show: screen.show })}
+          onSwitchEpisode={(ep) => handlePlayEpisode(ep, screen.show)}
+        />
+        {/* handlePlayEpisode falls back to these when a switched-to episode
+            (next-episode button, auto-advance, or the episode list) turns
+            out to be locked — same gate the initial play button uses, so
+            switching episodes from inside the player can't skip it. */}
+        {showBuyMovie && (
+          <MoviePurchaseModal
+            show={showBuyMovie}
+            onClose={() => setShowBuyMovie(null)}
+            onUnlocked={() => {
+              hapticSuccess();
+              refreshPurchasedMovies();
+            }}
+          />
+        )}
+        {subscriptionSheet}
+      </>
     );
   }
 
