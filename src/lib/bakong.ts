@@ -400,7 +400,9 @@ export async function generateKhqr(opts: GenerateKhqrOptions): Promise<Generated
 /**
  * Renders a KHQR payload to a PNG data URL so it can be shown as an
  * ordinary <img>. High error correction, because this gets scanned off a
- * phone screen held by someone else's phone.
+ * phone screen held by someone else's phone -- and because 'H' tolerates
+ * roughly 30% of the code being obscured, which is what leaves room for
+ * the centre badge drawn below without breaking the scan.
  */
 export async function renderQrDataUrl(payload: string): Promise<string | null> {
   // Guarded because the encoder's own complaint about a non-string is
@@ -409,13 +411,56 @@ export async function renderQrDataUrl(payload: string): Promise<string | null> {
   if (typeof payload !== 'string' || !payload) return null;
   try {
     const QRCode = (await import('qrcode')).default;
-    return await QRCode.toDataURL(payload, {
+    const canvas = document.createElement('canvas');
+    await QRCode.toCanvas(canvas, payload, {
       errorCorrectionLevel: 'H',
       margin: 1,
       scale: 8,
       color: { dark: '#000000', light: '#FFFFFF' },
     });
+    drawKhqrBadge(canvas);
+    return canvas.toDataURL('image/png');
   } catch {
     return null;
   }
+}
+
+/**
+ * Draws the small round mark every real KHQR carries dead centre --
+ * white ring, brand-red disc -- directly onto the rendered QR canvas.
+ *
+ * Not a pasted logo image: a bank-issued KHQR embeds each network's own
+ * licensed mark, which this app has no standing to reproduce for a QR it
+ * assembled itself. Drawing a plain geometric badge in the app's own
+ * brand red (the same one KhqrCard's ticket band uses) gets the familiar
+ * "this code has a badge in the middle" look without claiming to be an
+ * official Bakong/bank asset -- generated QRs stay visibly the app's own.
+ */
+function drawKhqrBadge(canvas: HTMLCanvasElement): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  // 'H' correction survives up to ~30% obscured; a badge spanning ~22%
+  // of the code's width stays comfortably inside that budget.
+  const outerR = canvas.width * 0.11;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#E11B24';
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR * 0.82, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#FFFFFF';
+  // "QR" rather than a currency mark or letter mnemonic -- this app
+  // prices everything in USD, never Riel, and the badge should not
+  // imply an issuer or currency it does not carry.
+  ctx.font = `900 ${Math.round(outerR * 0.62)}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('QR', cx, cy + outerR * 0.04);
 }
