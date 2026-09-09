@@ -122,6 +122,8 @@ export const appText = {
     // Video player screen
     unableToLoadVideo: 'Unable to load this video',
     videoMissingHint: 'The video file may be missing or corrupted. Try another episode.',
+    devtoolsWarningTitle: 'Please close Developer Tools to keep watching',
+    devtoolsWarningDesc: 'This content is protected — recording or extracting the video is not allowed.',
     goBack: 'Go Back',
     episodeLabel: 'Episode',
     upNext: 'Up next',
@@ -590,6 +592,8 @@ export const appText = {
     // Video player screen
     unableToLoadVideo: 'មិនអាចផ្ទុកវីដេអូនេះបានទេ',
     videoMissingHint: 'ឯកសារវីដេអូអាចខ្វះ ឬខូច។ សូមសាកល្បងវគ្គផ្សេង។',
+    devtoolsWarningTitle: 'សូមបិទ Developer Tools (F12) ដើម្បីបន្តមើល',
+    devtoolsWarningDesc: 'មាតិកានេះត្រូវបានការពារ — ការថតចម្លង ឬទាញយកវីដេអូនេះមិនត្រូវបានអនុញ្ញាតទេ។',
     goBack: 'ថយក្រោយ',
     episodeLabel: 'វគ្គ',
     upNext: 'បន្ទាប់',
