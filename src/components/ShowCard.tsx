@@ -10,9 +10,9 @@ import { appText } from '@/lib/appTranslations';
 interface ShowCardProps {
   show: Show;
   onClick: (show: Show) => void;
-  /** Highest published episode number, shown as an "EP n" corner badge —
+  /** Highest published episode number, shown in the caption's meta line —
    *  the thing a returning viewer actually scans a rail for. Omitted for
-   *  movies and for shows with no episodes yet, which get no badge. */
+   *  movies and for shows with no episodes yet. */
   latestEpisode?: number;
   /** 1-based rank — when set, renders a big stroked numeral behind the
    *  bottom-left corner of the poster, Top-10-rail style. */
@@ -20,18 +20,17 @@ interface ShowCardProps {
   /** Bigger poster + deeper drop shadow — used for the Top 10 rail so it
    *  reads with the same weight as the hero banner above it. */
   large?: boolean;
-  /** Season number, shown as a small chip under the title. Only the
-   *  seasons row passes this: everywhere else the season is already part
-   *  of the title text, and repeating it would say the same thing twice.
-   *  The seasons row strips the marker off the title so the franchise
-   *  name lines up down the rail, and this chip carries the number. */
+  /** Season number, shown as a pill instead of the title. Only the
+   *  seasons row passes this: everywhere else the season is part of the
+   *  title text or the meta line, and repeating it would say the same
+   *  thing twice. */
   seasonNumber?: number;
   /** Franchise name with the season marker removed — used as the card's
    *  visible title in the seasons row. */
   displayTitle?: string;
   /** Season number of the paid season that follows this (free) one.
-   *  Renders a gold "season N · members" line under the title — the
-   *  reason the free row exists, said out loud on the card. */
+   *  Renders a gold "season N" chip — the reason the free row exists,
+   *  said out loud on the card. */
   continuesAtSeason?: number;
   /** Drop the caption entirely and let the season pill be the label.
    *  Inside a per-series season row the heading above already names the
@@ -42,38 +41,46 @@ interface ShowCardProps {
 
 /**
  * Green means "watchable now", gold means "needs a membership" — the same
- * two colours the access badge on the poster already uses. The season
- * chips take their colour from this rather than from a fixed blue, which
- * in this app reads as "a movie you can buy" and said nothing about
- * whether the season was open.
+ * two colours the access badge on the poster already uses.
  */
 const ACCESS_CHIP = {
   free: 'bg-[#2FD98C]/14 text-[#2FD98C] ring-[#2FD98C]/35',
   member: 'bg-[#F5C563]/12 text-[#F5C563] ring-[#F5C563]/30',
 } as const;
 
-export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle, titleFromSeason, continuesAtSeason }: ShowCardProps) {
+/**
+ * Every caption is exactly this tall — one title line plus one meta line —
+ * whether or not the show actually has an episode count, a season, or a
+ * "finished" tag to put in it. Cards in a rail are laid out side by side,
+ * so a caption that grows a line on one card and not the next is what
+ * makes a row look broken; reserving the space unconditionally is what
+ * makes that impossible rather than merely unlikely.
+ */
+const CAPTION_H = 'h-[34px]';
+
+export default function ShowCard({
+  show,
+  onClick,
+  latestEpisode,
+  rank,
+  large,
+  seasonNumber,
+  displayTitle,
+  titleFromSeason,
+  continuesAtSeason,
+}: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
   const { lang } = useLang();
   const t = appText[lang];
 
+  // The season this card is, read off its own title — the catalog keeps it
+  // in the title text rather than a column (see lib/seasons).
+  const { base: seasonStrippedTitle, season: ownSeason } = parseSeason(show.title);
+
   // Added within the last week — a plain fact read off created_at, not an
   // admin toggle, so it clears on its own instead of needing to be turned
   // off by hand once a title stops being new.
-  // The season this card is, read off its own title. Only surfaced on a
-  // free show: the free row's offer is "this season is free", and saying
-  // which one is the difference between an offer and a vague promise.
-  const { base: seasonStrippedTitle, season: ownSeason } = parseSeason(show.title);
-  // The free row already says the season on a chip stamped over the
-  // poster (below) — repeating " រដូវកាលទី១" in the caption too just
-  // burns the little width a narrow rail card has, truncating mid-word
-  // ("... រដូវកាល...") with no number even visible. Only this one case
-  // drops it from the caption: everywhere else (a plain rail, franchise
-  // row) the title is the only place the season shows at all.
-  const seasonShownOnChip =
-    !show.coming_soon && show.is_free && ownSeason !== null && seasonNumber === undefined;
-
   const isNew =
     !!show.created_at && Date.now() - new Date(show.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
 
@@ -82,10 +89,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
   // Pointer Events unify mouse and finger, which is exactly the problem:
   // on a phone this fired on the drag that scrolls the rail, so every
   // card under the finger was being re-composited on a 3D layer during
-  // the one interaction that has to stay at frame rate. Tilting a card
-  // the finger is trying to flick past is not an effect anyone asked
-  // for. So the handlers only attach where there is a real cursor —
-  // which is also the only place a hover tilt means anything.
+  // the one interaction that has to stay at frame rate.
   const [canTilt, setCanTilt] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia('(hover: hover) and (pointer: fine)');
@@ -107,6 +111,49 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
     const el = tiltRef.current;
     if (el) el.style.transform = 'perspective(700px) rotateX(0deg) rotateY(0deg)';
   };
+
+  // The one badge the poster carries, top-left. A card used to be able to
+  // show four at once — access, season, "new", coming soon — stacked over
+  // the art in two corners, which is what buried the artwork the row is
+  // there to show. Exactly one wins here, in order of what a viewer has
+  // to know before tapping: nothing plays yet > it costs a dollar > it is
+  // open > it needs a membership. Everything else moved to the caption.
+  const accessBadge = show.coming_soon ? (
+    <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />}>
+      {t.comingSoonLabel}
+    </Badge>
+  ) : show.type === 'movie' ? (
+    show.is_free ? (
+      <Badge tone="free" onArt>
+        {t.freeBadge}
+      </Badge>
+    ) : (
+      <Badge tone="price" onArt>
+        ${MOVIE_PRICE}
+      </Badge>
+    )
+  ) : (
+    <Badge
+      tone={show.is_free ? 'free' : 'vip'}
+      onArt
+      icon={show.is_free ? undefined : <Crown className="h-3 w-3" />}
+    >
+      {show.is_free ? t.freeBadge : t.vipBadge}
+    </Badge>
+  );
+
+  // The meta line under the title: season, episode count, and whether the
+  // series has finished — the three details a viewer scans a rail for,
+  // on one line, in one muted weight, separated by dots. Kept as an array
+  // so the separators fall between whatever actually exists rather than
+  // being hardcoded around fields that may be absent.
+  const meta: string[] = [];
+  if (ownSeason !== null && seasonNumber === undefined) {
+    meta.push(`${t.seasonShort}${ownSeason}`);
+  }
+  if (show.type !== 'movie' && !!latestEpisode) {
+    meta.push(`${t.epShort} ${latestEpisode}`);
+  }
 
   return (
     <button
@@ -143,9 +190,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
         {/* The poster frame. Its lit state is the row's colour, not one
             fixed blue: `--row-accent` is published by the RailRow this
             card sits in (see lib/rowAccent), so a cover in the free row
-            lifts in green and one in the movies row in gold. The
-            fallback keeps a card outside any rail — the search grid, the
-            View All grid — on the brand blue it has always used. */}
+            lifts in green and one in the movies row in gold. */}
         <div
           className={`poster-frame aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
             large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
@@ -166,110 +211,46 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
             onLoad={() => setLoaded(true)}
             className={`h-full w-full object-cover ${loaded ? 'img-fade loaded' : 'img-fade'}`}
           />
-          {/* Bottom gradient — taller for ranked cards since it also has
-              to carry the title text now sitting on the poster itself. */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: rank
-                ? 'linear-gradient(180deg, rgba(10,16,30,0) 35%, rgba(10,16,30,0.95) 100%)'
-                : 'linear-gradient(180deg, rgba(10,16,30,0) 50%, rgba(10,16,30,0.9) 100%)',
-            }}
-          />
-          {/* Title — overlaid directly on the poster for ranked (Top 10)
-              cards so the row reads as pure artwork instead of poster +
-              caption; other rows keep the plain caption below the card.
-              Single-line with an ellipsis when it's too long to fit, gold
-              by default (not just on hover) to match the numeral behind
-              it. */}
+          {/* Bottom gradient — only where something is actually printed
+              over the art. An unranked cover carries nothing down there
+              any more, so darkening it was dimming the artwork for no
+              reason. */}
+          {rank && (
+            <div
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 35%, rgba(10,16,30,0.95) 100%)' }}
+            />
+          )}
+          {/* Title — overlaid on the poster for ranked (Top 10) cards so
+              the row reads as pure artwork instead of poster + caption.
+              Every other row puts it in the caption below. */}
           {rank && (
             <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
-              <h3 className="truncate text-[13px] font-bold leading-tight text-[#FFE7B0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] sm:text-[13px]">
+              <h3 className="truncate text-[13px] font-bold leading-tight text-[#FFE7B0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
                 {show.title}
               </h3>
+              {show.type !== 'movie' && !!latestEpisode && (
+                <p className="mt-0.5 truncate text-[10.5px] font-semibold text-white/55">
+                  {t.epShort} {latestEpisode}
+                </p>
+              )}
             </div>
           )}
-          {/* Episode badge — ranked (Top 10) cards have nowhere else to put
-              it, since the title itself already sits on the artwork there.
-              Every other row moves this off the poster entirely (see the
-              caption block below) so the cover reads as pure art and the
-              number sits with the title text it actually describes. */}
-          {rank && show.type !== 'movie' && !!latestEpisode && (
-            <Badge tone="info" onArt className="absolute bottom-9 left-1.5 z-[2]">
-              EP {latestEpisode}
-            </Badge>
-          )}
-          {/* A standalone film's price, where a series shows its latest
-              episode number. Both answer the same question in a rail —
-              "what do I get if I tap this" — and a movie's answer is a
-              dollar, once, with no membership involved. */}
-          {show.type === 'movie' && !show.is_free && !show.coming_soon && (
-            <Badge tone="price" onArt className="absolute bottom-1.5 left-1.5">
-              ${MOVIE_PRICE}
-            </Badge>
-          )}
-          {/* Coming Soon marker — announced/promoted but no episodes yet
-              (admin toggle). Icon-only since the row header above already
-              says "Coming Soon" in words. */}
-          {show.coming_soon && (
-            <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />} className="absolute right-1.5 top-1.5">
-              {t.comingSoonLabel}
-            </Badge>
-          )}
-          {/* NEW marker — added within the last 7 days. A dot rather than
-              a text pill: a rail can have several of these live at once,
-              and the word stopped adding anything past the first one or
-              two on a page — the colour alone reads as "new" once a
-              viewer has seen it somewhere else on the same screen.
-              Skipped on Coming Soon cards since that badge already owns
-              the top-right corner and says something more specific. */}
+
+          <div className="absolute left-1.5 top-1.5 z-[2]">{accessBadge}</div>
+
+          {/* NEW — a dot, not a pill. A rail can have several live at
+              once, and the word stopped adding anything past the first
+              one a viewer had already seen on the same screen. */}
           {!show.coming_soon && isNew && (
             <span
-              className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
+              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
               style={{ boxShadow: '0 0 8px rgba(255,107,96,0.7)' }}
               aria-label={t.newTag ?? 'NEW'}
               title={t.newTag ?? 'NEW'}
             />
           )}
-          {/* FREE / VIP badge — same subscription status the detail screen
-              and hero cover enforce, so browsing never over-promises what's
-              actually playable. Skipped on Coming Soon cards since neither
-              label means anything until episodes exist. A standalone movie
-              gets its own "One-off movie" label instead of VIP here — it's
-              bought once for a flat price, not gated behind a subscription,
-              so a VIP crown on it would say the wrong thing even though
-              is_free is false. */}
-          {!show.coming_soon && show.type === 'movie' && !show.is_free && (
-            <Badge tone="info" onArt className="absolute left-1.5 top-1.5 whitespace-nowrap">
-              {t.movieOneOff}
-            </Badge>
-          )}
-          {!show.coming_soon && show.type !== 'movie' && (
-            <Badge
-              tone={show.is_free ? 'free' : 'vip'}
-              onArt
-              icon={show.is_free ? undefined : <Crown className="h-3 w-3" />}
-              className="absolute left-1.5 top-1.5"
-            >
-              {show.is_free ? t.freeBadge : t.vipBadge}
-            </Badge>
-          )}
-          {/* Which season is the free one, stacked under the FREE badge.
-              "Free" on a series that runs to several seasons is ambiguous
-              on its own — this makes the offer exact. Skipped in a franchise
-              row, where the caption pill below already carries the season. */}
-          {!show.coming_soon && show.is_free && ownSeason !== null && seasonNumber === undefined && (
-            <span
-              className={`absolute left-1.5 top-[26px] inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-[3px] text-[9.5px] font-bold leading-none shadow-[0_2px_8px_rgba(2,4,10,0.5)] ring-1 ring-inset backdrop-blur-sm ${ACCESS_CHIP.free}`}
-            >
-              {t.seasonShort}{ownSeason}
-            </span>
-          )}
-          {!show.coming_soon && show.type === 'movie' && show.is_free && (
-            <Badge tone="free" onArt className="absolute left-1.5 top-1.5">
-              {t.freeBadge}
-            </Badge>
-          )}
+
           {/* Hover play overlay — omitted for Coming Soon cards, since
               tapping them can't actually play anything yet. */}
           {!show.coming_soon && (
@@ -281,77 +262,64 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
           )}
         </div>
       </div>
-      {!rank && titleFromSeason && seasonNumber !== undefined ? (
-        // Inside a franchise row the heading already names the show, so the
-        // season number is the whole caption — and it carries the row's one
-        // useful signal in its colour: green seasons are watchable now, gold
-        // ones need a membership.
-        <div className="mt-2 px-0.5">
-          <span
-            className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-[3px] text-[11px] font-black leading-none ring-1 ring-inset ${
-              show.is_free ? ACCESS_CHIP.free : ACCESS_CHIP.member
-            }`}
-          >
-            {!show.is_free && <Crown className="h-2.5 w-2.5 shrink-0" />}
-            {t.seasonShort}{seasonNumber}
-          </span>
-        </div>
-      ) : !rank ? (
-        <div className="mt-2 px-0.5">
-          {/* EP rides the same line as the title now that a free-row
-              title has the season phrase stripped (see seasonShownOnChip
-              above) and reads short enough to share the line — title
-              still gets first claim on the width via truncate, EP stays
-              fixed so it never itself gets clipped. */}
-          <div className="flex items-baseline gap-1.5">
-            <h3 className={`min-w-0 flex-1 truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
-              {displayTitle ?? (seasonShownOnChip ? seasonStrippedTitle : show.title)}
-            </h3>
-            {show.type !== 'movie' && !!latestEpisode && (
-              <span className="shrink-0 text-[10.5px] font-semibold text-white/40">
-                {t.epShort} {latestEpisode}
-              </span>
-            )}
-          </div>
-          {/* "Finished" is a fact worth a colour, the same red `mark`
-              tone as NEW/Coming Soon/Ongoing use elsewhere on a card, so
-              it doesn't invent a sixth meaning. There is no separate
-              Completed row any more, so this is the only place left that
-              tells a viewer a show has already ended rather than still
-              releasing. */}
-          {show.type !== 'movie' && !!latestEpisode && show.status === 'completed' && (
-            <Badge tone="mark" className="mt-1 shrink-0">
-              {t.completedTag}
-            </Badge>
-          )}
-          {continuesAtSeason !== undefined && (
-            // The crown is already this app's mark for "needs a
-            // membership", so spelling it out next to the icon wrapped the
-            // chip onto a second line and left the cards in the row at
-            // different heights. Icon plus season number says it in one.
-            <span className={`mt-1 inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-[2px] text-[9.5px] font-bold leading-none ring-1 ring-inset ${ACCESS_CHIP.member}`}>
-              <Crown className="h-2.5 w-2.5 shrink-0" />
-              {t.seasonShort}{continuesAtSeason}
-            </span>
-          )}
-          {seasonNumber !== undefined && (
-            // A filled pill, not plain text: two seasons of one franchise
-            // sit side by side under the same (often truncated) title, so
-            // the number is the only thing telling the cards apart. Its
-            // colour is the season's own access, so a franchise row reads
-            // at a glance as "green ones I can watch, gold ones I cannot"
-            // — which is exactly the question that row is there to answer.
+
+      {/* A ranked card already carries its title on the artwork. */}
+      {!rank &&
+        (titleFromSeason && seasonNumber !== undefined ? (
+          // Inside a franchise row the heading already names the show, so
+          // the season number is the whole caption — and it carries the
+          // row's one useful signal in its colour: green seasons are
+          // watchable now, gold ones need a membership.
+          <div className={`mt-2 flex items-center px-0.5 ${CAPTION_H}`}>
             <span
-              className={`mt-1 inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-[2px] text-[10px] font-black leading-none ring-1 ring-inset ${
+              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-[3px] text-[11px] font-black leading-none ring-1 ring-inset ${
                 show.is_free ? ACCESS_CHIP.free : ACCESS_CHIP.member
               }`}
             >
               {!show.is_free && <Crown className="h-2.5 w-2.5 shrink-0" />}
               {t.seasonShort}{seasonNumber}
             </span>
-          )}
-        </div>
-      ) : null}
+          </div>
+        ) : (
+          <div className={`mt-2 px-0.5 ${CAPTION_H}`}>
+            <h3
+              className={`truncate font-semibold leading-tight text-white/95 transition group-hover:text-[#4E86FF] ${
+                large ? 'text-[13.5px]' : 'text-[13px]'
+              }`}
+            >
+              {/* The season is on the meta line right below, so the title
+                  drops the " រដូវកាលទី១" it carries in the raw data —
+                  on a card this narrow that suffix was eating the width
+                  and truncating before the number even showed. */}
+              {displayTitle ?? (ownSeason !== null ? seasonStrippedTitle : show.title)}
+            </h3>
+            {/* One muted line for everything else. Rendered even when
+                empty so the card keeps its height — see CAPTION_H. */}
+            <p className="mt-1 flex items-center gap-1 truncate text-[10.5px] font-semibold leading-none text-white/40">
+              {meta.map((part, i) => (
+                <span key={part} className="shrink-0 whitespace-nowrap">
+                  {i > 0 && <span className="mr-1 text-white/25">·</span>}
+                  {part}
+                </span>
+              ))}
+              {show.status === 'completed' && show.type !== 'movie' && (
+                <span className="shrink-0 whitespace-nowrap text-[#FF6B60]">
+                  {meta.length > 0 && <span className="mr-1 text-white/25">·</span>}
+                  {t.completedTag}
+                </span>
+              )}
+              {continuesAtSeason !== undefined && (
+                <span className="flex shrink-0 items-center gap-0.5 whitespace-nowrap text-[#F5C563]">
+                  {(meta.length > 0 || show.status === 'completed') && (
+                    <span className="mr-0.5 text-white/25">·</span>
+                  )}
+                  <Crown className="h-2.5 w-2.5 shrink-0" />
+                  {t.seasonShort}{continuesAtSeason}
+                </span>
+              )}
+            </p>
+          </div>
+        ))}
     </button>
   );
 }
