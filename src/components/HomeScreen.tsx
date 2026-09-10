@@ -27,6 +27,7 @@ import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, e
 import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
+import SpotlightRail from '@/components/SpotlightRail';
 import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
@@ -371,7 +372,6 @@ export default function HomeScreen({
   const bingeRow = claim(bingeShows, 14);
   const ongoingRow = claim(ongoingShows);
   const genreRows = genres.map((g) => ({ genre: g, list: claim(showsByGenre(g.slug)) }));
-  const featuredMovieCard = movieRow[0] ?? null;
 
   if (loading) {
     return (
@@ -719,32 +719,35 @@ export default function HomeScreen({
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
                 without repeating it as a second ranked row underneath. */}
-            {/* "Movies" showcase replaces the old "Continue Watching" row
-                here — the prime top-of-page spot now goes to the one-off
-                paid films instead, since there are only ever a handful of
-                them and they're easy to miss buried in a compact rail
-                further down. Down to a single card — the most-watched
-                movie — instead of a whole rail or grid, so the panel
-                stays short enough that the row underneath is still on
-                screen without scrolling. The rest of the catalog is one
-                tap away behind "View All" whenever there's more than one. */}
-            {featuredMovieCard && (
+            {/* Movies get the wide format rather than a compact rail:
+                there are only ever a handful of them, they are the one
+                thing on the page that costs money outright, and a 16:9
+                frame at full width is what a viewer reads as "this is
+                being offered to me" instead of "here is more catalog".
+                One frame at a time, swiped, with dots for the rest. */}
+            {movieRow.length > 0 && (
               <section
-                className="rail-section mt-8 overflow-hidden rounded-2xl border px-3 pb-3 pt-4 sm:px-4"
-                style={{
-                  borderColor: tint(ROW_ACCENT.vip, 0.15),
-                  background: `linear-gradient(135deg, ${tint(ROW_ACCENT.vip, 0.12)} 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
-                }}
+                className="rail-section mt-8"
+                style={{ '--row-accent': ROW_ACCENT.vip } as React.CSSProperties}
               >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
+                <div className="mb-3.5 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <span
                       className="h-4 w-[3px] shrink-0 rounded-sm"
                       style={{ background: ROW_ACCENT.vip, boxShadow: `0 0 10px ${tint(ROW_ACCENT.vip, 0.5)}` }}
                       aria-hidden
                     />
-                    <Film className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.vip }} />
-                    <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.navMovies}</h2>
+                    <span
+                      className="rail-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                      style={{ color: ROW_ACCENT.vip }}
+                      aria-hidden
+                    >
+                      <Film className="h-5 w-5" />
+                    </span>
+                    <h2 className="truncate text-[17px] font-extrabold tracking-tight sm:text-2xl">
+                      {t.navMovies}
+                    </h2>
+                    <Badge tone="price">${MOVIE_PRICE}</Badge>
                   </div>
                   {movieRow.length > 1 && (
                     <button
@@ -757,7 +760,7 @@ export default function HomeScreen({
                     </button>
                   )}
                 </div>
-                <MovieCard show={featuredMovieCard} onClick={onSelectShow} />
+                <SpotlightRail shows={movieRow} onSelectShow={onSelectShow} />
               </section>
             )}
             {recommendedRow.length > 0 && (
