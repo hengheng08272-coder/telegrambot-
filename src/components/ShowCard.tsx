@@ -291,29 +291,31 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
         </div>
       ) : !rank ? (
         <div className="mt-2 px-0.5">
-          <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
-            {displayTitle ?? (seasonShownOnChip ? seasonStrippedTitle : show.title)}
-          </h3>
-          {/* Off the poster and down here with the title it actually
-              describes, instead of stamped over the artwork. The episode
-              count stays plain muted text — it's a detail, read on
-              request — but "finished" is a fact worth a colour, the same
-              red `mark` tone as NEW/Coming Soon/Ongoing use elsewhere on
-              a card, so it doesn't invent a sixth meaning. There is no
-              separate Completed row any more, so this is the only place
-              left that tells a viewer a show has already ended rather
-              than still releasing. */}
-          {show.type !== 'movie' && !!latestEpisode && (
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="truncate text-[10.5px] font-semibold text-white/40">
+          {/* EP rides the same line as the title now that a free-row
+              title has the season phrase stripped (see seasonShownOnChip
+              above) and reads short enough to share the line — title
+              still gets first claim on the width via truncate, EP stays
+              fixed so it never itself gets clipped. */}
+          <div className="flex items-baseline gap-1.5">
+            <h3 className={`min-w-0 flex-1 truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
+              {displayTitle ?? (seasonShownOnChip ? seasonStrippedTitle : show.title)}
+            </h3>
+            {show.type !== 'movie' && !!latestEpisode && (
+              <span className="shrink-0 text-[10.5px] font-semibold text-white/40">
                 {t.epShort} {latestEpisode}
               </span>
-              {show.status === 'completed' && (
-                <Badge tone="mark" className="shrink-0">
-                  {t.completedTag}
-                </Badge>
-              )}
-            </div>
+            )}
+          </div>
+          {/* "Finished" is a fact worth a colour, the same red `mark`
+              tone as NEW/Coming Soon/Ongoing use elsewhere on a card, so
+              it doesn't invent a sixth meaning. There is no separate
+              Completed row any more, so this is the only place left that
+              tells a viewer a show has already ended rather than still
+              releasing. */}
+          {show.type !== 'movie' && !!latestEpisode && show.status === 'completed' && (
+            <Badge tone="mark" className="mt-1 shrink-0">
+              {t.completedTag}
+            </Badge>
           )}
           {continuesAtSeason !== undefined && (
             // The crown is already this app's mark for "needs a
