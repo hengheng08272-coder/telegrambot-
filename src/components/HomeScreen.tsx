@@ -664,15 +664,15 @@ export default function HomeScreen({
           <div className="pt-3">
             {/* Free-to-watch leads the page. Everything below it needs a
                 membership, so the one row a signed-out viewer can act on
-                immediately goes first rather than three rows down — and it
-                gets the showcase panel treatment (in green, not the
-                Movies row's gold) so it reads as an offer, not a filter.
+                immediately goes first rather than three rows down. Plain
+                divider-row treatment like every other rail below it now
+                (no boxed panel background) — the FREE tag next to the
+                title already says what this row is without framing it.
                 Empty until shows are marked "unlock all" (shows.is_free)
                 in Admin -> Shows; the row hides itself until then. */}
             {freeShows.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
-                panel
                 role="free"
                 icon={<Gift className="h-5 w-5" />}
                 title={t.freeRowLabel ?? 'Free to Watch'}
@@ -1525,11 +1525,6 @@ interface RailRowProps {
    *  FREE) — gives every row its own at-a-glance identity instead of a
    *  uniform plain heading. */
   tag?: { label: string; tone?: BadgeTone };
-  /** Wraps the row in a slim gradient banner panel instead of the plain
-   *  divider-line header — gives the row its own identity as a showcase
-   *  strip rather than just another rail, without needing taller cards
-   *  to read as "featured". Used for the Free and Movies rows. */
-  panel?: boolean;
   /** Per-card season numbers, keyed by show id. Only the seasons row
    *  passes this — see ShowCard's `seasonNumber`. */
   seasons?: Record<string, { season: number; base: string }>;
@@ -1553,7 +1548,6 @@ function RailRow({
   onViewAll,
   viewAllLabel,
   tag,
-  panel,
   seasons,
   subRow,
   continuesAt,
@@ -1570,27 +1564,14 @@ function RailRow({
       // that are nowhere near the viewport. `--row-accent` is read by
       // every ShowCard inside, so a card lights up in its own row's
       // colour rather than one hard-coded blue.
-      className={`rail-section ${panel ? 'mt-8 overflow-hidden rounded-2xl border px-3 pb-1 pt-4 sm:px-4' : subRow ? 'mt-3' : 'mt-8'}`}
-      style={
-        {
-          '--row-accent': accent,
-          ...(panel
-            ? {
-                borderColor: tint(accent, 0.15),
-                // A wash of the row's own accent rather than a flat card:
-                // enough to separate the strip from the page, not enough to
-                // compete with the poster art sitting on it.
-                background: `linear-gradient(135deg, ${tint(accent, 0.12)} 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
-              }
-            : null),
-        } as React.CSSProperties
-      }
+      className={`rail-section ${subRow ? 'mt-3' : 'mt-8'}`}
+      style={{ '--row-accent': accent } as React.CSSProperties}
     >
       {/* The rule above the row carries the row's colour at its left edge
           and dissolves into nothing — so scrolling the page reads as a
           sequence of coloured openings rather than eleven identical grey
           hairlines. */}
-      {!panel && !subRow && (
+      {!subRow && (
         <div
           className="mb-4 h-px w-full"
           style={{
