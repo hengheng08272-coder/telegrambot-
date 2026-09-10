@@ -216,13 +216,20 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
               {t.comingSoonLabel}
             </Badge>
           )}
-          {/* NEW marker — added within the last 7 days. Skipped on Coming
-              Soon cards since that badge already owns the top-right
-              corner and says something more specific. */}
+          {/* NEW marker — added within the last 7 days. A dot rather than
+              a text pill: a rail can have several of these live at once,
+              and the word stopped adding anything past the first one or
+              two on a page — the colour alone reads as "new" once a
+              viewer has seen it somewhere else on the same screen.
+              Skipped on Coming Soon cards since that badge already owns
+              the top-right corner and says something more specific. */}
           {!show.coming_soon && isNew && (
-            <Badge tone="mark" onArt className="absolute right-1.5 top-1.5">
-              {t.newTag ?? 'NEW'}
-            </Badge>
+            <span
+              className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
+              style={{ boxShadow: '0 0 8px rgba(255,107,96,0.7)' }}
+              aria-label={t.newTag ?? 'NEW'}
+              title={t.newTag ?? 'NEW'}
+            />
           )}
           {/* FREE / VIP badge — same subscription status the detail screen
               and hero cover enforce, so browsing never over-promises what's

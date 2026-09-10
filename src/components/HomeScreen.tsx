@@ -717,9 +717,11 @@ export default function HomeScreen({
                   {oneOffMovies.length > 1 && (
                     <button
                       onClick={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
-                      className="shrink-0 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
+                      aria-label={t.viewAll}
+                      title={t.viewAll}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
                     >
-                      {t.viewAll}
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   )}
                 </div>
@@ -1606,12 +1608,18 @@ function RailRow({
           )}
           {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
         </div>
+        {/* Icon-only now — every row repeating the same "View All" text
+            down the length of a page this long added up to a lot of
+            words saying the same thing. The label still exists, just as
+            the accessible name instead of visible text. */}
         {onViewAll && (
           <button
             onClick={onViewAll}
-            className="shrink-0 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
+            aria-label={viewAllLabel}
+            title={viewAllLabel}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
           >
-            {viewAllLabel}
+            <ChevronRight className="h-4 w-4" />
           </button>
         )}
       </div>
