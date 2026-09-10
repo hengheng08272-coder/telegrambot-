@@ -333,6 +333,21 @@ h3 {
   }
 }
 
+/* The row heading's icon tile. Filled with a soft wash of the row's own
+   accent (read from --row-accent, published by RailRow) so a heading
+   carries the same "which of the five roles is this row" signal the
+   cards under it do — one solid anchor rather than a line stretched
+   across the whole width. */
+.rail-chip {
+  background: color-mix(in srgb, var(--row-accent, #2050d8) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--row-accent, #2050d8) 30%, transparent);
+}
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .rail-chip {
+    background: rgba(32, 80, 216, 0.14);
+  }
+}
+
 /* Hide scrollbars on horizontal rails while keeping scroll */
 .no-scrollbar {
   -ms-overflow-style: none;

@@ -1664,17 +1664,29 @@ function RailRow({
               aria-hidden
             />
           )}
-          {icon ? (
-            <span className="flex shrink-0 items-center" style={{ color: accent }} aria-hidden>
-              {icon}
+          {/* The icon sits in a tile washed with the row's own accent
+              (.rail-chip reads --row-accent from this section), so the
+              heading anchors the row's colour as one solid block rather
+              than a bare glyph floating next to the title. A sub-row is
+              already inside a titled section and keeps the bare icon. */}
+          {!subRow && (icon || emoji) && (
+            <span
+              className="rail-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base"
+              style={{ color: accent }}
+              aria-hidden
+            >
+              {icon ?? emoji}
             </span>
-          ) : (
-            emoji && <span className="text-base leading-none">{emoji}</span>
+          )}
+          {subRow && (icon || emoji) && (
+            <span className="flex shrink-0 items-center text-sm" style={{ color: accent }} aria-hidden>
+              {icon ?? emoji}
+            </span>
           )}
           {subRow ? (
             <h3 className="truncate text-[13px] font-bold text-white/90">{title}</h3>
           ) : (
-            <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{title}</h2>
+            <h2 className="truncate text-[17px] font-extrabold tracking-tight sm:text-2xl">{title}</h2>
           )}
           {/* The access badge the whole row shares, printed here instead
               of over every poster in it. A row-level `tag` (HOT, SOON)
