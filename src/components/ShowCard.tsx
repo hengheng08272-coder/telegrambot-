@@ -25,9 +25,6 @@ interface ShowCardProps {
    *  title text or the meta line, and repeating it would say the same
    *  thing twice. */
   seasonNumber?: number;
-  /** Franchise name with the season marker removed — used as the card's
-   *  visible title in the seasons row. */
-  displayTitle?: string;
   /** Season number of the paid season that follows this (free) one.
    *  Renders a gold "season N" chip — the reason the free row exists,
    *  said out loud on the card. */
@@ -53,14 +50,14 @@ const ACCESS_CHIP = {
 } as const;
 
 /**
- * Every caption is exactly this tall — one title line plus one meta line —
- * whether or not the show actually has an episode count, a season, or a
- * "finished" tag to put in it. Cards in a rail are laid out side by side,
- * so a caption that grows a line on one card and not the next is what
- * makes a row look broken; reserving the space unconditionally is what
- * makes that impossible rather than merely unlikely.
+ * Every caption is exactly this tall — one meta line — whether or not the
+ * show actually has an episode count, a season, or a "finished" tag to
+ * put in it. Cards in a rail are laid out side by side, so a caption that
+ * grows a line on one card and not the next is what makes a row look
+ * broken; reserving the space unconditionally is what makes that
+ * impossible rather than merely unlikely.
  */
-const CAPTION_H = 'h-[34px]';
+const CAPTION_H = 'h-[18px]';
 
 export default function ShowCard({
   show,
@@ -69,7 +66,6 @@ export default function ShowCard({
   rank,
   large,
   seasonNumber,
-  displayTitle,
   titleFromSeason,
   continuesAtSeason,
   hideAccessBadge,
@@ -81,7 +77,7 @@ export default function ShowCard({
 
   // The season this card is, read off its own title — the catalog keeps it
   // in the title text rather than a column (see lib/seasons).
-  const { base: seasonStrippedTitle, season: ownSeason } = parseSeason(show.title);
+  const { season: ownSeason } = parseSeason(show.title);
 
   // Added within the last week — a plain fact read off created_at, not an
   // admin toggle, so it clears on its own instead of needing to be turned
@@ -226,19 +222,14 @@ export default function ShowCard({
               style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 35%, rgba(10,16,30,0.95) 100%)' }}
             />
           )}
-          {/* Title — overlaid on the poster for ranked (Top 10) cards so
-              the row reads as pure artwork instead of poster + caption.
-              Every other row puts it in the caption below. */}
-          {rank && (
+          {/* Ranked cards print only the episode count over the art —
+              the title is already lettered into the poster itself, the
+              same reason the caption below carries none either. */}
+          {rank && show.type !== 'movie' && !!latestEpisode && (
             <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
-              <h3 className="truncate text-[13px] font-bold leading-tight text-[#FFE7B0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
-                {show.title}
-              </h3>
-              {show.type !== 'movie' && !!latestEpisode && (
-                <p className="mt-0.5 truncate text-[10.5px] font-semibold text-white/55">
-                  {t.epShort} {latestEpisode}
-                </p>
-              )}
+              <p className="truncate text-[11px] font-bold text-white/85 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
+                {t.epShort} {latestEpisode}
+              </p>
             </div>
           )}
 
@@ -287,19 +278,14 @@ export default function ShowCard({
           </div>
         ) : (
           <div className={`mt-2 px-0.5 ${CAPTION_H}`}>
-            <h3
-              className={`truncate font-semibold leading-tight text-white/95 transition group-hover:text-[#4E86FF] ${
-                large ? 'text-[13.5px]' : 'text-[13px]'
-              }`}
-            >
-              {/* The season is on the meta line right below, so the title
-                  drops the " រដូវកាលទី១" it carries in the raw data —
-                  on a card this narrow that suffix was eating the width
-                  and truncating before the number even showed. */}
-              {displayTitle ?? (ownSeason !== null ? seasonStrippedTitle : show.title)}
-            </h3>
-            {/* One muted line for everything else. Rendered even when
-                empty so the card keeps its height — see CAPTION_H. */}
+            {/* No title here on purpose: every poster in this catalog is
+                supplied with its own title already lettered into the
+                artwork, so printing it again underneath said the same
+                thing twice and — on a card this narrow — truncated it
+                mid-word doing so. The caption carries only what the
+                artwork cannot: season, episode count, whether it has
+                finished. Rendered even when empty so the card keeps its
+                height — see CAPTION_H. */}
             <p className="mt-1 flex items-center gap-1 truncate text-[10.5px] font-semibold leading-none text-white/40">
               {meta.map((part, i) => (
                 <span key={part} className="shrink-0 whitespace-nowrap">

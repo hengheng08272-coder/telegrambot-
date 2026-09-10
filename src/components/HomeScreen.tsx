@@ -1717,7 +1717,6 @@ function RailRow({
             onClick={onSelectShow}
             latestEpisode={episodeNumbers?.[s.id]}
             seasonNumber={seasons?.[s.id]?.season}
-            displayTitle={seasons?.[s.id]?.base}
             titleFromSeason={subRow}
             continuesAtSeason={continuesAt?.[s.id]}
             hideAccessBadge={rowAccess !== null}
