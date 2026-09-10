@@ -1187,7 +1187,12 @@ function CoverflowHero({
        *  the one label the artwork cannot carry: whether you can watch
        *  it. That hangs over the top edge like the tab on a folder.
        */}
-      <div className="relative z-10 mx-auto flex min-h-[286px] max-w-[1400px] items-center justify-center sm:min-h-[352px]">
+      <div
+        className="relative z-10 mx-auto flex min-h-[286px] max-w-[1400px] items-center justify-center
+                   [--deck-c:160px] [--deck-n:132px] [--deck-f:112px]
+                   sm:min-h-[352px] sm:[--deck-c:216px] sm:[--deck-n:178px] sm:[--deck-f:151px]
+                   lg:min-h-[420px] lg:[--deck-c:252px] lg:[--deck-n:208px] lg:[--deck-f:176px]"
+      >
         {/* Offsets are a share of each card's OWN width — that is what a
             percentage translate means — so the fan keeps its spacing at
             every screen size without measuring anything. They are NOT
@@ -1208,7 +1213,7 @@ function CoverflowHero({
               className="absolute top-1/2 aspect-[2/3] overflow-hidden rounded-xl transition-all duration-500 ease-out"
               style={{
                 width: near ? '37%' : '31%',
-                maxWidth: near ? 132 : 112,
+                maxWidth: near ? 'var(--deck-n)' : 'var(--deck-f)',
                 zIndex: near ? 5 : 3,
                 opacity: near ? 0.6 : 0.32,
                 transform: `translateY(-50%) translateX(${Math.sign(off) * (near ? 58 : 114)}%) perspective(900px) rotateY(${off > 0 ? -26 : 26}deg)`,
@@ -1238,7 +1243,7 @@ function CoverflowHero({
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
           className="hero-card-enter relative z-10 shrink-0"
-          style={{ width: '45%', maxWidth: 160 }}
+          style={{ width: '45%', maxWidth: 'var(--deck-c)' }}
         >
           <span className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
             {hero.coming_soon ? (
