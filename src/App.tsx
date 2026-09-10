@@ -434,16 +434,23 @@ function App() {
 
   if (screen.name === 'player') {
     return (
-      <VideoPlayerScreen
-        episode={screen.episode}
-        show={screen.show}
-        onBack={() => setScreen({ name: 'detail', show: screen.show })}
-        onSwitchEpisode={(ep) => {
-          hapticTap();
-          addToContinueWatching(screen.show, ep, ep.episode_number - 1);
-          setScreen({ name: 'player', episode: ep, show: screen.show });
-        }}
-      />
+      <>
+        <VideoPlayerScreen
+          episode={screen.episode}
+          show={screen.show}
+          onBack={() => setScreen({ name: 'detail', show: screen.show })}
+          // Routed through the exact same free/purchased/subscribed check
+          // handlePlayEpisode already runs for the very first episode a
+          // viewer opens from the show detail screen. This used to jump
+          // straight to whatever episode "Next Episode" (or end-of-episode
+          // auto-advance) passed in with no check at all — so a free
+          // viewer could start on a free-preview episode and then click
+          // straight through every paid episode after it without ever
+          // subscribing.
+          onSwitchEpisode={(ep) => handlePlayEpisode(ep, screen.show)}
+        />
+        {subscriptionSheet}
+      </>
     );
   }
 

@@ -38,6 +38,13 @@ interface ShowCardProps {
    *  show, so repeating it under every card says the same thing three
    *  times and pushes the one distinguishing bit — the season — down. */
   titleFromSeason?: boolean;
+  /** Skip the FREE/VIP/one-off-movie corner badge — used by rows that are
+   *  already homogeneous by construction (the Free to Watch showcase),
+   *  where the row's own heading already says every card in it is free
+   *  and a crown or FREE tag repeated on each poster is saying the same
+   *  thing again. Rows with a genuine mix of free and paid titles keep
+   *  the badge; this only ever gets set for the rows that don't need it. */
+  hideAccessBadge?: boolean;
 }
 
 /**
@@ -52,7 +59,7 @@ const ACCESS_CHIP = {
   member: 'bg-[#F5C563]/12 text-[#F5C563] ring-[#F5C563]/30',
 } as const;
 
-export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle, titleFromSeason, continuesAtSeason }: ShowCardProps) {
+export default function ShowCard({ show, onClick, latestEpisode, rank, large, seasonNumber, displayTitle, titleFromSeason, continuesAtSeason, hideAccessBadge }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
   const { lang } = useLang();
@@ -104,7 +111,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
     <button
       onClick={() => onClick(show)}
       className={`group relative shrink-0 text-left ${
-        large ? 'w-[128px] sm:w-[164px]' : rank ? 'w-[122px] sm:w-[160px]' : 'w-[104px] sm:w-[124px]'
+        large ? 'w-[128px] sm:w-[164px]' : rank ? 'w-[122px] sm:w-[160px]' : 'w-[128px] sm:w-[158px]'
       } ${rank ? 'pl-8 sm:pl-10' : ''}`}
     >
       {rank && (
@@ -186,9 +193,14 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
           {/* View-count badge — real play counts (see increment_show_view_count),
               not an admin-typed rating, so this is what actually drives
               Top 10 and shows the owner which titles viewers watch most. */}
+          {/* A finished series says so right on its own episode count
+              instead of needing a whole separate "Completed" row — one
+              rail no longer has to exist just to repeat a fact this badge
+              can carry in three extra characters. */}
           {show.type !== 'movie' && !!latestEpisode && (
             <Badge tone="info" onArt className={`absolute left-1.5 z-[2] ${rank ? 'bottom-9' : 'bottom-1.5'}`}>
               EP {latestEpisode}
+              {show.status === 'completed' ? ` · ${t.completedShort}` : ''}
             </Badge>
           )}
           {/* A standalone film's price, where a series shows its latest
@@ -224,12 +236,12 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
               bought once for a flat price, not gated behind a subscription,
               so a VIP crown on it would say the wrong thing even though
               is_free is false. */}
-          {!show.coming_soon && show.type === 'movie' && !show.is_free && (
+          {!hideAccessBadge && !show.coming_soon && show.type === 'movie' && !show.is_free && (
             <Badge tone="info" onArt className="absolute left-1.5 top-1.5 whitespace-nowrap">
               {t.movieOneOff}
             </Badge>
           )}
-          {!show.coming_soon && show.type !== 'movie' && (
+          {!hideAccessBadge && !show.coming_soon && show.type !== 'movie' && (
             <Badge
               tone={show.is_free ? 'free' : 'vip'}
               onArt
@@ -239,18 +251,23 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
               {show.is_free ? t.freeBadge : t.vipBadge}
             </Badge>
           )}
-          {/* Which season is the free one, stacked under the FREE badge.
-              "Free" on a series that runs to several seasons is ambiguous
-              on its own — this makes the offer exact. Skipped in a franchise
-              row, where the caption pill below already carries the season. */}
+          {/* Which season is the free one. "Free" on a series that runs to
+              several seasons is ambiguous on its own — this makes the offer
+              exact. Skipped in a franchise row, where the caption pill
+              below already carries the season. Stacks under the FREE badge
+              when that badge is showing; takes its spot at the top when
+              the row already said "free" for the whole shelf and skipped
+              it (see `hideAccessBadge`). */}
           {!show.coming_soon && show.is_free && ownSeason !== null && seasonNumber === undefined && (
             <span
-              className={`absolute left-1.5 top-[26px] inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-[3px] text-[9.5px] font-bold leading-none shadow-[0_2px_8px_rgba(2,4,10,0.5)] ring-1 ring-inset backdrop-blur-sm ${ACCESS_CHIP.free}`}
+              className={`absolute left-1.5 inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-[3px] text-[9.5px] font-bold leading-none shadow-[0_2px_8px_rgba(2,4,10,0.5)] ring-1 ring-inset backdrop-blur-sm ${
+                hideAccessBadge ? 'top-1.5' : 'top-[26px]'
+              } ${ACCESS_CHIP.free}`}
             >
               {t.seasonShort}{ownSeason}
             </span>
           )}
-          {!show.coming_soon && show.type === 'movie' && show.is_free && (
+          {!hideAccessBadge && !show.coming_soon && show.type === 'movie' && show.is_free && (
             <Badge tone="free" onArt className="absolute left-1.5 top-1.5">
               {t.freeBadge}
             </Badge>
@@ -283,7 +300,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
         </div>
       ) : !rank ? (
         <div className="mt-2 px-0.5">
-          <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
+          <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[15px]' : 'text-[14px]'}`}>
             {displayTitle ?? show.title}
           </h3>
           {continuesAtSeason !== undefined && (
