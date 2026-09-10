@@ -266,7 +266,6 @@ export default function HomeScreen({
     .slice(0, 10);
   const comingSoon = shows.filter((s) => s.coming_soon);
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
-  const completedShows = shows.filter((s) => s.type === 'series' && s.status === 'completed');
   const oneOffMovies = shows.filter((s) => s.type === 'movie' && !s.coming_soon);
 
   // One group per series that actually has several seasons in the
@@ -433,8 +432,19 @@ export default function HomeScreen({
           at rest, so the coverflow gets the full top of the screen; the
           capsule condenses in — border, blur, shadow — the moment the
           person scrolls. Every control inside kept its exact handler from
-          v5; only the container and the active-state language changed. */}
-      <header className="fixed inset-x-0 top-0 z-50 px-2.5 pt-2.5 sm:px-6 sm:pt-4">
+          v5; only the container and the active-state language changed.
+
+          The outer `<header>` itself now carries the same solid backdrop
+          once scrolled, not just the inner pill: the padding that insets
+          the pill from the screen edges is otherwise a fully transparent
+          strip, and whatever the page had just scrolled past (hero art,
+          the top of the first rail) showed straight through it as a
+          cropped sliver above the pill. */}
+      <header
+        className={`fixed inset-x-0 top-0 z-50 px-2.5 pt-2.5 transition-colors duration-300 sm:px-6 sm:pt-4 ${
+          heroVisible && !scrolled ? 'bg-transparent' : 'bg-black/60 backdrop-blur-2xl'
+        }`}
+      >
         <div
           className={`no-scrollbar mx-auto flex max-w-[1400px] flex-nowrap items-center gap-3 overflow-x-auto rounded-[20px] px-2 py-2 transition-all duration-300 sm:gap-5 sm:rounded-[24px] sm:px-5 sm:py-2.5 ${
             heroVisible && !scrolled
@@ -688,6 +698,7 @@ export default function HomeScreen({
                 onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
                 viewAllLabel={t.viewAll}
                 tag={{ label: t.unlockAllTag, tone: 'free' }}
+                hideAccessBadge
               />
             )}
             {/* The ranked/numeral "Top 10" rail was removed per request —
@@ -722,10 +733,7 @@ export default function HomeScreen({
                     >
                       <Film className="h-5 w-5" />
                     </span>
-                    <h2
-                      className="truncate text-[16px] font-black tracking-tight sm:text-xl"
-                      style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.01em' }}
-                    >
+                    <h2 className="truncate text-[17px] font-extrabold tracking-tight sm:text-2xl">
                       {t.navMovies}
                     </h2>
                   </div>
@@ -750,18 +758,6 @@ export default function HomeScreen({
                 title={t.recommendedForYou ?? 'Recommended for You'}
                 shows={recommended}
                 onSelectShow={onSelectShow}
-              />
-            )}
-            {completedShows.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                role="free"
-                icon={<Check className="h-5 w-5" />}
-                title={t.completedRowLabel ?? 'Completed Series'}
-                shows={completedShows}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.completedRowLabel ?? 'Completed Series', shows: completedShows })}
-                viewAllLabel={t.viewAll}
               />
             )}
             <RailRow
@@ -853,10 +849,7 @@ export default function HomeScreen({
                   >
                     <Layers className="h-5 w-5" />
                   </span>
-                  <h2
-                    className="truncate text-[16px] font-black tracking-tight sm:text-xl"
-                    style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.01em' }}
-                  >
+                  <h2 className="truncate text-[17px] font-extrabold tracking-tight sm:text-2xl">
                     {t.seasonsRowLabel}
                   </h2>
                 </div>
@@ -1577,6 +1570,11 @@ interface RailRowProps {
    *  group under one "series with seasons" heading and would otherwise
    *  each shout as loudly as a top-level rail. */
   subRow?: boolean;
+  /** Passed straight through to every card's `hideAccessBadge` — set this
+   *  only for a row that's already homogeneous (every card the same free/
+   *  VIP status), so the row's own heading carries that fact instead of
+   *  every poster repeating it. */
+  hideAccessBadge?: boolean;
 }
 
 function RailRow({
@@ -1594,6 +1592,7 @@ function RailRow({
   seasons,
   subRow,
   continuesAt,
+  hideAccessBadge,
 }: RailRowProps) {
   const scrollerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) node.scrollLeft = 0;
@@ -1650,10 +1649,7 @@ function RailRow({
           {subRow ? (
             <h3 className="truncate text-[13px] font-bold text-white/90">{title}</h3>
           ) : (
-            <h2
-              className="truncate text-[16px] font-black tracking-tight sm:text-xl"
-              style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.01em' }}
-            >
+            <h2 className="truncate text-[17px] font-extrabold tracking-tight sm:text-2xl">
               {title}
             </h2>
           )}
@@ -1680,6 +1676,7 @@ function RailRow({
             displayTitle={seasons?.[s.id]?.base}
             titleFromSeason={subRow}
             continuesAtSeason={continuesAt?.[s.id]}
+            hideAccessBadge={hideAccessBadge}
           />
         ))}
       </div>

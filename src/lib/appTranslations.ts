@@ -161,6 +161,9 @@ export const appText = {
     nowAiringLabel: 'Now Airing',
     ongoingTag: 'Ongoing',
     freshTag: 'FRESH',
+    // Short suffix on a completed series' own EP badge ("EP 24 · Ended"),
+    // replacing a whole separate "Completed Series" row.
+    completedShort: 'Ended',
     inviteFriend: 'Invite a friend',
     linkCopied: 'Sent!',
     share: 'Share',
@@ -631,6 +634,7 @@ export const appText = {
     nowAiringLabel: 'កំពុងចាក់ផ្សាយ',
     ongoingTag: 'កំពុងបន្ត',
     freshTag: 'ថ្មីៗ',
+    completedShort: 'ចប់',
     inviteFriend: 'អញ្ជើញមិត្តភ័ក្តិ',
     linkCopied: 'ផ្ញើរួច!',
     share: 'ចែករំលែក',
