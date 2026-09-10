@@ -464,6 +464,72 @@ h3 {
   }
 }
 
+/* ── Home V2 — spotlight coverflow + floating chrome ───────────────────
+   Everything below backs the redesigned home shell: the 3D poster stack
+   in the hero, the floating glass header/dock, and the editorial row
+   headers. Kept separate from the legacy hero rules above (still used
+   elsewhere) rather than replacing them in place. */
+
+/* Coverflow slides — transform/opacity/filter are computed per-frame in
+   JS (each slide's offset from center), this just makes the *change*
+   between frames glide instead of snapping. */
+.hero-slide {
+  transition: transform 0.5s cubic-bezier(0.22, 0.9, 0.3, 1), opacity 0.5s ease, filter 0.5s ease;
+  will-change: transform;
+}
+
+/* Soft ambient colour blobs behind the hero stage. Absolutely positioned
+   *inside* the hero section (not `fixed`), so they scroll away with it
+   instead of forcing a full-viewport repaint on every scroll frame. */
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  pointer-events: none;
+  animation: aurora-drift 16s ease-in-out infinite alternate;
+}
+@keyframes aurora-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(4%, -6%) scale(1.12);
+    opacity: 0.85;
+  }
+}
+
+/* Editorial row-header icon chip — a soft rounded tile in the row's own
+   accent colour (set via the same --row-accent RailRow already publishes)
+   instead of a bare icon floating on a hairline. */
+.rail-chip {
+  background: color-mix(in srgb, var(--row-accent, #2050d8) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--row-accent, #2050d8) 30%, transparent);
+}
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .rail-chip {
+    background: rgba(32, 80, 216, 0.14);
+  }
+}
+
+/* Floating dock nav — the bottom tab bar as an inset pill instead of a
+   flush full-width bar. The active tab's filled capsule slides via a
+   plain opacity/scale transition on its own element (no shared layout
+   animation needed across five separate buttons). */
+.dock-active {
+  animation: dock-active-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes dock-active-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* Rising ember sparks behind the hero coverflow — small warm dots that
    drift upward and fade, echoing the brand keyart's ember/lightning
    motif. --ember-drift is set per-particle for a slight horizontal wander. */
@@ -754,14 +820,19 @@ h3 {
   .pulse-soft,
   .promo-card-glow::before,
   .skeleton-shimmer::after,
-  .title-shine {
+  .title-shine,
+  .aurora-blob {
     animation: none !important;
   }
   .fade-up,
   .sheet-in,
   .hero-card-enter,
-  .win-pop-in {
+  .win-pop-in,
+  .dock-active {
     animation-duration: 0.01ms !important;
+  }
+  .hero-slide {
+    transition-duration: 0.01ms !important;
   }
 }
 

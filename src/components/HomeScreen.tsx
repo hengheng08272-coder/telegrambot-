@@ -426,33 +426,22 @@ export default function HomeScreen({
           scrolling smooth on phones — fixed backdrops force a repaint of
           the whole viewport on every frame of a scroll. */}
 
-      {/* Header v5 — three loose zones instead of five separate bordered
-          pills. Identity (avatar + live count) and utility (search / bell
-          / VIP) now read as clusters separated by whitespace and one
-          hairline divider, not individually boxed — the "glass pill"
-          treatment is reserved for the one place status actually needs to
-          be seen: the avatar's own ring/glow. VIP status no longer says
-          itself twice, either: a subscriber already wears the crown on
-          their avatar, so the header button quiets to a plain icon once
-          subscribed instead of repeating "Premium" a second time — the
-          gold CTA stays loud only for the person it's still trying to
-          convert. */}
-      <header
-        className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-          heroVisible && !scrolled ? 'bg-transparent' : 'bar-blur'
-        }`}
-      >
-        {/* Signature edge — a thin red broadcast line instead of the
-            generic neutral hairline most app headers default to. Only
-            appears once the bar goes solid, so it never competes with the
-            hero art underneath. */}
+      {/* Header V2 — a floating glass capsule inset from the edges instead
+          of a flush edge-to-edge bar, so the chrome reads as an object
+          sitting over the content rather than a strip the content runs
+          under. Transparent (no pill, no border) while the hero is showing
+          at rest, so the coverflow gets the full top of the screen; the
+          capsule condenses in — border, blur, shadow — the moment the
+          person scrolls. Every control inside kept its exact handler from
+          v5; only the container and the active-state language changed. */}
+      <header className="fixed inset-x-0 top-0 z-50 px-2.5 pt-2.5 sm:px-6 sm:pt-4">
         <div
-          className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#2050D8]/50 to-transparent transition-opacity duration-300 ${
-            heroVisible && !scrolled ? 'opacity-0' : 'opacity-100'
+          className={`no-scrollbar mx-auto flex max-w-[1400px] flex-nowrap items-center gap-3 overflow-x-auto rounded-[20px] px-2 py-2 transition-all duration-300 sm:gap-5 sm:rounded-[24px] sm:px-5 sm:py-2.5 ${
+            heroVisible && !scrolled
+              ? 'border border-transparent bg-transparent'
+              : 'border border-white/10 bg-black/60 shadow-[0_10px_36px_rgba(0,0,0,0.45)] backdrop-blur-2xl'
           }`}
-          aria-hidden
-        />
-        <div className="no-scrollbar mx-auto flex max-w-[1400px] flex-nowrap items-center gap-3 overflow-x-auto px-2.5 py-2.5 sm:gap-5 sm:px-8 sm:py-3">
+        >
           {/* Identity — avatar + username, borderless at rest. The
               Telegram app-icon button that used to sit here was removed
               earlier: Telegram already prints "NINTANIME mini app" above,
@@ -461,7 +450,7 @@ export default function HomeScreen({
           <button
             onClick={onOpenProfile}
             aria-label={t.navAccount}
-            className="flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-1 transition hover:bg-white/[0.04] sm:gap-2"
+            className="flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-1 transition hover:bg-white/[0.06] sm:gap-2"
           >
             <div className={`relative h-7 w-7 shrink-0 rounded-full sm:h-8 sm:w-8 ${subscribed ? 'shadow-glow-gold' : ''}`}>
               <div
@@ -509,10 +498,11 @@ export default function HomeScreen({
               every control that follows it. */}
           <span className="hidden h-5 w-px shrink-0 bg-white/10 sm:block" aria-hidden />
 
-          {/* Nav links — scrolls horizontally instead of wrapping/breaking
-              on the narrowest phones, but fits on one line on anything
-              typical. */}
-          <nav className="no-scrollbar hidden min-w-0 flex-1 items-center gap-5 overflow-x-auto sm:flex">
+          {/* Nav links — a segmented pill group now instead of an
+              underline: the active link sits on its own filled capsule,
+              the same "filled = here" language the redesigned bottom dock
+              uses, so desktop and mobile navigation read as one idea. */}
+          <nav className="no-scrollbar hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto sm:flex">
             <NavLink
               label={t.navHome}
               active={!viewAll && !query.trim()}
@@ -546,7 +536,7 @@ export default function HomeScreen({
           <button
             onClick={() => setSearchOpen(true)}
             aria-label={t.navSearch}
-            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/5 hover:text-white sm:hidden"
+            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/8 hover:text-white sm:hidden"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -556,7 +546,7 @@ export default function HomeScreen({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.searchPlaceholder}
-              className="w-44 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#2050D8]/50 focus:bg-white/[0.07]"
+              className="w-44 rounded-full border border-white/10 bg-white/[0.05] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#2050D8]/50 focus:bg-white/[0.08]"
             />
           </div>
 
@@ -570,7 +560,7 @@ export default function HomeScreen({
             className={
               subscribed
                 ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#F5C563] transition hover:bg-[#F5C563]/10'
-                : 'flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-black text-white transition active:scale-95 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs'
+                : 'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-black text-white transition active:scale-95 sm:gap-1.5 sm:px-3.5 sm:py-1.5 sm:text-xs'
             }
             // Gold still marks VIP status (the crown, once they have it);
             // red marks the action that takes money, here and inside the
@@ -592,12 +582,12 @@ export default function HomeScreen({
           be a `fixed` overlay guessing the header's pixel height, which is
           what made it visually collide with the header controls; being
           in-flow here means it can never land on top of them. */}
-      <div className="relative z-10 pt-[52px] sm:pt-[60px]">
+      <div className="relative z-10 pt-[60px] sm:pt-[76px]">
         <SupporterTicker
           staticMessage={tickerMessage}
         />
 
-        {/* Coverflow hero carousel */}
+        {/* Spotlight coverflow hero */}
         {heroVisible && (
           <CoverflowHero
             shows={bannerShows}
@@ -715,27 +705,37 @@ export default function HomeScreen({
             {featuredMovie && (
               <section
                 className="rail-section mt-8 overflow-hidden rounded-2xl border px-3 pb-3 pt-4 sm:px-4"
-                style={{
-                  borderColor: tint(ROW_ACCENT.vip, 0.15),
-                  background: `linear-gradient(135deg, ${tint(ROW_ACCENT.vip, 0.12)} 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
-                }}
+                style={
+                  {
+                    '--row-accent': ROW_ACCENT.vip,
+                    borderColor: tint(ROW_ACCENT.vip, 0.15),
+                    background: `linear-gradient(135deg, ${tint(ROW_ACCENT.vip, 0.12)} 0%, rgba(21,25,38,0.4) 45%, transparent 100%)`,
+                  } as React.CSSProperties
+                }
               >
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
+                <div className="mb-3.5 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <span
-                      className="h-4 w-[3px] shrink-0 rounded-sm"
-                      style={{ background: ROW_ACCENT.vip, boxShadow: `0 0 10px ${tint(ROW_ACCENT.vip, 0.5)}` }}
+                      className="rail-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                      style={{ color: ROW_ACCENT.vip }}
                       aria-hidden
-                    />
-                    <Film className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.vip }} />
-                    <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.navMovies}</h2>
+                    >
+                      <Film className="h-5 w-5" />
+                    </span>
+                    <h2
+                      className="truncate text-[16px] font-black tracking-tight sm:text-xl"
+                      style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.01em' }}
+                    >
+                      {t.navMovies}
+                    </h2>
                   </div>
                   {oneOffMovies.length > 1 && (
                     <button
                       onClick={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
-                      className="shrink-0 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
+                      className="group/viewall flex shrink-0 items-center gap-0.5 rounded-full py-1 pl-2.5 pr-1.5 text-[11px] font-semibold text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
                     >
                       {t.viewAll}
+                      <ChevronRight className="h-3.5 w-3.5 transition group-hover/viewall:translate-x-0.5" />
                     </button>
                   )}
                 </div>
@@ -845,21 +845,20 @@ export default function HomeScreen({
                 one show and puts them in watch order. */}
             {franchises.length > 0 && (
               <section className="rail-section mt-8" style={{ '--row-accent': ROW_ACCENT.guide } as React.CSSProperties}>
-                <div
-                  className="mb-4 h-px w-full"
-                  style={{
-                    background: `linear-gradient(90deg, ${tint(ROW_ACCENT.guide, 0.55)} 0%, ${tint(ROW_ACCENT.guide, 0.14)} 22%, rgba(255,255,255,0.05) 55%, transparent 100%)`,
-                  }}
-                  aria-hidden
-                />
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-3.5 flex items-center gap-2.5">
                   <span
-                    className="h-4 w-[3px] shrink-0 rounded-sm"
-                    style={{ background: ROW_ACCENT.guide, boxShadow: `0 0 10px ${tint(ROW_ACCENT.guide, 0.5)}` }}
+                    className="rail-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                    style={{ color: ROW_ACCENT.guide }}
                     aria-hidden
-                  />
-                  <Layers className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.guide }} />
-                  <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.seasonsRowLabel}</h2>
+                  >
+                    <Layers className="h-5 w-5" />
+                  </span>
+                  <h2
+                    className="truncate text-[16px] font-black tracking-tight sm:text-xl"
+                    style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.01em' }}
+                  >
+                    {t.seasonsRowLabel}
+                  </h2>
                 </div>
                 {franchises.map((f) => (
                   <RailRow
@@ -1113,7 +1112,7 @@ function CoverflowHero({
       const el = ambienceRef.current;
       if (!el) return;
       const y = window.scrollY;
-      const heroHeightPx = Math.min(window.innerHeight * 0.32, 280);
+      const heroHeightPx = Math.min(window.innerHeight * 0.38, 360);
       el.style.transform = `translate3d(0, ${Math.min(y * 0.18, 80)}px, 0)`;
       el.style.opacity = String(Math.max(1 - y / heroHeightPx, 0));
     };
@@ -1127,9 +1126,19 @@ function CoverflowHero({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // The coverflow's viewing window — up to two posters tapered away on
+  // each side of the centered one. Clamped to `shows.length` so a
+  // catalogue with only one or two titles in rotation never has to render
+  // the same card twice at two different offsets around the wrap.
+  const range = [-2, -1, 0, 1, 2].filter((o) => Math.abs(o) < shows.length);
+  const stage = range.map((offset) => {
+    const i = (index + offset + shows.length) % shows.length;
+    return { offset, i, show: shows[i] };
+  });
+
   return (
     <section
-      className="relative w-full overflow-hidden px-4 pb-4 pt-1 sm:px-8 sm:pb-5 sm:pt-2"
+      className="relative w-full overflow-hidden pb-5 pt-1 sm:pb-8 sm:pt-2"
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
@@ -1158,276 +1167,253 @@ function CoverflowHero({
             the ambience changes with every slide instead of every show
             looking identical. */}
         <div className="absolute inset-0 bg-black/45" />
+        {/* Aurora — two soft blobs in the app's own two "you can act here"
+            colours (brand blue, antique gold) drifting behind the stack.
+            Positioned inside the hero, not `fixed`, so it scrolls away
+            with it instead of forcing a full-viewport repaint per frame. */}
+        <span
+          className="aurora-blob left-[4%] top-0 h-40 w-40 sm:h-56 sm:w-56"
+          style={{ background: 'radial-gradient(circle, rgba(78,134,255,0.35), transparent 70%)' }}
+          aria-hidden
+        />
+        <span
+          className="aurora-blob right-[6%] top-[6%] h-32 w-32 sm:h-48 sm:w-48"
+          style={{ background: 'radial-gradient(circle, rgba(245,197,99,0.26), transparent 70%)', animationDelay: '2.4s' }}
+          aria-hidden
+        />
         {/* Fade the top into the header and the bottom into the page */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.55) 16%, rgba(0,0,0,0.05) 36%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.8) 90%, rgba(0,0,0,1) 100%)',
+              'linear-gradient(180deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.5) 18%, rgba(0,0,0,0.06) 38%, rgba(0,0,0,0.18) 70%, rgba(0,0,0,0.85) 92%, rgba(0,0,0,1) 100%)',
           }}
         />
       </div>
 
-      {/* Horizontal cover — poster + Top 10 numeral on the left, title/
-          meta/actions on the right. Sized down to read as a compact card
-          (closer to Netflix's own Top 10 numeral treatment) rather than a
-          large cinematic banner — smaller poster, smaller numeral,
-          tighter text. */}
-      <div className="relative z-10 mx-auto flex max-w-[1400px] items-center gap-3 pt-0 sm:gap-6 sm:pt-0">
-        <button
-          onClick={() => onSelectShow(hero)}
-          aria-label={hero.title}
-          className="hero-card-enter relative z-10 shrink-0"
-          style={{ width: '32%', maxWidth: 152 }}
-        >
-          {/* Lantern-glow poster card — a warm double-ring frame (jade
-              inner line, antique-gold outer glow) stands in for the old
-              rank numeral. It reads as "the one worth lighting up" without
-              pinning the hero's identity to a view-count rank. */}
-          <div
-            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-xl transition-transform duration-500"
-            style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.8), 0 6px 18px rgba(0,0,0,0.55)' }}
-          >
-            <div className="pointer-events-none absolute inset-0 z-10 rounded-xl ring-1 ring-inset ring-white/12" />
-            <img
-              src={hero.poster_url ?? hero.banner_url ?? ''}
-              alt={hero.title}
-              // The largest thing above the fold, so it is the one image
-              // on this screen worth asking the browser to hurry.
-              fetchPriority="high"
-              decoding="async"
-              width={600}
-              height={900}
-              className="h-full w-full object-cover"
-              draggable={false}
-            />
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 60%, rgba(10,16,30,0.6) 100%)' }}
-            />
-            {/* Coming Soon — announced, but there is nothing to play yet.
-                It takes the whole top of the cover: a title in the Top 10
-                that cannot be watched is the one thing a viewer has to
-                know before tapping. Spelled out here rather than the
-                icon the rails use, since the hero has no row header above
-                it saying what it is. */}
-            {hero.coming_soon ? (
-              <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />} className="absolute left-1.5 top-1.5">
-                {t.comingSoonLabel}
-              </Badge>
-            ) : (
-              <>
-                {/* The rank moved up beside the "trending" label — the
-                    cover is only about 100px wide on a small phone, and
-                    rank plus access badge were sitting on top of each
-                    other there. Access wins the cover: it is the one
-                    that says whether this is watchable. */}
-                {/* VIP / Free badge — same subscription status the detail
-                    screen enforces, so the cover never over-promises.
-                    Skipped on a Coming Soon cover, where neither label
-                    means anything until episodes exist. */}
-                {/* Three answers, not two. This used to be `free ? FREE :
-                    VIP`, which meant a standalone film — bought once for a
-                    flat price, not gated behind a membership — was labelled
-                    VIP on the one cover the page leads with. Both featured
-                    movies in the catalog were mislabelled that way. The
-                    order matches ShowCard's, so a title carries the same
-                    badge in the hero and in every rail. */}
-                <div className="absolute right-1.5 top-1.5">
-                  {heroIsFree ? (
-                    <Badge tone="free" onArt>
-                      {t.freeBadge}
-                    </Badge>
-                  ) : heroIsMovie ? (
-                    <Badge tone="price" onArt className="whitespace-nowrap">
-                      {t.movieOneOff}
-                    </Badge>
-                  ) : (
-                    <Badge tone="vip" onArt icon={<Crown className="h-3 w-3" />}>
-                      {t.vipBadge ?? 'VIP'}
-                    </Badge>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </button>
-
-        {/* Title + meta + actions */}
-        <div className="min-w-0 flex-1 text-left">
-          <span className="relative -top-1 mb-1 flex flex-wrap items-center gap-1.5">
-            <Badge tone="mark" icon={<Flame className="h-3 w-3" />} className="px-2 py-1 text-[11px]">
-              {t.featuredLabel ?? 'កំពុងពេញនិយម'}
-            </Badge>
-            {heroRank && !hero.coming_soon && (
-              <Badge tone="info" className="px-2 py-1 text-[11px]">
-                TOP #{heroRank}
-              </Badge>
-            )}
-          </span>
-          <h2
-            key={hero.id}
-            onClick={() => onSelectShow(hero)}
-            className="cursor-pointer text-lg font-black leading-[1.05] text-white sm:text-2xl"
-            style={{
-              fontFamily: '"Anton", Battambang, Inter, sans-serif',
-              letterSpacing: '0.01em',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {hero.title}
-          </h2>
-
-          {heroGenre && (
-            <p className="mt-0.5 truncate text-[11px] font-semibold text-[#9AA4BD] sm:text-xs">{heroGenre}</p>
-          )}
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-white/70 sm:text-xs">
-            <span className="flex items-center gap-1 text-[#F5C563]">
-              <Star className="h-2.5 w-2.5 fill-[#F5C563] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
-            </span>
-            {/* Divider and value stay inside one span: on a 320px screen
-                this row wraps, and a separator left stranded at the end of
-                a line reads as a typo. Only the two plain-text items get a
-                divider — the chips below carry their own border, so a pipe
-                in front of them is one separator too many. */}
-            {hero.release_year && (
-              <span className="flex items-center gap-x-2">
-                <span className="h-3 w-px bg-white/20" aria-hidden />
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {hero.release_year}
-                </span>
-              </span>
-            )}
-            <span className="rounded border border-white/20 px-1.5 py-0.5 text-[9.5px] font-medium uppercase text-white/70 sm:text-[11px]">
-              {hero.type === 'movie' ? t.movie : t.series}
-            </span>
-            {/* "Ongoing" — same red pill as the Show Detail
-                screen, so the cue reads consistently across the app
-                instead of inventing a separate style just for the hero.
-                Red and not gold: it says the show is still getting
-                episodes, which is information, not a premium promise —
-                and nothing red in this app is tappable. */}
-            {hero.type === 'series' && hero.status !== 'completed' && (
-              <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent sm:text-[11px]">
-                {t.ongoing}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
-            {/* Same tap either way — the detail screen is where a Coming
-                Soon title explains itself — but the label stops saying
-                "Play" for something that cannot be played yet. */}
+      {/* Coverflow stack — the centered poster stands tall and square-on;
+          up to two more taper away in 3D on each side, dimming a little
+          further from center. Replaces the old poster-left/text-right
+          banner: this is a real, tappable carousel rather than one static
+          card with a strip of thumbnails bolted under it. */}
+      <div className="relative z-10 mx-auto flex h-[224px] items-center justify-center px-4 sm:h-[300px] sm:px-8" style={{ perspective: '1400px' }}>
+        {stage.map(({ offset, i, show }) => {
+          const dist = Math.abs(offset);
+          return (
             <button
-              onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(32,80,216,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
-              style={{ background: 'linear-gradient(135deg, #2050D8, #1A3FAE 55%, #0E2560)' }}
-            >
-              {hero.coming_soon ? (
-                <>
-                  <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t.comingSoonLabel}
-                </>
-              ) : (
-                <>
-                  <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => {
-                const now = toggleWatchlist(hero);
-                setInList(now);
+              key={`${show.id}-${offset}`}
+              onClick={() => (offset === 0 ? onSelectShow(show) : onGoTo(i))}
+              aria-label={show.title}
+              className={`hero-slide absolute ${offset === 0 ? 'hero-card-enter z-20' : ''}`}
+              style={{
+                width: 'clamp(106px, 30vw, 176px)',
+                zIndex: 10 - dist,
+                transform: `translateX(${offset * 68}%) translateZ(${-dist * 80}px) rotateY(${offset * -24}deg) scale(${1 - dist * 0.14})`,
+                opacity: 1 - dist * 0.32,
               }}
-              className={`flex items-center justify-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-[11px] font-bold transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs ${
-                inList
-                  ? 'border-white/30 bg-white/[0.12] text-white'
-                  : 'border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10'
-              }`}
             >
-              {inList ? <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
-              {t.myList}
+              <div
+                className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl"
+                style={{
+                  boxShadow:
+                    offset === 0
+                      ? '0 26px 64px rgba(0,0,0,0.85), 0 8px 20px rgba(0,0,0,0.6)'
+                      : '0 14px 34px rgba(0,0,0,0.6)',
+                  filter: offset === 0 ? 'none' : `brightness(${1 - dist * 0.22}) saturate(${1 - dist * 0.25})`,
+                }}
+              >
+                <div className="pointer-events-none absolute inset-0 z-10 rounded-2xl ring-1 ring-inset ring-white/12" />
+                <img
+                  src={show.poster_url ?? show.banner_url ?? ''}
+                  alt={show.title}
+                  // Only the centered poster is the largest thing above
+                  // the fold — the tapered side cards can wait their turn.
+                  fetchPriority={offset === 0 ? 'high' : 'low'}
+                  decoding="async"
+                  width={600}
+                  height={900}
+                  className="h-full w-full object-cover"
+                  draggable={false}
+                />
+                {offset === 0 && (
+                  <>
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 62%, rgba(10,16,30,0.6) 100%)' }}
+                    />
+                    {/* Coming Soon — announced, but there is nothing to
+                        play yet. Spelled out here rather than the icon the
+                        rails use, since the hero has no row header above
+                        it saying what it is. */}
+                    {hero.coming_soon ? (
+                      <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />} className="absolute left-1.5 top-1.5">
+                        {t.comingSoonLabel}
+                      </Badge>
+                    ) : (
+                      // Three answers, not two: a standalone film — bought
+                      // once, not gated behind a membership — gets its own
+                      // label rather than being lumped in with VIP. Same
+                      // order ShowCard uses, so a title carries the same
+                      // badge in the hero and in every rail.
+                      <div className="absolute right-1.5 top-1.5">
+                        {heroIsFree ? (
+                          <Badge tone="free" onArt>
+                            {t.freeBadge}
+                          </Badge>
+                        ) : heroIsMovie ? (
+                          <Badge tone="price" onArt className="whitespace-nowrap">
+                            {t.movieOneOff}
+                          </Badge>
+                        ) : (
+                          <Badge tone="vip" onArt icon={<Crown className="h-3 w-3" />}>
+                            {t.vipBadge ?? 'VIP'}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </button>
-          </div>
-        </div>
+          );
+        })}
+
+        {/* Chevron arrows — desktop only, swipe/tap handles mobile.
+            Anchored to the stage itself now, so they stay centered on the
+            poster stack no matter how tall the caption below it grows. */}
+        <button
+          onClick={onPrev}
+          className="absolute left-0 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
+          aria-label="Previous"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+        <button
+          onClick={onNext}
+          className="absolute right-0 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
+          aria-label="Next"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
       </div>
 
-      {/* Mini-poster strip — the other trending shows as small tappable
-          thumbnails right under the featured card, so the hero reads as
-          a real browsable carousel instead of a single static banner.
-          The centered show gets a lit ring; everything else sits at
-          reduced opacity until tapped. */}
-      {shows.length > 1 && (
-        <div className="rail-scroller no-scrollbar relative z-10 mx-auto mt-3 flex max-w-[1400px] gap-2 overflow-x-auto px-0.5 pb-1 sm:mt-4 sm:gap-2.5">
-          {shows.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => onGoTo(i)}
-              aria-label={s.title}
-              className="shrink-0 overflow-hidden rounded-lg transition-all duration-300"
-              style={{
-                width: 52,
-                aspectRatio: '2 / 3',
-                opacity: i === index ? 1 : 0.4,
-                boxShadow: i === index ? '0 0 0 2px rgba(255,255,255,0.9)' : 'none',
-                transform: i === index ? 'translateY(-3px)' : 'none',
-              }}
-            >
-              <img
-                src={s.poster_url ?? s.banner_url ?? ''}
-                alt={s.title}
-                loading="lazy"
-                decoding="async"
-                width={600}
-                height={900}
-                className="h-full w-full object-cover"
-                draggable={false}
-              />
-            </button>
-          ))}
+      {/* Title + meta + actions — centered under the stack instead of
+          wedged beside a single poster, so the whole hero reads as one
+          composition anchored on the coverflow above it. */}
+      <div className="relative z-10 mx-auto mt-4 max-w-[560px] px-6 text-center sm:mt-6">
+        <span className="mb-1.5 flex flex-wrap items-center justify-center gap-1.5">
+          <Badge tone="mark" icon={<Flame className="h-3 w-3" />} className="px-2 py-1 text-[11px]">
+            {t.featuredLabel ?? 'កំពុងពេញនិយម'}
+          </Badge>
+          {heroRank && !hero.coming_soon && (
+            <Badge tone="info" className="px-2 py-1 text-[11px]">
+              TOP #{heroRank}
+            </Badge>
+          )}
+        </span>
+        <h2
+          key={hero.id}
+          onClick={() => onSelectShow(hero)}
+          className="cursor-pointer text-xl font-black leading-[1.08] text-white sm:text-3xl"
+          style={{
+            fontFamily: '"Anton", Battambang, Inter, sans-serif',
+            letterSpacing: '0.01em',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {hero.title}
+        </h2>
+
+        <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-semibold text-white/70 sm:text-xs">
+          <span className="flex items-center gap-1 text-[#F5C563]">
+            <Star className="h-2.5 w-2.5 fill-[#F5C563] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
+          </span>
+          {heroGenre && (
+            <span className="flex items-center gap-x-2">
+              <span className="h-3 w-px bg-white/20" aria-hidden />
+              <span>{heroGenre}</span>
+            </span>
+          )}
+          {hero.release_year && (
+            <span className="flex items-center gap-x-2">
+              <span className="h-3 w-px bg-white/20" aria-hidden />
+              <span className="flex items-center gap-1">
+                <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {hero.release_year}
+              </span>
+            </span>
+          )}
+          <span className="rounded border border-white/20 px-1.5 py-0.5 text-[9.5px] font-medium uppercase text-white/70 sm:text-[11px]">
+            {hero.type === 'movie' ? t.movie : t.series}
+          </span>
+          {/* "Ongoing" — same red pill as the Show Detail screen, so the
+              cue reads consistently across the app. Red and not gold: it
+              says the show is still getting episodes, which is
+              information, not a premium promise — nothing red here is
+              tappable. */}
+          {hero.type === 'series' && hero.status !== 'completed' && (
+            <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent sm:text-[11px]">
+              {t.ongoing}
+            </span>
+          )}
         </div>
-      )}
 
-      {/* Chevron arrows — desktop only, swipe handles mobile. Anchored to
-          the section edges now that there's no side-card deck to sit
-          between. */}
-      <button
-        onClick={onPrev}
-        className="absolute left-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
-        aria-label="Previous"
-      >
-        <ChevronLeft className="h-6 w-6" />
-      </button>
-      <button
-        onClick={onNext}
-        className="absolute right-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
-        aria-label="Next"
-      >
-        <ChevronRight className="h-6 w-6" />
-      </button>
-
-      {/* Thin auto-play countdown bar — fills up over each slide's dwell
-          time, doubling as the position indicator. Keyed on the index so
-          it restarts cleanly every time the centered show changes,
-          whether from the timer or a manual swipe/tap. */}
-      {shows.length > 1 && (
-        <div className="absolute inset-x-0 bottom-0 z-30 h-[3px] w-full overflow-hidden bg-white/10">
-          <div
-            key={index}
-            className="hero-progress-fill h-full"
-            // Not blue. Blue in this app means "press me", and a
-            // countdown bar is the one thing on the hero that cannot be
-            // pressed — it just reports where the carousel has got to.
-            style={{
-              animationDuration: `${HERO_AUTO_MS}ms`,
-              background: 'rgba(255,255,255,0.75)',
+        <div className="mt-3 flex items-center justify-center gap-2 sm:mt-4 sm:gap-3">
+          {/* Same tap either way — the detail screen is where a Coming
+              Soon title explains itself — but the label stops saying
+              "Play" for something that cannot be played yet. */}
+          <button
+            onClick={() => onSelectShow(hero)}
+            className="flex items-center justify-center gap-1.5 rounded-full px-5 py-2 text-[12px] font-bold text-white shadow-[0_4px_16px_rgba(32,80,216,0.4)] transition active:scale-95 sm:px-7 sm:py-2.5 sm:text-sm"
+            style={{ background: 'linear-gradient(135deg, #2050D8, #1A3FAE 55%, #0E2560)' }}
+          >
+            {hero.coming_soon ? (
+              <>
+                <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t.comingSoonLabel}
+              </>
+            ) : (
+              <>
+                <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              const now = toggleWatchlist(hero);
+              setInList(now);
             }}
-          />
+            className={`flex items-center justify-center gap-1.5 rounded-full border px-5 py-2 text-[12px] font-bold transition active:scale-95 sm:px-7 sm:py-2.5 sm:text-sm ${
+              inList
+                ? 'border-white/30 bg-white/[0.12] text-white'
+                : 'border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10'
+            }`}
+          >
+            {inList ? <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+            {t.myList}
+          </button>
         </div>
-      )}
+
+        {/* Thin auto-play countdown bar — fills up over each slide's
+            dwell time, doubling as the position indicator. Keyed on the
+            index so it restarts cleanly every time the centered show
+            changes, whether from the timer or a manual swipe/tap. Not
+            blue: blue in this app means "press me", and a countdown bar
+            is the one thing here that cannot be pressed. */}
+        {shows.length > 1 && (
+          <div className="mx-auto mt-4 h-[3px] w-[120px] overflow-hidden rounded-full bg-white/10 sm:mt-5">
+            <div
+              key={index}
+              className="hero-progress-fill h-full"
+              style={{
+                animationDuration: `${HERO_AUTO_MS}ms`,
+                background: 'rgba(255,255,255,0.75)',
+              }}
+            />
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -1450,14 +1436,16 @@ interface BottomNavProps {
 
 function BottomNav({ t, active, onHome, onSearch, onSeries, onMovies, onMyList, onAccount, hasHistory }: BottomNavProps) {
   return (
-    // Welded to the bottom edge of the screen (not a floating pill): on a
-    // phone the tab bar has to sit in the thumb's resting place, flush
-    // with the home indicator, exactly like the previous home screen.
+    // A floating dock inset from the bottom edge instead of a bar welded
+    // flush to it — the same "chrome floats over content" language the
+    // header capsule now uses. `bottom` plus a safe-area margin keeps it
+    // clear of the home indicator on notched phones without needing the
+    // inset baked into the bar's own height.
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-black/95 backdrop-blur-xl sm:hidden"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      className="fixed inset-x-3 bottom-3 z-40 rounded-[26px] border border-white/10 bg-black/70 shadow-[0_14px_38px_rgba(0,0,0,0.5)] backdrop-blur-2xl sm:hidden"
+      style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <div className="mx-auto flex max-w-[560px] items-stretch justify-between px-1">
+      <div className="mx-auto flex max-w-[560px] items-stretch justify-between gap-0.5 px-1.5 py-1.5">
         <BottomNavItem icon={<Home className="h-5 w-5" />} label={t.navHome} active={active === 'home'} onClick={onHome} />
         <BottomNavItem icon={<Search className="h-5 w-5" />} label={t.navSearch} active={active === 'search'} onClick={onSearch} />
         <BottomNavItem icon={<Tv className="h-5 w-5" />} label={t.navSeries} active={active === 'series'} onClick={onSeries} />
@@ -1481,13 +1469,20 @@ function BottomNavItem({ icon, label, active, onClick, highlight }: BottomNavIte
   return (
     <button
       onClick={onClick}
-      className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 transition ${
-        active ? 'text-[#4E86FF]' : highlight ? 'text-[#4E86FF]' : 'text-[#9AA4BD] active:text-white/80'
+      className={`relative flex flex-1 flex-col items-center gap-1 rounded-[19px] py-2 transition ${
+        active ? 'text-white' : highlight ? 'text-[#4E86FF]' : 'text-[#9AA4BD] active:text-white/80'
       }`}
     >
+      {/* Filled capsule marks "you are here" now, instead of a thin top
+          line — the same solid-pill language the desktop nav's active
+          link uses, so mobile and desktop read as one idea. */}
       {active && (
         <span
-          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#2050D8] to-transparent"
+          className="dock-active pointer-events-none absolute inset-1 rounded-[16px]"
+          style={{
+            background: 'linear-gradient(135deg, rgba(32,80,216,0.9) 0%, rgba(14,37,96,0.9) 100%)',
+            boxShadow: '0 0 0 1px rgba(78,134,255,0.4) inset, 0 6px 16px rgba(32,80,216,0.4)',
+          }}
           aria-hidden
         />
       )}
@@ -1497,7 +1492,7 @@ function BottomNavItem({ icon, label, active, onClick, highlight }: BottomNavIte
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#4E86FF] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
         )}
       </span>
-      <span className={`max-w-full truncate px-0.5 text-[9.5px] leading-none ${highlight && !active ? 'font-bold' : 'font-semibold'}`}>{label}</span>
+      <span className={`relative max-w-full truncate px-0.5 text-[9.5px] leading-none ${highlight && !active ? 'font-bold' : 'font-semibold'}`}>{label}</span>
     </button>
   );
 }
@@ -1516,20 +1511,28 @@ function NavLink({ label, active, onClick, highlight }: NavLinkProps) {
   return (
     <button
       onClick={onClick}
-      className={`relative shrink-0 whitespace-nowrap px-0.5 pb-2 pt-1 text-[11px] transition sm:text-sm ${
+      className={`relative shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] transition sm:text-sm ${
         active
           ? 'font-display font-bold tracking-wide text-white'
           : highlight
-            ? 'font-bold text-[#4E86FF]'
-            : 'font-semibold text-white/50 hover:text-white/80'
+            ? 'font-bold text-[#4E86FF] hover:bg-white/5'
+            : 'font-semibold text-white/50 hover:bg-white/5 hover:text-white/80'
       }`}
+      // Filled pill instead of an underline — "here" is now a solid
+      // capsule everywhere in the app's own navigation, top bar and
+      // bottom dock alike.
+      style={
+        active
+          ? {
+              background: 'linear-gradient(135deg, rgba(32,80,216,0.92) 0%, rgba(14,37,96,0.92) 100%)',
+              boxShadow: '0 4px 14px rgba(32,80,216,0.35)',
+            }
+          : undefined
+      }
     >
       {label}
       {highlight && !active && (
-        <span className="absolute -right-2 top-0.5 h-1.5 w-1.5 rounded-full bg-[#4E86FF] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
-      )}
-      {active && (
-        <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#4E86FF] to-[#2050D8] shadow-[0_0_10px_rgba(32,80,216,0.8)]" />
+        <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#4E86FF] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
       )}
     </button>
   );
@@ -1620,51 +1623,49 @@ function RailRow({
         } as React.CSSProperties
       }
     >
-      {/* The rule above the row carries the row's colour at its left edge
-          and dissolves into nothing — so scrolling the page reads as a
-          sequence of coloured openings rather than eleven identical grey
-          hairlines. */}
-      {!panel && !subRow && (
-        <div
-          className="mb-4 h-px w-full"
-          style={{
-            background: `linear-gradient(90deg, ${tint(accent, 0.55)} 0%, ${tint(accent, 0.14)} 22%, rgba(255,255,255,0.05) 55%, transparent 100%)`,
-          }}
-          aria-hidden
-        />
-      )}
-      <div className={`flex items-center justify-between gap-2 ${subRow ? 'mb-1.5 pl-3' : 'mb-3'}`}>
-        <div className="flex min-w-0 items-center gap-2">
-          {/* The one solid block of the row's colour on the whole screen.
-              A sub-row is already inside a titled section, so it drops
-              the rule entirely rather than repeating its parent's. */}
-          {!subRow && (
+      {/* Editorial header — an icon/emoji tile filled with a soft wash of
+          the row's own accent (`.rail-chip`, reading `--row-accent` from
+          this section) stands in for the old thin left bar + full-width
+          fading hairline. It carries the same "which of the five roles is
+          this row" signal DESIGN_SYSTEM.md defines, just as one solid
+          anchor instead of a line stretched across the whole row. A
+          sub-row sits inside an already-titled section, so it skips the
+          chip and stays a plain small heading. */}
+      <div className={`flex items-center justify-between gap-2 ${subRow ? 'mb-2 pl-1' : 'mb-3.5'}`}>
+        <div className="flex min-w-0 items-center gap-2.5">
+          {!subRow && (icon || emoji) && (
             <span
-              className="h-4 w-[3px] shrink-0 rounded-sm"
-              style={{ background: accent, boxShadow: `0 0 10px ${tint(accent, 0.5)}` }}
+              className="rail-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base"
+              style={{ color: accent }}
               aria-hidden
-            />
-          )}
-          {icon ? (
-            <span className="flex shrink-0 items-center" style={{ color: accent }} aria-hidden>
-              {icon}
+            >
+              {icon ?? emoji}
             </span>
-          ) : (
-            emoji && <span className="text-base leading-none">{emoji}</span>
+          )}
+          {subRow && (icon || emoji) && (
+            <span className="flex shrink-0 items-center text-sm" style={{ color: accent }} aria-hidden>
+              {icon ?? emoji}
+            </span>
           )}
           {subRow ? (
             <h3 className="truncate text-[13px] font-bold text-white/90">{title}</h3>
           ) : (
-            <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{title}</h2>
+            <h2
+              className="truncate text-[16px] font-black tracking-tight sm:text-xl"
+              style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.01em' }}
+            >
+              {title}
+            </h2>
           )}
           {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
         </div>
         {onViewAll && (
           <button
             onClick={onViewAll}
-            className="shrink-0 rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
+            className="group/viewall flex shrink-0 items-center gap-0.5 rounded-full py-1 pl-2.5 pr-1.5 text-[11px] font-semibold text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
           >
             {viewAllLabel}
+            <ChevronRight className="h-3.5 w-3.5 transition group-hover/viewall:translate-x-0.5" />
           </button>
         )}
       </div>
