@@ -456,9 +456,10 @@ async function drawKhqrBadge(canvas: HTMLCanvasElement): Promise<void> {
   if (!ctx) return;
   const cx = canvas.width / 2;
   const cy = canvas.height / 2;
-  // 'H' correction survives up to ~30% obscured; a badge spanning ~24%
-  // of the code's width stays comfortably inside that budget.
-  const outerR = canvas.width * 0.12;
+  // 'H' correction survives up to ~30% obscured; a badge spanning ~20%
+  // of the code's width matches the size real KHQR badges (ABA, Wing,
+  // Bakong itself) use, and stays comfortably inside that budget.
+  const outerR = canvas.width * 0.1;
 
   // A soft shadow first, the way a printed sticker badge sits very
   // slightly proud of the page instead of looking pasted flat on.
@@ -477,7 +478,7 @@ async function drawKhqrBadge(canvas: HTMLCanvasElement): Promise<void> {
   ctx.fill();
 
   const mark = await loadImage(BAKONG_MARK_SRC);
-  const size = outerR * 1.72;
+  const size = outerR * 1.55;
   if (mark) {
     ctx.drawImage(mark, cx - size / 2, cy - size / 2, size, size);
   } else {
