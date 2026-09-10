@@ -13,14 +13,10 @@ import {
   Tv,
   Film,
   Bookmark,
-  Plus,
-  Check,
-  Play,
   Clock,
   Layers,
   ListVideo,
   Radio,
-  Calendar,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, errorMessage, type ShowEpisodeInfo } from '@/lib/api';
@@ -35,7 +31,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
-import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
+import { getContinueWatching, type ContinueItem } from '@/lib/watchlist';
 import { seasonFranchises, nextPaidSeason, parseSeason } from '@/lib/seasons';
 import { ROW_ACCENT, tint, type RowRole } from '@/lib/rowAccent';
 
@@ -64,6 +60,12 @@ interface HomeScreenProps {
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
 
 const HERO_AUTO_MS = 6000;
+
+/** Index arithmetic that wraps in both directions. `%` alone returns a
+ *  negative remainder for a negative input, so the deck's left-hand
+ *  neighbours (`index - 1`, `index - 2`) fall off the array whenever the
+ *  carousel is sitting on its first slide. */
+const wrapIndex = (i: number, n: number) => (n > 0 ? ((i % n) + n) % n : 0);
 
 // Small, purely-cosmetic emoji lookup for genre rail headers — gives each
 // row a bit of personality at a glance without needing extra icon assets.
@@ -245,10 +247,6 @@ export default function HomeScreen({
     ? shows.filter((s) => s.title.toLowerCase().includes(query.toLowerCase()))
     : shows;
 
-  // Top 10 now reflects real audience behavior — actual play counts
-  // (see increment_show_view_count) — instead of an admin-typed rating
-  // number, so it genuinely shows which shows viewers watch the most.
-  const trending = [...shows].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).slice(0, 10);
   const comingSoon = shows.filter((s) => s.coming_soon);
   const freeShows = shows.filter((s) => s.is_free && !s.coming_soon);
   const oneOffMovies = shows.filter((s) => s.type === 'movie' && !s.coming_soon);
@@ -296,10 +294,9 @@ export default function HomeScreen({
     (s) => s.type === 'series' && s.status !== 'completed' && !s.coming_soon,
   );
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
-  // joined) — this looks the hero's genre + Top 10 rank up against the
+  // joined) — this looks the hero's access state up against the
   // already-loaded `shows` list (ShowWithGenres) instead of a second query.
   const showsById = new Map(shows.map((s) => [s.id, s]));
-  const trendingRank = new Map(trending.map((s, i) => [s.id, i + 1]));
 
   const showsByGenre = useCallback(
     (slug: string) => shows.filter((s) => s.genres?.some((g) => g.slug === slug)),
@@ -635,8 +632,6 @@ export default function HomeScreen({
             shows={bannerShows}
             index={heroIndex}
             hero={hero}
-            heroGenre={showsById.get(hero.id)?.genres?.[0]?.name}
-            heroRank={trendingRank.get(hero.id)}
             heroIsFree={showsById.get(hero.id)?.is_free ?? hero.is_free ?? false}
             heroIsMovie={(showsById.get(hero.id)?.type ?? hero.type) === 'movie'}
             onSelectShow={onSelectShow}
@@ -1057,13 +1052,6 @@ interface CoverflowHeroProps {
   shows: Show[];
   index: number;
   hero: Show;
-  /** First genre name for the centered show, looked up from the
-   *  genre-joined `shows` list — bannerShows itself has no genres. */
-  heroGenre?: string;
-  /** 1-based Top 10 (by real view count) rank, when the centered show is
-   *  currently in the top 10 — undefined otherwise, which hides the
-   *  ranked-numeral treatment entirely. */
-  heroRank?: number;
   heroIsFree: boolean;
   heroIsMovie: boolean;
   onSelectShow: (s: Show) => void;
@@ -1079,8 +1067,6 @@ function CoverflowHero({
   shows,
   index,
   hero,
-  heroGenre,
-  heroRank,
   heroIsFree,
   heroIsMovie,
   onSelectShow,
@@ -1093,14 +1079,13 @@ function CoverflowHero({
 }: CoverflowHeroProps) {
   const [bgLoaded, setBgLoaded] = useState(false);
   const ambienceRef = useRef<HTMLDivElement>(null);
-  const [inList, setInList] = useState(() => isInWatchlist(hero.id));
   const bg = hero.banner_url ?? hero.poster_url ?? '';
 
-  // Reset the loaded flag and re-check watchlist status whenever the
-  // centered show changes (auto-advance or swipe).
+  // Drop the loaded flag whenever the centered show changes
+  // (auto-advance, swipe, or a tap on a side cover) so the new ambient
+  // backdrop fades in rather than snapping.
   useEffect(() => {
     setBgLoaded(false);
-    setInList(isInWatchlist(hero.id));
   }, [hero.id]);
 
   // Ambient background drifts a little slower than the page and fades out
@@ -1186,27 +1171,107 @@ function CoverflowHero({
         />
       </div>
 
-      {/* Horizontal cover — poster + Top 10 numeral on the left, title/
-          meta/actions on the right. Sized down to read as a compact card
-          (closer to Netflix's own Top 10 numeral treatment) rather than a
-          large cinematic banner — smaller poster, smaller numeral,
-          tighter text. */}
-      <div className="relative z-10 mx-auto flex max-w-[1400px] items-center gap-3 pt-0 sm:gap-6 sm:pt-0">
+      {/* The fanned deck.
+       *
+       *  Four neighbours splay out behind the centred cover — pushed
+       *  sideways, turned away from the viewer, scaled and faded by
+       *  distance — so the hero reads as a stack you are part-way
+       *  through rather than one poster stranded on a wide band. The
+       *  outermost pair runs off the screen edges on purpose: a deck that
+       *  ends neatly inside the frame reads as five separate cards, and a
+       *  deck that is cut off reads as "there is more here".
+       *
+       *  Nothing is lettered over the art and there is no text column
+       *  beside it. Every cover in this catalog arrives with its title
+       *  already set into the image, so the only thing the hero adds is
+       *  the one label the artwork cannot carry: whether you can watch
+       *  it. That hangs over the top edge like the tab on a folder.
+       */}
+      <div className="relative z-10 mx-auto flex min-h-[286px] max-w-[1400px] items-center justify-center sm:min-h-[352px]">
+        {/* Offsets are a share of each card's OWN width — that is what a
+            percentage translate means — so the fan keeps its spacing at
+            every screen size without measuring anything. They are NOT
+            multiplied by the ring number: distance is already carried by
+            the width and by how much of the card the ring in front of it
+            covers, and multiplying on top of that threw the outer pair
+            clean off a 390px screen. */}
+        {[-2, -1, 1, 2].map((off) => {
+          const i = wrapIndex(index + off, shows.length);
+          const s = shows[i];
+          if (!s || s.id === hero.id) return null;
+          const near = Math.abs(off) === 1;
+          return (
+            <button
+              key={`${s.id}-${off}`}
+              onClick={() => onGoTo(i)}
+              aria-label={s.title}
+              className="absolute top-1/2 aspect-[2/3] overflow-hidden rounded-xl transition-all duration-500 ease-out"
+              style={{
+                width: near ? '37%' : '31%',
+                maxWidth: near ? 132 : 112,
+                zIndex: near ? 5 : 3,
+                opacity: near ? 0.6 : 0.32,
+                transform: `translateY(-50%) translateX(${Math.sign(off) * (near ? 58 : 114)}%) perspective(900px) rotateY(${off > 0 ? -26 : 26}deg)`,
+                boxShadow: '0 18px 40px rgba(0,0,0,0.75)',
+              }}
+            >
+              <img
+                src={s.poster_url ?? s.banner_url ?? ''}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                width={600}
+                height={900}
+                className="h-full w-full object-cover"
+                draggable={false}
+              />
+              {/* Pushed back into the dark rather than merely made
+                  see-through: a half-transparent poster over a blurred
+                  poster is just noise, whereas a darkened one reads as
+                  depth. */}
+              <span className="absolute inset-0 bg-[#0A101E]/45" aria-hidden />
+            </button>
+          );
+        })}
+
         <button
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
           className="hero-card-enter relative z-10 shrink-0"
-          style={{ width: '32%', maxWidth: 152 }}
+          style={{ width: '45%', maxWidth: 160 }}
         >
-          {/* Lantern-glow poster card — a warm double-ring frame (jade
-              inner line, antique-gold outer glow) stands in for the old
-              rank numeral. It reads as "the one worth lighting up" without
-              pinning the hero's identity to a view-count rank. */}
+          <span className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
+            {hero.coming_soon ? (
+              <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />}>
+                {t.comingSoonLabel}
+              </Badge>
+            ) : heroIsFree ? (
+              <Badge tone="free" onArt>
+                {t.freeBadge}
+              </Badge>
+            ) : heroIsMovie ? (
+              <Badge tone="price" onArt className="whitespace-nowrap">
+                {t.movieOneOff}
+              </Badge>
+            ) : (
+              <Badge tone="vip" onArt icon={<Crown className="h-3 w-3" />}>
+                {t.vipBadge ?? 'VIP'}
+              </Badge>
+            )}
+          </span>
+
+          {/* The lit frame is what marks the centre of the deck — a hard
+              cyan hairline plus a soft bloom of the same colour. It does
+              the job the old rank numeral and the old title column were
+              both doing: saying "this one" without spending any of the
+              artwork's own space to say it. */}
           <div
-            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-xl transition-transform duration-500"
-            style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.8), 0 6px 18px rgba(0,0,0,0.55)' }}
+            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-xl"
+            style={{
+              boxShadow:
+                '0 0 0 2px rgba(112,232,255,0.92), 0 0 22px rgba(56,189,248,0.5), 0 0 60px rgba(56,189,248,0.22), 0 26px 60px rgba(0,0,0,0.8)',
+            }}
           >
-            <div className="pointer-events-none absolute inset-0 z-10 rounded-xl ring-1 ring-inset ring-white/12" />
             <img
               src={hero.poster_url ?? hero.banner_url ?? ''}
               alt={hero.title}
@@ -1219,199 +1284,33 @@ function CoverflowHero({
               className="h-full w-full object-cover"
               draggable={false}
             />
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 60%, rgba(10,16,30,0.6) 100%)' }}
-            />
-            {/* Coming Soon — announced, but there is nothing to play yet.
-                It takes the whole top of the cover: a title in the Top 10
-                that cannot be watched is the one thing a viewer has to
-                know before tapping. Spelled out here rather than the
-                icon the rails use, since the hero has no row header above
-                it saying what it is. */}
-            {hero.coming_soon ? (
-              <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />} className="absolute left-1.5 top-1.5">
-                {t.comingSoonLabel}
-              </Badge>
-            ) : (
-              <>
-                {/* The rank moved up beside the "trending" label — the
-                    cover is only about 100px wide on a small phone, and
-                    rank plus access badge were sitting on top of each
-                    other there. Access wins the cover: it is the one
-                    that says whether this is watchable. */}
-                {/* VIP / Free badge — same subscription status the detail
-                    screen enforces, so the cover never over-promises.
-                    Skipped on a Coming Soon cover, where neither label
-                    means anything until episodes exist. */}
-                {/* Three answers, not two. This used to be `free ? FREE :
-                    VIP`, which meant a standalone film — bought once for a
-                    flat price, not gated behind a membership — was labelled
-                    VIP on the one cover the page leads with. Both featured
-                    movies in the catalog were mislabelled that way. The
-                    order matches ShowCard's, so a title carries the same
-                    badge in the hero and in every rail. */}
-                <div className="absolute right-1.5 top-1.5">
-                  {heroIsFree ? (
-                    <Badge tone="free" onArt>
-                      {t.freeBadge}
-                    </Badge>
-                  ) : heroIsMovie ? (
-                    <Badge tone="price" onArt className="whitespace-nowrap">
-                      {t.movieOneOff}
-                    </Badge>
-                  ) : (
-                    <Badge tone="vip" onArt icon={<Crown className="h-3 w-3" />}>
-                      {t.vipBadge ?? 'VIP'}
-                    </Badge>
-                  )}
-                </div>
-              </>
-            )}
           </div>
         </button>
-
-        {/* Title + meta + actions */}
-        <div className="min-w-0 flex-1 text-left">
-          <span className="relative -top-1 mb-1 flex flex-wrap items-center gap-1.5">
-            <Badge tone="mark" icon={<Flame className="h-3 w-3" />} className="px-2 py-1 text-[11px]">
-              {t.featuredLabel ?? 'កំពុងពេញនិយម'}
-            </Badge>
-            {heroRank && !hero.coming_soon && (
-              <Badge tone="info" className="px-2 py-1 text-[11px]">
-                TOP #{heroRank}
-              </Badge>
-            )}
-          </span>
-          <h2
-            key={hero.id}
-            onClick={() => onSelectShow(hero)}
-            className="cursor-pointer text-lg font-black leading-[1.05] text-white sm:text-2xl"
-            style={{
-              fontFamily: '"Anton", Battambang, Inter, sans-serif',
-              letterSpacing: '0.01em',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {hero.title}
-          </h2>
-
-          {heroGenre && (
-            <p className="mt-0.5 truncate text-[11px] font-semibold text-[#9AA4BD] sm:text-xs">{heroGenre}</p>
-          )}
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-white/70 sm:text-xs">
-            <span className="flex items-center gap-1 text-[#F5C563]">
-              <Star className="h-2.5 w-2.5 fill-[#F5C563] sm:h-3 sm:w-3" /> {Number(hero.rating).toFixed(1)}
-            </span>
-            {/* Divider and value stay inside one span: on a 320px screen
-                this row wraps, and a separator left stranded at the end of
-                a line reads as a typo. Only the two plain-text items get a
-                divider — the chips below carry their own border, so a pipe
-                in front of them is one separator too many. */}
-            {hero.release_year && (
-              <span className="flex items-center gap-x-2">
-                <span className="h-3 w-px bg-white/20" aria-hidden />
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {hero.release_year}
-                </span>
-              </span>
-            )}
-            <span className="rounded border border-white/20 px-1.5 py-0.5 text-[9.5px] font-medium uppercase text-white/70 sm:text-[11px]">
-              {hero.type === 'movie' ? t.movie : t.series}
-            </span>
-            {/* "Ongoing" — same red pill as the Show Detail
-                screen, so the cue reads consistently across the app
-                instead of inventing a separate style just for the hero.
-                Red and not gold: it says the show is still getting
-                episodes, which is information, not a premium promise —
-                and nothing red in this app is tappable. */}
-            {hero.type === 'series' && hero.status !== 'completed' && (
-              <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9.5px] font-semibold text-accent sm:text-[11px]">
-                {t.ongoing}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-2.5 flex items-center gap-1.5 sm:mt-3.5 sm:gap-2.5">
-            {/* Same tap either way — the detail screen is where a Coming
-                Soon title explains itself — but the label stops saying
-                "Play" for something that cannot be played yet. */}
-            <button
-              onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(32,80,216,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
-              style={{ background: 'linear-gradient(135deg, #2050D8, #1A3FAE 55%, #0E2560)' }}
-            >
-              {hero.coming_soon ? (
-                <>
-                  <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t.comingSoonLabel}
-                </>
-              ) : (
-                <>
-                  <Play className="h-3 w-3 fill-white sm:h-3.5 sm:w-3.5" /> {t.play}
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => {
-                const now = toggleWatchlist(hero);
-                setInList(now);
-              }}
-              className={`flex items-center justify-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-[11px] font-bold transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs ${
-                inList
-                  ? 'border-white/30 bg-white/[0.12] text-white'
-                  : 'border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10'
-              }`}
-            >
-              {inList ? <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
-              {t.myList}
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Mini-poster strip — the other trending shows as small tappable
-          thumbnails right under the featured card, so the hero reads as
-          a real browsable carousel instead of a single static banner.
-          The centered show gets a lit ring; everything else sits at
-          reduced opacity until tapped. */}
+      {/* Dots, not thumbnails. The strip of mini-posters that used to sit
+          here was a second, smaller copy of the same covers the deck is
+          already showing — five more images to decode for information the
+          fan gives away by shape. These only say how far along the deck
+          you are; the active one stretches into a bar so it survives a
+          glance. */}
       {shows.length > 1 && (
-        <div className="rail-scroller no-scrollbar relative z-10 mx-auto mt-3 flex max-w-[1400px] gap-2 overflow-x-auto px-0.5 pb-1 sm:mt-4 sm:gap-2.5">
+        <div className="relative z-10 mt-4 flex items-center justify-center gap-1.5">
           {shows.map((s, i) => (
             <button
               key={s.id}
               onClick={() => onGoTo(i)}
               aria-label={s.title}
-              className="shrink-0 overflow-hidden rounded-lg transition-all duration-300"
-              style={{
-                width: 52,
-                aspectRatio: '2 / 3',
-                opacity: i === index ? 1 : 0.4,
-                boxShadow: i === index ? '0 0 0 2px rgba(255,255,255,0.9)' : 'none',
-                transform: i === index ? 'translateY(-3px)' : 'none',
-              }}
-            >
-              <img
-                src={s.poster_url ?? s.banner_url ?? ''}
-                alt={s.title}
-                loading="lazy"
-                decoding="async"
-                width={600}
-                height={900}
-                className="h-full w-full object-cover"
-                draggable={false}
-              />
-            </button>
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === index ? 'w-5 bg-[#FF5C8A]' : 'w-1.5 bg-white/25'
+              }`}
+            />
           ))}
         </div>
       )}
 
       {/* Chevron arrows — desktop only, swipe handles mobile. Anchored to
-          the section edges now that there's no side-card deck to sit
-          between. */}
+          the section edges, outside the fan's reach. */}
       <button
         onClick={onPrev}
         className="absolute left-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
