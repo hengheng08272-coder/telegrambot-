@@ -64,7 +64,15 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
   // The season this card is, read off its own title. Only surfaced on a
   // free show: the free row's offer is "this season is free", and saying
   // which one is the difference between an offer and a vague promise.
-  const ownSeason = parseSeason(show.title).season;
+  const { base: seasonStrippedTitle, season: ownSeason } = parseSeason(show.title);
+  // The free row already says the season on a chip stamped over the
+  // poster (below) — repeating " រដូវកាលទី១" in the caption too just
+  // burns the little width a narrow rail card has, truncating mid-word
+  // ("... រដូវកាល...") with no number even visible. Only this one case
+  // drops it from the caption: everywhere else (a plain rail, franchise
+  // row) the title is the only place the season shows at all.
+  const seasonShownOnChip =
+    !show.coming_soon && show.is_free && ownSeason !== null && seasonNumber === undefined;
 
   const isNew =
     !!show.created_at && Date.now() - new Date(show.created_at).getTime() < 7 * 24 * 60 * 60 * 1000;
@@ -284,7 +292,7 @@ export default function ShowCard({ show, onClick, latestEpisode, rank, large, se
       ) : !rank ? (
         <div className="mt-2 px-0.5">
           <h3 className={`truncate font-semibold text-white/95 transition group-hover:text-[#4E86FF] ${large ? 'text-[13.5px]' : 'text-[13px]'}`}>
-            {displayTitle ?? show.title}
+            {displayTitle ?? (seasonShownOnChip ? seasonStrippedTitle : show.title)}
           </h3>
           {/* Off the poster and down here with the title it actually
               describes, instead of stamped over the artwork. The episode
