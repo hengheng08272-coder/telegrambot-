@@ -37,6 +37,10 @@ interface ShowCardProps {
    *  show, so repeating it under every card says the same thing three
    *  times and pushes the one distinguishing bit — the season — down. */
   titleFromSeason?: boolean;
+  /** Leave the access badge off the artwork. Set by a rail whose cards
+   *  all share one access level: the badge is then printed once in the
+   *  row's own heading instead of stamped over every poster in it. */
+  hideAccessBadge?: boolean;
 }
 
 /**
@@ -68,6 +72,7 @@ export default function ShowCard({
   displayTitle,
   titleFromSeason,
   continuesAtSeason,
+  hideAccessBadge,
 }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -237,7 +242,7 @@ export default function ShowCard({
             </div>
           )}
 
-          <div className="absolute left-1.5 top-1.5 z-[2]">{accessBadge}</div>
+          {!hideAccessBadge && <div className="absolute left-1.5 top-1.5 z-[2]">{accessBadge}</div>}
 
           {/* NEW — a dot, not a pill. A rail can have several live at
               once, and the word stopped adding anything past the first

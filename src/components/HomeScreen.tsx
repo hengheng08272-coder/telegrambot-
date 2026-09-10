@@ -27,6 +27,7 @@ import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, e
 import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
+import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
 import NotificationBell from '@/components/NotificationBell';
@@ -293,11 +294,6 @@ export default function HomeScreen({
   const ongoingShows = shows.filter(
     (s) => s.type === 'series' && s.status !== 'completed' && !s.coming_soon,
   );
-  // The single movie the panel leads with — most-watched first (same
-  // real play-count signal `trending` uses above), so the one card the
-  // row spends its height on is the one most people already want.
-  const featuredMovie = [...oneOffMovies].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))[0];
-
   // bannerShows come from fetchFeaturedShows (a plain Show, no genres
   // joined) — this looks the hero's genre + Top 10 rank up against the
   // already-loaded `shows` list (ShowWithGenres) instead of a second query.
@@ -339,6 +335,43 @@ export default function HomeScreen({
     }
     return picks;
   }, [continueItems, showsById, showsByGenre]);
+
+  // Every show belongs to exactly one row.
+  //
+  // Before this a single series could sit in Popular AND Binge AND
+  // Ongoing AND two genre rails — the same cover five times down one
+  // page, which made the catalog look far smaller than it is while
+  // titles further down never got a slot at all. Rows claim shows in
+  // the order they appear on screen: the first row that wants a show
+  // takes it, and every row below sees only what is left. Rows that end
+  // up empty hide themselves, exactly as they already did.
+  //
+  // The seasons section below is deliberately exempt — a franchise row
+  // exists precisely to gather seasons that are scattered across the
+  // page, so it re-shows them on purpose.
+  const claimed = new Set<string>();
+  const claim = (list: ShowWithGenres[], limit?: number) => {
+    const out: ShowWithGenres[] = [];
+    for (const s of list) {
+      if (claimed.has(s.id)) continue;
+      out.push(s);
+      claimed.add(s.id);
+      if (limit && out.length >= limit) break;
+    }
+    return out;
+  };
+  const freeRow = claim(freeShows);
+  // Most-watched first, so the single card the Movies panel spends its
+  // height on is the one the most people already want.
+  const movieRow = claim(
+    [...oneOffMovies].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)),
+  );
+  const recommendedRow = claim(recommended, 10);
+  const popularRow = claim(trending, 10);
+  const bingeRow = claim(bingeShows, 14);
+  const ongoingRow = claim(ongoingShows);
+  const genreRows = genres.map((g) => ({ genre: g, list: claim(showsByGenre(g.slug)) }));
+  const featuredMovieCard = movieRow[0] ?? null;
 
   if (loading) {
     return (
@@ -670,18 +703,17 @@ export default function HomeScreen({
                 title already says what this row is without framing it.
                 Empty until shows are marked "unlock all" (shows.is_free)
                 in Admin -> Shows; the row hides itself until then. */}
-            {freeShows.length > 0 && (
+            {freeRow.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
                 role="free"
                 icon={<Gift className="h-5 w-5" />}
                 title={t.freeRowLabel ?? 'Free to Watch'}
-                shows={freeShows}
+                shows={freeRow}
                 onSelectShow={onSelectShow}
                 continuesAt={continuesAt}
-                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeShows })}
+                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeRow })}
                 viewAllLabel={t.viewAll}
-                tag={{ label: t.unlockAllTag, tone: 'free' }}
               />
             )}
             {/* The ranked/numeral "Top 10" rail was removed per request —
@@ -696,7 +728,7 @@ export default function HomeScreen({
                 stays short enough that the row underneath is still on
                 screen without scrolling. The rest of the catalog is one
                 tap away behind "View All" whenever there's more than one. */}
-            {featuredMovie && (
+            {featuredMovieCard && (
               <section
                 className="rail-section mt-8 overflow-hidden rounded-2xl border px-3 pb-3 pt-4 sm:px-4"
                 style={{
@@ -714,9 +746,9 @@ export default function HomeScreen({
                     <Film className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.vip }} />
                     <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.navMovies}</h2>
                   </div>
-                  {oneOffMovies.length > 1 && (
+                  {movieRow.length > 1 && (
                     <button
-                      onClick={() => setViewAll({ title: t.navMovies, shows: oneOffMovies, movies: true })}
+                      onClick={() => setViewAll({ title: t.navMovies, shows: movieRow, movies: true })}
                       aria-label={t.viewAll}
                       title={t.viewAll}
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
@@ -725,58 +757,58 @@ export default function HomeScreen({
                     </button>
                   )}
                 </div>
-                <MovieCard show={featuredMovie} onClick={onSelectShow} />
+                <MovieCard show={featuredMovieCard} onClick={onSelectShow} />
               </section>
             )}
-            {recommended.length > 0 && (
+            {recommendedRow.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
                 role="guide"
                 icon={<Star className="h-5 w-5" />}
                 title={t.recommendedForYou ?? 'Recommended for You'}
-                shows={recommended}
+                shows={recommendedRow}
                 onSelectShow={onSelectShow}
               />
             )}
-            <RailRow
-              episodeNumbers={episodeNumbers}
-              role="mark"
-              icon={<Flame className="h-5 w-5" />}
-              title={t.popularSeason}
-              shows={shows.slice(0, 10)}
-              onSelectShow={onSelectShow}
-              onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
-              viewAllLabel={t.viewAll}
-              tag={{ label: t.hotTag ?? 'HOT', tone: 'mark' }}
-            />
+            {popularRow.length > 0 && (
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                role="mark"
+                icon={<Flame className="h-5 w-5" />}
+                title={t.popularSeason}
+                shows={popularRow}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
+                viewAllLabel={t.viewAll}
+              />
+            )}
 
-            {bingeShows.length > 0 && (
+            {bingeRow.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
                 role="guide"
                 icon={<ListVideo className="h-5 w-5" />}
                 title={t.bingeRowLabel}
-                shows={bingeShows}
+                shows={bingeRow}
                 onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.bingeRowLabel, shows: bingeShows })}
+                onViewAll={() => setViewAll({ title: t.bingeRowLabel, shows: bingeRow })}
                 viewAllLabel={t.viewAll}
               />
             )}
-            {ongoingShows.length > 0 && (
+            {ongoingRow.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
                 role="mark"
                 icon={<Radio className="h-5 w-5" />}
                 title={t.ongoingRowLabel}
-                shows={ongoingShows}
+                shows={ongoingRow}
                 onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.ongoingRowLabel, shows: ongoingShows })}
+                onViewAll={() => setViewAll({ title: t.ongoingRowLabel, shows: ongoingRow })}
                 viewAllLabel={t.viewAll}
               />
             )}
 
-            {genres.map((g) => {
-              const list = showsByGenre(g.slug);
+            {genreRows.map(({ genre: g, list }) => {
               if (list.length === 0) return null;
               return (
                 <RailRow
@@ -786,7 +818,7 @@ export default function HomeScreen({
                   title={g.name}
                   shows={list}
                   onSelectShow={onSelectShow}
-                  onViewAll={() => setViewAll({ title: t.allShowsTitle ?? g.name, shows })}
+                  onViewAll={() => setViewAll({ title: g.name, shows: showsByGenre(g.slug) })}
                   viewAllLabel={t.viewAll}
                 />
               );
@@ -1558,6 +1590,44 @@ function RailRow({
     if (node) node.scrollLeft = 0;
   }, []);
   const accent = ROW_ACCENT[role];
+  const { lang } = useLang();
+  const t = appText[lang];
+
+  // When every card in a rail carries the same access badge, that badge
+  // describes the ROW, not eight separate posters — so it is printed once
+  // in the heading and left off the artwork entirely. A rail whose cards
+  // genuinely differ keeps the per-card badges, because there the badge
+  // is the only thing telling two neighbouring covers apart.
+  const rowAccess = useMemo(() => {
+    if (shows.length === 0) return null;
+    const key = (s: Show) =>
+      s.coming_soon
+        ? 'soon'
+        : s.type === 'movie'
+          ? s.is_free
+            ? 'free'
+            : 'movie'
+          : s.is_free
+            ? 'free'
+            : 'vip';
+    const first = key(shows[0]);
+    return shows.every((s) => key(s) === first) ? first : null;
+  }, [shows]);
+
+  const rowAccessBadge =
+    rowAccess === 'soon' ? (
+      <Badge tone="mark" icon={<Clock className="h-3 w-3" />}>
+        {t.comingSoonLabel}
+      </Badge>
+    ) : rowAccess === 'free' ? (
+      <Badge tone="free">{t.freeBadge}</Badge>
+    ) : rowAccess === 'movie' ? (
+      <Badge tone="price">${MOVIE_PRICE}</Badge>
+    ) : rowAccess === 'vip' ? (
+      <Badge tone="vip" icon={<Crown className="h-3 w-3" />}>
+        {t.vipBadge}
+      </Badge>
+    ) : null;
 
   return (
     <section
@@ -1606,7 +1676,11 @@ function RailRow({
           ) : (
             <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{title}</h2>
           )}
-          {tag && <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge>}
+          {/* The access badge the whole row shares, printed here instead
+              of over every poster in it. A row-level `tag` (HOT, SOON)
+              still wins the slot when one is set, so the heading never
+              carries two chips saying different things. */}
+          {tag ? <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge> : rowAccessBadge}
         </div>
         {/* Icon-only now — every row repeating the same "View All" text
             down the length of a page this long added up to a lot of
@@ -1634,6 +1708,7 @@ function RailRow({
             displayTitle={seasons?.[s.id]?.base}
             titleFromSeason={subRow}
             continuesAtSeason={continuesAt?.[s.id]}
+            hideAccessBadge={rowAccess !== null}
           />
         ))}
       </div>
