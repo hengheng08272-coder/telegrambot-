@@ -347,10 +347,16 @@ export default function HomeScreen({
   // takes it, and every row below sees only what is left. Rows that end
   // up empty hide themselves, exactly as they already did.
   //
+  // The hero carousel at the top of the page counts as "already shown":
+  // its titles are seeded into the claim set before any row runs, so a
+  // cover sitting in the spotlight never turns up again in a rail three
+  // hundred pixels below it. This is the repeat that was most visible,
+  // since the hero and the first row are on screen together.
+  //
   // The seasons section below is deliberately exempt — a franchise row
   // exists precisely to gather seasons that are scattered across the
   // page, so it re-shows them on purpose.
-  const claimed = new Set<string>();
+  const claimed = new Set<string>(bannerShows.map((s) => s.id));
   const claim = (list: ShowWithGenres[], limit?: number) => {
     const out: ShowWithGenres[] = [];
     for (const s of list) {
@@ -368,7 +374,16 @@ export default function HomeScreen({
     [...oneOffMovies].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)),
   );
   const recommendedRow = claim(recommended, 10);
-  const popularRow = claim(trending, 10);
+  // Sorted by the same real play-count signal the hero uses, but NOT
+  // sliced to ten first: the hero has already claimed the top ten, so
+  // slicing here would hand this row a list that is entirely spoken for
+  // and leave it empty. Handing it the whole ranking lets it pick up at
+  // eleven and read as "and then these", which is what a Popular row
+  // under a Top-10 spotlight is actually for.
+  const popularRow = claim(
+    [...shows].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)),
+    10,
+  );
   const bingeRow = claim(bingeShows, 14);
   const ongoingRow = claim(ongoingShows);
   const genreRows = genres.map((g) => ({ genre: g, list: claim(showsByGenre(g.slug)) }));
