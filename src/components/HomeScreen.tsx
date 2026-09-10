@@ -1110,7 +1110,20 @@ function CoverflowHero({
             flat black wash: the blurred poster IS the colour source, so
             the ambience changes with every slide instead of every show
             looking identical. */}
-        <div className="absolute inset-0 bg-black/45" />
+        <div className="absolute inset-0 bg-black/25" />
+        {/* Side fade — transparent over the poster (left) so its colour
+            still reads as atmosphere, darkening toward the text column
+            (right) so title/meta/buttons keep full contrast. Without
+            this, darkening enough for the text to read flattened the
+            whole band to near-black regardless of the poster's own
+            colour — the page read the same shade of navy for every show. */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent 0%, transparent 34%, rgba(10,16,30,0.72) 60%, rgba(10,16,30,0.92) 100%)',
+          }}
+        />
         {/* Fade the top into the header and the bottom into the page */}
         <div
           className="absolute inset-0"
