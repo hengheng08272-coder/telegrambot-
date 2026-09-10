@@ -1584,22 +1584,6 @@ export default function SubscriptionModal({
                     {planLabel(payTier)}
                   </span>
                 </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
-                    {t.subMethodLabel}
-                  </span>
-                  <span className="flex max-w-[66%] shrink-0 items-center gap-1.5 truncate text-[13px] font-bold text-[color:var(--co-text)]">
-                    {payMode === 'auto' ? (
-                      <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--co-aba)' }} />
-                    ) : (
-                      <QrCode className="h-3.5 w-3.5 shrink-0 text-[color:var(--co-text-dim)]" />
-                    )}
-                    <span className="truncate">
-                      {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
-                    </span>
-                  </span>
-                </div>
-
                 {/* The amount gets its own line, above the rule, the way
                     a total sits at the bottom of a bill. */}
                 <div className="flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
