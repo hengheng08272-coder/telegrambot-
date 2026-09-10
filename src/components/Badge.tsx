@@ -33,10 +33,17 @@ interface Props {
   onArt?: boolean;
 }
 
+// vip and price used to be solid, opaque fills (a gold gradient, a blue
+// gradient) — the only two badges on a card that weren't a soft tint.
+// Sitting on top of poster art that is already busy, those two read as
+// small stickers pasted over the image rather than information, and
+// unbalanced the row against the other three tones. Same tinted-glass
+// treatment as free/mark/info now: the colour still carries the meaning,
+// it just no longer fights the artwork for attention.
 const TONES: Record<BadgeTone, string> = {
-  vip: 'text-[#211A0E] bg-gradient-to-br from-[#FFE7B0] via-[#F5C563] to-[#B98430]',
+  vip: 'text-[#F5C563] bg-[#F5C563]/16 ring-1 ring-inset ring-[#F5C563]/35',
   free: 'text-[#2FD98C] bg-[#2FD98C]/16 ring-1 ring-inset ring-[#2FD98C]/35',
-  price: 'text-white bg-gradient-to-br from-[#2050D8] to-[#0E2560]',
+  price: 'text-[#8FB4FF] bg-[#2050D8]/22 ring-1 ring-inset ring-[#4E86FF]/40',
   mark: 'text-[#FF6B60] bg-[#E6231F]/16 ring-1 ring-inset ring-[#E6231F]/40',
   info: 'text-white/85 bg-white/10 ring-1 ring-inset ring-white/12',
 };

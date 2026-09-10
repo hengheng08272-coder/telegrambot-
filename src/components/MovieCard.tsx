@@ -24,10 +24,13 @@ interface Props {
  * from episode one of something, and no sign of the thing that actually
  * makes them an easy yes — they cost a dollar, once, with no membership.
  *
- * This card says all of that at a glance. The background is the film's
- * own artwork, blurred behind the sharp poster, so every card looks
- * different without a single new asset being uploaded — which matters
- * when the shelf is short enough that repetition would be obvious.
+ * This card says all of that at a glance. The sharp poster does the one
+ * job artwork is for; the ground behind it is a plain dark surface with
+ * a quiet accent glow rather than a second, blurred copy of the same
+ * image — a low-opacity blur reads differently depending on how busy or
+ * pale the source poster is, so the card looked sharp for some films and
+ * muddy for others. One surface, always the same, reads as designed
+ * regardless of what gets uploaded.
  */
 export default function MovieCard({ show, onClick, hidePrice }: Props) {
   const { lang } = useLang();
@@ -37,23 +40,19 @@ export default function MovieCard({ show, onClick, hidePrice }: Props) {
   return (
     <button
       onClick={() => onClick(show)}
-      className="group relative w-full overflow-hidden rounded-2xl border border-white/10 text-left transition active:scale-[0.99] hover:border-white/20"
+      className="group relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#12141C] text-left transition hover:border-white/20"
     >
-      {/* The film's own art, blurred, as the card's ground. */}
+      {/* A quiet accent glow, not the film's own art — see the note above
+          on why a second, blurred poster copy was dropped. */}
       <span aria-hidden className="absolute inset-0">
-        {art && (
-          <img
-            src={art}
-            alt=""
-            className="h-full w-full scale-125 object-cover opacity-40 blur-xl"
-            draggable={false}
-          />
-        )}
+        <span
+          className="absolute -right-10 -top-16 h-40 w-40 rounded-full opacity-[0.14] blur-3xl"
+          style={{ background: 'radial-gradient(circle, #5B93FF 0%, transparent 70%)' }}
+        />
         <span
           className="absolute inset-0"
           style={{
-            background:
-              'linear-gradient(115deg, rgba(10,10,13,0.94) 20%, rgba(10,10,13,0.66) 62%, rgba(32,80,216,0.20) 100%)',
+            background: 'linear-gradient(115deg, rgba(10,10,13,0.5) 0%, rgba(10,10,13,0) 55%)',
           }}
         />
       </span>
@@ -64,7 +63,7 @@ export default function MovieCard({ show, onClick, hidePrice }: Props) {
             <img
               src={art}
               alt={show.title}
-              className="h-[112px] w-[76px] object-cover transition duration-500 group-hover:scale-105"
+              className="h-[112px] w-[76px] object-cover"
               draggable={false}
             />
           ) : (

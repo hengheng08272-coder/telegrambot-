@@ -36,6 +36,7 @@ import {
   type BakongConfig,
 } from '@/lib/bakong';
 import { compressReceipt } from '@/lib/imageCompress';
+import KhqrCard from '@/components/KhqrCard';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -1583,22 +1584,6 @@ export default function SubscriptionModal({
                     {planLabel(payTier)}
                   </span>
                 </div>
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
-                    {t.subMethodLabel}
-                  </span>
-                  <span className="flex max-w-[66%] shrink-0 items-center gap-1.5 truncate text-[13px] font-bold text-[color:var(--co-text)]">
-                    {payMode === 'auto' ? (
-                      <Zap className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--co-aba)' }} />
-                    ) : (
-                      <QrCode className="h-3.5 w-3.5 shrink-0 text-[color:var(--co-text-dim)]" />
-                    )}
-                    <span className="truncate">
-                      {payMode === 'auto' ? t.subMethodAbaTitle : t.subMethodOtherTitle}
-                    </span>
-                  </span>
-                </div>
-
                 {/* The amount gets its own line, above the rule, the way
                     a total sits at the bottom of a bill. */}
                 <div className="flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
@@ -1628,18 +1613,58 @@ export default function SubscriptionModal({
                 <div className="mt-4">
                   {qrSrc ? (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => setQrZoom(true)}
-                        aria-label={t.subQrTapHint}
-                        className="mx-auto block rounded-[var(--co-r-btn)] bg-white p-2 transition active:scale-[0.98]"
-                      >
-                        <img
-                          src={qrSrc}
-                          alt="KHQR"
-                          className="h-[148px] w-[148px] object-contain"
-                        />
-                      </button>
+                      {liveKhqr ? (
+                        // A generated QR (Bakong config / pasted template)
+                        // renders as a bare black-and-white square with no
+                        // chrome of its own — KhqrCard draws the same red
+                        // "KHQR" ticket band + name + amount a bank-issued
+                        // one already has printed on it, so a generated QR
+                        // reads exactly as trustworthy as an uploaded one.
+                        <button
+                          type="button"
+                          onClick={() => setQrZoom(true)}
+                          aria-label={t.subQrTapHint}
+                          className="mx-auto block transition active:scale-[0.98]"
+                        >
+                          <KhqrCard
+                            merchantName={payeeName ?? bakongConfig?.merchantName ?? planLabel(payTier)}
+                            amount={payTier.price}
+                            qrDataUrl={liveKhqr.image}
+                          />
+                        </button>
+                      ) : (
+                        <>
+                          {/* An admin-uploaded image is usually already a
+                              whole ticket graphic (a bank app screenshot),
+                              so it isn't wrapped in another one — just a
+                              small KHQR mark + name above it, when a name
+                              is actually known from the payload. */}
+                          <div className="mx-auto mb-2.5 flex max-w-[220px] flex-col items-center gap-1">
+                            <img
+                              src="/assets/khqr-logo.png"
+                              alt="KHQR"
+                              className="h-5 w-auto object-contain"
+                            />
+                            {(payeeName ?? bakongConfig?.merchantName) && (
+                              <span className="truncate text-[12px] font-bold uppercase tracking-wide text-[color:var(--co-text)]">
+                                {payeeName ?? bakongConfig?.merchantName}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setQrZoom(true)}
+                            aria-label={t.subQrTapHint}
+                            className="mx-auto block rounded-[var(--co-r-btn)] bg-white p-2 transition active:scale-[0.98]"
+                          >
+                            <img
+                              src={qrSrc}
+                              alt="KHQR"
+                              className="h-[148px] w-[148px] object-contain"
+                            />
+                          </button>
+                        </>
+                      )}
                       <p className="mx-auto mt-2.5 max-w-[16rem] text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
                         {t.subQrTapHint}
                       </p>

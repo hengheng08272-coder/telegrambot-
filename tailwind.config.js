@@ -84,5 +84,16 @@ export default {
       },
     },
   },
+  // Every viewer here is on a touch screen (this is a Telegram Mini App),
+  // where `:hover` triggers on tap with no matching "un-hover" — so a
+  // poster card's hover-lift/scale/tint fired (and stuck) on every tap,
+  // right as the tap itself navigated away. This scopes all `hover:` /
+  // `group-hover:` variants to `@media (hover: hover) and (pointer:
+  // fine)`, i.e. an actual mouse, so tapping a card just navigates —
+  // no lift, no flash, no residual hover state — while desktop keeps
+  // the same hover polish it always had.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   plugins: [],
 };

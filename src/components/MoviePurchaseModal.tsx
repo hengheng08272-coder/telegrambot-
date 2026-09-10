@@ -3,6 +3,9 @@ import { Check, ImagePlus, Loader2, Play, X } from 'lucide-react';
 import type { Show } from '@/lib/types';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
+import { fetchBakongConfig, generateKhqr, renderQrDataUrl, type BakongConfig } from '@/lib/bakong';
+import { readKhqrMerchant } from '@/lib/khqr';
+import KhqrCard from '@/components/KhqrCard';
 import {
   MOVIE_PRICE,
   getMovieQr,
@@ -25,6 +28,8 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
   const [phase, setPhase] = useState<Phase>('loading');
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [qrSrc, setQrSrc] = useState<string | null>(null);
+  const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
+  const [liveKhqr, setLiveKhqr] = useState<{ payload: string; image: string } | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -53,6 +58,51 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
       active = false;
     };
   }, [show.id]);
+
+  // The owner's Bakong details, read once when the sheet opens -- same
+  // source SubscriptionModal reads, so the movie QR gets the same badge
+  // and merchant name instead of whatever static image happened to be
+  // uploaded to payment_qr_codes' "movie" row, which goes stale the
+  // moment that image's own styling falls behind (see qrSrc fallback
+  // below for what still shows if no Bakong config is set at all).
+  useEffect(() => {
+    let cancelled = false;
+    fetchBakongConfig().then((cfg) => {
+      if (!cancelled) setBakongConfig(cfg);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // One freshly-generated $1 KHQR per ticket, same pattern as
+  // SubscriptionModal's liveKhqr -- regenerated if the ticket changes so
+  // a resumed purchase still carries a live bill number.
+  useEffect(() => {
+    let cancelled = false;
+    if (!bakongConfig || !submissionId) {
+      setLiveKhqr(null);
+      return;
+    }
+    (async () => {
+      const generated = await generateKhqr({
+        config: bakongConfig,
+        amount: MOVIE_PRICE,
+        billNumber: submissionId.slice(0, 8).toUpperCase(),
+        storeLabel: show.title,
+      });
+      if (cancelled || !generated) {
+        if (!cancelled) setLiveKhqr(null);
+        return;
+      }
+      const image = await renderQrDataUrl(generated.payload);
+      if (cancelled) return;
+      setLiveKhqr(image ? { payload: generated.payload, image } : null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bakongConfig, submissionId, show.title]);
 
   // Once a screenshot is sent, confirm-movie-payment-proof grants the
   // unlock synchronously — but poll a few times right after in case the
@@ -181,7 +231,15 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
                 </span>
               </p>
 
-              {qrSrc ? (
+              {liveKhqr ? (
+                <div className="mx-auto mt-3.5">
+                  <KhqrCard
+                    merchantName={readKhqrMerchant(liveKhqr.payload) ?? bakongConfig?.merchantName ?? show.title}
+                    amount={MOVIE_PRICE}
+                    qrDataUrl={liveKhqr.image}
+                  />
+                </div>
+              ) : qrSrc ? (
                 <img
                   src={qrSrc}
                   alt="KHQR"

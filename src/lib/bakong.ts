@@ -400,7 +400,9 @@ export async function generateKhqr(opts: GenerateKhqrOptions): Promise<Generated
 /**
  * Renders a KHQR payload to a PNG data URL so it can be shown as an
  * ordinary <img>. High error correction, because this gets scanned off a
- * phone screen held by someone else's phone.
+ * phone screen held by someone else's phone -- and because 'H' tolerates
+ * roughly 30% of the code being obscured, which is what leaves room for
+ * the centre badge drawn below without breaking the scan.
  */
 export async function renderQrDataUrl(payload: string): Promise<string | null> {
   // Guarded because the encoder's own complaint about a non-string is
@@ -409,13 +411,83 @@ export async function renderQrDataUrl(payload: string): Promise<string | null> {
   if (typeof payload !== 'string' || !payload) return null;
   try {
     const QRCode = (await import('qrcode')).default;
-    return await QRCode.toDataURL(payload, {
+    const canvas = document.createElement('canvas');
+    await QRCode.toCanvas(canvas, payload, {
       errorCorrectionLevel: 'H',
       margin: 1,
       scale: 8,
       color: { dark: '#000000', light: '#FFFFFF' },
     });
+    await drawKhqrBadge(canvas);
+    return canvas.toDataURL('image/png');
   } catch {
     return null;
+  }
+}
+
+/** Loads an <img>, resolving null instead of rejecting on any failure --
+ *  a missing/broken badge asset should never take the whole QR down with
+ *  it. */
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+const BAKONG_MARK_SRC = '/assets/bakong-mark.png';
+
+/**
+ * Draws the small round mark every real KHQR carries dead centre --
+ * the actual Bakong logo file -- directly onto the rendered QR canvas.
+ *
+ * Reproducing the actual Bakong mark, not a stand-in, is deliberate here:
+ * the underlying account this app generates KHQR payloads for is itself
+ * a real Bakong-linked account (see database/bakong-md5-addition.sql and
+ * the "Bakong KHQR" admin panel), so every payload this draws onto really
+ * is a genuine KHQR under the scheme that mark identifies -- the same
+ * reason ABA, Wing, and every other participating bank's own KHQR carries
+ * it too.
+ */
+async function drawKhqrBadge(canvas: HTMLCanvasElement): Promise<void> {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  // 'H' correction survives up to ~30% obscured; a badge spanning ~20%
+  // of the code's width matches the size real KHQR badges (ABA, Wing,
+  // Bakong itself) use, and stays comfortably inside that budget.
+  const outerR = canvas.width * 0.1;
+
+  // A soft shadow first, the way a printed sticker badge sits very
+  // slightly proud of the page instead of looking pasted flat on.
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.beginPath();
+  ctx.arc(cx, cy + outerR * 0.05, outerR * 1.04, 0, Math.PI * 2);
+  ctx.fill();
+
+  // A thin white ring behind the mark itself -- the source file's red
+  // disc runs edge to edge with no margin of its own, so without this
+  // the badge would sit flush against whatever QR module happens to be
+  // behind it instead of standing apart from the code.
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+  ctx.fill();
+
+  const mark = await loadImage(BAKONG_MARK_SRC);
+  const size = outerR * 1.55;
+  if (mark) {
+    ctx.drawImage(mark, cx - size / 2, cy - size / 2, size, size);
+  } else {
+    // Asset failed to load (offline first paint, bad deploy, etc.) --
+    // a plain red disc is a reasonable fallback so the QR still reads
+    // as "this has a badge" rather than showing a blank white circle.
+    ctx.fillStyle = '#E11B24';
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR * 0.86, 0, Math.PI * 2);
+    ctx.fill();
   }
 }

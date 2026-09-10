@@ -314,12 +314,23 @@ h3 {
    The ring is drawn outset, not inset: an inset shadow paints under the
    element's content, so on a card whose content is a full-bleed poster
    it would be invisible. */
-.group:hover .poster-frame,
 .group:focus-visible .poster-frame {
   box-shadow:
     0 0 0 2px var(--ring),
     0 20px 44px rgba(0, 0, 0, 0.7),
     0 0 26px -6px var(--ring);
+}
+/* Real mouse only. Touch browsers apply :hover on tap and hold it until
+   another element is tapped, with no matching "un-hover" — so the last
+   card someone tapped in a rail stayed ringed in accent colour long
+   after they moved on, reading as a stray highlighted/broken card. */
+@media (hover: hover) and (pointer: fine) {
+  .group:hover .poster-frame {
+    box-shadow:
+      0 0 0 2px var(--ring),
+      0 20px 44px rgba(0, 0, 0, 0.7),
+      0 0 26px -6px var(--ring);
+  }
 }
 
 /* Hide scrollbars on horizontal rails while keeping scroll */
