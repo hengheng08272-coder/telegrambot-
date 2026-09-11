@@ -172,7 +172,7 @@ export default function ShowCard({
             fontSize: 'clamp(100px, 32vw, 168px)',
             fontWeight: 900,
             lineHeight: 1,
-            color: 'rgba(11,8,9,0.5)',
+            color: 'rgba(0,0,0,0.5)',
             WebkitTextStroke: '2.5px rgba(255,255,255,0.9)',
             fontFamily: '"Anton", Battambang, Inter, sans-serif',
             filter:
@@ -194,11 +194,11 @@ export default function ShowCard({
             card sits in (see lib/rowAccent), so a cover in the free row
             lifts in green and one in the movies row in gold. */}
         <div
-          className={`poster-frame aspect-[2/3] overflow-hidden rounded-[3px] bg-[#171114] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
+          className={`poster-frame aspect-[2/3] overflow-hidden rounded-[3px] bg-[#141416] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
             large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
           }`}
         >
-          {!loaded && <div className="absolute inset-0 skeleton-shimmer bg-[#171114]" />}
+          {!loaded && <div className="absolute inset-0 skeleton-shimmer bg-[#141416]" />}
           <img
             src={show.poster_url ?? ''}
             alt={show.title}
@@ -220,7 +220,7 @@ export default function ShowCard({
           {rank && (
             <div
               className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, rgba(11,8,9,0) 35%, rgba(11,8,9,0.95) 100%)' }}
+              style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.95) 100%)' }}
             />
           )}
           {/* Ranked cards print only the episode count over the art —
@@ -241,7 +241,7 @@ export default function ShowCard({
               one a viewer had already seen on the same screen. */}
           {!show.coming_soon && isNew && (
             <span
-              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0b0809]"
+              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#000000]"
               style={{ boxShadow: '0 0 8px rgba(255,107,96,0.7)' }}
               aria-label={t.newTag ?? 'NEW'}
               title={t.newTag ?? 'NEW'}

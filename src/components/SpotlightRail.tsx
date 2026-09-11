@@ -87,7 +87,7 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
                 aria-label={show.title}
                 className="relative block w-full overflow-hidden rounded-[3px] ring-1 ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.55)]"
               >
-                <div className="aspect-[16/9] w-full bg-[#171114]">
+                <div className="aspect-[16/9] w-full bg-[#141416]">
                   {art && (
                     <img
                       src={art}
@@ -111,7 +111,7 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
                   className="absolute inset-0"
                   style={{
                     background:
-                      'linear-gradient(180deg, rgba(11,8,9,0.34) 0%, rgba(11,8,9,0) 34%, rgba(11,8,9,0) 66%, rgba(11,8,9,0.42) 100%)',
+                      'linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0) 66%, rgba(0,0,0,0.42) 100%)',
                   }}
                 />
 

@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from 'react';
 import type { Show } from '@/lib/types';
 import Badge from '@/components/Badge';
 import { useLang } from '@/lib/useLang';
@@ -44,84 +45,137 @@ interface TrendingProps {
 export function MosaicTrendingRail({ shows, onSelectShow, episodeNumbers, ranked }: TrendingProps) {
   const { lang } = useLang();
   const t = appText[lang];
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+
+  // Which pair the row is parked on, read off the scroller's left edge —
+  // the pairs snap to start, so the leading edge is the honest answer.
+  const onScroll = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    let best = 0;
+    let bestGap = Infinity;
+    for (let i = 0; i < el.children.length; i++) {
+      const child = el.children[i] as HTMLElement;
+      const gap = Math.abs(child.offsetLeft - el.offsetLeft - el.scrollLeft);
+      if (gap < bestGap) {
+        bestGap = gap;
+        best = i;
+      }
+    }
+    setActive((prev) => (prev === best ? prev : best));
+  }, []);
+
+  const goTo = (i: number) => {
+    const el = scrollerRef.current;
+    const child = el?.children[i] as HTMLElement | undefined;
+    if (el && child) el.scrollTo({ left: child.offsetLeft - el.offsetLeft, behavior: 'smooth' });
+  };
 
   if (shows.length === 0) return null;
 
   return (
-    <div className="rail-scroller no-scrollbar -mx-4 flex gap-3.5 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:px-8">
-      {shows.map((show, i) => {
-        const poster = show.poster_url ?? show.banner_url ?? '';
-        // The wide tile prefers a real banner and falls back to the
-        // poster. A 2:3 poster squeezed into a square crop is not
-        // flattering, so the fallback is anchored to the top of the
-        // frame where the faces in this catalog's art sit.
-        const wide = show.banner_url ?? show.poster_url ?? '';
-        const ep = episodeNumbers?.[show.id];
-        return (
-          <button
-            key={show.id}
-            onClick={() => onSelectShow(show)}
-            className="mosaic-press flex shrink-0 flex-col gap-[7px] text-left"
-          >
-            <span className="flex" style={{ gap: GUTTER }}>
-              <span
-                className="relative block shrink-0 overflow-hidden bg-[#171114]"
-                style={{ width: 92, height: 138, borderRadius: capLeft }}
-              >
-                {poster && (
-                  <img
-                    src={poster}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    width={600}
-                    height={900}
-                    draggable={false}
-                    className="h-full w-full object-cover"
-                  />
-                )}
-                {ranked && (
-                  <span className="absolute left-[5px] top-[5px]">
-                    <Badge tone="mark" onArt square>
-                      TOP {i + 1}
-                    </Badge>
+    <div>
+      <div
+        ref={scrollerRef}
+        onScroll={onScroll}
+        className="rail-scroller no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:px-8"
+      >
+        {shows.map((show, i) => {
+          const poster = show.poster_url ?? show.banner_url ?? '';
+          // The wide tile prefers a real banner and falls back to the
+          // poster. A 2:3 poster squeezed into a square crop is not
+          // flattering, so the fallback is anchored to the top of the
+          // frame where the faces in this catalog's art sit.
+          const wide = show.banner_url ?? show.poster_url ?? '';
+          const ep = episodeNumbers?.[show.id];
+          return (
+            <button
+              key={show.id}
+              onClick={() => onSelectShow(show)}
+              className="mosaic-press w-full shrink-0 snap-start text-left"
+            >
+              {/* 5:3 is what the two shapes add up to. The poster is 2:3
+                  and the crop is square, both the same height H, so the
+                  pair is H*2/3 + H wide — five thirds of its own height.
+                  Stating it as one aspect ratio lets the whole pair scale
+                  with the screen instead of being pinned to the handoff's
+                  phone pixels. */}
+              <span className="flex w-full" style={{ aspectRatio: '5 / 3', gap: GUTTER }}>
+                <span
+                  className="relative block h-full shrink-0 overflow-hidden bg-[#141416]"
+                  style={{ width: `calc(40% - ${GUTTER / 2}px)`, borderRadius: capLeft }}
+                >
+                  {poster && (
+                    <img
+                      src={poster}
+                      alt=""
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      width={600}
+                      height={900}
+                      draggable={false}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                  {ranked && (
+                    <span className="absolute left-[5px] top-[5px]">
+                      <Badge tone="mark" onArt square>
+                        TOP {i + 1}
+                      </Badge>
+                    </span>
+                  )}
+                </span>
+                <span
+                  className="relative block h-full flex-1 overflow-hidden bg-[#141416]"
+                  style={{ borderRadius: capRight }}
+                >
+                  {wide && (
+                    <img
+                      src={wide}
+                      alt=""
+                      loading={i === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      width={1600}
+                      height={900}
+                      draggable={false}
+                      className="h-full w-full object-cover object-top"
+                    />
+                  )}
+                </span>
+              </span>
+              <span className="mt-2 block">
+                <span className="line-clamp-1 text-[13px] font-semibold leading-[1.3] text-white/95">
+                  {show.title}
+                </span>
+                {!!ep && show.type !== 'movie' && (
+                  <span className="mt-1 block text-[11px] font-bold text-white/40">
+                    {t.epShort} {ep}
                   </span>
                 )}
               </span>
-              <span
-                className="relative block shrink-0 overflow-hidden bg-[#171114]"
-                style={{ width: 138, height: 138, borderRadius: capRight }}
-              >
-                {wide && (
-                  <img
-                    src={wide}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    width={1600}
-                    height={900}
-                    draggable={false}
-                    className="h-full w-full object-cover object-top"
-                  />
-                )}
-              </span>
-            </span>
-            {/* 233px = 92 + 3 + 138: the caption is exactly as wide as
-                the pair above it, so a long title wraps against the
-                artwork's own edge instead of pushing the row wider. */}
-            <span className="block" style={{ width: 92 + GUTTER + 138 }}>
-              <span className="line-clamp-1 text-[13px] font-semibold leading-[1.3] text-white/95">
-                {show.title}
-              </span>
-              {!!ep && show.type !== 'movie' && (
-                <span className="ml-1 text-[11px] font-bold text-white/40">
-                  · {t.epShort} {ep}
-                </span>
-              )}
-            </span>
-          </button>
-        );
-      })}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Dots. With one pair filling the screen there is nothing sticking
+          out past the edge to hint that the row continues, so this is the
+          only thing saying so. */}
+      {shows.length > 1 && (
+        <div className="mt-2 flex items-center justify-center gap-1.5">
+          {shows.map((show, i) => (
+            <button
+              key={show.id}
+              onClick={() => goTo(i)}
+              aria-label={show.title}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === active ? 'w-5 bg-[#FF6B60]' : 'w-1.5 bg-white/25'
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -176,7 +230,7 @@ export function MosaicFreeStrip({ shows, onSelectShow, continuesAt }: StripProps
                 key={show.id}
                 onClick={() => onSelectShow(show)}
                 aria-label={show.title}
-                className="mosaic-press relative block shrink-0 overflow-hidden bg-[#171114]"
+                className="mosaic-press relative block shrink-0 overflow-hidden bg-[#141416]"
                 style={{ width: lead ? 178 : 66, height: 96, borderRadius: radius }}
               >
                 {art && (
@@ -198,7 +252,7 @@ export function MosaicFreeStrip({ shows, onSelectShow, continuesAt }: StripProps
                       className="absolute inset-0"
                       style={{
                         background:
-                          'linear-gradient(180deg, rgba(11,8,9,0) 45%, rgba(11,8,9,0.85) 100%)',
+                          'linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.85) 100%)',
                       }}
                     />
                     <span className="absolute left-[5px] top-[5px] flex gap-1">

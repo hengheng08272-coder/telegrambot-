@@ -55,7 +55,7 @@ export default function NotificationBell({ title, emptyLabel }: NotificationBell
       >
         <Bell className="h-4 w-4" />
         {announcements.length > 0 && (
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#2050D8] ring-2 ring-[#0b0809]" aria-hidden />
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#2050D8] ring-2 ring-[#000000]" aria-hidden />
         )}
       </button>
 

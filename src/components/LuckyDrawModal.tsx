@@ -103,7 +103,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
       >
         <div className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-[#F5C563]/10 blur-3xl" />
 
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#0b0809] p-6 text-center shadow-[0_0_70px_rgba(245,197,99,0.2)]">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#171725] to-[#000000] p-6 text-center shadow-[0_0_70px_rgba(245,197,99,0.2)]">
           <Sparkles className="sparkle-twinkle pointer-events-none absolute left-5 top-5 h-3.5 w-3.5 text-[#F5C563]/50" />
           <Sparkles
             className="sparkle-twinkle pointer-events-none absolute right-14 top-8 h-2.5 w-2.5 text-[#2050D8]/60"
@@ -191,8 +191,8 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
                 })}
               </div>
 
-              <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#0b0809] bg-gradient-to-br from-[#F5C563] to-[#B98430] shadow-lg">
-                <Gift className={`h-6 w-6 text-[#0b0809] ${spinning ? '' : 'gift-float'}`} />
+              <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-[#000000] bg-gradient-to-br from-[#F5C563] to-[#B98430] shadow-lg">
+                <Gift className={`h-6 w-6 text-[#000000] ${spinning ? '' : 'gift-float'}`} />
               </div>
             </div>
           )}
@@ -228,7 +228,7 @@ export default function LuckyDrawModal({ onClose, onClaimed }: Props) {
             <button
               onClick={spin}
               disabled={spinning || checking || !!error}
-              className="w-full rounded-full bg-gradient-to-r from-[#F5C563] to-[#B98430] py-3.5 text-sm font-bold text-[#0b0809] shadow-[0_8px_24px_rgba(245,197,99,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(245,197,99,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full rounded-full bg-gradient-to-r from-[#F5C563] to-[#B98430] py-3.5 text-sm font-bold text-[#000000] shadow-[0_8px_24px_rgba(245,197,99,0.35)] transition hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(245,197,99,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
             >
               {spinning ? t.spinSpinning : t.spinButton}
             </button>

@@ -16,7 +16,6 @@ import {
   Check,
   Play,
   Clock,
-  ListVideo,
   Radio,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
@@ -270,17 +269,6 @@ export default function HomeScreen({
     [shows],
   );
 
-  // The long ones. A viewer with an evening free wants the shows they can
-  // actually sink into, and episode count is the honest signal for that —
-  // it needs no admin curation and cannot go stale.
-  const bingeShows = useMemo(
-    () =>
-      shows
-        .filter((s) => !s.coming_soon && (episodeNumbers[s.id] ?? 0) >= 20)
-        .sort((a, b) => (episodeNumbers[b.id] ?? 0) - (episodeNumbers[a.id] ?? 0))
-        .slice(0, 14),
-    [shows, episodeNumbers],
-  );
 
   // Still releasing, as opposed to a finished series — that finished/still
   // going distinction no longer gets its own row (a completed show now
@@ -366,18 +354,16 @@ export default function HomeScreen({
   const movieRow = claim(
     [...oneOffMovies].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)),
   );
-  const recommendedRow = claim(recommended, 10);
   // Sorted by the same real play-count signal the hero uses, but NOT
   // sliced to ten first: the hero has already claimed the top ten, so
   // slicing here would hand this row a list that is entirely spoken for
   // and leave it empty. Handing it the whole ranking lets it pick up at
-  // eleven and read as "and then these", which is what a Popular row
-  // under a Top-10 spotlight is actually for.
+  // eleven and read as "and then these".
   const popularRow = claim(
     [...shows].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)),
     10,
   );
-  const bingeRow = claim(bingeShows, 14);
+  const recommendedRow = claim(recommended, 10);
   const ongoingRow = claim(ongoingShows);
   const genreRows = genres.map((g) => ({ genre: g, list: claim(showsByGenre(g.slug)) }));
 
@@ -405,7 +391,7 @@ export default function HomeScreen({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(11,8,9,0.55) 0%, rgba(11,8,9,0.32) 40%, rgba(11,8,9,0.9) 82%, #0b0809 100%)',
+              'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.32) 40%, rgba(0,0,0,0.9) 82%, #000000 100%)',
           }}
         />
         <div className="relative z-10 flex flex-col items-center gap-4 px-8">
@@ -482,7 +468,7 @@ export default function HomeScreen({
           }`}
           aria-hidden
         />
-        <div className="no-scrollbar mx-auto flex max-w-[1400px] flex-nowrap items-center gap-3 overflow-x-auto px-2.5 py-2.5 sm:gap-5 sm:px-8 sm:py-3">
+        <div className="no-scrollbar mx-auto flex max-w-[1400px] flex-nowrap items-center gap-3 overflow-x-auto px-2.5 py-1.5 sm:gap-5 sm:px-8 sm:py-2">
           {/* Identity — avatar + username, borderless at rest. The
               Telegram app-icon button that used to sit here was removed
               earlier: Telegram already prints "NINTANIME mini app" above,
@@ -516,13 +502,13 @@ export default function HomeScreen({
                 )}
               </div>
               {subscribed && (
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#0b0809]">
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#000000]">
                   <Crown className="h-2 w-2 text-black" />
                 </span>
               )}
               {rewardsAvailable === 'spin-ready' && (
                 <span
-                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#0b0809]"
+                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#000000]"
                   aria-hidden
                 />
               )}
@@ -622,7 +608,7 @@ export default function HomeScreen({
           be a `fixed` overlay guessing the header's pixel height, which is
           what made it visually collide with the header controls; being
           in-flow here means it can never land on top of them. */}
-      <div className="relative z-10 pt-[52px] sm:pt-[60px]">
+      <div className="relative z-10 pt-[42px] sm:pt-[50px]">
         <SupporterTicker
           staticMessage={tickerMessage}
         />
@@ -630,8 +616,6 @@ export default function HomeScreen({
         {/* Mosaic hero — banner strip with the poster hung off it (4A) */}
         {heroVisible && (
           <MosaicHero
-            shows={bannerShows}
-            index={heroIndex}
             hero={hero}
             heroIsFree={showsById.get(hero.id)?.is_free ?? hero.is_free ?? false}
             heroIsMovie={(showsById.get(hero.id)?.type ?? hero.type) === 'movie'}
@@ -706,6 +690,38 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-3">
+            {/* Popular leads the page — it is the row with the catalog's
+                best artwork and the one that answers "what is everyone
+                watching" before anything else gets a chance to ask. Free
+                follows it: a signed-out viewer still meets the one row
+                they can act on without scrolling past the whole page.
+                Note the claim order in the derivation above runs the
+                other way round, so Popular cannot swallow the free
+                titles on its way through. */}
+            {popularRow.length > 0 && (
+              <section
+                className="rail-section mt-11"
+                style={{ '--row-accent': ROW_ACCENT.mark } as React.CSSProperties}
+              >
+                <RowHeading
+                  title={t.featuredLabel ?? t.popularSeason}
+                  accent={ROW_ACCENT.mark}
+                  onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
+                  viewAllLabel={t.viewAll}
+                  viewAllShort={t.viewAllShort}
+                />
+                <MosaicTrendingRail
+                  shows={popularRow}
+                  onSelectShow={onSelectShow}
+                  episodeNumbers={episodeNumbers}
+                  ranked
+                />
+              </section>
+            )}
+
+            {/* Free-to-watch, straight after Popular. Empty until shows
+                are marked "unlock all" (shows.is_free) in Admin -> Shows;
+                the row hides itself until then. */}
             {/* Free-to-watch leads the page. Everything below it needs a
                 membership, so the one row a signed-out viewer can act on
                 immediately goes first rather than three rows down. Plain
@@ -775,39 +791,6 @@ export default function HomeScreen({
                 title as a 2:3 poster butted against a 16:9 crop of
                 itself. It gets the catalog's most-watched titles, which
                 are also the ones most likely to have real banner art. */}
-            {popularRow.length > 0 && (
-              <section
-                className="rail-section mt-11"
-                style={{ '--row-accent': ROW_ACCENT.mark } as React.CSSProperties}
-              >
-                <RowHeading
-                  title={t.featuredLabel ?? t.popularSeason}
-                  accent={ROW_ACCENT.mark}
-                  onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
-                  viewAllLabel={t.viewAll}
-                  viewAllShort={t.viewAllShort}
-                />
-                <MosaicTrendingRail
-                  shows={popularRow}
-                  onSelectShow={onSelectShow}
-                  episodeNumbers={episodeNumbers}
-                  ranked
-                />
-              </section>
-            )}
-
-            {bingeRow.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                role="guide"
-                icon={<ListVideo className="h-5 w-5" />}
-                title={t.bingeRowLabel}
-                shows={bingeRow}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.bingeRowLabel, shows: bingeRow })}
-                viewAllLabel={t.viewAll}
-              />
-            )}
             {ongoingRow.length > 0 && (
               <RailRow
                 episodeNumbers={episodeNumbers}
@@ -894,7 +877,7 @@ export default function HomeScreen({
                 >
                   <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
                   <Gift className="h-4 w-4" />
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0b0809]" aria-hidden />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#000000]" aria-hidden />
                 </button>
               </div>
             )}
@@ -951,7 +934,7 @@ export default function HomeScreen({
                       }}
                       className="text-left"
                     >
-                      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#171114] ring-1 ring-white/5">
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#141416] ring-1 ring-white/5">
                         <img
                           src={s.poster_url ?? ''}
                           alt={s.title}
@@ -1037,8 +1020,6 @@ type TranslationText = {
 };
 
 interface MosaicHeroProps {
-  shows: Show[];
-  index: number;
   hero: Show;
   heroIsFree: boolean;
   heroIsMovie: boolean;
@@ -1068,8 +1049,6 @@ interface MosaicHeroProps {
  * scroll.
  */
 function MosaicHero({
-  shows,
-  index,
   hero,
   heroIsFree,
   heroIsMovie,
@@ -1123,7 +1102,7 @@ function MosaicHero({
       {/* The banner strip. 168px is the handoff's phone figure; it grows
           on wider screens so a desktop window gets a masthead rather
           than a letterbox slot. */}
-      <div className="relative h-[132px] w-full overflow-hidden bg-[#171114] sm:h-[200px] lg:h-[268px]">
+      <div className="relative h-[132px] w-full overflow-hidden bg-[#141416] sm:h-[200px] lg:h-[268px]">
         {banner && (
           <img
             key={hero.id}
@@ -1143,7 +1122,7 @@ function MosaicHero({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(11,8,9,0.15) 0%, rgba(11,8,9,0.1) 45%, rgba(11,8,9,0.92) 100%)',
+              'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.1) 45%, rgba(0,0,0,0.92) 100%)',
           }}
         />
       </div>
@@ -1153,7 +1132,7 @@ function MosaicHero({
         <button
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
-          className="mosaic-press relative block h-[114px] w-[76px] shrink-0 overflow-hidden bg-[#171114] sm:h-[162px] sm:w-[108px]"
+          className="mosaic-press relative block h-[114px] w-[76px] shrink-0 overflow-hidden bg-[#141416] sm:h-[162px] sm:w-[108px]"
           style={{ borderRadius: 3, boxShadow: '0 10px 30px rgba(4,2,3,0.7)' }}
         >
           {poster && (
@@ -1241,18 +1220,6 @@ function MosaicHero({
         <ChevronRight className="h-6 w-6" />
       </button>
 
-      {/* Thin auto-play countdown bar, pinned to the bottom of the banner
-          strip rather than the whole section — below the banner it would
-          cut across the poster and the buttons. */}
-      {shows.length > 1 && (
-        <div className="pointer-events-none absolute inset-x-0 top-[129px] z-30 h-[3px] overflow-hidden bg-white/10 sm:top-[197px] lg:top-[265px]">
-          <div
-            key={index}
-            className="hero-progress-fill h-full"
-            style={{ animationDuration: `${HERO_AUTO_MS}ms`, background: 'rgba(255,255,255,0.75)' }}
-          />
-        </div>
-      )}
     </section>
   );
 }
