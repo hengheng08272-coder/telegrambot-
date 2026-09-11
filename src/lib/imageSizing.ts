@@ -155,7 +155,7 @@ export async function prepareShowImage(file: File, kind: ImageKind): Promise<Pre
     ctx.imageSmoothingQuality = 'high';
     // Artwork with transparency (a logo PNG used as a poster) would
     // otherwise flatten to black once encoded as JPEG.
-    ctx.fillStyle = '#0A101E';
+    ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, outW, outH);
     ctx.drawImage(img, sx, sy, cropW, cropH, 0, 0, outW, outH);
 

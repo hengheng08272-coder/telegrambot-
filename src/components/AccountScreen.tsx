@@ -146,7 +146,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           className="mx-auto mb-4 block"
         >
           <img
-            src="/assets/images/logo-transparent.png"
+            src="/assets/images/nintplex-logo.png"
             alt=""
             draggable={false}
             className="mx-auto h-14 w-auto opacity-90 sm:h-16"
@@ -169,7 +169,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
               ? {
                   borderColor: 'rgba(245,197,99,0.3)',
                   background:
-                    'linear-gradient(120deg, rgba(245,197,99,0.14), rgba(10,16,30,0.4) 60%)',
+                    'linear-gradient(120deg, rgba(245,197,99,0.14), rgba(0,0,0,0.4) 60%)',
                   boxShadow: '0 0 24px rgba(245,197,99,0.12)',
                 }
               : { borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }
@@ -177,7 +177,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
         >
           {status?.subscribed && (
             <span
-              className="absolute right-3 top-3 flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider text-[#0A101E]"
+              className="absolute right-3 top-3 flex items-center gap-1 rounded-md px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider text-[#000000]"
               style={{ background: 'linear-gradient(135deg, #FFE7B0, #2050D8 45%, #C08F33)' }}
             >
               <Crown className="h-2.5 w-2.5" /> VIP
@@ -369,7 +369,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
             className="mb-4 flex w-full items-center gap-3 rounded-card border border-[#4C6FFF]/30 bg-gradient-to-r from-[#4C6FFF]/12 to-transparent p-4 text-left shadow-card transition hover:border-[#4C6FFF]/60 hover:from-[#4C6FFF]/20 active:scale-[0.99]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#2050D8] to-[#B98430]">
-              <Gift className="h-5 w-5 text-[#0A101E]" />
+              <Gift className="h-5 w-5 text-[#000000]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-white">មាន Bonus Spin រង់ចាំ!</p>

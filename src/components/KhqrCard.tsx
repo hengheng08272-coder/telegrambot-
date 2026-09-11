@@ -21,7 +21,18 @@ interface KhqrCardProps {
  */
 export default function KhqrCard({ merchantName, amount, qrDataUrl }: KhqrCardProps) {
   return (
-    <div className="mx-auto w-full max-w-[220px] overflow-hidden rounded-xl bg-white shadow-[0_10px_34px_rgba(0,0,0,0.55)]">
+    // A real bank-issued KHQR ticket is set in a plain grown-up sans, not
+    // in the app's own display face. The ticket is the moment somebody is
+    // deciding whether to hand over money, so it should look like the
+    // ticket their banking app prints rather than like part of our UI —
+    // the merchant name and amount are exactly what they check.
+    <div
+      className="mx-auto w-full max-w-[220px] overflow-hidden rounded-xl bg-white shadow-[0_10px_34px_rgba(0,0,0,0.55)]"
+      style={{
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      }}
+    >
       {/* Header band. The notch on the bottom-right is the KHQR ticket's
           own shape — a clipped corner, so it needs no artwork. */}
       <div

@@ -1,7 +1,7 @@
 import { Smartphone, QrCode, ShieldCheck } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
-const LOGO_URL = '/assets/logo-transparent.png';
+const LOGO_URL = '/assets/nintplex-logo.png';
 
 interface DesktopBlockedScreenProps {
   onOpenAdminSignIn: () => void;

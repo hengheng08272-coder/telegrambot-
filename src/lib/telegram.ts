@@ -8,6 +8,13 @@ interface TelegramWebApp {
   expand: () => void;
   colorScheme: 'light' | 'dark';
   themeParams: Record<string, string>;
+  /** The raw, SIGNED init string. `initDataUnsafe` below is the same
+   *  payload already parsed, and is named "unsafe" precisely because
+   *  anything can write those fields — only this string carries the HMAC
+   *  that proves Telegram produced it, so it is the one a server may
+   *  trust. Never read the user id from initDataUnsafe for an access
+   *  decision; send this and let the server verify it. */
+  initData?: string;
   initDataUnsafe?: {
     start_param?: string;
     user?: {
@@ -82,6 +89,12 @@ export function initTelegramApp() {
   tg.ready();
   tg.expand();
   tg.disableVerticalSwipes?.();
+}
+
+/** The signed init string, for server calls that must establish who the
+ *  viewer really is. Empty outside Telegram. */
+export function getTelegramInitData(): string {
+  return getTelegramWebApp()?.initData ?? '';
 }
 
 // Returns whether we're actually running inside Telegram (vs a plain

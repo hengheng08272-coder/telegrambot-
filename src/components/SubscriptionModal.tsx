@@ -82,7 +82,10 @@ type Step = 'pick' | 'method' | 'pay';
 // sheet, and on the standalone Safari page. Same logo, same size, so a
 // viewer handed off to a browser can see they are still inside the same
 // product and not on some payment site.
-const LOGO_SRC = '/assets/images/logo-transparent.png';
+// The NintPlex mark. The old NINT ANIME logo is left in place as a file
+// so nothing that still points at it 404s, but every screen the viewer
+// actually meets now carries the new one.
+const LOGO_SRC = '/assets/images/nintplex-logo.png';
 
 // How long one payment ticket stays open while the ABA auto-confirm
 // webhook listens for a matching bank notification. When this hits zero
@@ -782,6 +785,14 @@ export default function SubscriptionModal({
     onClose();
   };
 
+  // The plain "scan this" state: nothing sent, nothing wrong, nothing
+  // pending. It is the only state on this step that can be trimmed —
+  // the QR says "scan me" by being a QR, so the icon, the sentence under
+  // the title and the plan restatement are all saying it a second time,
+  // and between them they push the countdown and the upload box off the
+  // bottom of a phone. Every other state keeps its full explanation.
+  const payCompact = !proofSent && !amountMismatch && !handedOff;
+
   const mmss = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
   const waitPct = Math.max(0, Math.min(100, (secondsLeft / WAIT_WINDOW_SECONDS) * 100));
   const ticketRef = pending ? pending.id.slice(0, 8).toUpperCase() : '—';
@@ -1010,8 +1021,16 @@ export default function SubscriptionModal({
         )}
         <span className="flex items-center gap-2">
           <img src={LOGO_SRC} alt="" className="h-8 w-8 shrink-0 object-contain" />
-          <span className="text-[13px] font-bold text-[color:var(--co-text)]">
-            {t.subGoPremium}
+          {/* The wordmark, set to carry the same weight as the mark beside
+              it: the display face at the logo's own cap height, with PLEX
+              in the brand red. Plain 13px body text next to a 32px logo
+              read as a caption for the picture rather than as the name of
+              the product. */}
+          <span
+            className="text-[20px] leading-none text-[color:var(--co-text)]"
+            style={{ fontFamily: 'var(--co-font-display)', letterSpacing: '0.02em' }}
+          >
+            NINT<span style={{ color: '#E6231F' }}>PLEX</span>
           </span>
         </span>
         <span className="h-10 w-10" />
@@ -1152,6 +1171,12 @@ export default function SubscriptionModal({
                       aria-label={`${planLabel(tr)} — $${tr.price}`}
                       className={`co-ticket w-full text-left ${selected ? 'co-ticket-selected' : ''}`}
                     >
+                      {/* The plan's tab, hung off the ticket's top edge.
+                          It used to be an inline chip wedged between the
+                          pitch and the price, which is the row already
+                          carrying the most to read. */}
+                      {tr.badge === 'best' && <span className="co-tab co-tab-gold">{t.subBestValue}</span>}
+                      {tr.badge === 'popular' && <span className="co-tab">{t.subPopular}</span>}
                       {/* The stub: how long the pass runs, in the numerals
                           the viewer reads prices in. */}
                       <span className="co-ticket-stub">
@@ -1194,11 +1219,6 @@ export default function SubscriptionModal({
                           </span>
                         </span>
 
-                        {tr.badge === 'best' && <span className="co-stamp shrink-0">{t.subBestValue}</span>}
-                        {tr.badge === 'popular' && (
-                          <span className="co-stamp co-stamp-quiet shrink-0">{t.subPopular}</span>
-                        )}
-
                         <span
                           className="shrink-0 leading-none tabular-nums"
                           style={{ fontFamily: 'var(--co-font-display)', fontSize: '22px' }}
@@ -1209,6 +1229,29 @@ export default function SubscriptionModal({
                     </button>
                   );
                 })}
+              </div>
+            )}
+
+            {/* What the membership is, spelled out once under the price
+                comparison. The three chips above say it in two words
+                each; this is the sentence version, for the viewer who is
+                still deciding rather than still choosing. */}
+            {!tiersLoading && visibleTiers.length > 0 && (
+              <div className="mt-5 border-t border-[color:var(--co-line-soft)] pt-4">
+                <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--co-text-faint)]">
+                  {t.subIncludesTitle}
+                </p>
+                <ul className="space-y-2">
+                  {[t.subIncl1, t.subIncl2, t.subIncl3].map((line) => (
+                    <li key={line} className="flex items-start gap-2.5">
+                      <Check
+                        className="mt-[2px] h-3.5 w-3.5 shrink-0"
+                        style={{ color: 'var(--co-green)' }}
+                      />
+                      <span className="text-[13px] leading-snug text-[color:var(--co-text-dim)]">{line}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -1522,8 +1565,9 @@ export default function SubscriptionModal({
                 </span>
               </div>
 
-              <div className="p-5">
+              <div className={payCompact ? 'p-4' : 'p-5'}>
               <div className="flex flex-col items-center text-center">
+                {!payCompact && (
                 <span
                   className="flex h-12 w-12 items-center justify-center rounded-full"
                   style={{
@@ -1547,7 +1591,8 @@ export default function SubscriptionModal({
                     <Wallet className="h-5 w-5" style={{ color: 'var(--co-text-muted)' }} />
                   )}
                 </span>
-                <p className="mt-3 text-[15px] font-bold text-[color:var(--co-text)]">
+                )}
+                <p className={`text-[15px] font-bold text-[color:var(--co-text)] ${payCompact ? '' : 'mt-3'}`}>
                   {proofSent
                     ? t.subVerifyingTitle
                     : amountMismatch
@@ -1558,7 +1603,7 @@ export default function SubscriptionModal({
                           ? t.subReadyQrTitle
                           : t.subReadyTitle}
                 </p>
-                {!amountMismatch && (
+                {!amountMismatch && !payCompact && (
                   <p className="mt-1.5 max-w-[17rem] text-[13px] leading-relaxed text-[color:var(--co-text-dim)]">
                     {proofSent
                       ? t.subVerifyingFree
@@ -1573,9 +1618,10 @@ export default function SubscriptionModal({
 
               {/* Below the tear: what the pass is for, the way a
                   printed one lists it. */}
-              <div className="co-tear -mx-5 my-4" />
+              <div className={`co-tear -mx-5 ${payCompact ? 'my-3' : 'my-4'}`} />
 
               <div className="space-y-2.5">
+                {!payCompact && (
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
                     {t.subReceiptPlan}
@@ -1584,11 +1630,22 @@ export default function SubscriptionModal({
                     {planLabel(payTier)}
                   </span>
                 </div>
+                )}
                 {/* The amount gets its own line, above the rule, the way
                     a total sits at the bottom of a bill. */}
-                <div className="flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
-                  <span className="shrink-0 pb-1 text-[11px] text-[color:var(--co-text-dim)]">
-                    {t.subAmountDue}
+                <div
+                  className={`flex items-end justify-between gap-3 ${
+                    payCompact ? '' : 'border-t border-[color:var(--co-line-soft)] pt-3'
+                  }`}
+                >
+                  <span className="min-w-0 shrink pb-1 text-[11px] text-[color:var(--co-text-dim)]">
+                    {payCompact ? (
+                      <span className="block truncate font-bold text-[color:var(--co-text)]">
+                        {planLabel(payTier)}
+                      </span>
+                    ) : (
+                      t.subAmountDue
+                    )}
                   </span>
                   <span className="flex items-baseline gap-1.5">
                     <span
@@ -1675,22 +1732,45 @@ export default function SubscriptionModal({
                 </div>
               )}
 
-              {/* The window draining, drawn as one thin line: the wait is
-                  information, not a threat. It stops once a receipt is sent. */}
+              {/* The window draining. Amber, and set in its own block
+                  directly under the amount rather than as a hairline at
+                  the foot of the dialog: it is the one thing on this
+                  screen that changes by itself, so it has to be findable
+                  without hunting. Amber and not red — the wait is
+                  information, not a threat. Stops once a receipt is sent. */}
               {!proofSent && !amountMismatch && (
-                <div className="mt-4">
-                  <div className="h-[3px] overflow-hidden rounded-full bg-white/[0.07]">
+                <div
+                  className="mt-3.5 rounded-[var(--co-r-btn)] px-3.5 py-3"
+                  style={{
+                    backgroundColor: 'rgba(255,184,77,0.10)',
+                    boxShadow: 'inset 0 0 0 1px rgba(255,184,77,0.32)',
+                  }}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span
+                      className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold"
+                      style={{ color: 'var(--co-amber)' }}
+                    >
+                      <Clock className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{t.subCooldownNote}</span>
+                    </span>
+                    {/* Monospaced so the digits do not shuffle sideways
+                        every second as the glyph widths change. */}
+                    <span
+                      className="shrink-0 text-[15px] font-bold tabular-nums"
+                      style={{ fontFamily: 'ui-monospace, Menlo, monospace', color: 'var(--co-amber)' }}
+                    >
+                      {mmss}
+                    </span>
+                  </div>
+                  <div
+                    className="h-[3px] overflow-hidden rounded-full"
+                    style={{ backgroundColor: 'rgba(255,184,77,0.22)' }}
+                  >
                     <div
                       className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-                      style={{ width: `${waitPct}%`, backgroundColor: 'var(--co-brand)' }}
+                      style={{ width: `${waitPct}%`, backgroundColor: 'var(--co-amber)' }}
                     />
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-[color:var(--co-text-faint)]">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {t.subCooldownNote}
-                    </span>
-                    <span className="tabular-nums">{mmss}</span>
                   </div>
                 </div>
               )}

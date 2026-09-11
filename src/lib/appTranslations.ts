@@ -146,6 +146,16 @@ export const appText = {
     noNotifications: 'No announcements right now',
     trendingNowPrefix: 'Trending now',
     freeRowLabel: 'Free to Watch',
+    // The mosaic rows print their "see the rest" link as text
+    // rather than a chevron button, so it needs a form short
+    // enough to sit at the end of a heading without crowding
+    // the title. `viewAll` stays the accessible name.
+    viewAllShort: 'ALL',
+    subIncludesTitle: 'Included',
+    subIncl1: 'Every episode of every series, all seasons',
+    subIncl2: 'No ads, no waiting between episodes',
+    subIncl3: 'Unlocks the moment your payment clears',
+    watchNow: 'Watch Now',
     seasonShort: 'Season ',
     nextEpisode: 'Next episode',
     mute: 'Mute',
@@ -186,7 +196,9 @@ export const appText = {
     resume: 'Resume',
 
     // Subscription modal
-    subGoPremium: 'Go Premium',
+    // The modal header carries the brand, not a restatement of the
+    // button that opened it — the screen underneath already said VIP.
+    subGoPremium: 'NintPlex',
     subTagline: 'Unlimited episodes · Zero ads · Instant unlock',
     sub1Month: '1 Month',
     sub2Months: '2 Months',
@@ -615,6 +627,12 @@ export const appText = {
     noNotifications: 'មិនទាន់មានការជូនដំណឹងទេឥឡូវនេះ',
     trendingNowPrefix: 'កំពុងពេញនិយម',
     freeRowLabel: 'មើលឥតគិតថ្លៃ',
+    viewAllShort: 'ទាំងអស់',
+    subIncludesTitle: 'រួមបញ្ចូល',
+    subIncl1: 'មើលបានគ្រប់ភាគ គ្រប់រដូវកាល',
+    subIncl2: 'គ្មានពាណិជ្ជកម្ម គ្មានរង់ចាំ',
+    subIncl3: 'ដោះសោភ្លាមៗ ពេលទូទាត់ជោគជ័យ',
+    watchNow: 'មើលឥឡូវ',
     seasonShort: 'រដូវកាល ',
     nextEpisode: 'ភាគបន្ទាប់',
     mute: 'បិទសំឡេង',
@@ -655,7 +673,7 @@ export const appText = {
     resume: 'បន្ត',
 
     // Subscription modal
-    subGoPremium: 'ក្លាយជាសមាជិក VIP',
+    subGoPremium: 'NintPlex',
     subTagline: 'មើលគ្មានដែនកំណត់ · គ្មានពាណិជ្ជកម្ម · ដោះសោភ្លាមៗ',
     sub1Month: '១ ខែ',
     sub2Months: '២ ខែ',

@@ -588,7 +588,7 @@ export default function UsersPanel({ onClose }: Props) {
                       <button
                         onClick={() => handleBonusSubmit(row)}
                         disabled={isBusy || !bonusDays || parseInt(bonusDays, 10) <= 0}
-                        className="flex shrink-0 items-center gap-1 rounded-lg bg-gradient-to-r from-[#F5C563] to-[#B98430] px-3 py-2 text-[11px] font-bold text-[#0A101E] transition hover:brightness-110 disabled:opacity-40"
+                        className="flex shrink-0 items-center gap-1 rounded-lg bg-gradient-to-r from-[#F5C563] to-[#B98430] px-3 py-2 text-[11px] font-bold text-[#000000] transition hover:brightness-110 disabled:opacity-40"
                       >
                         {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Gift className="h-3 w-3" />}
                         ផ្ដល់
