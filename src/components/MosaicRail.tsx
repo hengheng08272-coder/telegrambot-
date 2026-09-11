@@ -93,14 +93,21 @@ export function MosaicTrendingRail({ shows, onSelectShow, episodeNumbers, ranked
             <button
               key={show.id}
               onClick={() => onSelectShow(show)}
-              className="mosaic-press w-full shrink-0 snap-start text-left"
+              className="mosaic-press w-full max-w-[358px] shrink-0 snap-start text-left"
             >
               {/* 5:3 is what the two shapes add up to. The poster is 2:3
                   and the crop is square, both the same height H, so the
                   pair is H*2/3 + H wide — five thirds of its own height.
                   Stating it as one aspect ratio lets the whole pair scale
                   with the screen instead of being pinned to the handoff's
-                  phone pixels. */}
+                  phone pixels.
+
+                  The 358px cap is what keeps that from running away: a
+                  pair that is simply "full width" is 358px on a phone,
+                  which is the intended one-per-screen, but 1400px in a
+                  desktop window — and at 5:3 that is an 840px-tall row
+                  filling the entire page. Capped, the phone is unchanged
+                  and a wide window just shows several pairs. */}
               <span className="flex w-full" style={{ aspectRatio: '5 / 3', gap: GUTTER }}>
                 <span
                   className="relative block h-full shrink-0 overflow-hidden bg-[#141416]"

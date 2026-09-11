@@ -196,7 +196,9 @@ export const appText = {
     resume: 'Resume',
 
     // Subscription modal
-    subGoPremium: 'Go Premium',
+    // The modal header carries the brand, not a restatement of the
+    // button that opened it — the screen underneath already said VIP.
+    subGoPremium: 'NintPlex',
     subTagline: 'Unlimited episodes · Zero ads · Instant unlock',
     sub1Month: '1 Month',
     sub2Months: '2 Months',
@@ -671,7 +673,7 @@ export const appText = {
     resume: 'បន្ត',
 
     // Subscription modal
-    subGoPremium: 'ក្លាយជាសមាជិក VIP',
+    subGoPremium: 'NintPlex',
     subTagline: 'មើលគ្មានដែនកំណត់ · គ្មានពាណិជ្ជកម្ម · ដោះសោភ្លាមៗ',
     sub1Month: '១ ខែ',
     sub2Months: '២ ខែ',
