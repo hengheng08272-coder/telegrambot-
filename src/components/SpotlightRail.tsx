@@ -12,20 +12,21 @@ interface Props {
 }
 
 /**
- * The wide format, for the handful of titles a row is willing to spend
- * real height on.
+ * The wide format, two to a screen.
  *
  * A rail of 112px portrait covers is built to get through a lot of
- * catalog quickly; it is the wrong shape for the one or two things the
- * page is actually pitching. This is the other end of that trade — one
- * 16:9 frame at full width, a play control dead centre, and the price or
- * access state in the corner, swiped one at a time with dots underneath
- * saying how many more there are.
+ * catalog quickly; it is the wrong shape for the handful of things the
+ * page is actually pitching. This is the other end of that trade — 16:9
+ * frames with a play control dead centre and the price in the corner.
  *
- * No title is drawn over the art. Every poster and banner in this
- * catalog arrives with its title already lettered into the image, so a
- * caption would be printing the same words a second time on top of the
- * artwork it is sitting on.
+ * Two per screen, not one. A single full-width frame filled the row with
+ * one film and gave no sense that a second existed without swiping; at
+ * half width both fit on a phone at once, which is what makes the row
+ * read as a shelf rather than as an advert.
+ *
+ * The title is captioned underneath rather than printed over the art —
+ * a 174px frame has no room to letter a Khmer title across it without
+ * covering the thing being sold.
  */
 export default function SpotlightRail({ shows, onSelectShow }: Props) {
   const { lang } = useLang();
@@ -33,21 +34,25 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
 
-  // Which frame is centred, read off the scroller rather than tracked as
-  // its own state machine: the scroll IS the source of truth here.
-  // Measured from the children's own offsets rather than by dividing by
-  // the item width — the frames sit in a gapped flex row, so each one
-  // advances by its width PLUS the gap and index-by-division drifts a
-  // frame out by the end of a long row.
+  // Which frame leads the view, read off the scroller rather than tracked
+  // as its own state machine: the scroll IS the source of truth here.
+  //
+  // Measured against the scroller's LEFT edge, not its centre. With two
+  // frames visible the centre line falls in the gutter between them, so
+  // centre-matching flickered between neighbours on the smallest scroll.
+  // The frames snap to start, so the leading edge is what the row is
+  // actually parked on. Offsets come from the children themselves rather
+  // than from dividing by item width — they sit in a gapped flex row, so
+  // each advances by its width PLUS the gap.
   const onScroll = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    const mid = el.scrollLeft + el.clientWidth / 2;
+    const left = el.scrollLeft;
     let best = 0;
     let bestGap = Infinity;
     for (let i = 0; i < el.children.length; i++) {
       const child = el.children[i] as HTMLElement;
-      const gap = Math.abs(child.offsetLeft + child.offsetWidth / 2 - mid);
+      const gap = Math.abs(child.offsetLeft - el.offsetLeft - left);
       if (gap < bestGap) {
         bestGap = gap;
         best = i;
@@ -60,10 +65,7 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
     const el = scrollerRef.current;
     const child = el?.children[i] as HTMLElement | undefined;
     if (el && child) {
-      el.scrollTo({
-        left: child.offsetLeft - (el.clientWidth - child.offsetWidth) / 2,
-        behavior: 'smooth',
-      });
+      el.scrollTo({ left: child.offsetLeft - el.offsetLeft, behavior: 'smooth' });
     }
   };
 
@@ -74,12 +76,12 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
       <div
         ref={scrollerRef}
         onScroll={onScroll}
-        className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto"
+        className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 sm:-mx-8 sm:px-8"
       >
         {shows.map((show) => {
           const art = show.banner_url ?? show.poster_url ?? '';
           return (
-            <div key={show.id} className="w-full shrink-0 snap-center">
+            <div key={show.id} className="w-[calc(50%-5px)] shrink-0 snap-start sm:w-[calc(33.333%-7px)]">
               <button
                 onClick={() => onSelectShow(show)}
                 aria-label={show.title}
@@ -117,31 +119,34 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
                     as "play this" without covering the frame behind it. */}
                 <span
                   aria-hidden
-                  className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/95 bg-black/25 backdrop-blur-[2px]"
+                  className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white/95 bg-black/25 backdrop-blur-[2px]"
                 >
-                  <Play className="ml-0.5 h-5 w-5 fill-white text-white" />
+                  <Play className="ml-0.5 h-4 w-4 fill-white text-white" />
                 </span>
 
-                <span className="absolute right-3 top-3">
+                <span className="absolute left-2 top-2">
                   {show.coming_soon ? (
-                    <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />}>
+                    <Badge tone="mark" onArt square icon={<Clock className="h-3 w-3" />}>
                       {t.comingSoonLabel}
                     </Badge>
                   ) : show.type === 'movie' && !show.is_free ? (
-                    <span className="text-[22px] font-black leading-none tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)]">
+                    <Badge tone="price" onArt square>
                       ${MOVIE_PRICE}
-                    </span>
+                    </Badge>
                   ) : show.is_free ? (
-                    <Badge tone="free" onArt>
+                    <Badge tone="free" onArt square>
                       {t.freeBadge}
                     </Badge>
                   ) : (
-                    <Badge tone="vip" onArt icon={<Crown className="h-3 w-3" />}>
+                    <Badge tone="vip" onArt square icon={<Crown className="h-3 w-3" />}>
                       {t.vipBadge}
                     </Badge>
                   )}
                 </span>
               </button>
+              <p className="mt-2 truncate text-[12px] font-semibold leading-none text-white/95">
+                {show.title}
+              </p>
             </div>
           );
         })}
