@@ -146,6 +146,12 @@ export const appText = {
     noNotifications: 'No announcements right now',
     trendingNowPrefix: 'Trending now',
     freeRowLabel: 'Free to Watch',
+    // The mosaic rows print their "see the rest" link as text
+    // rather than a chevron button, so it needs a form short
+    // enough to sit at the end of a heading without crowding
+    // the title. `viewAll` stays the accessible name.
+    viewAllShort: 'ALL',
+    watchNow: 'Watch Now',
     seasonShort: 'Season ',
     nextEpisode: 'Next episode',
     mute: 'Mute',
@@ -615,6 +621,8 @@ export const appText = {
     noNotifications: 'មិនទាន់មានការជូនដំណឹងទេឥឡូវនេះ',
     trendingNowPrefix: 'កំពុងពេញនិយម',
     freeRowLabel: 'មើលឥតគិតថ្លៃ',
+    viewAllShort: 'ទាំងអស់',
+    watchNow: 'មើលឥឡូវ',
     seasonShort: 'រដូវកាល ',
     nextEpisode: 'ភាគបន្ទាប់',
     mute: 'បិទសំឡេង',

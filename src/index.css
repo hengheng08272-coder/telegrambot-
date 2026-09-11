@@ -348,6 +348,18 @@ h3 {
   }
 }
 
+/* Press feedback for the mosaic tiles.
+   The mosaic has no ring, no shadow and no hover lift — the artwork sits
+   flush against its neighbour — so a tap needs to register somehow. A
+   small, fast scale is the whole affordance; anything larger reopens the
+   gap between tiles that the 3px gutter exists to close. */
+.mosaic-press {
+  transition: transform 120ms ease-out;
+}
+.mosaic-press:active {
+  transform: scale(0.98);
+}
+
 /* Hide scrollbars on horizontal rails while keeping scroll */
 .no-scrollbar {
   -ms-overflow-style: none;

@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  Flame,
   User,
   Crown,
   Gift,
@@ -13,8 +12,10 @@ import {
   Tv,
   Film,
   Bookmark,
+  Plus,
+  Check,
+  Play,
   Clock,
-  Layers,
   ListVideo,
   Radio,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
 import SpotlightRail from '@/components/SpotlightRail';
+import { MosaicTrendingRail, MosaicFreeStrip } from '@/components/MosaicRail';
 import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
@@ -31,7 +33,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
-import { getContinueWatching, type ContinueItem } from '@/lib/watchlist';
+import { toggleWatchlist, isInWatchlist, getContinueWatching, type ContinueItem } from '@/lib/watchlist';
 import { seasonFranchises, nextPaidSeason, parseSeason } from '@/lib/seasons';
 import { ROW_ACCENT, tint, type RowRole } from '@/lib/rowAccent';
 
@@ -60,12 +62,6 @@ interface HomeScreenProps {
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
 
 const HERO_AUTO_MS = 6000;
-
-/** Index arithmetic that wraps in both directions. `%` alone returns a
- *  negative remainder for a negative input, so the deck's left-hand
- *  neighbours (`index - 1`, `index - 2`) fall off the array whenever the
- *  carousel is sitting on its first slide. */
-const wrapIndex = (i: number, n: number) => (n > 0 ? ((i % n) + n) % n : 0);
 
 // Small, purely-cosmetic emoji lookup for genre rail headers — gives each
 // row a bit of personality at a glance without needing extra icon assets.
@@ -626,18 +622,18 @@ export default function HomeScreen({
           staticMessage={tickerMessage}
         />
 
-        {/* Coverflow hero carousel */}
+        {/* Mosaic hero — banner strip with the poster hung off it (4A) */}
         {heroVisible && (
-          <CoverflowHero
+          <MosaicHero
             shows={bannerShows}
             index={heroIndex}
             hero={hero}
             heroIsFree={showsById.get(hero.id)?.is_free ?? hero.is_free ?? false}
             heroIsMovie={(showsById.get(hero.id)?.type ?? hero.type) === 'movie'}
+            episodeNumbers={episodeNumbers}
             onSelectShow={onSelectShow}
             onPrev={prevSlide}
             onNext={nextSlide}
-            onGoTo={goToSlide}
             onTouchStart={(x) => {
               touchStartX.current = x;
               pauseThenResume();
@@ -714,17 +710,22 @@ export default function HomeScreen({
                 Empty until shows are marked "unlock all" (shows.is_free)
                 in Admin -> Shows; the row hides itself until then. */}
             {freeRow.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                role="free"
-                icon={<Gift className="h-5 w-5" />}
-                title={t.freeRowLabel ?? 'Free to Watch'}
-                shows={freeRow}
-                onSelectShow={onSelectShow}
-                continuesAt={continuesAt}
-                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeRow })}
-                viewAllLabel={t.viewAll}
-              />
+              <section
+                className="rail-section mt-8"
+                style={{ '--row-accent': ROW_ACCENT.free } as React.CSSProperties}
+              >
+                <RowHeading
+                  title={t.freeRowLabel ?? 'Free to Watch'}
+                  accent={ROW_ACCENT.free}
+                  onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeRow })}
+                  viewAllLabel={t.viewAll}
+                  viewAllShort={t.viewAllShort}
+                />
+                {/* No FREE badge in the heading: unlike the card rails,
+                    every lead tile in this strip carries the badge on the
+                    artwork itself, where the handoff puts it. */}
+                <MosaicFreeStrip shows={freeRow} onSelectShow={onSelectShow} continuesAt={continuesAt} />
+              </section>
             )}
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
@@ -740,36 +741,18 @@ export default function HomeScreen({
                 className="rail-section mt-8"
                 style={{ '--row-accent': ROW_ACCENT.vip } as React.CSSProperties}
               >
-                <div className="mb-3.5 flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      className="h-4 w-[3px] shrink-0 rounded-sm"
-                      style={{ background: ROW_ACCENT.vip, boxShadow: `0 0 10px ${tint(ROW_ACCENT.vip, 0.5)}` }}
-                      aria-hidden
-                    />
-                    <span
-                      className="rail-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-                      style={{ color: ROW_ACCENT.vip }}
-                      aria-hidden
-                    >
-                      <Film className="h-5 w-5" />
-                    </span>
-                    <h2 className="truncate text-[17px] font-extrabold tracking-tight sm:text-2xl">
-                      {t.navMovies}
-                    </h2>
-                    <Badge tone="price">${MOVIE_PRICE}</Badge>
-                  </div>
-                  {movieRow.length > 1 && (
-                    <button
-                      onClick={() => setViewAll({ title: t.navMovies, shows: movieRow, movies: true })}
-                      aria-label={t.viewAll}
-                      title={t.viewAll}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
+                <RowHeading
+                  title={t.navMovies}
+                  accent={ROW_ACCENT.vip}
+                  badge={<Badge tone="price">${MOVIE_PRICE}</Badge>}
+                  onViewAll={
+                    movieRow.length > 1
+                      ? () => setViewAll({ title: t.navMovies, shows: movieRow, movies: true })
+                      : undefined
+                  }
+                  viewAllLabel={t.viewAll}
+                  viewAllShort={t.viewAllShort}
+                />
                 <SpotlightRail shows={movieRow} onSelectShow={onSelectShow} />
               </section>
             )}
@@ -783,17 +766,29 @@ export default function HomeScreen({
                 onSelectShow={onSelectShow}
               />
             )}
+            {/* Trending is the row the mosaic was designed around: each
+                title as a 2:3 poster butted against a 16:9 crop of
+                itself. It gets the catalog's most-watched titles, which
+                are also the ones most likely to have real banner art. */}
             {popularRow.length > 0 && (
-              <RailRow
-                episodeNumbers={episodeNumbers}
-                role="mark"
-                icon={<Flame className="h-5 w-5" />}
-                title={t.popularSeason}
-                shows={popularRow}
-                onSelectShow={onSelectShow}
-                onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
-                viewAllLabel={t.viewAll}
-              />
+              <section
+                className="rail-section mt-8"
+                style={{ '--row-accent': ROW_ACCENT.mark } as React.CSSProperties}
+              >
+                <RowHeading
+                  title={t.featuredLabel ?? t.popularSeason}
+                  accent={ROW_ACCENT.mark}
+                  onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
+                  viewAllLabel={t.viewAll}
+                  viewAllShort={t.viewAllShort}
+                />
+                <MosaicTrendingRail
+                  shows={popularRow}
+                  onSelectShow={onSelectShow}
+                  episodeNumbers={episodeNumbers}
+                  ranked
+                />
+              </section>
             )}
 
             {bingeRow.length > 0 && (
@@ -845,22 +840,7 @@ export default function HomeScreen({
                 one show and puts them in watch order. */}
             {franchises.length > 0 && (
               <section className="rail-section mt-8" style={{ '--row-accent': ROW_ACCENT.guide } as React.CSSProperties}>
-                <div
-                  className="mb-4 h-px w-full"
-                  style={{
-                    background: `linear-gradient(90deg, ${tint(ROW_ACCENT.guide, 0.55)} 0%, ${tint(ROW_ACCENT.guide, 0.14)} 22%, rgba(255,255,255,0.05) 55%, transparent 100%)`,
-                  }}
-                  aria-hidden
-                />
-                <div className="mb-1 flex items-center gap-2">
-                  <span
-                    className="h-4 w-[3px] shrink-0 rounded-sm"
-                    style={{ background: ROW_ACCENT.guide, boxShadow: `0 0 10px ${tint(ROW_ACCENT.guide, 0.5)}` }}
-                    aria-hidden
-                  />
-                  <Layers className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.guide }} />
-                  <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.seasonsRowLabel}</h2>
-                </div>
+                <RowHeading title={t.seasonsRowLabel} accent={ROW_ACCENT.guide} />
                 {franchises.map((f) => (
                   <RailRow
                     key={f.base}
@@ -1031,7 +1011,7 @@ export default function HomeScreen({
   );
 }
 
-/* ---------- Coverflow hero ---------- */
+/* ---------- Mosaic hero (handoff 4A) ---------- */
 
 type TranslationText = {
   featured: string;
@@ -1046,307 +1026,221 @@ type TranslationText = {
   ongoing?: string;
   comingSoonLabel: string;
   myList: string;
+  watchNow?: string;
+  seasonShort: string;
+  epShort: string;
 };
 
-interface CoverflowHeroProps {
+interface MosaicHeroProps {
   shows: Show[];
   index: number;
   hero: Show;
   heroIsFree: boolean;
   heroIsMovie: boolean;
+  /** show id -> newest episode number, for the hero's meta line. */
+  episodeNumbers?: Record<string, number>;
   onSelectShow: (s: Show) => void;
   onPrev: () => void;
   onNext: () => void;
-  onGoTo: (i: number) => void;
   onTouchStart: (x: number) => void;
   onTouchEnd: (x: number) => void;
   t: TranslationText;
 }
 
-function CoverflowHero({
+/**
+ * The 4A hero: a wide banner with the poster hung off its bottom edge.
+ *
+ * The banner is the surface and the poster is the signature — the poster
+ * is deliberately small (88×132) and overlaps the banner by 46px, so the
+ * two read as one masthead rather than as a backdrop with a card parked
+ * on it. Everything else (title, meta, the two buttons) hangs off the
+ * poster's baseline.
+ *
+ * There is no blurred copy of the artwork behind this any more. That
+ * existed to fill a wide empty band around a small poster; the banner
+ * now fills the width itself, and a `blur-3xl` full-bleed image is one
+ * of the more expensive things a phone GPU can be asked to repaint on
+ * scroll.
+ */
+function MosaicHero({
   shows,
   index,
   hero,
   heroIsFree,
   heroIsMovie,
+  episodeNumbers,
   onSelectShow,
   onPrev,
   onNext,
-  onGoTo,
   onTouchStart,
   onTouchEnd,
   t,
-}: CoverflowHeroProps) {
-  const [bgLoaded, setBgLoaded] = useState(false);
-  const ambienceRef = useRef<HTMLDivElement>(null);
-  const bg = hero.banner_url ?? hero.poster_url ?? '';
+}: MosaicHeroProps) {
+  const [inList, setInList] = useState(() => isInWatchlist(hero.id));
 
-  // Drop the loaded flag whenever the centered show changes
-  // (auto-advance, swipe, or a tap on a side cover) so the new ambient
-  // backdrop fades in rather than snapping.
   useEffect(() => {
-    setBgLoaded(false);
+    setInList(isInWatchlist(hero.id));
   }, [hero.id]);
 
-  // Ambient background drifts a little slower than the page and fades out
-  // as the viewer scrolls past the hero. This writes straight to the DOM
-  // node inside a single rAF instead of storing scrollY in state: the old
-  // version re-rendered the whole hero — including a `blur-3xl` poster,
-  // which is one of the most expensive things a phone GPU can be asked to
-  // repaint — on every scroll event, which is what made scrolling feel
-  // like it was skidding. The drift is also gentler now (0.18 rather than
-  // 0.35), so the backdrop never appears to outrun the finger.
-  useEffect(() => {
-    let ticking = false;
-    const apply = () => {
-      ticking = false;
-      const el = ambienceRef.current;
-      if (!el) return;
-      const y = window.scrollY;
-      const heroHeightPx = Math.min(window.innerHeight * 0.32, 280);
-      el.style.transform = `translate3d(0, ${Math.min(y * 0.18, 80)}px, 0)`;
-      el.style.opacity = String(Math.max(1 - y / heroHeightPx, 0));
-    };
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(apply);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    apply();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  const banner = hero.banner_url ?? hero.poster_url ?? '';
+  const poster = hero.poster_url ?? hero.banner_url ?? '';
+  const { season } = parseSeason(hero.title);
+  const ep = episodeNumbers?.[hero.id];
+
+  const meta: string[] = [];
+  if (season !== null) meta.push(`${t.seasonShort}${season}`);
+  if (ep && hero.type !== 'movie') meta.push(`${t.epShort} ${ep}`);
+
+  const accessBadge = hero.coming_soon ? (
+    <Badge tone="mark" onArt square icon={<Clock className="h-3 w-3" />}>
+      {t.comingSoonLabel}
+    </Badge>
+  ) : heroIsFree ? (
+    <Badge tone="free" onArt square>
+      {t.freeBadge}
+    </Badge>
+  ) : heroIsMovie ? (
+    <Badge tone="price" onArt square className="whitespace-nowrap">
+      {t.movieOneOff}
+    </Badge>
+  ) : (
+    <Badge tone="vip" onArt square icon={<Crown className="h-3 w-3" />}>
+      {t.vipBadge ?? 'VIP'}
+    </Badge>
+  );
 
   return (
     <section
-      className="relative w-full overflow-hidden px-4 pb-4 pt-1 sm:px-8 sm:pb-5 sm:pt-2"
+      className="relative w-full overflow-hidden"
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
-      {/* Blurred ambient background driven by the centered show */}
-      <div
-        ref={ambienceRef}
-        className="pointer-events-none absolute inset-0 will-change-transform"
-      >
-        {bg && (
+      {/* The banner strip. 168px is the handoff's phone figure; it grows
+          on wider screens so a desktop window gets a masthead rather
+          than a letterbox slot. */}
+      <div className="relative h-[168px] w-full overflow-hidden bg-[#151926] sm:h-[240px] lg:h-[320px]">
+        {banner && (
           <img
             key={hero.id}
-            src={bg}
+            src={banner}
             alt=""
             aria-hidden
-            className={`hero-bg ${bgLoaded ? 'loaded' : ''} absolute inset-0 h-full w-full scale-125 object-cover blur-3xl`}
-            onLoad={() => setBgLoaded(true)}
-            // Decorative, and blurred past recognition — it must never
-            // hold up the decode of the poster it sits behind.
+            // The largest thing above the fold — the one image on this
+            // screen worth asking the browser to hurry.
+            fetchPriority="high"
             decoding="async"
-            fetchPriority="low"
             draggable={false}
+            className="h-full w-full object-cover object-top"
           />
         )}
-        {/* Scrim over the blurred artwork. Deliberately lighter than a
-            flat black wash: the blurred poster IS the colour source, so
-            the ambience changes with every slide instead of every show
-            looking identical. */}
-        <div className="absolute inset-0 bg-black/25" />
-        {/* Side fade — transparent over the poster (left) so its colour
-            still reads as atmosphere, darkening toward the text column
-            (right) so title/meta/buttons keep full contrast. Without
-            this, darkening enough for the text to read flattened the
-            whole band to near-black regardless of the poster's own
-            colour — the page read the same shade of navy for every show. */}
         <div
+          aria-hidden
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(90deg, transparent 0%, transparent 34%, rgba(10,16,30,0.72) 60%, rgba(10,16,30,0.92) 100%)',
-          }}
-        />
-        {/* Fade the top into the header and the bottom into the page */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.55) 16%, rgba(0,0,0,0.05) 36%, rgba(0,0,0,0.15) 70%, rgba(0,0,0,0.8) 90%, rgba(0,0,0,1) 100%)',
+              'linear-gradient(180deg, rgba(10,16,30,0.15) 0%, rgba(10,16,30,0.1) 45%, rgba(10,16,30,0.92) 100%)',
           }}
         />
       </div>
 
-      {/* The fanned deck.
-       *
-       *  Four neighbours splay out behind the centred cover — pushed
-       *  sideways, turned away from the viewer, scaled and faded by
-       *  distance — so the hero reads as a stack you are part-way
-       *  through rather than one poster stranded on a wide band. The
-       *  outermost pair runs off the screen edges on purpose: a deck that
-       *  ends neatly inside the frame reads as five separate cards, and a
-       *  deck that is cut off reads as "there is more here".
-       *
-       *  Nothing is lettered over the art and there is no text column
-       *  beside it. Every cover in this catalog arrives with its title
-       *  already set into the image, so the only thing the hero adds is
-       *  the one label the artwork cannot carry: whether you can watch
-       *  it. That hangs over the top edge like the tab on a folder.
-       */}
-      <div
-        className="relative z-10 mx-auto flex min-h-[286px] max-w-[1400px] items-center justify-center
-                   [--deck-c:160px] [--deck-n:132px] [--deck-f:112px]
-                   sm:min-h-[352px] sm:[--deck-c:216px] sm:[--deck-n:178px] sm:[--deck-f:151px]
-                   lg:min-h-[420px] lg:[--deck-c:252px] lg:[--deck-n:208px] lg:[--deck-f:176px]"
-      >
-        {/* Offsets are a share of each card's OWN width — that is what a
-            percentage translate means — so the fan keeps its spacing at
-            every screen size without measuring anything. They are NOT
-            multiplied by the ring number: distance is already carried by
-            the width and by how much of the card the ring in front of it
-            covers, and multiplying on top of that threw the outer pair
-            clean off a 390px screen. */}
-        {[-2, -1, 1, 2].map((off) => {
-          const i = wrapIndex(index + off, shows.length);
-          const s = shows[i];
-          if (!s || s.id === hero.id) return null;
-          const near = Math.abs(off) === 1;
-          return (
-            <button
-              key={`${s.id}-${off}`}
-              onClick={() => onGoTo(i)}
-              aria-label={s.title}
-              className="absolute top-1/2 aspect-[2/3] overflow-hidden rounded-xl transition-all duration-500 ease-out"
-              style={{
-                width: near ? '37%' : '31%',
-                maxWidth: near ? 'var(--deck-n)' : 'var(--deck-f)',
-                zIndex: near ? 5 : 3,
-                opacity: near ? 0.6 : 0.32,
-                transform: `translateY(-50%) translateX(${Math.sign(off) * (near ? 58 : 114)}%) perspective(900px) rotateY(${off > 0 ? -26 : 26}deg)`,
-                boxShadow: '0 18px 40px rgba(0,0,0,0.75)',
-              }}
-            >
-              <img
-                src={s.poster_url ?? s.banner_url ?? ''}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                width={600}
-                height={900}
-                className="h-full w-full object-cover"
-                draggable={false}
-              />
-              {/* Pushed back into the dark rather than merely made
-                  see-through: a half-transparent poster over a blurred
-                  poster is just noise, whereas a darkened one reads as
-                  depth. */}
-              <span className="absolute inset-0 bg-[#0A101E]/45" aria-hidden />
-            </button>
-          );
-        })}
-
+      {/* Poster + title, lifted into the bottom of the banner. */}
+      <div className="relative -mt-[46px] flex items-end gap-3 px-4 sm:-mt-[64px] sm:gap-4 sm:px-8">
         <button
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
-          className="hero-card-enter relative z-10 shrink-0"
-          style={{ width: '45%', maxWidth: 'var(--deck-c)' }}
+          className="mosaic-press relative block h-[132px] w-[88px] shrink-0 overflow-hidden bg-[#151926] sm:h-[186px] sm:w-[124px]"
+          style={{ borderRadius: 3, boxShadow: '0 10px 30px rgba(4,8,18,0.7)' }}
         >
-          <span className="pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
-            {hero.coming_soon ? (
-              <Badge tone="mark" onArt icon={<Clock className="h-3 w-3" />}>
-                {t.comingSoonLabel}
-              </Badge>
-            ) : heroIsFree ? (
-              <Badge tone="free" onArt>
-                {t.freeBadge}
-              </Badge>
-            ) : heroIsMovie ? (
-              <Badge tone="price" onArt className="whitespace-nowrap">
-                {t.movieOneOff}
-              </Badge>
-            ) : (
-              <Badge tone="vip" onArt icon={<Crown className="h-3 w-3" />}>
-                {t.vipBadge ?? 'VIP'}
-              </Badge>
-            )}
-          </span>
-
-          {/* The lit frame is what marks the centre of the deck — a hard
-              cyan hairline plus a soft bloom of the same colour. It does
-              the job the old rank numeral and the old title column were
-              both doing: saying "this one" without spending any of the
-              artwork's own space to say it. */}
-          <div
-            className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-xl"
-            style={{
-              boxShadow:
-                '0 0 0 2px rgba(112,232,255,0.92), 0 0 22px rgba(56,189,248,0.5), 0 0 60px rgba(56,189,248,0.22), 0 26px 60px rgba(0,0,0,0.8)',
-            }}
-          >
+          {poster && (
             <img
-              src={hero.poster_url ?? hero.banner_url ?? ''}
-              alt={hero.title}
-              // The largest thing above the fold, so it is the one image
-              // on this screen worth asking the browser to hurry.
-              fetchPriority="high"
+              src={poster}
+              alt=""
               decoding="async"
               width={600}
               height={900}
-              className="h-full w-full object-cover"
               draggable={false}
+              className="h-full w-full object-cover"
             />
-          </div>
+          )}
+          <span className="absolute left-[5px] top-[5px]">{accessBadge}</span>
+        </button>
+
+        <div className="min-w-0 pb-1">
+          <h2
+            onClick={() => onSelectShow(hero)}
+            className="line-clamp-2 cursor-pointer text-[15px] font-bold leading-[1.4] text-[#EEF1F8] sm:text-xl"
+          >
+            {hero.title}
+          </h2>
+          {meta.length > 0 && (
+            <p className="mt-1.5 truncate text-[11px] font-bold text-white/40">{meta.join(' · ')}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Two controls, and only two. The handoff gives the primary the
+          whole width it can take and leaves the watchlist as a square —
+          "watch this" is the decision the hero exists to ask for, and
+          anything else beside it competes with that. */}
+      <div className="flex gap-1.5 px-4 pt-2 sm:px-8">
+        <button
+          onClick={() => onSelectShow(hero)}
+          className="flex h-[42px] flex-1 items-center justify-center gap-2 text-[15px] font-bold text-white transition active:scale-[0.98]"
+          style={{
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, #2050D8 0%, #1A3FAE 55%, #0E2560 100%)',
+          }}
+        >
+          {hero.coming_soon ? (
+            <>
+              <Clock className="h-4 w-4" /> {t.comingSoonLabel}
+            </>
+          ) : (
+            <>
+              <Play className="h-4 w-4 fill-white" /> {t.watchNow ?? t.play}
+            </>
+          )}
+        </button>
+        <button
+          onClick={() => setInList(toggleWatchlist(hero))}
+          aria-label={t.myList}
+          title={t.myList}
+          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center text-[#EEF1F8] transition active:scale-[0.98]"
+          style={{
+            borderRadius: 3,
+            background: 'rgba(146,172,224,0.12)',
+            boxShadow: 'inset 0 0 0 1px rgba(146,172,224,0.16)',
+          }}
+        >
+          {inList ? <Check className="h-[18px] w-[18px]" /> : <Plus className="h-[18px] w-[18px]" />}
         </button>
       </div>
 
-      {/* Dots, not thumbnails. The strip of mini-posters that used to sit
-          here was a second, smaller copy of the same covers the deck is
-          already showing — five more images to decode for information the
-          fan gives away by shape. These only say how far along the deck
-          you are; the active one stretches into a bar so it survives a
-          glance. */}
-      {shows.length > 1 && (
-        <div className="relative z-10 mt-4 flex items-center justify-center gap-1.5">
-          {shows.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => onGoTo(i)}
-              aria-label={s.title}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i === index ? 'w-5 bg-[#FF5C8A]' : 'w-1.5 bg-white/25'
-              }`}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Chevron arrows — desktop only, swipe handles mobile. Anchored to
-          the section edges, outside the fan's reach. */}
+      {/* Chevron arrows — desktop only, swipe handles mobile. */}
       <button
         onClick={onPrev}
-        className="absolute left-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
+        className="absolute left-2 top-[84px] z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex lg:top-[160px]"
         aria-label="Previous"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
       <button
         onClick={onNext}
-        className="absolute right-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
+        className="absolute right-2 top-[84px] z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex lg:top-[160px]"
         aria-label="Next"
       >
         <ChevronRight className="h-6 w-6" />
       </button>
 
-      {/* Thin auto-play countdown bar — fills up over each slide's dwell
-          time, doubling as the position indicator. Keyed on the index so
-          it restarts cleanly every time the centered show changes,
-          whether from the timer or a manual swipe/tap. */}
+      {/* Thin auto-play countdown bar, pinned to the bottom of the banner
+          strip rather than the whole section — below the banner it would
+          cut across the poster and the buttons. */}
       {shows.length > 1 && (
-        <div className="absolute inset-x-0 bottom-0 z-30 h-[3px] w-full overflow-hidden bg-white/10">
+        <div className="pointer-events-none absolute inset-x-0 top-[165px] z-30 h-[3px] overflow-hidden bg-white/10 sm:top-[237px] lg:top-[317px]">
           <div
             key={index}
             className="hero-progress-fill h-full"
-            // Not blue. Blue in this app means "press me", and a
-            // countdown bar is the one thing on the hero that cannot be
-            // pressed — it just reports where the carousel has got to.
-            style={{
-              animationDuration: `${HERO_AUTO_MS}ms`,
-              background: 'rgba(255,255,255,0.75)',
-            }}
+            style={{ animationDuration: `${HERO_AUTO_MS}ms`, background: 'rgba(255,255,255,0.75)' }}
           />
         </div>
       )}
@@ -1403,13 +1297,17 @@ function BottomNavItem({ icon, label, active, onClick, highlight }: BottomNavIte
   return (
     <button
       onClick={onClick}
+      // The active tab is a filled capsule rather than a hairline rule
+      // above the icon. At the bottom of a mosaic screen a 2px underline
+      // reads as another one of the page's many horizontal rules; a
+      // filled block does not compete with them.
       className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 transition ${
-        active ? 'text-[#4E86FF]' : highlight ? 'text-[#4E86FF]' : 'text-[#9AA4BD] active:text-white/80'
+        active ? 'text-[#4E86FF]' : highlight ? 'text-[#4E86FF]' : 'text-[#6A7591] active:text-white/80'
       }`}
     >
       {active && (
         <span
-          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#2050D8] to-transparent"
+          className="pointer-events-none absolute inset-x-1 inset-y-1 rounded-[3px] bg-[#2050D8]/[0.18]"
           aria-hidden
         />
       )}
@@ -1419,7 +1317,13 @@ function BottomNavItem({ icon, label, active, onClick, highlight }: BottomNavIte
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#4E86FF] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
         )}
       </span>
-      <span className={`max-w-full truncate px-0.5 text-[9.5px] leading-none ${highlight && !active ? 'font-bold' : 'font-semibold'}`}>{label}</span>
+      <span
+        className={`relative max-w-full truncate px-0.5 text-[9.5px] leading-none ${
+          active || (highlight && !active) ? 'font-bold' : 'font-semibold'
+        }`}
+      >
+        {label}
+      </span>
     </button>
   );
 }
@@ -1458,6 +1362,72 @@ function NavLink({ label, active, onClick, highlight }: NavLinkProps) {
 }
 
 /* ---------- Content rail row ---------- */
+
+/**
+ * The heading every row on this page wears (handoff 4A).
+ *
+ * A 3px bar in the row's own colour, the title at 15/700, and the "see
+ * the rest" link as plain text on the right. Three rows used to build
+ * this themselves with slightly different spacing and a different title
+ * size each; the page read as three unrelated sections stacked up
+ * because it literally was.
+ *
+ * The accent drives the bar and the fading rule above it, never the
+ * title colour — a coloured heading and a coloured bar saying the same
+ * thing is one signal too many, and it is the bar that survives being
+ * glanced at.
+ */
+function RowHeading({
+  title,
+  accent,
+  badge,
+  onViewAll,
+  viewAllLabel,
+  viewAllShort,
+  rule = true,
+}: {
+  title: string;
+  accent: string;
+  badge?: React.ReactNode;
+  onViewAll?: () => void;
+  viewAllLabel?: string;
+  viewAllShort?: string;
+  rule?: boolean;
+}) {
+  return (
+    <>
+      {rule && (
+        <div
+          className="h-px w-full"
+          style={{ background: `linear-gradient(90deg, ${tint(accent, 0.55)} 0%, transparent 100%)` }}
+          aria-hidden
+        />
+      )}
+      <div className="flex items-center justify-between gap-2 pb-2 pt-3">
+        <span className="flex min-w-0 items-center gap-[9px]">
+          <span
+            className="h-[17px] w-[3px] shrink-0"
+            style={{ background: accent, boxShadow: `0 0 10px ${tint(accent, 0.55)}` }}
+            aria-hidden
+          />
+          <h2 className="truncate text-[15px] font-bold text-[#EEF1F8]">{title}</h2>
+          {badge}
+        </span>
+        {onViewAll && (
+          <button
+            onClick={onViewAll}
+            aria-label={viewAllLabel}
+            title={viewAllLabel}
+            className="shrink-0 text-[11px] tracking-[0.12em] text-[#6A7591] transition hover:text-white"
+            style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif' }}
+          >
+            {viewAllShort} ›
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
 
 interface RailRowProps {
   title: string;
@@ -1561,76 +1531,31 @@ function RailRow({
       className={`rail-section ${subRow ? 'mt-3' : 'mt-8'}`}
       style={{ '--row-accent': accent } as React.CSSProperties}
     >
-      {/* The rule above the row carries the row's colour at its left edge
-          and dissolves into nothing — so scrolling the page reads as a
-          sequence of coloured openings rather than eleven identical grey
-          hairlines. */}
-      {!subRow && (
-        <div
-          className="mb-4 h-px w-full"
-          style={{
-            background: `linear-gradient(90deg, ${tint(accent, 0.55)} 0%, ${tint(accent, 0.14)} 22%, rgba(255,255,255,0.05) 55%, transparent 100%)`,
-          }}
-          aria-hidden
-        />
-      )}
-      <div className={`flex items-center justify-between gap-2 ${subRow ? 'mb-1.5 pl-3' : 'mb-3'}`}>
-        <div className="flex min-w-0 items-center gap-2">
-          {/* The one solid block of the row's colour on the whole screen.
-              A sub-row is already inside a titled section, so it drops
-              the rule entirely rather than repeating its parent's. */}
-          {!subRow && (
-            <span
-              className="h-4 w-[3px] shrink-0 rounded-sm"
-              style={{ background: accent, boxShadow: `0 0 10px ${tint(accent, 0.5)}` }}
-              aria-hidden
-            />
-          )}
-          {/* The icon sits in a tile washed with the row's own accent
-              (.rail-chip reads --row-accent from this section), so the
-              heading anchors the row's colour as one solid block rather
-              than a bare glyph floating next to the title. A sub-row is
-              already inside a titled section and keeps the bare icon. */}
-          {!subRow && (icon || emoji) && (
-            <span
-              className="rail-chip flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base"
-              style={{ color: accent }}
-              aria-hidden
-            >
-              {icon ?? emoji}
-            </span>
-          )}
-          {subRow && (icon || emoji) && (
+      {subRow ? (
+        // A sub-row sits inside an already-titled section, so it drops
+        // the rule and the accent bar rather than repeating its parent's.
+        <div className="mb-1.5 flex items-center gap-2 pl-3">
+          {(icon || emoji) && (
             <span className="flex shrink-0 items-center text-sm" style={{ color: accent }} aria-hidden>
               {icon ?? emoji}
             </span>
           )}
-          {subRow ? (
-            <h3 className="truncate text-[13px] font-bold text-white/90">{title}</h3>
-          ) : (
-            <h2 className="truncate text-[17px] font-extrabold tracking-tight sm:text-2xl">{title}</h2>
-          )}
-          {/* The access badge the whole row shares, printed here instead
-              of over every poster in it. A row-level `tag` (HOT, SOON)
-              still wins the slot when one is set, so the heading never
-              carries two chips saying different things. */}
+          <h3 className="truncate text-[13px] font-bold text-white/90">{title}</h3>
           {tag ? <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge> : rowAccessBadge}
         </div>
-        {/* Icon-only now — every row repeating the same "View All" text
-            down the length of a page this long added up to a lot of
-            words saying the same thing. The label still exists, just as
-            the accessible name instead of visible text. */}
-        {onViewAll && (
-          <button
-            onClick={onViewAll}
-            aria-label={viewAllLabel}
-            title={viewAllLabel}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#9AA4BD] transition hover:bg-white/5 hover:text-white"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        )}
-      </div>
+      ) : (
+        <RowHeading
+          title={title}
+          accent={accent}
+          // A row-level tag (SOON) wins the slot over the access badge the
+          // whole row shares, so the heading never carries two chips
+          // saying different things.
+          badge={tag ? <Badge tone={tag.tone ?? 'info'}>{tag.label}</Badge> : rowAccessBadge}
+          onViewAll={onViewAll}
+          viewAllLabel={viewAllLabel}
+          viewAllShort={t.viewAllShort}
+        />
+      )}
       <div ref={scrollerRef} className="rail-scroller no-scrollbar flex gap-3 overflow-x-auto pb-3">
         {shows.map((s) => (
           <ShowCard
