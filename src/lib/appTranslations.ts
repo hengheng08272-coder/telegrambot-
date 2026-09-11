@@ -151,6 +151,10 @@ export const appText = {
     // enough to sit at the end of a heading without crowding
     // the title. `viewAll` stays the accessible name.
     viewAllShort: 'ALL',
+    subIncludesTitle: 'Included',
+    subIncl1: 'Every episode of every series, all seasons',
+    subIncl2: 'No ads, no waiting between episodes',
+    subIncl3: 'Unlocks the moment your payment clears',
     watchNow: 'Watch Now',
     seasonShort: 'Season ',
     nextEpisode: 'Next episode',
@@ -622,6 +626,10 @@ export const appText = {
     trendingNowPrefix: 'កំពុងពេញនិយម',
     freeRowLabel: 'មើលឥតគិតថ្លៃ',
     viewAllShort: 'ទាំងអស់',
+    subIncludesTitle: 'រួមបញ្ចូល',
+    subIncl1: 'មើលបានគ្រប់ភាគ គ្រប់រដូវកាល',
+    subIncl2: 'គ្មានពាណិជ្ជកម្ម គ្មានរង់ចាំ',
+    subIncl3: 'ដោះសោភ្លាមៗ ពេលទូទាត់ជោគជ័យ',
     watchNow: 'មើលឥឡូវ',
     seasonShort: 'រដូវកាល ',
     nextEpisode: 'ភាគបន្ទាប់',

@@ -1152,6 +1152,12 @@ export default function SubscriptionModal({
                       aria-label={`${planLabel(tr)} — $${tr.price}`}
                       className={`co-ticket w-full text-left ${selected ? 'co-ticket-selected' : ''}`}
                     >
+                      {/* The plan's tab, hung off the ticket's top edge.
+                          It used to be an inline chip wedged between the
+                          pitch and the price, which is the row already
+                          carrying the most to read. */}
+                      {tr.badge === 'best' && <span className="co-tab co-tab-gold">{t.subBestValue}</span>}
+                      {tr.badge === 'popular' && <span className="co-tab">{t.subPopular}</span>}
                       {/* The stub: how long the pass runs, in the numerals
                           the viewer reads prices in. */}
                       <span className="co-ticket-stub">
@@ -1194,11 +1200,6 @@ export default function SubscriptionModal({
                           </span>
                         </span>
 
-                        {tr.badge === 'best' && <span className="co-stamp shrink-0">{t.subBestValue}</span>}
-                        {tr.badge === 'popular' && (
-                          <span className="co-stamp co-stamp-quiet shrink-0">{t.subPopular}</span>
-                        )}
-
                         <span
                           className="shrink-0 leading-none tabular-nums"
                           style={{ fontFamily: 'var(--co-font-display)', fontSize: '22px' }}
@@ -1209,6 +1210,29 @@ export default function SubscriptionModal({
                     </button>
                   );
                 })}
+              </div>
+            )}
+
+            {/* What the membership is, spelled out once under the price
+                comparison. The three chips above say it in two words
+                each; this is the sentence version, for the viewer who is
+                still deciding rather than still choosing. */}
+            {!tiersLoading && visibleTiers.length > 0 && (
+              <div className="mt-5 border-t border-[color:var(--co-line-soft)] pt-4">
+                <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--co-text-faint)]">
+                  {t.subIncludesTitle}
+                </p>
+                <ul className="space-y-2">
+                  {[t.subIncl1, t.subIncl2, t.subIncl3].map((line) => (
+                    <li key={line} className="flex items-start gap-2.5">
+                      <Check
+                        className="mt-[2px] h-3.5 w-3.5 shrink-0"
+                        style={{ color: 'var(--co-green)' }}
+                      />
+                      <span className="text-[13px] leading-snug text-[color:var(--co-text-dim)]">{line}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -1675,22 +1699,45 @@ export default function SubscriptionModal({
                 </div>
               )}
 
-              {/* The window draining, drawn as one thin line: the wait is
-                  information, not a threat. It stops once a receipt is sent. */}
+              {/* The window draining. Amber, and set in its own block
+                  directly under the amount rather than as a hairline at
+                  the foot of the dialog: it is the one thing on this
+                  screen that changes by itself, so it has to be findable
+                  without hunting. Amber and not red — the wait is
+                  information, not a threat. Stops once a receipt is sent. */}
               {!proofSent && !amountMismatch && (
-                <div className="mt-4">
-                  <div className="h-[3px] overflow-hidden rounded-full bg-white/[0.07]">
+                <div
+                  className="mt-3.5 rounded-[var(--co-r-btn)] px-3.5 py-3"
+                  style={{
+                    backgroundColor: 'rgba(255,184,77,0.10)',
+                    boxShadow: 'inset 0 0 0 1px rgba(255,184,77,0.32)',
+                  }}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span
+                      className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold"
+                      style={{ color: 'var(--co-amber)' }}
+                    >
+                      <Clock className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{t.subCooldownNote}</span>
+                    </span>
+                    {/* Monospaced so the digits do not shuffle sideways
+                        every second as the glyph widths change. */}
+                    <span
+                      className="shrink-0 text-[15px] font-bold tabular-nums"
+                      style={{ fontFamily: 'ui-monospace, Menlo, monospace', color: 'var(--co-amber)' }}
+                    >
+                      {mmss}
+                    </span>
+                  </div>
+                  <div
+                    className="h-[3px] overflow-hidden rounded-full"
+                    style={{ backgroundColor: 'rgba(255,184,77,0.22)' }}
+                  >
                     <div
                       className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-                      style={{ width: `${waitPct}%`, backgroundColor: 'var(--co-brand)' }}
+                      style={{ width: `${waitPct}%`, backgroundColor: 'var(--co-amber)' }}
                     />
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-[color:var(--co-text-faint)]">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {t.subCooldownNote}
-                    </span>
-                    <span className="tabular-nums">{mmss}</span>
                   </div>
                 </div>
               )}

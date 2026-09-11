@@ -194,7 +194,7 @@ export default function ShowCard({
             card sits in (see lib/rowAccent), so a cover in the free row
             lifts in green and one in the movies row in gold. */}
         <div
-          className={`poster-frame aspect-[2/3] overflow-hidden rounded-xl bg-[#171114] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
+          className={`poster-frame aspect-[2/3] overflow-hidden rounded-[3px] bg-[#171114] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
             large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
           }`}
         >

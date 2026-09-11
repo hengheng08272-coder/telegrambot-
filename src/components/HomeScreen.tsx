@@ -382,51 +382,56 @@ export default function HomeScreen({
   const genreRows = genres.map((g) => ({ genre: g, list: claim(showsByGenre(g.slug)) }));
 
   if (loading) {
+    // The branded cover, not a grid of grey rectangles.
+    //
+    // The app already waits a beat here for Supabase, and a skeleton
+    // spends that beat showing the shape of content nobody can read yet.
+    // The 5B cover fills it with the thing the wait is for. It is not a
+    // splash screen in the sense of something to dismiss — there is no
+    // button, it is gone the moment the catalog arrives — which is the
+    // only version of this that does not cost the viewer a tap.
     return (
-      <div className="min-h-screen bg-app text-white">
-        {/* Header skeleton */}
-        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-8 sm:py-3.5">
-          <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
-          <div className="flex flex-col gap-1.5">
-            <div className="h-3.5 w-24 animate-pulse rounded bg-white/10" />
-            <div className="hidden h-2 w-16 animate-pulse rounded bg-white/5 sm:block" />
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <div className="hidden h-8 w-32 animate-pulse rounded-full bg-white/5 sm:block" />
-            <div className="h-8 w-24 animate-pulse rounded-full bg-white/5" />
-          </div>
-        </div>
-
-        {/* Hero skeleton */}
-        <div className="relative w-full overflow-hidden" style={{ height: 'min(28vh, 250px)' }}>
-          <div className="skeleton-shimmer absolute inset-0 bg-white/[0.03]" />
-          <div className="relative flex h-full items-center justify-center gap-3">
-            <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-xl bg-white/5" />
-            <div className="h-[74%] w-[38%] max-w-[164px] animate-pulse rounded-xl bg-white/10" />
-            <div className="h-[58%] w-[22%] max-w-[124px] animate-pulse rounded-xl bg-white/5" />
-          </div>
-        </div>
-
-        {/* Rail skeletons */}
-        <div className="mx-auto max-w-[1400px] px-4 pt-8 sm:px-8">
-          {[0, 1, 2].map((row) => (
-            <div key={row} className="mb-9">
-              <div className="mb-3 h-4 w-32 animate-pulse rounded bg-white/10" />
-              <div className="flex gap-4 overflow-hidden">
-                {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    className="aspect-[2/3] w-28 shrink-0 animate-pulse rounded-xl bg-white/5 sm:w-36"
-                    style={{ animationDelay: `${(row * 6 + i) * 60}ms` }}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app">
+        <img
+          src="/assets/images/nintplex-cover-poster.png"
+          alt=""
+          aria-hidden
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(11,8,9,0.55) 0%, rgba(11,8,9,0.32) 40%, rgba(11,8,9,0.9) 82%, #0b0809 100%)',
+          }}
+        />
+        <div className="relative z-10 flex flex-col items-center gap-4 px-8">
+          <img
+            src="/assets/images/nintplex-logo.png"
+            alt="NintPlex"
+            width={64}
+            height={64}
+            className="h-16 w-16 rounded-[14px]"
+          />
+          <span
+            className="text-[26px] leading-none text-[#EEF1F8]"
+            style={{ fontFamily: '"Anton", Battambang, Inter, sans-serif', letterSpacing: '0.02em' }}
+          >
+            NINT<span style={{ color: '#E6231F' }}>PLEX</span>
+          </span>
+          {/* An indeterminate bar rather than a spinner: it says "still
+              working" without pretending to know a percentage. */}
+          <span className="mt-1 block h-[3px] w-28 overflow-hidden rounded-full bg-white/12">
+            <span className="loading-sweep block h-full w-1/2 rounded-full bg-[#E6231F]" />
+          </span>
         </div>
       </div>
     );
   }
+
 
   if (error) {
     return (
@@ -1162,10 +1167,14 @@ function MosaicHero({
               className="h-full w-full object-cover"
             />
           )}
-          <span className="absolute left-[5px] top-[5px]">{accessBadge}</span>
         </button>
 
         <div className="min-w-0 pb-1">
+          {/* Beside the title, not stamped on the cover. At 76px wide the
+              poster had the badge covering most of its top edge, and
+              because the poster is lifted into the banner the badge
+              landed over the banner art behind it too. */}
+          <span className="mb-1.5 flex">{accessBadge}</span>
           <h2
             onClick={() => onSelectShow(hero)}
             className="line-clamp-2 cursor-pointer text-[15px] font-bold leading-[1.4] text-[#EEF1F8] sm:text-xl"
