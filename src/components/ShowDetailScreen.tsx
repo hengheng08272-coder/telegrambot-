@@ -138,7 +138,7 @@ export default function ShowDetailScreen({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(90deg, rgba(10,16,30,0.85) 0%, rgba(10,16,30,0.4) 50%, rgba(10,16,30,0.2) 100%), linear-gradient(0deg, rgba(10,16,30,1) 0%, rgba(10,16,30,0) 45%)',
+              'linear-gradient(90deg, rgba(11,8,9,0.85) 0%, rgba(11,8,9,0.4) 50%, rgba(11,8,9,0.2) 100%), linear-gradient(0deg, rgba(11,8,9,1) 0%, rgba(11,8,9,0) 45%)',
           }}
         />
       </div>
@@ -284,7 +284,7 @@ export default function ShowDetailScreen({
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="skeleton-shimmer h-24 rounded-card bg-[#151926]" />
+                  <div key={i} className="skeleton-shimmer h-24 rounded-card bg-[#171114]" />
                 ))}
               </div>
             ) : error ? (
@@ -311,7 +311,7 @@ export default function ShowDetailScreen({
                     className={`group flex w-full items-center gap-4 overflow-hidden rounded-card border p-3 text-left shadow-card transition active:scale-[0.995] ${
                       locked
                         ? 'border-[#F5C563]/25 bg-[#1A1710] hover:border-[#F5C563]/60 hover:shadow-glow-gold'
-                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#2050D8]/35 hover:bg-[#151926]'
+                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#2050D8]/35 hover:bg-[#171114]'
                     }`}
                   >
                     <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-xl sm:w-48">

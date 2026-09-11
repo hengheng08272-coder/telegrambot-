@@ -120,10 +120,10 @@ export default function AuthScreen({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle at 12% -5%, rgba(192,143,51,0.22) 0%, rgba(10,16,30,0) 48%), radial-gradient(circle at 88% 105%, rgba(32,80,216,0.18) 0%, rgba(10,16,30,0) 52%)',
+            'radial-gradient(circle at 12% -5%, rgba(192,143,51,0.22) 0%, rgba(11,8,9,0) 48%), radial-gradient(circle at 88% 105%, rgba(32,80,216,0.18) 0%, rgba(11,8,9,0) 52%)',
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0A101E]/55 via-[#0A101E]/80 to-[#0A101E]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0b0809]/55 via-[#0b0809]/80 to-[#0b0809]" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Top bar */}

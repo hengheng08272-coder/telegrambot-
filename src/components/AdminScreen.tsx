@@ -978,7 +978,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   className="flex shrink-0 items-center gap-3 rounded-xl border border-white/10 bg-[#0E1017] p-2.5 text-left transition hover:border-[#2050D8]/40 hover:bg-white/[0.03]"
                   style={{ width: 220 }}
                 >
-                  <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-[#151926]">
+                  <div className="h-14 w-10 shrink-0 overflow-hidden rounded-md bg-[#171114]">
                     {show.poster_url && (
                       <img src={show.poster_url} alt={show.title} className="h-full w-full object-cover" />
                     )}
@@ -1018,7 +1018,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                   onClick={() => setFocusedShowId(show.id)}
                   className="flex w-full items-center gap-4 rounded-xl border border-white/10 bg-[#0E1017] p-3.5 text-left transition hover:border-[#2FD98C]/40 hover:bg-white/[0.03]"
                 >
-                  <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#151926]">
+                  <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-[#171114]">
                     {show.poster_url && (
                       <img src={show.poster_url} alt={show.title} className="h-full w-full object-cover" />
                     )}
@@ -1086,7 +1086,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">All shows</span>
               </button>
-              <div className="h-10 w-7 shrink-0 overflow-hidden rounded-md bg-[#151926]">
+              <div className="h-10 w-7 shrink-0 overflow-hidden rounded-md bg-[#171114]">
                 {focusedShow.poster_url && (
                   <img src={focusedShow.poster_url} alt="" className="h-full w-full object-cover" />
                 )}
@@ -1205,7 +1205,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 return (
                   <div
                     key={ep.id}
-                    className="rounded-xl border border-white/5 bg-[#151926] p-3"
+                    className="rounded-xl border border-white/5 bg-[#171114] p-3"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/5 text-sm font-bold text-white/60">
@@ -1346,7 +1346,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
             {(focusedShow.type !== 'movie' || focusedShow.episodes.length === 0) && (
               <div className="mt-4">
                 {addEpOpen === focusedShow.id ? (
-                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#151926] p-4">
+                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#171114] p-4">
                     {focusedShow.type !== 'movie' && (
                     <div className="grid grid-cols-3 gap-2">
                       <div>

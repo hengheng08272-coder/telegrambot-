@@ -50,14 +50,15 @@ const ACCESS_CHIP = {
 } as const;
 
 /**
- * Every caption is exactly this tall — one meta line — whether or not the
+ * Every caption is exactly this tall — one title line plus one meta line
+ * — whether or not the
  * show actually has an episode count, a season, or a "finished" tag to
  * put in it. Cards in a rail are laid out side by side, so a caption that
  * grows a line on one card and not the next is what makes a row look
  * broken; reserving the space unconditionally is what makes that
  * impossible rather than merely unlikely.
  */
-const CAPTION_H = 'h-[18px]';
+const CAPTION_H = 'h-[34px]';
 
 export default function ShowCard({
   show,
@@ -171,7 +172,7 @@ export default function ShowCard({
             fontSize: 'clamp(100px, 32vw, 168px)',
             fontWeight: 900,
             lineHeight: 1,
-            color: 'rgba(10,16,30,0.5)',
+            color: 'rgba(11,8,9,0.5)',
             WebkitTextStroke: '2.5px rgba(255,255,255,0.9)',
             fontFamily: '"Anton", Battambang, Inter, sans-serif',
             filter:
@@ -193,11 +194,11 @@ export default function ShowCard({
             card sits in (see lib/rowAccent), so a cover in the free row
             lifts in green and one in the movies row in gold. */}
         <div
-          className={`poster-frame aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
+          className={`poster-frame aspect-[2/3] overflow-hidden rounded-xl bg-[#171114] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
             large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
           }`}
         >
-          {!loaded && <div className="absolute inset-0 skeleton-shimmer bg-[#151926]" />}
+          {!loaded && <div className="absolute inset-0 skeleton-shimmer bg-[#171114]" />}
           <img
             src={show.poster_url ?? ''}
             alt={show.title}
@@ -219,7 +220,7 @@ export default function ShowCard({
           {rank && (
             <div
               className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 35%, rgba(10,16,30,0.95) 100%)' }}
+              style={{ background: 'linear-gradient(180deg, rgba(11,8,9,0) 35%, rgba(11,8,9,0.95) 100%)' }}
             />
           )}
           {/* Ranked cards print only the episode count over the art —
@@ -240,7 +241,7 @@ export default function ShowCard({
               one a viewer had already seen on the same screen. */}
           {!show.coming_soon && isNew && (
             <span
-              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
+              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0b0809]"
               style={{ boxShadow: '0 0 8px rgba(255,107,96,0.7)' }}
               aria-label={t.newTag ?? 'NEW'}
               title={t.newTag ?? 'NEW'}
@@ -278,15 +279,12 @@ export default function ShowCard({
           </div>
         ) : (
           <div className={`mt-2 px-0.5 ${CAPTION_H}`}>
-            {/* No title here on purpose: every poster in this catalog is
-                supplied with its own title already lettered into the
-                artwork, so printing it again underneath said the same
-                thing twice and — on a card this narrow — truncated it
-                mid-word doing so. The caption carries only what the
-                artwork cannot: season, episode count, whether it has
-                finished. Rendered even when empty so the card keeps its
-                height — see CAPTION_H. */}
-            <p className="mt-1 flex items-center gap-1 truncate text-[10.5px] font-semibold leading-none text-white/40">
+            {/* Title on top, then what the artwork cannot say: season,
+                episode count, whether the series has finished. Both lines
+                render even when empty so every card in a rail keeps the
+                same height — see CAPTION_H. */}
+            <p className="truncate text-[12px] font-semibold leading-none text-white/95">{show.title}</p>
+            <p className="mt-[7px] flex items-center gap-1 truncate text-[10.5px] font-semibold leading-none text-white/40">
               {meta.map((part, i) => (
                 <span key={part} className="shrink-0 whitespace-nowrap">
                   {i > 0 && <span className="mr-1 text-white/25">·</span>}

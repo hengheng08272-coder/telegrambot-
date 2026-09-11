@@ -74,7 +74,7 @@ export default function WatchlistScreen({
               {continueItems.map((item) => (
                 <div
                   key={item.show.id}
-                  className="card-surface group flex items-center gap-4 overflow-hidden rounded-card p-3 transition hover:bg-[#151926]"
+                  className="card-surface group flex items-center gap-4 overflow-hidden rounded-card p-3 transition hover:bg-[#171114]"
                 >
                   <button
                     onClick={() =>
@@ -139,7 +139,7 @@ export default function WatchlistScreen({
                     onClick={() => onSelectShow(s)}
                     className="block w-full text-left"
                   >
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-[#151926] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#2050D8]/50">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-[10px] bg-[#171114] ring-1 ring-white/[0.07] shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-[#2050D8]/50">
                       <img
                         src={s.poster_url ?? ''}
                         alt={s.title}
@@ -150,7 +150,7 @@ export default function WatchlistScreen({
                         className="absolute inset-0"
                         style={{
                           background:
-                            'linear-gradient(180deg, rgba(10,16,30,0) 50%, rgba(10,16,30,0.9) 100%)',
+                            'linear-gradient(180deg, rgba(11,8,9,0) 50%, rgba(11,8,9,0.9) 100%)',
                         }}
                       />
                     </div>

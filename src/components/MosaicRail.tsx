@@ -65,7 +65,7 @@ export function MosaicTrendingRail({ shows, onSelectShow, episodeNumbers, ranked
           >
             <span className="flex" style={{ gap: GUTTER }}>
               <span
-                className="relative block shrink-0 overflow-hidden bg-[#151926]"
+                className="relative block shrink-0 overflow-hidden bg-[#171114]"
                 style={{ width: 92, height: 138, borderRadius: capLeft }}
               >
                 {poster && (
@@ -89,7 +89,7 @@ export function MosaicTrendingRail({ shows, onSelectShow, episodeNumbers, ranked
                 )}
               </span>
               <span
-                className="relative block shrink-0 overflow-hidden bg-[#151926]"
+                className="relative block shrink-0 overflow-hidden bg-[#171114]"
                 style={{ width: 138, height: 138, borderRadius: capRight }}
               >
                 {wide && (
@@ -176,7 +176,7 @@ export function MosaicFreeStrip({ shows, onSelectShow, continuesAt }: StripProps
                 key={show.id}
                 onClick={() => onSelectShow(show)}
                 aria-label={show.title}
-                className="mosaic-press relative block shrink-0 overflow-hidden bg-[#151926]"
+                className="mosaic-press relative block shrink-0 overflow-hidden bg-[#171114]"
                 style={{ width: lead ? 178 : 66, height: 96, borderRadius: radius }}
               >
                 {art && (
@@ -198,7 +198,7 @@ export function MosaicFreeStrip({ shows, onSelectShow, continuesAt }: StripProps
                       className="absolute inset-0"
                       style={{
                         background:
-                          'linear-gradient(180deg, rgba(10,16,30,0) 45%, rgba(10,16,30,0.85) 100%)',
+                          'linear-gradient(180deg, rgba(11,8,9,0) 45%, rgba(11,8,9,0.85) 100%)',
                       }}
                     />
                     <span className="absolute left-[5px] top-[5px] flex gap-1">

@@ -511,13 +511,13 @@ export default function HomeScreen({
                 )}
               </div>
               {subscribed && (
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#0A101E]">
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#0b0809]">
                   <Crown className="h-2 w-2 text-black" />
                 </span>
               )}
               {rewardsAvailable === 'spin-ready' && (
                 <span
-                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
+                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#0b0809]"
                   aria-hidden
                 />
               )}
@@ -711,7 +711,7 @@ export default function HomeScreen({
                 in Admin -> Shows; the row hides itself until then. */}
             {freeRow.length > 0 && (
               <section
-                className="rail-section mt-8"
+                className="rail-section mt-11"
                 style={{ '--row-accent': ROW_ACCENT.free } as React.CSSProperties}
               >
                 <RowHeading
@@ -738,7 +738,7 @@ export default function HomeScreen({
                 One frame at a time, swiped, with dots for the rest. */}
             {movieRow.length > 0 && (
               <section
-                className="rail-section mt-8"
+                className="rail-section mt-11"
                 style={{ '--row-accent': ROW_ACCENT.vip } as React.CSSProperties}
               >
                 <RowHeading
@@ -772,7 +772,7 @@ export default function HomeScreen({
                 are also the ones most likely to have real banner art. */}
             {popularRow.length > 0 && (
               <section
-                className="rail-section mt-8"
+                className="rail-section mt-11"
                 style={{ '--row-accent': ROW_ACCENT.mark } as React.CSSProperties}
               >
                 <RowHeading
@@ -839,7 +839,7 @@ export default function HomeScreen({
                 series its own row makes the seasons obviously belong to
                 one show and puts them in watch order. */}
             {franchises.length > 0 && (
-              <section className="rail-section mt-8" style={{ '--row-accent': ROW_ACCENT.guide } as React.CSSProperties}>
+              <section className="rail-section mt-11" style={{ '--row-accent': ROW_ACCENT.guide } as React.CSSProperties}>
                 <RowHeading title={t.seasonsRowLabel} accent={ROW_ACCENT.guide} />
                 {franchises.map((f) => (
                   <RailRow
@@ -889,7 +889,7 @@ export default function HomeScreen({
                 >
                   <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
                   <Gift className="h-4 w-4" />
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]" aria-hidden />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0b0809]" aria-hidden />
                 </button>
               </div>
             )}
@@ -946,7 +946,7 @@ export default function HomeScreen({
                       }}
                       className="text-left"
                     >
-                      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/5">
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#171114] ring-1 ring-white/5">
                         <img
                           src={s.poster_url ?? ''}
                           alt={s.title}
@@ -1118,7 +1118,7 @@ function MosaicHero({
       {/* The banner strip. 168px is the handoff's phone figure; it grows
           on wider screens so a desktop window gets a masthead rather
           than a letterbox slot. */}
-      <div className="relative h-[168px] w-full overflow-hidden bg-[#151926] sm:h-[240px] lg:h-[320px]">
+      <div className="relative h-[132px] w-full overflow-hidden bg-[#171114] sm:h-[200px] lg:h-[268px]">
         {banner && (
           <img
             key={hero.id}
@@ -1138,18 +1138,18 @@ function MosaicHero({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,16,30,0.15) 0%, rgba(10,16,30,0.1) 45%, rgba(10,16,30,0.92) 100%)',
+              'linear-gradient(180deg, rgba(11,8,9,0.15) 0%, rgba(11,8,9,0.1) 45%, rgba(11,8,9,0.92) 100%)',
           }}
         />
       </div>
 
       {/* Poster + title, lifted into the bottom of the banner. */}
-      <div className="relative -mt-[46px] flex items-end gap-3 px-4 sm:-mt-[64px] sm:gap-4 sm:px-8">
+      <div className="relative -mt-[40px] flex items-end gap-3 px-4 sm:-mt-[56px] sm:gap-4 sm:px-8">
         <button
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
-          className="mosaic-press relative block h-[132px] w-[88px] shrink-0 overflow-hidden bg-[#151926] sm:h-[186px] sm:w-[124px]"
-          style={{ borderRadius: 3, boxShadow: '0 10px 30px rgba(4,8,18,0.7)' }}
+          className="mosaic-press relative block h-[114px] w-[76px] shrink-0 overflow-hidden bg-[#171114] sm:h-[162px] sm:w-[108px]"
+          style={{ borderRadius: 3, boxShadow: '0 10px 30px rgba(4,2,3,0.7)' }}
         >
           {poster && (
             <img
@@ -1182,10 +1182,10 @@ function MosaicHero({
           whole width it can take and leaves the watchlist as a square —
           "watch this" is the decision the hero exists to ask for, and
           anything else beside it competes with that. */}
-      <div className="flex gap-1.5 px-4 pt-2 sm:px-8">
+      <div className="flex gap-1.5 px-4 pt-1.5 sm:px-8">
         <button
           onClick={() => onSelectShow(hero)}
-          className="flex h-[42px] flex-1 items-center justify-center gap-2 text-[15px] font-bold text-white transition active:scale-[0.98]"
+          className="flex h-[38px] flex-1 items-center justify-center gap-2 text-[14px] font-bold text-white transition active:scale-[0.98]"
           style={{
             borderRadius: 3,
             background: 'linear-gradient(135deg, #2050D8 0%, #1A3FAE 55%, #0E2560 100%)',
@@ -1205,7 +1205,7 @@ function MosaicHero({
           onClick={() => setInList(toggleWatchlist(hero))}
           aria-label={t.myList}
           title={t.myList}
-          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center text-[#EEF1F8] transition active:scale-[0.98]"
+          className="flex h-[38px] w-[38px] shrink-0 items-center justify-center text-[#EEF1F8] transition active:scale-[0.98]"
           style={{
             borderRadius: 3,
             background: 'rgba(146,172,224,0.12)',
@@ -1219,14 +1219,14 @@ function MosaicHero({
       {/* Chevron arrows — desktop only, swipe handles mobile. */}
       <button
         onClick={onPrev}
-        className="absolute left-2 top-[84px] z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex lg:top-[160px]"
+        className="absolute left-2 top-[66px] z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex lg:top-[134px]"
         aria-label="Previous"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
       <button
         onClick={onNext}
-        className="absolute right-2 top-[84px] z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex lg:top-[160px]"
+        className="absolute right-2 top-[66px] z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex lg:top-[134px]"
         aria-label="Next"
       >
         <ChevronRight className="h-6 w-6" />
@@ -1236,7 +1236,7 @@ function MosaicHero({
           strip rather than the whole section — below the banner it would
           cut across the poster and the buttons. */}
       {shows.length > 1 && (
-        <div className="pointer-events-none absolute inset-x-0 top-[165px] z-30 h-[3px] overflow-hidden bg-white/10 sm:top-[237px] lg:top-[317px]">
+        <div className="pointer-events-none absolute inset-x-0 top-[129px] z-30 h-[3px] overflow-hidden bg-white/10 sm:top-[197px] lg:top-[265px]">
           <div
             key={index}
             className="hero-progress-fill h-full"
@@ -1528,7 +1528,7 @@ function RailRow({
       // that are nowhere near the viewport. `--row-accent` is read by
       // every ShowCard inside, so a card lights up in its own row's
       // colour rather than one hard-coded blue.
-      className={`rail-section ${subRow ? 'mt-3' : 'mt-8'}`}
+      className={`rail-section ${subRow ? 'mt-3' : 'mt-11'}`}
       style={{ '--row-accent': accent } as React.CSSProperties}
     >
       {subRow ? (

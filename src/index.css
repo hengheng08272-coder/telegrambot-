@@ -22,11 +22,11 @@
      blue-black ground sits under them instead: it reads as darker than
      black to the eye at these levels, and it gives the whole app one
      temperature so the chrome stops competing with the artwork. */
-  --nv-bg-deep: #060a14;
-  --nv-bg: #0a101e;
-  --nv-surface: #111a2e;
-  --nv-surface-2: #17223a;
-  --nv-surface-3: #1e2b48;
+  --nv-bg-deep: #050304;
+  --nv-bg: #0b0809;
+  --nv-surface: #171013;
+  --nv-surface-2: #1f171a;
+  --nv-surface-3: #2a2024;
   --nv-border: #26365a;
   /* Hairlines are cool, not white — a white line on navy reads as a
      scratch; a blue-grey one reads as an edge. */
@@ -61,8 +61,8 @@
   --nv-error: #ff6b60;
 
   /* Elevation */
-  --nv-shadow-card: 0 10px 30px rgba(4, 8, 18, 0.6);
-  --nv-shadow-elevated: 0 24px 60px rgba(4, 8, 18, 0.72);
+  --nv-shadow-card: 0 10px 30px rgba(4, 2, 3, 0.6);
+  --nv-shadow-elevated: 0 24px 60px rgba(4, 2, 3, 0.72);
   --nv-glow-primary: 0 0 34px rgba(32, 80, 216, 0.3);
   --nv-glow-gold: 0 0 28px rgba(245, 197, 99, 0.28);
 
@@ -139,6 +139,19 @@ h3 {
      a void. */
   .bg-app {
     background-color: var(--nv-bg);
+    /* A dark red bloom behind the top of the page, so the ground shares a
+       hue with the logo instead of sitting under it as neutral black.
+       Anchored to the top of the container and sized in px rather than
+       attached to the viewport: a `fixed` background repaints the whole
+       screen on every frame of a scroll, which is the one thing this
+       surface has always been kept flat to avoid. */
+    background-image: linear-gradient(
+      180deg,
+      rgba(120, 16, 20, 0.28) 0,
+      rgba(70, 10, 14, 0.14) 220px,
+      rgba(11, 8, 9, 0) 460px
+    );
+    background-repeat: no-repeat;
   }
 
   /* Sheets and overlays that sit on top of .bg-app go a shade darker so
@@ -151,13 +164,13 @@ h3 {
      over the ambient background so content scrolling underneath stays
      faintly visible instead of hitting a hard opaque edge. */
   .bar-blur {
-    background-color: rgba(6, 10, 20, 0.86);
+    background-color: rgba(5, 3, 4, 0.86);
     backdrop-filter: blur(20px) saturate(160%);
     -webkit-backdrop-filter: blur(20px) saturate(160%);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .bar-blur {
-      background-color: rgba(6, 10, 20, 0.97);
+      background-color: rgba(5, 3, 4, 0.97);
     }
   }
 
@@ -167,21 +180,21 @@ h3 {
      float over artwork. Falls back to a solid tint where backdrop-filter
      isn't supported, so nothing ever renders as unreadable transparency. */
   .glass {
-    background-color: rgba(17, 26, 46, 0.74);
+    background-color: rgba(23, 16, 19, 0.74);
     border: 1px solid var(--nv-hairline);
     backdrop-filter: blur(18px) saturate(150%);
     -webkit-backdrop-filter: blur(18px) saturate(150%);
   }
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .glass {
-      background-color: rgba(17, 26, 46, 0.96);
+      background-color: rgba(23, 16, 19, 0.96);
     }
   }
 
   /* Raised content card: subtle top-light gradient + hairline + depth. */
   .card-surface {
     background-image: linear-gradient(180deg, rgba(146, 172, 224, 0.07) 0%, rgba(146, 172, 224, 0) 46%);
-    background-color: #111a2e;
+    background-color: #171013;
     border: 1px solid var(--nv-hairline);
     box-shadow: var(--nv-shadow-card);
   }
@@ -224,12 +237,12 @@ h3 {
   .btn-primary {
     background-image: linear-gradient(135deg, #2050d8 0%, #1a3fae 55%, #0e2560 100%);
     color: #fff;
-    box-shadow: 0 6px 18px rgba(4, 8, 18, 0.5);
+    box-shadow: 0 6px 18px rgba(4, 2, 3, 0.5);
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
   }
   .btn-primary:hover {
     filter: brightness(1.06);
-    box-shadow: 0 10px 26px rgba(4, 8, 18, 0.6);
+    box-shadow: 0 10px 26px rgba(4, 2, 3, 0.6);
   }
   .btn-primary:active {
     transform: scale(0.97);
