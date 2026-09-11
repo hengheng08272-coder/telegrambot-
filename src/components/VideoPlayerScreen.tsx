@@ -368,9 +368,9 @@ export default function VideoPlayerScreen({
           setPlayUrl(res.url);
         } else {
           setAccessError(
-            res.denial === 'purchase_required'
+            res.denial === 'not_purchased'
               ? 'This film has not been purchased.'
-              : res.denial === 'no_video'
+              : res.denial === 'no_video' || res.denial === 'not_found'
                 ? 'Video not available yet.'
                 : 'This episode needs an active membership.',
           );
