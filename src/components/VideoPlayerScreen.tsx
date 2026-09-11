@@ -27,6 +27,7 @@ import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI, getTelegramWebApp } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase/supabaseClient';
+import { fetchEpisodePlayUrl } from '@/lib/playback';
 
 interface VideoPlayerScreenProps {
   episode: Episode;
@@ -344,18 +345,44 @@ export default function VideoPlayerScreen({
     };
   }, [show.id, show.type, onSwitchEpisode]);
 
-  // No viewer session and no subscription check in this build — the
-  // `videos` storage bucket is public, so we just play episode.video_url
-  // directly. (No signed-URL edge function needed.)
+  // Playback is granted by the server, not decided here.
+  //
+  // This used to read episode.video_url straight out of props, which is
+  // why the paywall never actually held: the URL was already in the page
+  // for every episode, and the bucket served it to anyone. Now the
+  // episode id goes to get-episode-url, which verifies the Telegram
+  // signature, checks the subscription or purchase itself, and hands
+  // back a short-lived signed link only if the answer is yes.
   useEffect(() => {
+    let cancelled = false;
     setResolving(true);
     setAccessError('');
-    if (episode.video_url) {
-      setPlayUrl(episode.video_url);
-    } else {
-      setAccessError('Video not available yet.');
-    }
-    setResolving(false);
+    setPlayUrl('');
+
+    fetchEpisodePlayUrl(episode.id, episode.video_url)
+      .then((res) => {
+        // The viewer may have skipped to another episode while this was
+        // in flight; that request's answer is not this episode's.
+        if (cancelled) return;
+        if (res.url) {
+          setPlayUrl(res.url);
+        } else {
+          setAccessError(
+            res.denial === 'purchase_required'
+              ? 'This film has not been purchased.'
+              : res.denial === 'no_video'
+                ? 'Video not available yet.'
+                : 'This episode needs an active membership.',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [episode.id, episode.video_url]);
 
   // Silent watch-session log — one row per episode open, no visible

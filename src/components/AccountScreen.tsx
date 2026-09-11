@@ -146,7 +146,7 @@ export default function AccountScreen({ onBack, onOpenWatchlist, onOpenSubscript
           className="mx-auto mb-4 block"
         >
           <img
-            src="/assets/images/logo-transparent.png"
+            src="/assets/images/nintplex-logo.png"
             alt=""
             draggable={false}
             className="mx-auto h-14 w-auto opacity-90 sm:h-16"

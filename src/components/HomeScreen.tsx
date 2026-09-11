@@ -665,7 +665,7 @@ export default function HomeScreen({
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+              <div className="grid grid-cols-3 gap-x-2.5 gap-y-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
                 {viewAll.shows.map((s) => (
                   <ShowCard key={s.id} show={s} onClick={onSelectShow} latestEpisode={episodeNumbers[s.id]} />
                 ))}
@@ -681,7 +681,7 @@ export default function HomeScreen({
             {filteredShows.length === 0 ? (
               <p className="py-20 text-center text-[#6A7591]">{t.noResults}</p>
             ) : (
-              <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
+              <div className="grid grid-cols-3 gap-x-2.5 gap-y-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7">
                 {filteredShows.map((s) => (
                   <ShowCard key={s.id} show={s} onClick={onSelectShow} latestEpisode={episodeNumbers[s.id]} />
                 ))}

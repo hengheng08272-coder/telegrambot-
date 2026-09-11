@@ -1,6 +1,6 @@
 import { ShieldAlert } from 'lucide-react';
 
-const LOGO_URL = '/assets/logo-transparent.png';
+const LOGO_URL = '/assets/nintplex-logo.png';
 
 interface Props {
   /** Optional note the admin attached when blocking this viewer — not

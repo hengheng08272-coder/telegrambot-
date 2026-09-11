@@ -136,7 +136,7 @@ export default function AuthScreen({
           </button>
           <div className="flex items-center gap-2">
             <img
-              src="/assets/logo-transparent.png"
+              src="/assets/nintplex-logo.png"
               alt="NINT ANIME"
               className="h-8 w-8 drop-shadow-[0_0_14px_rgba(32,80,216,0.5)]"
             />

@@ -82,7 +82,10 @@ type Step = 'pick' | 'method' | 'pay';
 // sheet, and on the standalone Safari page. Same logo, same size, so a
 // viewer handed off to a browser can see they are still inside the same
 // product and not on some payment site.
-const LOGO_SRC = '/assets/images/logo-transparent.png';
+// The NintPlex mark. The old NINT ANIME logo is left in place as a file
+// so nothing that still points at it 404s, but every screen the viewer
+// actually meets now carries the new one.
+const LOGO_SRC = '/assets/images/nintplex-logo.png';
 
 // How long one payment ticket stays open while the ABA auto-confirm
 // webhook listens for a matching bank notification. When this hits zero
@@ -781,6 +784,14 @@ export default function SubscriptionModal({
     }
     onClose();
   };
+
+  // The plain "scan this" state: nothing sent, nothing wrong, nothing
+  // pending. It is the only state on this step that can be trimmed —
+  // the QR says "scan me" by being a QR, so the icon, the sentence under
+  // the title and the plan restatement are all saying it a second time,
+  // and between them they push the countdown and the upload box off the
+  // bottom of a phone. Every other state keeps its full explanation.
+  const payCompact = !proofSent && !amountMismatch && !handedOff;
 
   const mmss = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
   const waitPct = Math.max(0, Math.min(100, (secondsLeft / WAIT_WINDOW_SECONDS) * 100));
@@ -1546,8 +1557,9 @@ export default function SubscriptionModal({
                 </span>
               </div>
 
-              <div className="p-5">
+              <div className={payCompact ? 'p-4' : 'p-5'}>
               <div className="flex flex-col items-center text-center">
+                {!payCompact && (
                 <span
                   className="flex h-12 w-12 items-center justify-center rounded-full"
                   style={{
@@ -1571,7 +1583,8 @@ export default function SubscriptionModal({
                     <Wallet className="h-5 w-5" style={{ color: 'var(--co-text-muted)' }} />
                   )}
                 </span>
-                <p className="mt-3 text-[15px] font-bold text-[color:var(--co-text)]">
+                )}
+                <p className={`text-[15px] font-bold text-[color:var(--co-text)] ${payCompact ? '' : 'mt-3'}`}>
                   {proofSent
                     ? t.subVerifyingTitle
                     : amountMismatch
@@ -1582,7 +1595,7 @@ export default function SubscriptionModal({
                           ? t.subReadyQrTitle
                           : t.subReadyTitle}
                 </p>
-                {!amountMismatch && (
+                {!amountMismatch && !payCompact && (
                   <p className="mt-1.5 max-w-[17rem] text-[13px] leading-relaxed text-[color:var(--co-text-dim)]">
                     {proofSent
                       ? t.subVerifyingFree
@@ -1597,9 +1610,10 @@ export default function SubscriptionModal({
 
               {/* Below the tear: what the pass is for, the way a
                   printed one lists it. */}
-              <div className="co-tear -mx-5 my-4" />
+              <div className={`co-tear -mx-5 ${payCompact ? 'my-3' : 'my-4'}`} />
 
               <div className="space-y-2.5">
+                {!payCompact && (
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
                     {t.subReceiptPlan}
@@ -1608,11 +1622,22 @@ export default function SubscriptionModal({
                     {planLabel(payTier)}
                   </span>
                 </div>
+                )}
                 {/* The amount gets its own line, above the rule, the way
                     a total sits at the bottom of a bill. */}
-                <div className="flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
-                  <span className="shrink-0 pb-1 text-[11px] text-[color:var(--co-text-dim)]">
-                    {t.subAmountDue}
+                <div
+                  className={`flex items-end justify-between gap-3 ${
+                    payCompact ? '' : 'border-t border-[color:var(--co-line-soft)] pt-3'
+                  }`}
+                >
+                  <span className="min-w-0 shrink pb-1 text-[11px] text-[color:var(--co-text-dim)]">
+                    {payCompact ? (
+                      <span className="block truncate font-bold text-[color:var(--co-text)]">
+                        {planLabel(payTier)}
+                      </span>
+                    ) : (
+                      t.subAmountDue
+                    )}
                   </span>
                   <span className="flex items-baseline gap-1.5">
                     <span
