@@ -79,7 +79,7 @@ export function MosaicTrendingRail({ shows, onSelectShow, episodeNumbers, ranked
       <div
         ref={scrollerRef}
         onScroll={onScroll}
-        className="rail-scroller no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:px-8"
+        className="rail-scroller no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3.5 overflow-x-auto scroll-pl-4 px-4 pb-2 sm:-mx-8 sm:scroll-pl-8 sm:px-8"
       >
         {shows.map((show, i) => {
           const poster = show.poster_url ?? show.banner_url ?? '';
@@ -93,7 +93,7 @@ export function MosaicTrendingRail({ shows, onSelectShow, episodeNumbers, ranked
             <button
               key={show.id}
               onClick={() => onSelectShow(show)}
-              className="mosaic-press w-full max-w-[358px] shrink-0 snap-start text-left"
+              className="mosaic-press w-[calc(50%-7px)] max-w-[240px] shrink-0 snap-start text-left"
             >
               {/* 5:3 is what the two shapes add up to. The poster is 2:3
                   and the crop is square, both the same height H, so the
@@ -102,12 +102,14 @@ export function MosaicTrendingRail({ shows, onSelectShow, episodeNumbers, ranked
                   with the screen instead of being pinned to the handoff's
                   phone pixels.
 
-                  The 358px cap is what keeps that from running away: a
-                  pair that is simply "full width" is 358px on a phone,
-                  which is the intended one-per-screen, but 1400px in a
-                  desktop window — and at 5:3 that is an 840px-tall row
-                  filling the entire page. Capped, the phone is unchanged
-                  and a wide window just shows several pairs. */}
+                  Half the scroller, capped at 240px. One pair per screen
+                  was the handoff's drawing, but in the hand it made the
+                  row about as tall as the hero and pushed everything
+                  below it off the page. At half width the pair lands
+                  near the free strip's own height, which is what makes
+                  the two rows read as the same catalogue rather than as
+                  two unrelated screens. The cap stops a desktop window
+                  from blowing it back up. */}
               <span className="flex w-full" style={{ aspectRatio: '5 / 3', gap: GUTTER }}>
                 <span
                   className="relative block h-full shrink-0 overflow-hidden bg-[#141416]"
@@ -151,13 +153,17 @@ export function MosaicTrendingRail({ shows, onSelectShow, episodeNumbers, ranked
                   )}
                 </span>
               </span>
-              <span className="mt-2 block">
-                <span className="line-clamp-1 text-[13px] font-semibold leading-[1.3] text-white/95">
+              {/* One line, not two. The episode number is the shortest
+                  thing in the caption and gave a whole line to itself,
+                  which on a half-width card left it stranded under the
+                  title looking like a stray number. */}
+              <span className="mt-2 flex items-baseline gap-1">
+                <span className="truncate text-[12px] font-semibold leading-[1.3] text-white/95">
                   {show.title}
                 </span>
                 {!!ep && show.type !== 'movie' && (
-                  <span className="mt-1 block text-[11px] font-bold text-white/40">
-                    {t.epShort} {ep}
+                  <span className="shrink-0 whitespace-nowrap text-[10.5px] font-bold text-white/40">
+                    · {t.epShort} {ep}
                   </span>
                 )}
               </span>

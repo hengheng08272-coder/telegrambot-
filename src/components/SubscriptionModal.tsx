@@ -1021,8 +1021,16 @@ export default function SubscriptionModal({
         )}
         <span className="flex items-center gap-2">
           <img src={LOGO_SRC} alt="" className="h-8 w-8 shrink-0 object-contain" />
-          <span className="text-[13px] font-bold text-[color:var(--co-text)]">
-            {t.subGoPremium}
+          {/* The wordmark, set to carry the same weight as the mark beside
+              it: the display face at the logo's own cap height, with PLEX
+              in the brand red. Plain 13px body text next to a 32px logo
+              read as a caption for the picture rather than as the name of
+              the product. */}
+          <span
+            className="text-[20px] leading-none text-[color:var(--co-text)]"
+            style={{ fontFamily: 'var(--co-font-display)', letterSpacing: '0.02em' }}
+          >
+            NINT<span style={{ color: '#E6231F' }}>PLEX</span>
           </span>
         </span>
         <span className="h-10 w-10" />

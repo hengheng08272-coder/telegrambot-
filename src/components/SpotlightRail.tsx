@@ -76,7 +76,7 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
       <div
         ref={scrollerRef}
         onScroll={onScroll}
-        className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-4 sm:-mx-8 sm:px-8"
+        className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-pl-4 px-4 sm:-mx-8 sm:scroll-pl-8 sm:px-8"
       >
         {shows.map((show) => {
           const art = show.banner_url ?? show.poster_url ?? '';
