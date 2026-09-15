@@ -23,10 +23,10 @@
   /* Same midnight navy the app is built on (src/index.css --nv-bg), so
      the sheet and the app behind it are one surface rather than two
      different blacks meeting at an edge. */
-  --co-bg: #000000;          /* page base */
-  --co-bg-deep: #000000;     /* behind the base — scrims, sheets */
-  --co-card: #121214;        /* every card and row */
-  --co-card-raised: #1b1b1f; /* input / pressed row */
+  --co-bg: #0a101e;          /* page base */
+  --co-bg-deep: #060a14;     /* behind the base — scrims, sheets */
+  --co-card: #111a2e;        /* every card and row */
+  --co-card-raised: #17223a; /* input / pressed row */
   --co-line: rgba(146, 172, 224, 0.14);   /* default hairline */
   --co-line-soft: rgba(146, 172, 224, 0.08);
   --co-line-strong: rgba(146, 172, 224, 0.22);

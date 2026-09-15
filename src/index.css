@@ -22,11 +22,11 @@
      blue-black ground sits under them instead: it reads as darker than
      black to the eye at these levels, and it gives the whole app one
      temperature so the chrome stops competing with the artwork. */
-  --nv-bg-deep: #000000;
-  --nv-bg: #000000;
-  --nv-surface: #121214;
-  --nv-surface-2: #1b1b1f;
-  --nv-surface-3: #26262c;
+  --nv-bg-deep: #060a14;
+  --nv-bg: #0a101e;
+  --nv-surface: #111a2e;
+  --nv-surface-2: #17223a;
+  --nv-surface-3: #1e2b48;
   --nv-border: #26365a;
   /* Hairlines are cool, not white — a white line on navy reads as a
      scratch; a blue-grey one reads as an edge. */
@@ -181,7 +181,7 @@ h3 {
   /* Raised content card: subtle top-light gradient + hairline + depth. */
   .card-surface {
     background-image: linear-gradient(180deg, rgba(146, 172, 224, 0.07) 0%, rgba(146, 172, 224, 0) 46%);
-    background-color: #121214;
+    background-color: #111a2e;
     border: 1px solid var(--nv-hairline);
     box-shadow: var(--nv-shadow-card);
   }
@@ -346,18 +346,6 @@ h3 {
   .rail-chip {
     background: rgba(32, 80, 216, 0.14);
   }
-}
-
-/* Press feedback for the mosaic tiles.
-   The mosaic has no ring, no shadow and no hover lift — the artwork sits
-   flush against its neighbour — so a tap needs to register somehow. A
-   small, fast scale is the whole affordance; anything larger reopens the
-   gap between tiles that the 3px gutter exists to close. */
-.mosaic-press {
-  transition: transform 120ms ease-out;
-}
-.mosaic-press:active {
-  transform: scale(0.98);
 }
 
 /* Hide scrollbars on horizontal rails while keeping scroll */

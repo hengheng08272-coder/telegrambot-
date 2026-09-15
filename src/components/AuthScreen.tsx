@@ -123,7 +123,7 @@ export default function AuthScreen({
             'radial-gradient(circle at 12% -5%, rgba(192,143,51,0.22) 0%, rgba(0,0,0,0) 48%), radial-gradient(circle at 88% 105%, rgba(32,80,216,0.18) 0%, rgba(0,0,0,0) 52%)',
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#000000]/55 via-[#000000]/80 to-[#000000]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0a101e]/55 via-[#0a101e]/80 to-[#0a101e]" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Top bar */}

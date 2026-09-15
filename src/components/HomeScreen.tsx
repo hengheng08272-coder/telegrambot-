@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   Star,
+  Flame,
+  History,
+  Layers,
   ChevronLeft,
   ChevronRight,
   Search,
@@ -24,7 +27,6 @@ import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
 import SpotlightRail from '@/components/SpotlightRail';
-import { MosaicTrendingRail, MosaicFreeStrip } from '@/components/MosaicRail';
 import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
@@ -391,7 +393,7 @@ export default function HomeScreen({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.32) 40%, rgba(0,0,0,0.9) 82%, #000000 100%)',
+              'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.32) 40%, rgba(0,0,0,0.9) 82%, #0a101e 100%)',
           }}
         />
         <div className="relative z-10 flex flex-col items-center gap-4 px-8">
@@ -502,13 +504,13 @@ export default function HomeScreen({
                 )}
               </div>
               {subscribed && (
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#000000]">
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#0a101e]">
                   <Crown className="h-2 w-2 text-black" />
                 </span>
               )}
               {rewardsAvailable === 'spin-ready' && (
                 <span
-                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#000000]"
+                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#0a101e]"
                   aria-hidden
                 />
               )}
@@ -690,6 +692,47 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-3">
+            {/* Keep Watching leads the page.
+                
+                It is the only row on the screen whose answer is already
+                decided: this viewer started this episode and did not
+                finish it. Everything below asks them to choose something;
+                this one just hands back what they were doing, so it goes
+                above all of it.
+
+                Red, not blue, per the design system: "currently playing"
+                is a fact about where they got to, not an offer — and the
+                one rule the palette never breaks is that nothing red is
+                a thing to press. The card itself is the press. */}
+            {continueItems.length > 0 && (
+              <section
+                className="rail-section"
+                style={{ '--row-accent': ROW_ACCENT.mark } as React.CSSProperties}
+              >
+                <RowHeading
+                  title={t.continueRowLabel ?? 'Keep Watching'}
+                  accent={ROW_ACCENT.mark}
+                  icon={<History className="h-5 w-5" />}
+                  rule={false}
+                  onViewAll={onOpenWatchlist}
+                  viewAllLabel={t.viewAll}
+                  viewAllShort={t.viewAllShort}
+                />
+                <div className="rail-scroller no-scrollbar flex gap-3 overflow-x-auto pb-3">
+                  {continueItems.map((item) => (
+                    <ShowCard
+                      key={item.show.id}
+                      show={item.show}
+                      // Straight back into the episode they left, not to
+                      // the show page — a resume row that makes you pick
+                      // the episode again has not resumed anything.
+                      onClick={() => onResumeEpisode(item.show, item.episode.id)}
+                      latestEpisode={item.episode.episode_number}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
             {/* Popular leads the page — it is the row with the catalog's
                 best artwork and the one that answers "what is everyone
                 watching" before anything else gets a chance to ask. Free
@@ -699,54 +742,33 @@ export default function HomeScreen({
                 other way round, so Popular cannot swallow the free
                 titles on its way through. */}
             {popularRow.length > 0 && (
-              <section
-                className="rail-section mt-11"
-                style={{ '--row-accent': ROW_ACCENT.mark } as React.CSSProperties}
-              >
-                <RowHeading
-                  title={t.featuredLabel ?? t.popularSeason}
-                  accent={ROW_ACCENT.mark}
-                  onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
-                  viewAllLabel={t.viewAll}
-                  viewAllShort={t.viewAllShort}
-                />
-                <MosaicTrendingRail
-                  shows={popularRow}
-                  onSelectShow={onSelectShow}
-                  episodeNumbers={episodeNumbers}
-                  ranked
-                />
-              </section>
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                role="mark"
+                icon={<Flame className="h-5 w-5" />}
+                title={t.featuredLabel ?? t.popularSeason}
+                shows={popularRow}
+                onSelectShow={onSelectShow}
+                onViewAll={() => setViewAll({ title: t.allShowsTitle, shows })}
+                viewAllLabel={t.viewAll}
+              />
             )}
 
             {/* Free-to-watch, straight after Popular. Empty until shows
                 are marked "unlock all" (shows.is_free) in Admin -> Shows;
                 the row hides itself until then. */}
-            {/* Free-to-watch leads the page. Everything below it needs a
-                membership, so the one row a signed-out viewer can act on
-                immediately goes first rather than three rows down. Plain
-                divider-row treatment like every other rail below it now
-                (no boxed panel background) — the FREE tag next to the
-                title already says what this row is without framing it.
-                Empty until shows are marked "unlock all" (shows.is_free)
-                in Admin -> Shows; the row hides itself until then. */}
             {freeRow.length > 0 && (
-              <section
-                className="rail-section mt-11"
-                style={{ '--row-accent': ROW_ACCENT.free } as React.CSSProperties}
-              >
-                <RowHeading
-                  title={t.freeRowLabel ?? 'Free to Watch'}
-                  accent={ROW_ACCENT.free}
-                  onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeRow })}
-                  viewAllLabel={t.viewAll}
-                  viewAllShort={t.viewAllShort}
-                />
-                {/* No FREE badge in the heading: unlike the card rails,
-                    every lead tile in this strip carries the badge on the
-                    artwork itself, where the handoff puts it. */}
-                <MosaicFreeStrip shows={freeRow} onSelectShow={onSelectShow} continuesAt={continuesAt} />
-              </section>
+              <RailRow
+                episodeNumbers={episodeNumbers}
+                role="free"
+                icon={<Gift className="h-5 w-5" />}
+                title={t.freeRowLabel ?? 'Free to Watch'}
+                shows={freeRow}
+                onSelectShow={onSelectShow}
+                continuesAt={continuesAt}
+                onViewAll={() => setViewAll({ title: t.freeRowLabel ?? 'Free to Watch', shows: freeRow })}
+                viewAllLabel={t.viewAll}
+              />
             )}
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
@@ -759,12 +781,13 @@ export default function HomeScreen({
                 One frame at a time, swiped, with dots for the rest. */}
             {movieRow.length > 0 && (
               <section
-                className="rail-section mt-11"
+                className="rail-section mt-8"
                 style={{ '--row-accent': ROW_ACCENT.vip } as React.CSSProperties}
               >
                 <RowHeading
                   title={t.navMovies}
                   accent={ROW_ACCENT.vip}
+                  icon={<Film className="h-5 w-5" />}
                   badge={<Badge tone="price">${MOVIE_PRICE}</Badge>}
                   onViewAll={
                     movieRow.length > 1
@@ -827,8 +850,12 @@ export default function HomeScreen({
                 series its own row makes the seasons obviously belong to
                 one show and puts them in watch order. */}
             {franchises.length > 0 && (
-              <section className="rail-section mt-11" style={{ '--row-accent': ROW_ACCENT.guide } as React.CSSProperties}>
-                <RowHeading title={t.seasonsRowLabel} accent={ROW_ACCENT.guide} />
+              <section className="rail-section mt-8" style={{ '--row-accent': ROW_ACCENT.guide } as React.CSSProperties}>
+                <RowHeading
+                  title={t.seasonsRowLabel}
+                  accent={ROW_ACCENT.guide}
+                  icon={<Layers className="h-5 w-5" />}
+                />
                 {franchises.map((f) => (
                   <RailRow
                     key={f.base}
@@ -877,7 +904,7 @@ export default function HomeScreen({
                 >
                   <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
                   <Gift className="h-4 w-4" />
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#000000]" aria-hidden />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0a101e]" aria-hidden />
                 </button>
               </div>
             )}
@@ -934,7 +961,7 @@ export default function HomeScreen({
                       }}
                       className="text-left"
                     >
-                      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#141416] ring-1 ring-white/5">
+                      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/5">
                         <img
                           src={s.poster_url ?? ''}
                           alt={s.title}
@@ -1102,7 +1129,7 @@ function MosaicHero({
       {/* The banner strip. 168px is the handoff's phone figure; it grows
           on wider screens so a desktop window gets a masthead rather
           than a letterbox slot. */}
-      <div className="relative h-[132px] w-full overflow-hidden bg-[#141416] sm:h-[200px] lg:h-[268px]">
+      <div className="relative h-[132px] w-full overflow-hidden bg-[#151926] sm:h-[200px] lg:h-[268px]">
         {banner && (
           <img
             key={hero.id}
@@ -1132,7 +1159,7 @@ function MosaicHero({
         <button
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
-          className="mosaic-press relative block h-[114px] w-[76px] shrink-0 overflow-hidden bg-[#141416] sm:h-[162px] sm:w-[108px]"
+          className="mosaic-press relative block h-[114px] w-[76px] shrink-0 overflow-hidden bg-[#151926] sm:h-[162px] sm:w-[108px]"
           style={{ borderRadius: 3, boxShadow: '0 10px 30px rgba(4,2,3,0.7)' }}
         >
           {poster && (
@@ -1356,6 +1383,7 @@ function NavLink({ label, active, onClick, highlight }: NavLinkProps) {
 function RowHeading({
   title,
   accent,
+  icon,
   badge,
   onViewAll,
   viewAllLabel,
@@ -1364,6 +1392,11 @@ function RowHeading({
 }: {
   title: string;
   accent: string;
+  /** A lucide icon at h-5 w-5 carrying NO colour class of its own — the
+   *  row's role decides the colour. DESIGN_SYSTEM forbids painting an
+   *  icon before it gets here, and that rule is the whole reason the
+   *  heading colours stay a palette instead of eleven one-off choices. */
+  icon?: React.ReactNode;
   badge?: React.ReactNode;
   onViewAll?: () => void;
   viewAllLabel?: string;
@@ -1386,7 +1419,12 @@ function RowHeading({
             style={{ background: accent, boxShadow: `0 0 10px ${tint(accent, 0.55)}` }}
             aria-hidden
           />
-          <h2 className="truncate text-[15px] font-bold text-[#EEF1F8]">{title}</h2>
+          {icon && (
+            <span className="flex shrink-0 items-center" style={{ color: accent }} aria-hidden>
+              {icon}
+            </span>
+          )}
+          <h2 className="truncate text-[15px] font-bold text-[#EEF1F8] sm:text-lg">{title}</h2>
           {badge}
         </span>
         {onViewAll && (
@@ -1504,7 +1542,7 @@ function RailRow({
       // that are nowhere near the viewport. `--row-accent` is read by
       // every ShowCard inside, so a card lights up in its own row's
       // colour rather than one hard-coded blue.
-      className={`rail-section ${subRow ? 'mt-3' : 'mt-11'}`}
+      className={`rail-section ${subRow ? 'mt-3' : 'mt-8'}`}
       style={{ '--row-accent': accent } as React.CSSProperties}
     >
       {subRow ? (

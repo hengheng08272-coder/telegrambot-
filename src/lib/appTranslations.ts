@@ -151,6 +151,7 @@ export const appText = {
     // enough to sit at the end of a heading without crowding
     // the title. `viewAll` stays the accessible name.
     viewAllShort: 'ALL',
+    continueRowLabel: 'Keep Watching',
     subIncludesTitle: 'Included',
     subIncl1: 'Every episode of every series, all seasons',
     subIncl2: 'No ads, no waiting between episodes',
@@ -628,6 +629,7 @@ export const appText = {
     trendingNowPrefix: 'កំពុងពេញនិយម',
     freeRowLabel: 'មើលឥតគិតថ្លៃ',
     viewAllShort: 'ទាំងអស់',
+    continueRowLabel: 'មើលបន្ត',
     subIncludesTitle: 'រួមបញ្ចូល',
     subIncl1: 'មើលបានគ្រប់ភាគ គ្រប់រដូវកាល',
     subIncl2: 'គ្មានពាណិជ្ជកម្ម គ្មានរង់ចាំ',

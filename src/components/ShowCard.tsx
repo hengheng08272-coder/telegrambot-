@@ -58,7 +58,7 @@ const ACCESS_CHIP = {
  * broken; reserving the space unconditionally is what makes that
  * impossible rather than merely unlikely.
  */
-const CAPTION_H = 'h-[34px]';
+const CAPTION_H = 'h-[36px]';
 
 export default function ShowCard({
   show,
@@ -194,11 +194,11 @@ export default function ShowCard({
             card sits in (see lib/rowAccent), so a cover in the free row
             lifts in green and one in the movies row in gold. */}
         <div
-          className={`poster-frame aspect-[2/3] overflow-hidden rounded-[3px] bg-[#141416] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
+          className={`poster-frame aspect-[2/3] overflow-hidden rounded-[14px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
             large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
           }`}
         >
-          {!loaded && <div className="absolute inset-0 skeleton-shimmer bg-[#141416]" />}
+          {!loaded && <div className="absolute inset-0 skeleton-shimmer bg-[#151926]" />}
           <img
             src={show.poster_url ?? ''}
             alt={show.title}
@@ -241,7 +241,7 @@ export default function ShowCard({
               one a viewer had already seen on the same screen. */}
           {!show.coming_soon && isNew && (
             <span
-              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#000000]"
+              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0a101e]"
               style={{ boxShadow: '0 0 8px rgba(255,107,96,0.7)' }}
               aria-label={t.newTag ?? 'NEW'}
               title={t.newTag ?? 'NEW'}
@@ -283,8 +283,8 @@ export default function ShowCard({
                 episode count, whether the series has finished. Both lines
                 render even when empty so every card in a rail keeps the
                 same height — see CAPTION_H. */}
-            <p className="truncate text-[12px] font-semibold leading-none text-white/95">{show.title}</p>
-            <p className="mt-[7px] flex items-center gap-1 truncate text-[10.5px] font-semibold leading-none text-white/40">
+            <p className="truncate text-[13px] font-semibold leading-none text-white/95">{show.title}</p>
+            <p className="mt-2 flex items-center gap-1 truncate text-[11px] font-semibold leading-none text-white/40">
               {meta.map((part, i) => (
                 <span key={part} className="shrink-0 whitespace-nowrap">
                   {i > 0 && <span className="mr-1 text-white/25">·</span>}

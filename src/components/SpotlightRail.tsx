@@ -85,9 +85,9 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
               <button
                 onClick={() => onSelectShow(show)}
                 aria-label={show.title}
-                className="relative block w-full overflow-hidden rounded-[3px] ring-1 ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.55)]"
+                className="relative block w-full overflow-hidden rounded-[16px] ring-1 ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.55)]"
               >
-                <div className="aspect-[16/9] w-full bg-[#141416]">
+                <div className="aspect-[16/9] w-full bg-[#151926]">
                   {art && (
                     <img
                       src={art}
@@ -144,7 +144,7 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
                   )}
                 </span>
               </button>
-              <p className="mt-2 truncate text-[12px] font-semibold leading-none text-white/95">
+              <p className="mt-2 truncate text-[13px] font-semibold leading-none text-white/95">
                 {show.title}
               </p>
             </div>

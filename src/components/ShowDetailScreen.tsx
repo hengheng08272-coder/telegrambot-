@@ -284,7 +284,7 @@ export default function ShowDetailScreen({
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="skeleton-shimmer h-24 rounded-card bg-[#141416]" />
+                  <div key={i} className="skeleton-shimmer h-24 rounded-card bg-[#151926]" />
                 ))}
               </div>
             ) : error ? (
@@ -311,7 +311,7 @@ export default function ShowDetailScreen({
                     className={`group flex w-full items-center gap-4 overflow-hidden rounded-card border p-3 text-left shadow-card transition active:scale-[0.995] ${
                       locked
                         ? 'border-[#F5C563]/25 bg-[#1A1710] hover:border-[#F5C563]/60 hover:shadow-glow-gold'
-                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#2050D8]/35 hover:bg-[#141416]'
+                        : 'border-white/[0.06] bg-[#0E1017] hover:border-[#2050D8]/35 hover:bg-[#151926]'
                     }`}
                   >
                     <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-xl sm:w-48">

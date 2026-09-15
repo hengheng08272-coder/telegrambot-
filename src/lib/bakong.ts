@@ -416,7 +416,7 @@ export async function renderQrDataUrl(payload: string): Promise<string | null> {
       errorCorrectionLevel: 'H',
       margin: 1,
       scale: 8,
-      color: { dark: '#000000', light: '#FFFFFF' },
+      color: { dark: '#0a101e', light: '#FFFFFF' },
     });
     await drawKhqrBadge(canvas);
     return canvas.toDataURL('image/png');
