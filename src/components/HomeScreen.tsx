@@ -1097,6 +1097,9 @@ function MosaicHero({
   onTouchStart,
   onTouchEnd,
   t,
+  bannerShows,
+  heroIndex,
+  interacting,
 }: MosaicHeroProps) {
   const [inList, setInList] = useState(() => isInWatchlist(hero.id));
 
