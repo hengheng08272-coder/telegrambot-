@@ -635,6 +635,9 @@ export default function HomeScreen({
               else if (dx > 40) prevSlide();
             }}
             t={t}
+            bannerShows={bannerShows}
+            heroIndex={heroIndex}
+            interacting={interacting}
           />
         )}
       </div>
@@ -1058,6 +1061,14 @@ interface MosaicHeroProps {
   onTouchStart: (x: number) => void;
   onTouchEnd: (x: number) => void;
   t: TranslationText;
+  /** The full hero rotation and where we are in it — drives the
+   *  story-style progress segments across the top of the banner. */
+  bannerShows: Show[];
+  heroIndex: number;
+  /** True while a finger/mouse is holding the hero (mirrors the
+   *  autoTimer pause logic already driving the rotation) — freezes the
+   *  active segment instead of it silently finishing under a thumb. */
+  interacting: boolean;
 }
 
 /**
@@ -1126,122 +1137,146 @@ function MosaicHero({
       onTouchStart={(e) => onTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => onTouchEnd(e.changedTouches[0].clientX)}
     >
-      {/* The banner strip. 168px is the handoff's phone figure; it grows
-          on wider screens so a desktop window gets a masthead rather
-          than a letterbox slot. */}
-      <div className="relative h-[132px] w-full overflow-hidden bg-[#151926] sm:h-[200px] lg:h-[268px]">
-        {banner && (
-          <img
-            key={hero.id}
-            src={banner}
-            alt=""
-            aria-hidden
-            // The largest thing above the fold — the one image on this
-            // screen worth asking the browser to hurry.
-            fetchPriority="high"
-            decoding="async"
-            draggable={false}
-            className="h-full w-full object-cover object-top"
-          />
-        )}
+      {/* One card, not a banner-plus-floating-card — logo, title, art
+          glow and both CTAs all inside a single rounded container, the
+          way a poster-style key-art card reads as one graphic rather
+          than layered pieces. Height is a compromise: tall enough for
+          the composition to breathe, short enough that "មើលបន្ត" is
+          still visible on load rather than needing a scroll first. */}
+      <div className="relative mx-3 mt-2 h-[320px] overflow-hidden rounded-[22px] bg-gradient-to-br from-[#0A0E1C] via-[#0D1530] to-[#1A2C52] sm:mx-8 sm:h-[380px] lg:h-[440px]">
+        {/* Ambient light — a vertical beam plus a soft blob, standing in
+            for the art's own colour until real key-art is dropped in
+            behind it. */}
         <div
           aria-hidden
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.1) 45%, rgba(0,0,0,0.92) 100%)',
-          }}
+          className="absolute inset-y-0 left-[38%] w-[26%] opacity-80"
+          style={{ background: 'linear-gradient(180deg, rgba(78,134,255,0.28), rgba(78,134,255,0.05) 60%, transparent)' }}
         />
-      </div>
+        <div
+          aria-hidden
+          className="absolute right-6 top-1/3 h-[190px] w-[190px] -translate-y-1/2 rounded-full opacity-70 blur-2xl"
+          style={{ background: 'radial-gradient(circle, rgba(120,110,255,0.35), transparent 70%)' }}
+        />
 
-      {/* Poster + title, lifted into the bottom of the banner. */}
-      <div className="relative -mt-[40px] flex items-end gap-3 px-4 sm:-mt-[56px] sm:gap-4 sm:px-8">
-        <button
-          onClick={() => onSelectShow(hero)}
-          aria-label={hero.title}
-          className="mosaic-press relative block h-[114px] w-[76px] shrink-0 overflow-hidden bg-[#151926] sm:h-[162px] sm:w-[108px]"
-          style={{ borderRadius: 3, boxShadow: '0 10px 30px rgba(4,2,3,0.7)' }}
-        >
-          {poster && (
-            <img
-              src={poster}
-              alt=""
-              decoding="async"
-              width={600}
-              height={900}
-              draggable={false}
-              className="h-full w-full object-cover"
-            />
-          )}
-        </button>
+        {/* The show's own art — mid-right, blended edges rather than a
+            hard rectangle, so it reads as part of the glow instead of a
+            photo dropped on top of it. Swap in `banner` once real
+            artwork is wired through; until then the ambient glow above
+            carries the composition on its own. */}
+        {poster && (
+          <img
+            src={poster}
+            alt=""
+            aria-hidden
+            decoding="async"
+            draggable={false}
+            className="absolute right-8 top-1/2 h-[54%] w-[46%] -translate-y-1/2 rounded-[18px] object-cover opacity-80"
+            style={{
+              WebkitMaskImage: 'radial-gradient(ellipse at center, #000 55%, transparent 85%)',
+              maskImage: 'radial-gradient(ellipse at center, #000 55%, transparent 85%)',
+            }}
+          />
+        )}
 
-        <div className="min-w-0 pb-1">
-          {/* Beside the title, not stamped on the cover. At 76px wide the
-              poster had the badge covering most of its top edge, and
-              because the poster is lifted into the banner the badge
-              landed over the banner art behind it too. */}
-          <span className="mb-1.5 flex">{accessBadge}</span>
+        {/* Wordmark — part of the card's own graphic, not a header bar
+            sitting above it. */}
+        <div className="absolute left-5 top-5 flex items-center gap-2 sm:left-7 sm:top-7">
+          <div className="h-7 w-7 rounded-[8px] bg-gradient-to-br from-[#4E86FF] to-[#0E2560] sm:h-8 sm:w-8" />
+          <span className="font-display text-lg tracking-wide text-white sm:text-xl">
+            NINT<span className="text-accent">PLEX</span>
+          </span>
+        </div>
+
+        {/* Story-style progress segments — one per slide, filling over
+            HERO_AUTO_MS via the existing hero-progress-fill keyframe
+            (see index.css). Pauses while a finger holds the card. */}
+        {bannerShows.length > 1 && (
+          <div className="absolute inset-x-16 top-6 z-10 flex gap-1 sm:inset-x-24">
+            {bannerShows.map((show, i) => (
+              <span key={show.id} className="h-[2px] flex-1 overflow-hidden rounded-full bg-white/20">
+                {i === heroIndex && (
+                  <span
+                    key={`${show.id}-${heroIndex}`}
+                    className="block h-full origin-left rounded-full bg-[#4E86FF]"
+                    style={{
+                      animation: `hero-progress-fill ${HERO_AUTO_MS}ms linear forwards`,
+                      animationPlayState: interacting ? 'paused' : 'running',
+                    }}
+                  />
+                )}
+                {i < heroIndex && <span className="block h-full rounded-full bg-[#4E86FF]" />}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Title block — vertically centred on the left, the way the
+            reference sits it against the glow rather than pinned to a
+            corner. */}
+        <div className="absolute left-5 top-1/2 max-w-[62%] -translate-y-1/2 sm:left-7">
+          <span className="mb-2 flex">{accessBadge}</span>
           <h2
             onClick={() => onSelectShow(hero)}
-            className="line-clamp-2 cursor-pointer text-[15px] font-bold leading-[1.4] text-[#EEF1F8] sm:text-xl"
+            className="line-clamp-2 cursor-pointer text-[22px] font-bold leading-[1.25] text-white sm:text-[28px]"
           >
             {hero.title}
           </h2>
+          <div className="my-3 h-[3px] w-9 rounded-full bg-[#E6231F]" />
           {meta.length > 0 && (
-            <p className="mt-1.5 truncate text-[11px] font-bold text-white/40">{meta.join(' · ')}</p>
+            <p className="truncate text-[13px] font-bold text-white/50 sm:text-sm">{meta.join(' · ')}</p>
           )}
         </div>
-      </div>
 
-      {/* Two controls, and only two. The handoff gives the primary the
-          whole width it can take and leaves the watchlist as a square —
-          "watch this" is the decision the hero exists to ask for, and
-          anything else beside it competes with that. */}
-      <div className="flex gap-1.5 px-4 pt-1.5 sm:px-8">
-        <button
-          onClick={() => onSelectShow(hero)}
-          className="flex h-[38px] flex-1 items-center justify-center gap-2 text-[14px] font-bold text-white transition active:scale-[0.98]"
-          style={{
-            borderRadius: 3,
-            background: 'linear-gradient(135deg, #2050D8 0%, #1A3FAE 55%, #0E2560 100%)',
-          }}
-        >
-          {hero.coming_soon ? (
-            <>
-              <Clock className="h-4 w-4" /> {t.comingSoonLabel}
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4 fill-white" /> {t.watchNow ?? t.play}
-            </>
-          )}
-        </button>
-        <button
-          onClick={() => setInList(toggleWatchlist(hero))}
-          aria-label={t.myList}
-          title={t.myList}
-          className="flex h-[38px] w-[38px] shrink-0 items-center justify-center text-[#EEF1F8] transition active:scale-[0.98]"
-          style={{
-            borderRadius: 3,
-            background: 'rgba(146,172,224,0.12)',
-            boxShadow: 'inset 0 0 0 1px rgba(146,172,224,0.16)',
-          }}
-        >
-          {inList ? <Check className="h-[18px] w-[18px]" /> : <Plus className="h-[18px] w-[18px]" />}
-        </button>
+        {/* Two controls, full width at the card's own bottom edge — the
+            reference's wide pill primary plus a square icon secondary,
+            both inside the same card rather than hanging below it. */}
+        <div className="absolute inset-x-5 bottom-5 flex gap-2.5 sm:inset-x-7 sm:bottom-7">
+          <button
+            onClick={() => onSelectShow(hero)}
+            className="flex h-[46px] flex-1 items-center justify-center gap-2 text-[14px] font-bold text-white transition active:scale-[0.98] sm:h-[52px] sm:text-[15px]"
+            style={{
+              borderRadius: 24,
+              background: 'linear-gradient(135deg, #2050D8 0%, #1A3FAE 55%, #0E2560 100%)',
+              boxShadow: '0 8px 24px rgba(32,80,216,0.45)',
+            }}
+          >
+            {hero.coming_soon ? (
+              <>
+                <Clock className="h-4 w-4" /> {t.comingSoonLabel}
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4 fill-white" /> {t.watchNow ?? t.play}
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setInList(toggleWatchlist(hero))}
+            aria-label={t.myList}
+            title={t.myList}
+            className="flex h-[46px] w-[46px] shrink-0 items-center justify-center text-white transition active:scale-[0.98] sm:h-[52px] sm:w-[52px]"
+            style={{
+              borderRadius: 16,
+              background: 'rgba(255,255,255,0.06)',
+              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.14)',
+            }}
+          >
+            {inList ? <Check className="h-[18px] w-[18px]" /> : <Plus className="h-[18px] w-[18px]" />}
+          </button>
+        </div>
       </div>
 
       {/* Chevron arrows — desktop only, swipe handles mobile. */}
       <button
         onClick={onPrev}
-        className="absolute left-2 top-[66px] z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex lg:top-[134px]"
+        className="absolute left-4 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
         aria-label="Previous"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
       <button
         onClick={onNext}
-        className="absolute right-2 top-[66px] z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex lg:top-[134px]"
+        className="absolute right-4 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60 active:scale-90 md:flex"
         aria-label="Next"
       >
         <ChevronRight className="h-6 w-6" />
