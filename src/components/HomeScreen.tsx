@@ -695,9 +695,20 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-3">
-            {/* Free-to-watch leads the page. Everything below it needs a
+            {/* Continue Watching leads the page now, per request — a
+                returning viewer with something mid-episode sees it before
+                anything else. Uses `guide` (blue) — this row is about
+                *how the catalogue relates to you*, the same reason
+                "Recommended for You" is guide, not a fact about a show
+                (mark) or a money state (free/vip). Only exists once
+                localStorage actually has something in it, so a
+                first-time viewer never sees an empty rail. */}
+            {continueItems.length > 0 && (
+              <ContinueWatchingRail items={continueItems} onResumeEpisode={onResumeEpisode} />
+            )}
+            {/* Free-to-watch next. Everything below it needs a
                 membership, so the one row a signed-out viewer can act on
-                immediately goes first rather than three rows down. Plain
+                immediately still leads the paid catalogue. Plain
                 divider-row treatment like every other rail below it now
                 (no boxed panel background) — the FREE tag next to the
                 title already says what this row is without framing it.
@@ -719,18 +730,6 @@ export default function HomeScreen({
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
                 without repeating it as a second ranked row underneath. */}
-            {/* Continue Watching — back on Home (v31). Sits right under
-                Free-to-Watch rather than reclaiming the very top: Free is
-                the one row every signed-out viewer can act on immediately,
-                so it still leads. This row only exists once localStorage
-                actually has something in it, so a first-time viewer never
-                sees an empty rail. Uses `guide` (blue) — this row is about
-                *how the catalogue relates to you*, the same reason
-                "Recommended for You" is guide, not a fact about a show
-                (mark) or a money state (free/vip). */}
-            {continueItems.length > 0 && (
-              <ContinueWatchingRail items={continueItems} onResumeEpisode={onResumeEpisode} />
-            )}
             {/* Down to a single card — the most-watched movie — instead of
                 a whole rail or grid, so the panel stays short enough that
                 the row underneath is still on screen without scrolling.
@@ -1370,8 +1369,8 @@ function CoverflowHero({
                 "Play" for something that cannot be played yet. */}
             <button
               onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(232, 163, 61,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
-              style={{ background: 'linear-gradient(135deg, #E8A33D, #C77F22 55%, #7A5416)' }}
+              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(32,80,216,0.45)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
+              style={{ background: 'linear-gradient(135deg, #4E86FF, #2050D8 55%, #0E2560)' }}
             >
               {hero.coming_soon ? (
                 <>
