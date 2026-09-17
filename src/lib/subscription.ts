@@ -491,13 +491,13 @@ export async function notifyPendingSubmission(opts: {
 
 // Fallback path — always available alongside the QR (not gated behind
 // a timeout): if the automatic ABA match hasn't confirmed yet, the
-// viewer can attach a screenshot instead. This grants VIP immediately
-// via the confirm-payment-proof edge function (service-role only — the
-// client can't write to subscriptions directly), which also sends the
-// admin the actual photo (not just a text ping) with Confirm/Revoke
-// buttons for a fast retroactive check. See confirm-payment-proof's own
-// comments for why an instant grant here was a deliberate choice, not
-// a default I picked.
+// viewer can attach a screenshot instead.
+//
+// This no longer grants anything. The receipt is a REQUEST: it attaches
+// the photo, leaves the submission pending, and sends the admin the
+// picture with Approve/Reject. A screenshot is a claim, not evidence —
+// the ABA notification path is the one that still confirms by itself,
+// because a real bank alert is evidence.
 export async function attachScreenshotToSubmission(
   submissionId: string,
   screenshot: File,
