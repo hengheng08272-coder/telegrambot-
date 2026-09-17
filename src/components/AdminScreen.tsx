@@ -17,6 +17,7 @@ import {
   Play,
   Megaphone,
   Wallet,
+  Film,
   QrCode,
   ShieldBan,
   Eye,
@@ -37,6 +38,7 @@ import BanLogPanel from '@/components/BanLogPanel';
 import WatchLogPanel from '@/components/WatchLogPanel';
 import SuspiciousActivityPanel from '@/components/SuspiciousActivityPanel';
 import PaymentsPanel from '@/components/PaymentsPanel';
+import MoviePurchasesPanel from '@/components/MoviePurchasesPanel';
 import ArtworkPicker from '@/components/ArtworkPicker';
 import type { PreparedImage } from '@/lib/imageSizing';
 import SubscriptionsPanel from '@/components/SubscriptionsPanel';
@@ -231,6 +233,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
   const [watchLogOpen, setWatchLogOpen] = useState(false);
   const [suspiciousOpen, setSuspiciousOpen] = useState(false);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
+  const [moviePurchasesOpen, setMoviePurchasesOpen] = useState(false);
   const [subscriptionsOpen, setSubscriptionsOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
   const [telegramAutoPostOpen, setTelegramAutoPostOpen] = useState(false);
@@ -880,6 +883,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                 {pendingPaymentsCount}
               </span>
             )}
+          </button>
+          {/* Films are approved separately from VIP: they live in their
+              own table and grant a single title, not a subscription. */}
+          <button
+            onClick={() => setMoviePurchasesOpen(true)}
+            className="relative flex shrink-0 items-center gap-1.5 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-3.5 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20"
+          >
+            <Film className="h-3.5 w-3.5" /> Movies
           </button>
           <button
             onClick={() => setSubscriptionsOpen(true)}
@@ -2046,6 +2057,7 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
       {banLogOpen && <BanLogPanel onClose={() => setBanLogOpen(false)} />}
       {watchLogOpen && <WatchLogPanel onClose={() => setWatchLogOpen(false)} />}
       {paymentsOpen && <PaymentsPanel onClose={() => setPaymentsOpen(false)} />}
+      {moviePurchasesOpen && <MoviePurchasesPanel onClose={() => setMoviePurchasesOpen(false)} />}
       {subscriptionsOpen && <SubscriptionsPanel onClose={() => setSubscriptionsOpen(false)} />}
       {usersOpen && <UsersPanel onClose={() => setUsersOpen(false)} />}
       {suspiciousOpen && <SuspiciousActivityPanel onClose={() => setSuspiciousOpen(false)} />}
