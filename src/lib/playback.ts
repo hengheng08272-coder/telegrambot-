@@ -7,7 +7,11 @@ export type PlaybackDenial =
   | 'not_purchased'
   | 'not_subscribed'
   | 'no_video'
-  | 'not_found';
+  | 'not_found'
+  /** Too many DIFFERENT episodes handed to this account in the last hour.
+   *  Never returned for re-watching something already played — that is
+   *  always served. A temporary answer, not a refusal of access. */
+  | 'rate_limited';
 
 export interface PlaybackResult {
   url: string | null;
@@ -54,6 +58,7 @@ export async function fetchEpisodePlayUrl(
     if (status === 401) return { url: null, signed: false, denial: 'not_verified' };
     if (status === 403) return { url: null, signed: false, denial: 'not_subscribed' };
     if (status === 404) return { url: null, signed: false, denial: 'no_video' };
+    if (status === 429) return { url: null, signed: false, denial: 'rate_limited' };
     console.error('[fetchEpisodePlayUrl] gate unreachable:', e);
     return { url: fallbackUrl ?? null, signed: false, denial: null };
   }

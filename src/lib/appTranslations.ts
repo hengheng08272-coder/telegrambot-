@@ -463,6 +463,11 @@ export const appText = {
     videoSlowTitle: 'Still loading — your connection looks slow',
     videoSlowHint: 'Give it a moment, or tap Retry. Skipping to the next episode will not load any faster.',
     videoRetry: 'Retry',
+    denyNotPurchased: 'This film has not been purchased.',
+    denyNoVideo: 'Video not available yet.',
+    denyNotSubscribed: 'This episode needs an active membership.',
+    denyRateLimited:
+      'You have opened a lot of different episodes in the last hour, so new ones are paused for a little while. Anything you have already watched still plays straight away. Message the admin if you need this lifted.',
     moviesRowSubtitle: 'Buy once, watch forever — no membership needed',
     subAbaFallbackHint: 'Nothing opened? Scan the QR instead.',
 
@@ -953,6 +958,11 @@ export const appText = {
     videoSlowTitle: 'កំពុងផ្ទុក — អ៊ីនធឺណិតរបស់អ្នកហាក់ដូចជាយឺត',
     videoSlowHint: 'សូមរង់ចាំបន្តិច ឬចុច «ព្យាយាមម្ដងទៀត»។ ការរំលងទៅវគ្គបន្ទាប់ក៏មិនលឿនជាងនេះដែរ។',
     videoRetry: 'ព្យាយាមម្ដងទៀត',
+    denyNotPurchased: 'រឿងនេះមិនទាន់បានទិញទេ។',
+    denyNoVideo: 'វីដេអូមិនទាន់មានទេ។',
+    denyNotSubscribed: 'វគ្គនេះត្រូវការសមាជិកភាព។',
+    denyRateLimited:
+      'អ្នកបានបើកវគ្គ​ខុសៗគ្នា​ច្រើន​ក្នុង​មួយ​ម៉ោង​កន្លង​មក ដូច្នេះ​វគ្គ​ថ្មី​ត្រូវ​ផ្អាក​បណ្ដោះអាសន្ន។ រឿង​ដែល​អ្នក​ធ្លាប់​មើល​រួច​នៅ​តែ​ចាក់​បាន​ធម្មតា។ បើ​ត្រូវការ​ជំនួយ សូម​ផ្ញើសារ​ទៅ admin។',
     moviesRowSubtitle: 'ទិញម្ដង មើលបានជារៀងរហូត — មិនចាំបាច់ជាសមាជិក',
     subAbaFallbackHint: 'មិនបានបើកទេ? សូមស្កេន QR ជំនួសវិញ។',
 

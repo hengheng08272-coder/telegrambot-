@@ -386,10 +386,16 @@ export default function VideoPlayerScreen({
         } else {
           setAccessError(
             res.denial === 'not_purchased'
-              ? 'This film has not been purchased.'
+              ? t.denyNotPurchased
               : res.denial === 'no_video' || res.denial === 'not_found'
-                ? 'Video not available yet.'
-                : 'This episode needs an active membership.',
+                ? t.denyNoVideo
+                : // Not a refusal of access — the account has simply been
+                  // handed a lot of DIFFERENT episodes in the last hour.
+                  // Worth its own wording: told "you need a membership",
+                  // a member who just paid assumes they were cheated.
+                  res.denial === 'rate_limited'
+                  ? t.denyRateLimited
+                  : t.denyNotSubscribed,
           );
         }
       })

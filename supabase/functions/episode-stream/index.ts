@@ -117,7 +117,43 @@ async function grant(
   admin: ReturnType<typeof createClient>,
   videoUrl: string,
   reason: string,
+  limitFor?: { telegramUserId: string; episodeId: string },
 ): Promise<Response> {
+  // How fast one account may be handed DIFFERENT files. Counted per
+  // episode, never per request: re-opening the same episode — paused,
+  // reloaded, resumed tomorrow, or simply watched again because it is a
+  // favourite — is always served, however full the hour already is. That
+  // is the difference between somebody taking the library and somebody
+  // loving one show, and it is the only thing this limit is trying to
+  // tell apart. See claim_stream_grant.
+  //
+  // Only ever applied to an identified viewer. Free content is served
+  // before identity is known, and rationing it per browser would be both
+  // impossible and pointless.
+  if (limitFor) {
+    const { data, error } = await admin.rpc("claim_stream_grant", {
+      p_telegram_user_id: limitFor.telegramUserId,
+      p_episode_id: limitFor.episodeId,
+    });
+    // A limiter that cannot be read must not become a gate: a missing
+    // function or a failed call lets the viewer through rather than
+    // locking the catalog over a migration that has not run yet.
+    if (error) {
+      console.warn(`[LIMIT] claim_stream_grant unavailable (${error.message}) — allowing.`);
+    } else {
+      const row = (data as { allowed: boolean; used: number; cap: number }[] | null)?.[0];
+      if (row && row.allowed === false) {
+        console.log(
+          `[LIMIT] ${limitFor.telegramUserId} refused: ${row.used}/${row.cap} distinct episodes this hour.`,
+        );
+        return json(
+          { error: "rate_limited", used: row.used, cap: row.cap, retryAfterMinutes: 60 },
+          429,
+        );
+      }
+    }
+  }
+
   const bucket = Deno.env.get("VIDEO_BUCKET") ?? "videos";
   const ttl = Number(Deno.env.get("SIGNED_URL_TTL_SECONDS") ?? 6 * 60 * 60);
   const path = toStoragePath(videoUrl, bucket);
@@ -180,7 +216,10 @@ Deno.serve(async (req: Request) => {
         .eq("status", "approved")
         .maybeSingle();
       if (!purchase) return json({ error: "not_purchased" }, 403);
-      return await grant(admin, episode.video_url, "purchased");
+      return await grant(admin, episode.video_url, "purchased", {
+        telegramUserId,
+        episodeId: episode.id,
+      });
     }
 
     const { data: sub } = await admin
@@ -193,7 +232,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: "not_subscribed" }, 403);
     }
 
-    return await grant(admin, episode.video_url, "subscribed");
+    return await grant(admin, episode.video_url, "subscribed", {
+      telegramUserId,
+      episodeId: episode.id,
+    });
   } catch (err) {
     return json({ error: String(err) }, 500);
   }
