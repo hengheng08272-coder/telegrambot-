@@ -24,6 +24,11 @@ export interface Show {
   trailer_url?: string | null;
   created_at?: string;
   genres?: Genre[];
+  /** Standalone price for a one-off movie. Null/undefined means this
+   *  title follows the catalog-wide default (app_settings
+   *  `movie_price_default`), so raising that default moves every
+   *  unpriced film at once. Never read for series. */
+  movie_price?: number | null;
 }
 
 export interface Episode {

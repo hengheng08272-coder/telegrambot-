@@ -38,6 +38,13 @@ interface ShowCardProps {
    *  all share one access level: the badge is then printed once in the
    *  row's own heading instead of stamped over every poster in it. */
   hideAccessBadge?: boolean;
+  /** The series name with its season suffix stripped off (see
+   *  lib/seasons), used as the caption instead of the raw title. A
+   *  franchise row lists "Naruto Season 1", "Naruto Season 2" … and
+   *  captions that all begin with the same words truncate to the same
+   *  unreadable stub; the season itself is already shown as its own pill.
+   *  Falls back to show.title when no base name was parsed. */
+  displayTitle?: string;
 }
 
 /**
@@ -70,6 +77,7 @@ export default function ShowCard({
   titleFromSeason,
   continuesAtSeason,
   hideAccessBadge,
+  displayTitle,
 }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -283,7 +291,9 @@ export default function ShowCard({
                 episode count, whether the series has finished. Both lines
                 render even when empty so every card in a rail keeps the
                 same height — see CAPTION_H. */}
-            <p className="truncate text-[13px] font-semibold leading-none text-white/95">{show.title}</p>
+            <p className="truncate text-[13px] font-semibold leading-none text-white/95">
+              {displayTitle?.trim() || show.title}
+            </p>
             <p className="mt-2 flex items-center gap-1 truncate text-[11px] font-semibold leading-none text-white/40">
               {meta.map((part, i) => (
                 <span key={part} className="shrink-0 whitespace-nowrap">

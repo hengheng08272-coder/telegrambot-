@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, Film, Loader2, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/supabaseClient';
+import { formatPrice } from '@/lib/format';
 import AdminPanelShell from '@/components/AdminPanelShell';
 
 interface Props {
@@ -13,6 +14,9 @@ interface Purchase {
   telegram_username: string | null;
   show_id: string;
   amount: number;
+  /** Older rows predate per-title pricing and carry no currency; they
+   *  were all dollars, which is what the fallback says. */
+  currency?: string | null;
   screenshot_url: string | null;
   status: 'pending' | 'approved' | 'rejected';
   auto_approved: boolean;
@@ -104,7 +108,9 @@ export default function MoviePurchasesPanel({ onClose }: Props) {
         <span className="text-[13px] font-bold text-[#EEF1F8]">
           {titles[row.show_id] ?? row.show_id}
         </span>
-        <span className="text-[13px] font-bold text-[#2FD98C]">${row.amount}</span>
+        <span className="text-[13px] font-bold text-[#2FD98C]">
+          {formatPrice(Number(row.amount), row.currency === 'KHR' ? 'KHR' : 'USD')}
+        </span>
       </div>
       <p className="mt-1 text-[11px] text-[#9AA4BD]">
         {row.telegram_username ? `@${row.telegram_username}` : row.telegram_user_id} ·{' '}
@@ -147,7 +153,7 @@ export default function MoviePurchasesPanel({ onClose }: Props) {
   return (
     <AdminPanelShell
       title="ការទិញរឿង"
-      subtitle="អនុម័តវិក្កយបត្រ $1 មុននឹងដោះសោ"
+      subtitle="អនុម័តវិក្កយបត្រការទិញរឿង មុននឹងដោះសោ"
       icon={<Film className="h-5 w-5" />}
       error={error}
       onDismissError={() => setError('')}

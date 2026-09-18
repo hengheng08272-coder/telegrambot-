@@ -258,6 +258,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         'template-bad-checksum': TEMPLATE_ERRORS['bad-checksum'],
         'template-static': TEMPLATE_ERRORS['no-amount-field'],
         'template-name-too-long': TEMPLATE_ERRORS['name-too-long'],
+        'template-currency-mismatch':
+          'Template នេះជា QR រូបិយប័ណ្ណមួយផ្សេង — សូម paste template ជារូបិយប័ណ្ណដែលកំពុងលក់',
       };
       setBakongPreviewError(
         reasons[generated.reason] + (generated.detail ? ` (${generated.detail})` : ''),

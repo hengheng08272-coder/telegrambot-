@@ -61,15 +61,47 @@ const corsHeaders = {
 // the same amount. Mirrors aba-payment-webhook.
 const MATCH_WINDOW_MIN = 15;
 
-const AMOUNT_PATTERN =
-  /(?:\$|USD)\s*([0-9]+(?:\.[0-9]{1,2})?)|([0-9]+(?:\.[0-9]{1,2})?)\s*(?:\$|USD)/i;
+// Money, written either way round and in either currency ABA settles in:
+//   "$2", "2$", "2.00 USD", "USD 2.00", "4,000 KHR", "KHR 4000", "៛4000"
+// The currency is captured, not assumed. A riel payment and a dollar
+// payment of the "same" number are completely different sums, so the two
+// must never be matched against each other — which is only possible if
+// the text says which one arrived.
+const MONEY_PATTERN =
+  /(\$|USD|KHR|៛)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)|([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(\$|USD|KHR|៛)/i;
 
-function extractAmount(text: string): number | null {
-  const m = AMOUNT_PATTERN.exec(text);
+type Money = { amount: number; currency: "USD" | "KHR" };
+
+/** The columns each pending-row lookup below actually selects. */
+type PendingSub = {
+  id: string;
+  telegram_user_id: string;
+  telegram_username: string | null;
+  tier: string;
+  amount: number;
+};
+type PendingMovie = {
+  id: string;
+  telegram_user_id: string;
+  telegram_username: string | null;
+  show_id: string;
+  amount: number;
+  currency: string;
+};
+
+function extractMoney(text: string): Money | null {
+  const m = MONEY_PATTERN.exec(text);
   if (!m) return null;
-  const raw = m[1] ?? m[2];
-  const value = Math.round(parseFloat(raw) * 100) / 100;
-  return Number.isFinite(value) ? value : null;
+  const symbol = (m[1] ?? m[4] ?? "").toUpperCase();
+  const raw = (m[2] ?? m[3] ?? "").replace(/,/g, "");
+  const parsed = parseFloat(raw);
+  if (!Number.isFinite(parsed)) return null;
+  const currency: Money["currency"] = symbol === "KHR" || symbol === "៛" ? "KHR" : "USD";
+  // Riel has no sub-unit — a fractional riel is a parse artefact, never a
+  // real amount — so it is rounded whole before anything compares it.
+  const amount =
+    currency === "KHR" ? Math.round(parsed) : Math.round(parsed * 100) / 100;
+  return { amount, currency };
 }
 
 // ABA prints its own reference in every alert:
@@ -205,11 +237,12 @@ Deno.serve(async (req: Request) => {
       return json(200, { ok: true, matched: false, reason: "merchant_name_absent" });
     }
 
-    const amount = extractAmount(text);
-    if (amount === null) {
+    const money = extractMoney(text);
+    if (money === null) {
       console.log(`[NO_MATCH] No usable amount in: "${text}"`);
       return json(200, { ok: true, matched: false, reason: "no_amount" });
     }
+    const { amount, currency } = money;
 
     const { data: tiers, error: tiersErr } = await admin
       .from("pricing_tiers")
@@ -218,14 +251,23 @@ Deno.serve(async (req: Request) => {
       console.error("pricing_tiers lookup error:", tiersErr);
       return json(200, { ok: false, error: "tiers_lookup_failed" });
     }
-    // A missing tier is no longer fatal: a standalone movie costs $1 and
-    // has no pricing_tiers row at all, so the movie table is searched
-    // below before anything is turned away.
-    const tierForAmount = (tiers ?? []).find((t) => Number(t.price) === amount);
+    // A missing tier is no longer fatal: a standalone movie may be priced
+    // at something no plan charges, so the movie table is searched below
+    // before anything is turned away.
+    //
+    // Plans are priced in dollars (pricing_tiers.price has no currency
+    // column), so a riel payment can never be a plan payment — matching
+    // one against a tier would read "4000 KHR" as four thousand dollars.
+    const tierForAmount =
+      currency === "USD"
+        ? (tiers ?? []).find((t) => Number(t.price) === amount)
+        : undefined;
 
     const trxId = extractTrxId(text);
     const payer = extractPayer(text);
-    console.log(`[PARSED] amount=${amount} trx=${trxId ?? "-"} payer=${payer ?? "-"}`);
+    console.log(
+      `[PARSED] amount=${amount} ${currency} trx=${trxId ?? "-"} payer=${payer ?? "-"}`,
+    );
 
     // Replay guard — see TRX_ID_PATTERN above. A missing column here just
     // means database/aba-trx-id-addition.sql has not been run yet; the
@@ -256,7 +298,7 @@ Deno.serve(async (req: Request) => {
     // across BOTH tables is waiting on this amount. Searching both is the
     // whole point: a $1 movie has no pricing_tiers row, so before this
     // every movie payment died at "doesn't match any current plan price".
-    let pendingSubs: Array<Record<string, any>> = [];
+    let pendingSubs: PendingSub[] = [];
     if (tierForAmount) {
       const { data, error } = await admin
         .from("payment_submissions")
@@ -271,13 +313,14 @@ Deno.serve(async (req: Request) => {
       pendingSubs = data ?? [];
     }
 
-    let pendingMovies: Array<Record<string, any>> = [];
+    let pendingMovies: PendingMovie[] = [];
     {
       const { data, error } = await admin
         .from("movie_purchases")
-        .select("id, telegram_user_id, telegram_username, show_id, amount")
+        .select("id, telegram_user_id, telegram_username, show_id, amount, currency")
         .eq("status", "pending")
         .eq("amount", amount)
+        .eq("currency", currency)
         .gte("submitted_at", sinceIso);
       if (error) {
         // A movie-table problem must never take the VIP path down with
@@ -291,7 +334,7 @@ Deno.serve(async (req: Request) => {
     const candidates = pendingSubs.length + pendingMovies.length;
     if (candidates === 0) {
       console.log(
-        `[NO_MATCH] Nothing pending at $${amount} in the last ${MATCH_WINDOW_MIN}min (plan: ${
+        `[NO_MATCH] Nothing pending at ${amount} ${currency} in the last ${MATCH_WINDOW_MIN}min (plan: ${
           tierForAmount?.key ?? "none"
         }).`,
       );
@@ -303,7 +346,7 @@ Deno.serve(async (req: Request) => {
       // movie priced the same as a plan. Refuse to guess; they fall
       // through to the receipt upload / manual admin approval.
       console.log(
-        `[AMBIGUOUS] ${candidates} pending items at $${amount}: subs=[${pendingSubs
+        `[AMBIGUOUS] ${candidates} pending items at ${amount} ${currency}: subs=[${pendingSubs
           .map((r) => r.id)
           .join(", ")}] movies=[${pendingMovies.map((r) => r.id).join(", ")}]`,
       );
@@ -335,7 +378,9 @@ Deno.serve(async (req: Request) => {
         return json(200, { ok: true, matched: false, reason: "already_confirmed" });
       }
 
-      console.log(`[SUCCESS] Auto-confirmed movie purchase: ${mv.id} ($${amount})`);
+      console.log(
+        `[SUCCESS] Auto-confirmed movie purchase: ${mv.id} (${amount} ${currency})`,
+      );
 
       const { data: show } = await admin
         .from("shows")
@@ -352,7 +397,7 @@ Deno.serve(async (req: Request) => {
             `⚡ ការទិញរឿង — បញ្ជាក់ស្វ័យប្រវត្តិ (ABA)\n` +
             `👤 ${mv.telegram_username ? "@" + mv.telegram_username : mv.telegram_user_id}\n` +
             `📀 ${show?.title ?? mv.show_id}\n` +
-            `💵 $${amount}`,
+            `💵 ${amount} ${currency}`,
           reply_markup: {
             inline_keyboard: [[{ text: "❌ Revoke", callback_data: `movie_revoke:${mv.id}` }]],
           },

@@ -2,13 +2,17 @@ import { useCallback, useRef, useState } from 'react';
 import { Play, Clock, Crown } from 'lucide-react';
 import type { Show } from '@/lib/types';
 import Badge from '@/components/Badge';
-import { MOVIE_PRICE } from '@/lib/moviePurchase';
+import { FALLBACK_PRICING, priceOf, type MoviePricing } from '@/lib/moviePurchase';
+import { formatPrice } from '@/lib/format';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 
 interface Props {
   shows: Show[];
   onSelectShow: (show: Show) => void;
+  /** Catalog price settings, so each frame can print its own title's
+   *  price rather than one number standing in for all of them. */
+  pricing?: MoviePricing;
 }
 
 /**
@@ -28,7 +32,11 @@ interface Props {
  * a 174px frame has no room to letter a Khmer title across it without
  * covering the thing being sold.
  */
-export default function SpotlightRail({ shows, onSelectShow }: Props) {
+export default function SpotlightRail({
+  shows,
+  onSelectShow,
+  pricing = FALLBACK_PRICING,
+}: Props) {
   const { lang } = useLang();
   const t = appText[lang];
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -131,7 +139,7 @@ export default function SpotlightRail({ shows, onSelectShow }: Props) {
                     </Badge>
                   ) : show.type === 'movie' && !show.is_free ? (
                     <Badge tone="price" onArt square>
-                      ${MOVIE_PRICE}
+                      {formatPrice(priceOf(show, pricing), pricing.currency)}
                     </Badge>
                   ) : show.is_free ? (
                     <Badge tone="free" onArt square>

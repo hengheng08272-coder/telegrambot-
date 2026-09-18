@@ -448,6 +448,8 @@ export const appText = {
     movieUploadReceipt: 'Paid? Attach your receipt to unlock instantly.',
     movieChangeScreenshot: 'Change',
     movieConfirmPay: 'Confirm Payment',
+    movieScanHint: 'Scan with any banking app. Unlocks automatically once paid.',
+    moviesRowSubtitle: 'Buy once, watch forever — no membership needed',
     subAbaFallbackHint: 'Nothing opened? Scan the QR instead.',
 
     // Locked episode row
@@ -922,6 +924,8 @@ export const appText = {
     movieUploadReceipt: 'បង់រួចហើយ? បញ្ចូលវិក្កយបត្រ ដើម្បីដោះសោភ្លាមៗ។',
     movieChangeScreenshot: 'ប្ដូររូបភាព',
     movieConfirmPay: 'បញ្ជាក់ការទូទាត់',
+    movieScanHint: 'ស្កេនដោយ app ធនាគារណាក៏បាន។ បង់រួច ដោះសោស្វ័យប្រវត្តិ។',
+    moviesRowSubtitle: 'ទិញម្ដង មើលបានជារៀងរហូត — មិនចាំបាច់ជាសមាជិក',
     subAbaFallbackHint: 'មិនបានបើកទេ? សូមស្កេន QR ជំនួសវិញ។',
 
     // Locked episode row

@@ -27,6 +27,7 @@ import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, e
 import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
+import { FALLBACK_PRICING, fetchMoviePricing, type MoviePricing } from '@/lib/moviePurchase';
 import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
@@ -131,6 +132,10 @@ export default function HomeScreen({
     movies?: boolean;
   } | null>(null);
   const [tickerMessage, setTickerMessage] = useState<string | undefined>(undefined);
+  // Read once per mount so every price tag on the page agrees. Only ever
+  // what viewers are SHOWN — the charge itself is priced server-side when
+  // the ticket is opened (see create_movie_purchase).
+  const [moviePricing, setMoviePricing] = useState<MoviePricing>(FALLBACK_PRICING);
   const [episodeInfo, setEpisodeInfo] = useState<Record<string, ShowEpisodeInfo>>({});
 
   const touchStartX = useRef(0);
@@ -224,6 +229,16 @@ export default function HomeScreen({
     setInteracting(true);
     if (resumeTimer.current) clearTimeout(resumeTimer.current);
     resumeTimer.current = setTimeout(() => setInteracting(false), 3500);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetchMoviePricing().then((p) => {
+      if (active) setMoviePricing(p);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Auto-advance the centered card every ~5.5s, pause while interacting
@@ -371,7 +386,7 @@ export default function HomeScreen({
   const bingeRow = claim(bingeShows, 14);
   const ongoingRow = claim(ongoingShows);
   const genreRows = genres.map((g) => ({ genre: g, list: claim(showsByGenre(g.slug)) }));
-  const featuredMovieCard = movieRow[0] ?? null;
+  const hasMovieRow = movieRow.length > 0;
 
   if (loading) {
     return (
@@ -735,7 +750,7 @@ export default function HomeScreen({
                 the row underneath is still on screen without scrolling.
                 The rest of the catalog is one tap away behind "View All"
                 whenever there's more than one. */}
-            {featuredMovieCard && (
+            {hasMovieRow && (
               <section
                 className="rail-section mt-8 overflow-hidden rounded-2xl border px-3 pb-3 pt-4 sm:px-4"
                 style={{
@@ -764,7 +779,39 @@ export default function HomeScreen({
                     </button>
                   )}
                 </div>
-                <MovieCard show={featuredMovieCard} onClick={onSelectShow} />
+
+                {/* One line saying what makes these different from
+                    everything else on the page. Films are the only thing
+                    here somebody can own outright, and that — not the
+                    price — is the reason to look. */}
+                <p className="-mt-1 mb-3 text-[11px] leading-relaxed text-white/45">
+                  {t.moviesRowSubtitle}
+                </p>
+
+                {/* A shelf, not a single pick. One card said "here is a
+                    film"; a row of them says "films are a section", which
+                    is what a growing pay-per-title catalog needs before
+                    anyone will think to swipe. Cards are just under full
+                    width so the next one always peeks in — the cheapest
+                    way to show there IS a next one. */}
+                {movieRow.length === 1 ? (
+                  <MovieCard
+                    show={movieRow[0]}
+                    onClick={onSelectShow}
+                    pricing={moviePricing}
+                  />
+                ) : (
+                  <div className="no-scrollbar -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-pl-1 px-1 pb-1">
+                    {movieRow.map((movie) => (
+                      <div
+                        key={movie.id}
+                        className="w-[86%] shrink-0 snap-start sm:w-[48%] lg:w-[32%]"
+                      >
+                        <MovieCard show={movie} onClick={onSelectShow} pricing={moviePricing} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
             {recommendedRow.length > 0 && (

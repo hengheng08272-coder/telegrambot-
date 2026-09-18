@@ -1,6 +1,7 @@
 import { Film, Play, Star } from 'lucide-react';
 import type { Show } from '@/lib/types';
-import { MOVIE_PRICE } from '@/lib/moviePurchase';
+import { FALLBACK_PRICING, priceOf, type MoviePricing } from '@/lib/moviePurchase';
+import { formatPrice } from '@/lib/format';
 import Badge from '@/components/Badge';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
@@ -8,11 +9,16 @@ import { appText } from '@/lib/appTranslations';
 interface Props {
   show: Show;
   onClick: (show: Show) => void;
-  /** Hides the price/FREE badge — used on the home screen row, which
-   *  already states the $ price once in the row's own header instead of
-   *  repeating it on every card. The "View All → Movies" grid has no
-   *  such header, so it keeps the badge on each card there. */
+  /** Hides the price/FREE badge. Rarely wanted now that titles are
+   *  priced individually — a single price in a row header can no longer
+   *  speak for every card under it — but kept for any caller that really
+   *  is showing one known price above the list. */
   hidePrice?: boolean;
+  /** Catalog-wide price settings, so a title with no price of its own
+   *  can still show the right number. Defaults to $1 for callers that
+   *  have not loaded them yet, which is what the flat-price version
+   *  always showed. */
+  pricing?: MoviePricing;
 }
 
 /**
@@ -32,10 +38,16 @@ interface Props {
  * muddy for others. One surface, always the same, reads as designed
  * regardless of what gets uploaded.
  */
-export default function MovieCard({ show, onClick, hidePrice }: Props) {
+export default function MovieCard({
+  show,
+  onClick,
+  hidePrice,
+  pricing = FALLBACK_PRICING,
+}: Props) {
   const { lang } = useLang();
   const t = appText[lang];
   const art = show.poster_url ?? show.banner_url ?? '';
+  const price = formatPrice(priceOf(show, pricing), pricing.currency);
 
   return (
     <button
@@ -119,7 +131,7 @@ export default function MovieCard({ show, onClick, hidePrice }: Props) {
                   boxShadow: 'inset 0 0 0 2px rgba(91,147,255,0.4)',
                 }}
               >
-                <span className="text-[13px] font-black tracking-tight">${MOVIE_PRICE}</span>
+                <span className="text-[13px] font-black tracking-tight">{price}</span>
                 <span className="mt-0.5 text-[6.5px] font-bold uppercase tracking-[0.18em]">
                   {t.movieOnlyPrice.replace('{price} ', '').replace('{price}', '')}
                 </span>
