@@ -450,6 +450,19 @@ export const appText = {
     movieConfirmPay: 'Confirm Payment',
     movieScanHint: 'Scan with any banking app. Unlocks automatically once paid.',
     supportLabel: 'Support',
+    watchWarnTitle: 'Everything alright with playback?',
+    watchWarnBody:
+      'Our system noticed {count} episodes opened in about {minutes} minutes on your account. That usually means the video would not load and you kept tapping Next — not a problem, but it looks the same to us as copying the library.',
+    watchWarnTitleFinal: 'Please slow down',
+    watchWarnBodyFinal:
+      'This has now happened more than once on your account — {count} episodes in about {minutes} minutes. If it happens again, access will be paused automatically and an admin will have to restore it.',
+    watchWarnHint:
+      'If a video will not play, wait a few seconds or tap Retry instead of moving on to the next episode. Message the admin and we will fix it for you.',
+    watchWarnContact: 'Message the admin',
+    watchWarnUnderstood: 'I understand',
+    videoSlowTitle: 'Still loading — your connection looks slow',
+    videoSlowHint: 'Give it a moment, or tap Retry. Skipping to the next episode will not load any faster.',
+    videoRetry: 'Retry',
     moviesRowSubtitle: 'Buy once, watch forever — no membership needed',
     subAbaFallbackHint: 'Nothing opened? Scan the QR instead.',
 
@@ -927,6 +940,19 @@ export const appText = {
     movieConfirmPay: 'បញ្ជាក់ការទូទាត់',
     movieScanHint: 'ស្កេនដោយ app ធនាគារណាក៏បាន។ បង់រួច ដោះសោស្វ័យប្រវត្តិ។',
     supportLabel: 'ជំនួយ',
+    watchWarnTitle: 'តើការចាក់វីដេអូមានបញ្ហាទេ?',
+    watchWarnBody:
+      'ប្រព័ន្ធឃើញគណនីរបស់អ្នកបើកវគ្គ {count} ក្នុងរយៈពេលប្រមាណ {minutes} នាទី។ ជាធម្មតាវាមកពីវីដេអូមិនដំណើរការ ហើយអ្នកចុច «បន្ទាប់» ជាបន្តបន្ទាប់ — មិនអីទេ ប៉ុន្តែសម្រាប់ប្រព័ន្ធ វាមើលទៅដូចការចម្លងរឿងទាំងអស់។',
+    watchWarnTitleFinal: 'សូមបន្ថយល្បឿនបន្តិច',
+    watchWarnBodyFinal:
+      'រឿងនេះកើតឡើងលើសពីមួយដងហើយលើគណនីរបស់អ្នក — វគ្គ {count} ក្នុងប្រមាណ {minutes} នាទី។ បើកើតឡើងម្ដងទៀត ការចូលប្រើនឹងត្រូវផ្អាកដោយស្វ័យប្រវត្តិ ហើយត្រូវឱ្យ admin បើកឱ្យវិញ។',
+    watchWarnHint:
+      'បើវីដេអូមិនដំណើរការ សូមរង់ចាំបន្តិច ឬចុច «ព្យាយាមម្ដងទៀត» ជំនួសឱ្យការទៅវគ្គបន្ទាប់។ ផ្ញើសារមក admin យើងនឹងជួយដោះស្រាយជូន។',
+    watchWarnContact: 'ផ្ញើសារទៅ admin',
+    watchWarnUnderstood: 'ខ្ញុំយល់ហើយ',
+    videoSlowTitle: 'កំពុងផ្ទុក — អ៊ីនធឺណិតរបស់អ្នកហាក់ដូចជាយឺត',
+    videoSlowHint: 'សូមរង់ចាំបន្តិច ឬចុច «ព្យាយាមម្ដងទៀត»។ ការរំលងទៅវគ្គបន្ទាប់ក៏មិនលឿនជាងនេះដែរ។',
+    videoRetry: 'ព្យាយាមម្ដងទៀត',
     moviesRowSubtitle: 'ទិញម្ដង មើលបានជារៀងរហូត — មិនចាំបាច់ជាសមាជិក',
     subAbaFallbackHint: 'មិនបានបើកទេ? សូមស្កេន QR ជំនួសវិញ។',
 
