@@ -125,7 +125,7 @@ export default function MovieCard({
               // receipt. Double ring + a few degrees of tilt sells the
               // ink-stamp read without needing an image asset.
               <span
-                className="relative inline-flex shrink-0 flex-col items-center justify-center rounded-lg border-2 border-[#5B93FF] px-2.5 py-1 leading-none text-[#5B93FF]"
+                className="relative inline-flex shrink-0 flex-col items-center justify-center rounded-lg border-2 border-[#5B93FF] px-2.5 py-1 leading-[1.35] text-[#5B93FF]"
                 style={{
                   transform: 'rotate(-8deg)',
                   boxShadow: 'inset 0 0 0 2px rgba(91,147,255,0.4)',

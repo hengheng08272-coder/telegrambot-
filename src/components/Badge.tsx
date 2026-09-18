@@ -56,7 +56,14 @@ const TONES: Record<BadgeTone, string> = {
 export default function Badge({ tone = 'info', icon, children, className = '', onArt, square }: Props) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 px-1.5 py-[3px] text-[9.5px] font-bold leading-none ${
+      // leading-[1.4], not leading-none. Battambang draws Khmer vowels
+      // above the consonant and coeng subscripts below it, both outside
+      // the em box; a line box the exact height of the em box therefore
+      // cuts them off, and every badge here sits inside something with
+      // overflow hidden, which turns that into a clean slice through the
+      // mark. The vertical padding comes down to match so the badge is
+      // the same height it always was — the glyphs just fit inside it now.
+      className={`inline-flex shrink-0 items-center gap-1 px-1.5 py-[1.5px] text-[9.5px] font-bold leading-[1.4] ${
         square ? 'rounded-[3px]' : 'rounded-md'
       } ${TONES[tone]} ${
         onArt ? 'backdrop-blur-sm shadow-[0_2px_8px_rgba(2,4,10,0.5)]' : ''

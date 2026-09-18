@@ -152,7 +152,7 @@ export default function SpotlightRail({
                   )}
                 </span>
               </button>
-              <p className="mt-2 truncate text-[13px] font-semibold leading-none text-white/95">
+              <p className="mt-2 truncate text-[13px] font-semibold leading-[1.45] text-white/95">
                 {show.title}
               </p>
             </div>

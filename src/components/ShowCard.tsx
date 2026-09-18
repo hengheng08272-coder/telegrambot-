@@ -64,8 +64,16 @@ const ACCESS_CHIP = {
  * grows a line on one card and not the next is what makes a row look
  * broken; reserving the space unconditionally is what makes that
  * impossible rather than merely unlikely.
+ *
+ * 36px was measured against two lines set at line-height 1, which is a
+ * height only Latin fits in. Khmer hangs a vowel above the consonant and
+ * a coeng below it — both outside the em box — so at line-height 1 the
+ * line box cuts through them top and bottom, and `truncate`'s overflow
+ * hidden makes the cut clean rather than merely tight. The lines now
+ * breathe at 1.45 and this box is remeasured to hold them:
+ * 13px×1.45 + 4px gap + 11px×1.45 ≈ 39px.
  */
-const CAPTION_H = 'h-[36px]';
+const CAPTION_H = 'h-[40px]';
 
 export default function ShowCard({
   show,
@@ -277,7 +285,7 @@ export default function ShowCard({
           // watchable now, gold ones need a membership.
           <div className={`mt-2 flex items-center px-0.5 ${CAPTION_H}`}>
             <span
-              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-[3px] text-[11px] font-black leading-none ring-1 ring-inset ${
+              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-[1px] text-[11px] font-black leading-[1.45] ring-1 ring-inset ${
                 show.is_free ? ACCESS_CHIP.free : ACCESS_CHIP.member
               }`}
             >
@@ -291,10 +299,10 @@ export default function ShowCard({
                 episode count, whether the series has finished. Both lines
                 render even when empty so every card in a rail keeps the
                 same height — see CAPTION_H. */}
-            <p className="truncate text-[13px] font-semibold leading-none text-white/95">
+            <p className="truncate text-[13px] font-semibold leading-[1.45] text-white/95">
               {displayTitle?.trim() || show.title}
             </p>
-            <p className="mt-2 flex items-center gap-1 truncate text-[11px] font-semibold leading-none text-white/40">
+            <p className="mt-1 flex items-center gap-1 truncate text-[11px] font-semibold leading-[1.45] text-white/40">
               {meta.map((part, i) => (
                 <span key={part} className="shrink-0 whitespace-nowrap">
                   {i > 0 && <span className="mr-1 text-white/25">·</span>}

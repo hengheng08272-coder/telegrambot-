@@ -449,6 +449,7 @@ export const appText = {
     movieChangeScreenshot: 'Change',
     movieConfirmPay: 'Confirm Payment',
     movieScanHint: 'Scan with any banking app. Unlocks automatically once paid.',
+    supportLabel: 'Support',
     moviesRowSubtitle: 'Buy once, watch forever — no membership needed',
     subAbaFallbackHint: 'Nothing opened? Scan the QR instead.',
 
@@ -925,6 +926,7 @@ export const appText = {
     movieChangeScreenshot: 'ប្ដូររូបភាព',
     movieConfirmPay: 'បញ្ជាក់ការទូទាត់',
     movieScanHint: 'ស្កេនដោយ app ធនាគារណាក៏បាន។ បង់រួច ដោះសោស្វ័យប្រវត្តិ។',
+    supportLabel: 'ជំនួយ',
     moviesRowSubtitle: 'ទិញម្ដង មើលបានជារៀងរហូត — មិនចាំបាច់ជាសមាជិក',
     subAbaFallbackHint: 'មិនបានបើកទេ? សូមស្កេន QR ជំនួសវិញ។',
 

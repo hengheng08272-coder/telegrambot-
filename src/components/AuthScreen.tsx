@@ -199,7 +199,13 @@ export default function AuthScreen({
                 <ShieldCheck className="h-3 w-3" /> Premium Access
               </div>
               <h1
-                className={`text-4xl font-black tracking-tight ${isKm ? 'font-khmer' : ''}`}
+                // Khmer gets its own face and normal tracking: the
+                // negative tracking that tightens a Latin wordmark pulls
+                // Khmer clusters into their neighbours, so the marks stop
+                // reading as belonging to any one consonant.
+                className={`text-4xl font-black ${
+                  isKm ? 'font-khmer leading-[1.4]' : 'tracking-tight'
+                }`}
                 style={{ fontFamily: '"Anton", "Battambang", Inter, sans-serif', letterSpacing: '0.03em' }}
               >
                 {isSignUp ? t.createAccountTitle : t.welcomeBack}

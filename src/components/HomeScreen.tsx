@@ -21,6 +21,7 @@ import {
   ListVideo,
   Radio,
   Calendar,
+  Headset,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, errorMessage, type ShowEpisodeInfo } from '@/lib/api';
@@ -28,10 +29,10 @@ import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
 import { FALLBACK_PRICING, fetchMoviePricing, type MoviePricing } from '@/lib/moviePurchase';
-import { MOVIE_PRICE } from '@/lib/moviePurchase';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
 import NotificationBell from '@/components/NotificationBell';
+import { getAdminUsername, openAdminChat } from '@/lib/telegram';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
@@ -596,6 +597,24 @@ export default function HomeScreen({
               VIP), kept visible on every screen size and every scroll
               position, not just the bottom utility bar. */}
           <NotificationBell title={t.notifications ?? 'Notifications'} emptyLabel={t.noNotifications ?? ''} />
+
+          {/* Talk to a person. Payments are the one thing here that can
+              go wrong in a way no screen can fix by itself — a transfer
+              that never confirmed, a title still locked — and until now
+              the only route to the admin was buried inside the subscribe
+              sheet, which is exactly where somebody who has already paid
+              is least likely to look again. A headset rather than a
+              speech bubble: a chat icon next to a bell reads as "app
+              messages", not as "a human will answer you". */}
+          <button
+            onClick={openAdminChat}
+            aria-label={`${t.supportLabel ?? 'Support'} @${getAdminUsername()}`}
+            title={`${t.supportLabel ?? 'Support'} · @${getAdminUsername()}`}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-[#4E86FF]/10 hover:text-[#8FB4FF] active:scale-90"
+          >
+            <Headset className="h-[18px] w-[18px]" />
+          </button>
+
           <button
             onClick={onOpenSubscription}
             aria-label={t.premium}
@@ -766,7 +785,7 @@ export default function HomeScreen({
                       aria-hidden
                     />
                     <Film className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.vip }} />
-                    <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.navMovies}</h2>
+                    <h2 className="truncate text-[15px] font-bold leading-[1.55] sm:text-lg">{t.navMovies}</h2>
                   </div>
                   {movieRow.length > 1 && (
                     <button
@@ -900,7 +919,7 @@ export default function HomeScreen({
                     aria-hidden
                   />
                   <Layers className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.guide }} />
-                  <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.seasonsRowLabel}</h2>
+                  <h2 className="truncate text-[15px] font-bold leading-[1.55] sm:text-lg">{t.seasonsRowLabel}</h2>
                 </div>
                 {franchises.map((f) => (
                   <RailRow
@@ -1589,7 +1608,18 @@ function BottomNavItem({ icon, label, active, onClick, highlight }: BottomNavIte
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#F5C16B] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
         )}
       </span>
-      <span className={`max-w-full truncate px-0.5 text-[9.5px] leading-none ${highlight && !active ? 'font-bold' : 'font-semibold'}`}>{label}</span>
+      {/* 9.5px is small enough that a clipped Khmer vowel reads as a
+          smudge rather than as a missing mark, which is why these labels
+          looked blurry rather than obviously cut. leading-[1.5] gives the
+          line box room for the marks above and below; `truncate` still
+          keeps every tab to one line. */}
+      <span
+        className={`max-w-full truncate px-0.5 text-[10px] leading-[1.5] ${
+          highlight && !active ? 'font-bold' : 'font-semibold'
+        }`}
+      >
+        {label}
+      </span>
     </button>
   );
 }
@@ -1701,7 +1731,7 @@ function ContinueWatchingRail({
           aria-hidden
         />
         <Clock className="h-5 w-5 shrink-0" style={{ color: accent }} aria-hidden />
-        <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.continueWatching}</h2>
+        <h2 className="truncate text-[15px] font-bold leading-[1.55] sm:text-lg">{t.continueWatching}</h2>
       </div>
       <div ref={scrollerRef} className="rail-scroller no-scrollbar flex gap-3 overflow-x-auto pb-3">
         {items.map((item) => (
@@ -1797,7 +1827,13 @@ function RailRow({
     ) : rowAccess === 'free' ? (
       <Badge tone="free">{t.freeBadge}</Badge>
     ) : rowAccess === 'movie' ? (
-      <Badge tone="price">${MOVIE_PRICE}</Badge>
+      // Says "these are bought one at a time", not what they cost. Titles
+      // are priced individually now, so one number in a row heading would
+      // be right for the first card and wrong for the next — the price
+      // belongs on each card, where it can tell the truth.
+      <Badge tone="price" icon={<Film className="h-3 w-3" />}>
+        {t.movieOneOff}
+      </Badge>
     ) : rowAccess === 'vip' ? (
       <Badge tone="vip" icon={<Crown className="h-3 w-3" />}>
         {t.vipBadge}
@@ -1849,7 +1885,7 @@ function RailRow({
           {subRow ? (
             <h3 className="truncate text-[13px] font-bold text-white/90">{title}</h3>
           ) : (
-            <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{title}</h2>
+            <h2 className="truncate text-[15px] font-bold leading-[1.55] sm:text-lg">{title}</h2>
           )}
           {/* The access badge the whole row shares, printed here instead
               of over every poster in it. A row-level `tag` (HOT, SOON)

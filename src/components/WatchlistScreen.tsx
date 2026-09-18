@@ -63,7 +63,7 @@ export default function WatchlistScreen({
         <section className="mt-4">
           <div className="mb-3 flex items-center gap-2">
             <Clock className="h-5 w-5 text-[#F5C563]" />
-            <h2 className="text-lg font-bold tracking-tight">{t.continueWatching}</h2>
+            <h2 className="text-lg font-bold leading-[1.55]">{t.continueWatching}</h2>
           </div>
           {continueItems.length === 0 ? (
             <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#6A7591]">
@@ -125,7 +125,7 @@ export default function WatchlistScreen({
         <section className="mt-10">
           <div className="mb-3 flex items-center gap-2">
             <Bookmark className="h-5 w-5 text-[#2050D8]" />
-            <h2 className="text-lg font-bold tracking-tight">{t.wantToWatch}</h2>
+            <h2 className="text-lg font-bold leading-[1.55]">{t.wantToWatch}</h2>
           </div>
           {watchlist.length === 0 ? (
             <p className="card-surface rounded-card px-4 py-8 text-center text-sm text-[#6A7591]">

@@ -166,6 +166,44 @@ export function getSupportLink(): string | null {
   return (import.meta.env.VITE_TELEGRAM_GROUP_LINK as string | undefined) || null;
 }
 
+// The admin a viewer messages when something goes wrong with a payment
+// or an account — a person, not the community group getSupportLink()
+// returns. It ships with a working default rather than requiring an env
+// var, because a support button that silently disappears when a variable
+// is unset is worse than no button at all: nobody ever finds out it was
+// meant to be there. Set VITE_TELEGRAM_ADMIN_USERNAME (no @) to point it
+// somewhere else.
+const DEFAULT_ADMIN_USERNAME = 'NintPlexminiapp';
+
+export function getAdminUsername(): string {
+  const configured = (import.meta.env.VITE_TELEGRAM_ADMIN_USERNAME as string | undefined) ?? '';
+  return configured.trim().replace(/^@/, '') || DEFAULT_ADMIN_USERNAME;
+}
+
+/**
+ * Opens a direct chat with the admin.
+ *
+ * Uses openTelegramLink, not openLink: a t.me address handed to openLink
+ * leaves Telegram for the system browser, which then has to bounce back
+ * into Telegram — two app switches and a confirmation dialog to start one
+ * chat. openTelegramLink stays inside the client and lands straight on
+ * the conversation. Outside Telegram (a plain browser tab) there is no
+ * client to stay inside, so the ordinary link path is right there.
+ */
+export function openAdminChat(): void {
+  const url = `https://t.me/${getAdminUsername()}`;
+  const tg = getTelegramWebApp();
+  if (tg?.openTelegramLink) {
+    try {
+      tg.openTelegramLink(url);
+      return;
+    } catch {
+      // Fall through to the browser path.
+    }
+  }
+  openExternalLink(url);
+}
+
 // Shares a deep link straight into a specific show
 // (t.me/YourBot/app?startapp=show_<id>). Anyone who opens it can watch
 // straight away if the show/episode is free; VIP-only episodes still
