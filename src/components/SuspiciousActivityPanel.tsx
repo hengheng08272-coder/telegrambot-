@@ -15,6 +15,16 @@ interface SuspiciousRow {
   episode_count: number;
   window_minutes: number;
   detected_at: string;
+  /** 'warning' for the first strikes, 'ban' for the one that blocked
+   *  them. Absent on rows written before the ladder existed. */
+  level?: string | null;
+  strike?: number | null;
+  distinct_episodes?: number | null;
+  /** Which detection rule produced this row. 1 and 2 counted episode
+   *  OPENS and flagged mostly frustrated viewers; only version 3 counts
+   *  episodes actually stayed on, so older rows are shown greyed out
+   *  rather than deleted — they are history, not evidence. */
+  rule_version?: number | null;
 }
 
 // Read-only — rows are written by the `flag_watch_burst` Postgres trigger
@@ -99,7 +109,7 @@ export default function SuspiciousActivityPanel({ onClose }: Props) {
   return (
     <AdminPanelShell
       title="Suspicious activity"
-      subtitle="Viewers who burned through episodes fast enough to look like ripping"
+      subtitle="Viewers who stayed on more episodes, faster, than watching allows"
       icon={<AlertTriangle className="h-4 w-4" />}
       accent="#F5C563"
       maxWidth="max-w-[900px]"
@@ -122,8 +132,19 @@ export default function SuspiciousActivityPanel({ onClose }: Props) {
             items.map((row) => {
               const isVip = vipIds.has(row.telegram_user_id);
               const isBlocked = blockedIds.has(row.telegram_user_id);
+              const stale = (row.rule_version ?? 1) < 3;
+              const banned = row.level === 'ban';
               return (
-              <div key={row.id} className="rounded-xl border border-red-500/25 bg-red-500/5 px-3 py-2.5">
+              <div
+                key={row.id}
+                className={`rounded-xl border px-3 py-2.5 ${
+                  stale
+                    ? 'border-white/10 bg-white/[0.02] opacity-60'
+                    : banned
+                      ? 'border-red-500/35 bg-red-500/10'
+                      : 'border-[#FFC24D]/30 bg-[#FFC24D]/[0.06]'
+                }`}
+              >
                 <div className="mb-1 flex items-center justify-between gap-2">
                   <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                     <p className="text-sm font-semibold text-white">
@@ -140,13 +161,27 @@ export default function SuspiciousActivityPanel({ onClose }: Props) {
                         មិនមែន VIP
                       </span>
                     )}
+                    {stale ? (
+                      <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-white/30">
+                        ច្បាប់ចាស់
+                      </span>
+                    ) : banned ? (
+                      <span className="rounded-md bg-red-500/20 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-red-300">
+                        បិទ · ដងទី {row.strike ?? '?'}
+                      </span>
+                    ) : (
+                      <span className="rounded-md bg-[#FFC24D]/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#FFC24D]">
+                        ព្រមាន · ដងទី {row.strike ?? 1}
+                      </span>
+                    )}
                   </div>
                   <span className="shrink-0 text-[11px] text-white/40">
                     {new Date(row.detected_at).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-xs text-red-300">
-                  {row.episode_count} episodes within {row.window_minutes} min
+                <p className={`text-xs ${stale ? 'text-white/35' : banned ? 'text-red-300' : 'text-[#FFC24D]'}`}>
+                  {row.distinct_episodes ?? row.episode_count} episodes within {row.window_minutes} min
+                  {stale && ' · counted episode opens, not real watches'}
                 </p>
                 <div className="mt-1.5 flex items-center justify-between gap-2">
                   <p className="text-[11px] text-white/30">ID: {row.telegram_user_id}</p>

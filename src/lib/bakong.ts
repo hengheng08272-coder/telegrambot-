@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/supabaseClient';
+import type { Currency } from '@/lib/format';
 import { md5 } from '@/lib/md5';
 import { applyKhqrTemplate, readKhqrField, validateKhqrTemplate } from '@/lib/khqrTemplate';
 
@@ -188,8 +189,14 @@ export async function saveBakongConfig(config: BakongConfig): Promise<void> {
 
 export interface GenerateKhqrOptions {
   config: BakongConfig;
-  /** Price in USD. Baked into the payload so the payer can't mistype it. */
+  /** The price. Baked into the payload so the payer can't mistype it. */
   amount: number;
+  /** Which money `amount` is in. Defaults to USD, which is what every
+   *  caller meant back when USD was the only option. Ignored when the
+   *  owner has pasted a bank template, because a template already carries
+   *  its bank's own currency tag and rewriting that would produce a QR
+   *  the bank refuses -- see `templateCurrencyMismatch` below. */
+  currency?: Currency;
   /** Payment ticket id — becomes the QR's bill number. */
   billNumber?: string | null;
   /** Shown as the store label in some banking apps. */
@@ -272,6 +279,7 @@ export type KhqrFailure =
   | 'template-bad-checksum'
   | 'template-static'
   | 'template-name-too-long'
+  | 'template-currency-mismatch'
   | 'sdk-rejected'
   | 'sdk-broken'
   | 'invalid-payload'
@@ -290,12 +298,30 @@ export type GenerateKhqrResult =
 export async function generateKhqrDetailed(
   opts: GenerateKhqrOptions,
 ): Promise<GenerateKhqrResult> {
-  const { config, amount, billNumber, storeLabel, expiresInMs = 3 * 60 * 1000 } = opts;
+  const {
+    config,
+    amount,
+    currency = 'USD',
+    billNumber,
+    storeLabel,
+    expiresInMs = 3 * 60 * 1000,
+  } = opts;
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, reason: 'bad-amount' };
 
   // Reusing the bank's own payload beats rebuilding one, so it is tried
   // first and the SDK never runs when a template is set.
   if (config.khqrTemplate) {
+    // A template is a real QR the bank issued, and tag 53 is the currency
+    // it was issued in. Only the amount is rewritten, never that tag — so
+    // asking for riel over a dollar template would produce a QR that
+    // charges dollars while the app promises riel. Refuse instead: the
+    // caller falls back to the uploaded image and the owner is told to
+    // paste a template in the currency they are selling in.
+    const templateCurrency = readKhqrField(config.khqrTemplate, '53') === '116' ? 'KHR' : 'USD';
+    if (templateCurrency !== currency) {
+      return { ok: false, reason: 'template-currency-mismatch' };
+    }
+
     const rewritten = applyKhqrTemplate(config.khqrTemplate, {
       amount,
       // Blank means "keep whatever name the bank wrote", which is the
@@ -320,12 +346,16 @@ export async function generateKhqrDetailed(
     permitSdkImplicitGlobal();
 
     const optional = {
-      currency: khqrData.currency.usd,
+      currency: currency === 'KHR' ? khqrData.currency.khr : khqrData.currency.usd,
       // Passed as a string so the cents survive: the SDK writes the value
       // through verbatim, so 1 would emit `54011` where ABA itself emits
       // `54041.00`. Matching the bank's own formatting costs nothing and
       // removes one more way for it to disagree.
-      amount: amount.toFixed(2),
+      //
+      // Riel is the opposite case -- it has no sub-unit, and a banking app
+      // shown `4000.00 KHR` reads it as malformed rather than as four
+      // thousand riel -- so it is written whole.
+      amount: currency === 'KHR' ? String(Math.round(amount)) : amount.toFixed(2),
       billNumber: billNumber ?? undefined,
       storeLabel: storeLabel ?? undefined,
       expirationTimestamp: Date.now() + expiresInMs,
@@ -416,7 +446,7 @@ export async function renderQrDataUrl(payload: string): Promise<string | null> {
       errorCorrectionLevel: 'H',
       margin: 1,
       scale: 8,
-      color: { dark: '#000000', light: '#FFFFFF' },
+      color: { dark: '#0a101e', light: '#FFFFFF' },
     });
     await drawKhqrBadge(canvas);
     return canvas.toDataURL('image/png');

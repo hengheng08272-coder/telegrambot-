@@ -120,10 +120,10 @@ export default function AuthScreen({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(circle at 12% -5%, rgba(192,143,51,0.22) 0%, rgba(10,16,30,0) 48%), radial-gradient(circle at 88% 105%, rgba(32,80,216,0.18) 0%, rgba(10,16,30,0) 52%)',
+            'radial-gradient(circle at 12% -5%, rgba(192,143,51,0.22) 0%, rgba(0,0,0,0) 48%), radial-gradient(circle at 88% 105%, rgba(32,80,216,0.18) 0%, rgba(0,0,0,0) 52%)',
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0A101E]/55 via-[#0A101E]/80 to-[#0A101E]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#0a101e]/55 via-[#0a101e]/80 to-[#0a101e]" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Top bar */}
@@ -136,7 +136,7 @@ export default function AuthScreen({
           </button>
           <div className="flex items-center gap-2">
             <img
-              src="/assets/logo-transparent.png"
+              src="/assets/nintplex-logo.png"
               alt="NINT ANIME"
               className="h-8 w-8 drop-shadow-[0_0_14px_rgba(32,80,216,0.5)]"
             />
@@ -199,7 +199,13 @@ export default function AuthScreen({
                 <ShieldCheck className="h-3 w-3" /> Premium Access
               </div>
               <h1
-                className={`text-4xl font-black tracking-tight ${isKm ? 'font-khmer' : ''}`}
+                // Khmer gets its own face and normal tracking: the
+                // negative tracking that tightens a Latin wordmark pulls
+                // Khmer clusters into their neighbours, so the marks stop
+                // reading as belonging to any one consonant.
+                className={`text-4xl font-black ${
+                  isKm ? 'font-khmer leading-[1.4]' : 'tracking-tight'
+                }`}
                 style={{ fontFamily: '"Anton", "Battambang", Inter, sans-serif', letterSpacing: '0.03em' }}
               >
                 {isSignUp ? t.createAccountTitle : t.welcomeBack}

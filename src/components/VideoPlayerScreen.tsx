@@ -27,6 +27,7 @@ import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramUser, isInTelegram, enterTelegramFullscreen, exitTelegramFullscreen, isTelegramFullscreen, hasTelegramFullscreenAPI, getTelegramWebApp } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase/supabaseClient';
+import { fetchEpisodePlayUrl } from '@/lib/playback';
 
 interface VideoPlayerScreenProps {
   episode: Episode;
@@ -40,6 +41,15 @@ interface VideoPlayerScreenProps {
 }
 
 const RESUME_KEY = (episodeId: string) => `nint_resume_${episodeId}`;
+
+/**
+ * How long an episode has to stay open before it counts as watched.
+ *
+ * Long enough that tapping through a list never reaches it, short enough
+ * that somebody who genuinely started the episode always does — fifteen
+ * seconds is roughly the point where a viewer has decided to stay.
+ */
+const WATCH_DWELL_MS = 15_000;
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 function fmtTime(sec: number) {
@@ -108,6 +118,14 @@ export default function VideoPlayerScreen({
   const [buffering, setBuffering] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  // Bumped by the Retry button. Included in the load effect's deps so one
+  // state change re-runs the whole attach — the same path a fresh episode
+  // takes — instead of reaching into the element and half-resetting it.
+  const [reloadNonce, setReloadNonce] = useState(0);
+  // True once buffering has gone on long enough that silence stops being
+  // reassuring. A bare spinner is why viewers tap Next: nothing on screen
+  // distinguishes "still loading" from "broken", so they assume broken.
+  const [slowBuffer, setSlowBuffer] = useState(false);
   const [accessError, setAccessError] = useState('');
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [resolving, setResolving] = useState(true);
@@ -344,18 +362,50 @@ export default function VideoPlayerScreen({
     };
   }, [show.id, show.type, onSwitchEpisode]);
 
-  // No viewer session and no subscription check in this build — the
-  // `videos` storage bucket is public, so we just play episode.video_url
-  // directly. (No signed-URL edge function needed.)
+  // Playback is granted by the server, not decided here.
+  //
+  // This used to read episode.video_url straight out of props, which is
+  // why the paywall never actually held: the URL was already in the page
+  // for every episode, and the bucket served it to anyone. Now the
+  // episode id goes to get-episode-url, which verifies the Telegram
+  // signature, checks the subscription or purchase itself, and hands
+  // back a short-lived signed link only if the answer is yes.
   useEffect(() => {
+    let cancelled = false;
     setResolving(true);
     setAccessError('');
-    if (episode.video_url) {
-      setPlayUrl(episode.video_url);
-    } else {
-      setAccessError('Video not available yet.');
-    }
-    setResolving(false);
+    setPlayUrl('');
+
+    fetchEpisodePlayUrl(episode.id, episode.video_url)
+      .then((res) => {
+        // The viewer may have skipped to another episode while this was
+        // in flight; that request's answer is not this episode's.
+        if (cancelled) return;
+        if (res.url) {
+          setPlayUrl(res.url);
+        } else {
+          setAccessError(
+            res.denial === 'not_purchased'
+              ? t.denyNotPurchased
+              : res.denial === 'no_video' || res.denial === 'not_found'
+                ? t.denyNoVideo
+                : // Not a refusal of access — the account has simply been
+                  // handed a lot of DIFFERENT episodes in the last hour.
+                  // Worth its own wording: told "you need a membership",
+                  // a member who just paid assumes they were cheated.
+                  res.denial === 'rate_limited'
+                  ? t.denyRateLimited
+                  : t.denyNotSubscribed,
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [episode.id, episode.video_url]);
 
   // Silent watch-session log — one row per episode open, no visible
@@ -363,20 +413,50 @@ export default function VideoPlayerScreen({
   // down who was watching that episode around that time. Fire-and-forget:
   // never blocks playback, and quietly no-ops in a plain browser preview
   // where there's no Telegram identity to attach.
+  //
+  // The row is written unqualified and marked a dwell period later, and
+  // that second step is the whole point. Opening an episode is a
+  // navigation event: somebody whose video will not load taps Next half a
+  // dozen times in as many seconds, and the log cannot tell those taps
+  // from somebody working through the catalog — measured across a week of
+  // real traffic, the median gap between one viewer's episode opens was
+  // zero seconds, for paying customers and the owner's own account alike.
+  // Staying is the part that cannot be faked by tapping, so mass-download
+  // detection counts only rows that reached this mark (see
+  // mark_watch_qualified and flag_watch_burst).
+  //
+  // The id is generated here rather than read back from the insert: the
+  // client needs it to mark the row, and minting it locally means the
+  // insert stays a single fire-and-forget write with nothing to select.
   useEffect(() => {
     const user = getCurrentTelegramUser();
     if (!user) return;
+    const watchId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : null;
+    const telegramUserId = String(user.id);
+
     supabase
       .from('watch_log')
       .insert({
-        telegram_user_id: String(user.id),
+        ...(watchId ? { id: watchId } : {}),
+        telegram_user_id: telegramUserId,
         telegram_username: user.label,
         show_id: show.id,
         show_title: show.title,
         episode_label: episode.episode_number ? `EP ${episode.episode_number}` : episode.title,
       })
       .then(() => {});
-  }, [episode.id, show.id, show.title]);
+
+    if (!watchId) return;
+    const timer = window.setTimeout(() => {
+      supabase
+        .rpc('mark_watch_qualified', { p_watch_id: watchId, p_telegram_user_id: telegramUserId })
+        .then(() => {});
+    }, WATCH_DWELL_MS);
+    // Leaving the episode before the dwell elapses cancels the mark, which
+    // is exactly what a tap-through is.
+    return () => window.clearTimeout(timer);
+  }, [episode.id, show.id, show.title, episode.episode_number, episode.title]);
 
   // Best-effort friction for paid/VIP episodes only — free previews never
   // run this. A docked or undocked DevTools panel changes the gap between
@@ -458,7 +538,20 @@ export default function VideoPlayerScreen({
     } else {
       v.src = url;
     }
-  }, [playUrl]);
+  }, [playUrl, reloadNonce]);
+
+  // Eight seconds of unbroken buffering is the point where a viewer
+  // decides the episode is broken and starts tapping through the list —
+  // which is what the mass-download detector used to read as a leak. Say
+  // something before that happens.
+  useEffect(() => {
+    if (!buffering) {
+      setSlowBuffer(false);
+      return;
+    }
+    const id = window.setTimeout(() => setSlowBuffer(true), 8_000);
+    return () => window.clearTimeout(id);
+  }, [buffering]);
 
   // Playback rate and volume live in React state (the controls read them)
   // but belong to the media element — push them across whenever they
@@ -792,10 +885,28 @@ export default function VideoPlayerScreen({
           </div>
         )}
 
-        {/* Buffering spinner */}
+        {/* Buffering spinner — and, once it has gone on too long, words. */}
         {buffering && !loadError && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#2050D8]" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+            <div className="pointer-events-none h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#2050D8]" />
+            {slowBuffer && (
+              <div className="px-8 text-center">
+                <p className="text-[13px] font-semibold leading-[1.7] text-white/80">
+                  {t.videoSlowTitle}
+                </p>
+                <p className="mt-1 text-[12px] leading-[1.7] text-white/45">{t.videoSlowHint}</p>
+                <button
+                  onClick={() => {
+                    setSlowBuffer(false);
+                    setLoadError(false);
+                    setReloadNonce((n) => n + 1);
+                  }}
+                  className="mt-3 rounded-full border border-white/15 bg-white/10 px-5 py-2 text-[13px] font-bold text-white transition active:scale-[0.98] hover:bg-white/20"
+                >
+                  {t.videoRetry}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -804,13 +915,29 @@ export default function VideoPlayerScreen({
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/80 px-6 text-center backdrop-blur-sm">
             <AlertTriangle className="h-9 w-9 text-[#FF6B60]" />
             <p className="text-sm font-semibold text-white">{t.unableToLoadVideo}</p>
-            <p className="max-w-xs text-xs text-white/50">{t.videoMissingHint}</p>
-            <button
-              onClick={handleBackPress}
-              className="mt-2 rounded-xl border border-white/15 bg-white/10 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/20"
-            >
-              {t.goBack}
-            </button>
+            <p className="max-w-xs text-xs leading-[1.7] text-white/50">{t.videoMissingHint}</p>
+            {/* Retry first, Back second. The failure is usually the
+                network rather than the file, and a screen whose only way
+                out is backwards is what sends a viewer to the next
+                episode — and the one after that. */}
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={() => {
+                  setLoadError(false);
+                  setSlowBuffer(false);
+                  setReloadNonce((n) => n + 1);
+                }}
+                className="rounded-xl bg-white/90 px-5 py-2 text-sm font-bold text-black transition active:scale-[0.98] hover:bg-white"
+              >
+                {t.videoRetry}
+              </button>
+              <button
+                onClick={handleBackPress}
+                className="rounded-xl border border-white/15 bg-white/10 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              >
+                {t.goBack}
+              </button>
+            </div>
           </div>
         )}
 

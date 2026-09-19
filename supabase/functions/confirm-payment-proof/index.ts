@@ -1,57 +1,64 @@
-// =====================================================================
-// !! THIS FILE IS BEHIND PRODUCTION -- DO NOT DEPLOY FROM IT !!
-// ---------------------------------------------------------------------
-// The live version of this function on Supabase project
-// dowjxhkijtlsdvhyuddt is NEWER and has features this copy does not.
-// Deploying this file would silently remove them.
-//
-// Before touching this function: open Supabase Dashboard -> Edge
-// Functions -> this function -> copy the live source over this file
-// FIRST, then make your change, then deploy.
-//
-// (This drift happened because several fixes were applied straight to
-// the dashboard without being copied back into the repo.)
-// =====================================================================
-
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// Called from the VIP payment screen when the viewer attaches a receipt
-// photo instead of waiting for the ABA auto-confirm webhook to match
-// their payment. This is the "faster path" the caption under the QR
-// promises.
+// Called by the client the moment a viewer attaches a payment screenshot
+// (lib/subscription.ts attachScreenshotToSubmission), for the "ABA
+// auto-match didn't fire yet, here's my proof" fallback path.
 //
-// WHY THIS GRANTS VIP IMMEDIATELY
-// The alternative — hold the viewer on a spinner until the admin taps
-// Approve — means anyone paying at 2am waits until morning, which is the
-// exact frustration this whole flow exists to remove. So the grant is
-// optimistic: VIP unlocks now, the submission is flagged auto_approved,
-// and the admin gets the actual photo in Telegram with Confirm/Revoke
-// buttons. A fake receipt therefore buys minutes, not months — but it is
-// a real tradeoff, not a free win. If fraud ever becomes a problem, flip
-// AUTO_GRANT_ON_PROOF to false below: the photo still reaches the admin,
-// the viewer just waits for the tap.
+// This function does NOT grant VIP.
 //
-// Required secrets (Supabase Dashboard -> Edge Functions -> Secrets):
-//   TELEGRAM_BOT_TOKEN     - same bot used elsewhere
-//   TELEGRAM_ADMIN_CHAT_ID - your personal Telegram chat id
-
-const AUTO_GRANT_ON_PROOF = true;
+// It used to: the receipt unlocked immediately and the admin reviewed it
+// afterwards, which meant a convincing screenshot bought a month before
+// anyone looked at the bank. The owner asked for that inverted — a
+// receipt is now a REQUEST, and only a human turns it into a
+// subscription. So all this does is attach the photo, leave the ticket
+// `pending`, and put it in front of the admin.
+//
+// The buttons deliberately say pay_approve / pay_reject, not
+// pay_confirm / pay_revoke. Those are two different handlers in
+// telegram-admin-bot and the difference matters: pay_confirm means "VIP
+// was already granted, I am reviewing it after the fact" and does not
+// touch the subscription at all, so sending it here would have the admin
+// tap Confirm and grant nothing. pay_approve IS the granting decision —
+// it claims the pending row atomically and writes the subscription.
+//
+// The ABA notification path (aba-notify-ingest) is untouched and still
+// auto-confirms: a real bank alert is evidence, a screenshot is a claim.
+//
+// Required secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Fallback only — the live source of truth is pricing_tiers.months,
-// editable from Admin Panel -> Subscriptions -> "Duration".
-const TIER_MONTHS_FALLBACK: Record<string, number> = {
-  "1m": 1,
-  "2m": 2,
-  "6m": 6,
-  "12m": 12,
+function adminChatIds(): string[] {
+  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
+    .split(/[,\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+const TIER_LABEL: Record<string, string> = {
+  "1m": "1 Month",
+  "2m": "2 Months",
+  "3m": "3 Months",
+  "6m": "6 Months",
+  "12m": "12 Months",
 };
+
+async function tg(botToken: string, method: string, body: Record<string, unknown>) {
+  const res = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+const PROOF_RECEIVED_CAPTION =
+  "🖼️ បានទទួលរូបភាពទូទាត់ — រង់ចាំការបញ្ជាក់ពីអ្នកគ្រប់គ្រង";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -61,7 +68,7 @@ Deno.serve(async (req: Request) => {
   try {
     const { submission_id, screenshot_url } = await req.json();
     if (!submission_id || !screenshot_url) {
-      return new Response(JSON.stringify({ error: "missing submission_id or screenshot_url" }), {
+      return new Response(JSON.stringify({ error: "missing fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -72,29 +79,16 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: sub } = await admin
-      .from("payment_submissions")
-      .select("*")
-      .eq("id", submission_id)
-      .maybeSingle();
-
+    const { data: sub } = await admin.from("payment_submissions").select("*").eq("id", submission_id).maybeSingle();
     if (!sub) {
-      return new Response(JSON.stringify({ error: "not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Attach the photo to the ticket first, whatever happens next. This
-    // also takes the row out of the client's auto-expire path (that SQL
-    // helper only closes tickets with no screenshot).
-    await admin
-      .from("payment_submissions")
-      .update({ screenshot_url })
-      .eq("id", submission_id);
+    // Attach the photo whatever the state — if an ABA alert already
+    // confirmed this ticket a second ago, the admin should still be able
+    // to see what the viewer sent.
+    await admin.from("payment_submissions").update({ screenshot_url }).eq("id", submission_id);
 
-    // Already decided (ABA matched while they were uploading, or the
-    // admin was quick) — no-op, not an error.
     if (sub.status !== "pending") {
       return new Response(JSON.stringify({ ok: true, alreadyHandled: true, status: sub.status }), {
         status: 200,
@@ -102,91 +96,31 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (AUTO_GRANT_ON_PROOF) {
-      const { data: tierRow } = await admin
-        .from("pricing_tiers")
-        .select("months")
-        .eq("key", sub.tier)
-        .maybeSingle();
-      const months = tierRow?.months ?? TIER_MONTHS_FALLBACK[sub.tier] ?? 1;
-
-      const { data: existing } = await admin
-        .from("subscriptions")
-        .select("expires_at")
-        .eq("telegram_user_id", sub.telegram_user_id)
-        .maybeSingle();
-
-      // Stack onto whatever is left rather than overwriting it, so
-      // renewing early never costs the viewer days they already paid for.
-      const base =
-        existing?.expires_at && new Date(existing.expires_at) > new Date()
-          ? new Date(existing.expires_at)
-          : new Date();
-      // A plan's duration is sold in months but granted in DAYS, at a flat
-      // 30 days per month (1 -> 30, 3 -> 90, 6 -> 180, 12 -> 360). Two
-      // reasons this is not setMonth():
-      //   1. It is the arithmetic the rest of the app already shows —
-      //      UsersPanel's remaining-days bar divides by months * 30, and
-      //      the plans are sold to viewers as a fixed day count.
-      //   2. setMonth() silently overflows on long months: buying on
-      //      31 Jan and adding 1 month lands on 3 Mar, because 31 Feb does
-      //      not exist — the buyer quietly loses 3 days. Adding days can
-      //      never do that.
-      base.setDate(base.getDate() + months * 30);
-
-      await admin.from("subscriptions").upsert({
-        telegram_user_id: sub.telegram_user_id,
-        telegram_username: sub.telegram_username,
-        tier: sub.tier,
-        expires_at: base.toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-
-      await admin
-        .from("payment_submissions")
-        .update({ status: "approved", auto_approved: true, reviewed_at: new Date().toISOString() })
-        .eq("id", submission_id);
-    }
-
-    // Send the admin the receipt itself, with buttons that still work
-    // either way: Approve is a confirmation when already granted, and
-    // Reject revokes through the same telegram-admin-bot handler.
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (botToken && adminChatId) {
+    const chatIds = adminChatIds();
+    if (botToken && chatIds.length > 0) {
       const caption =
-        `🧾 វិក្កយបត្រពីអ្នកប្រើ${AUTO_GRANT_ON_PROOF ? " — VIP បានដោះសោជាបណ្ដោះអាសន្ន" : ""}\n\n` +
+        PROOF_RECEIVED_CAPTION + `\n\n` +
         `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
         `🆔 ${sub.telegram_user_id}\n` +
-        `📦 ${sub.tier}\n` +
-        `💵 $${sub.amount}\n\n` +
-        `សូមផ្ទៀងផ្ទាត់ជាមួយបញ្ជីធនាគារ រួចចុច ✅ ដើម្បីបញ្ជាក់ ឬ ❌ ដើម្បីដកវិញ`;
-
-      await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: adminChatId,
+        `📦 ${TIER_LABEL[sub.tier] ?? sub.tier} — $${sub.amount}`;
+      for (const chatId of chatIds) {
+        await tg(botToken, "sendPhoto", {
+          chat_id: chatId,
           photo: screenshot_url,
           caption,
           reply_markup: {
             inline_keyboard: [[
-              { text: "✅ Confirm", callback_data: `pay_approve:${submission_id}` },
-              { text: "❌ Revoke", callback_data: `pay_reject:${submission_id}` },
+              { text: "✅ Approve", callback_data: `pay_approve:${submission_id}` },
+              { text: "⛔ Reject", callback_data: `pay_reject:${submission_id}` },
             ]],
           },
-        }),
-      }).catch(() => {});
+        });
+      }
     }
 
-    return new Response(JSON.stringify({ ok: true, granted: AUTO_GRANT_ON_PROOF }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ ok: true, granted: false, pending: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

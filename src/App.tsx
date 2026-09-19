@@ -19,6 +19,8 @@ import LuckyDrawModal from '@/components/LuckyDrawModal';
 import SubscriptionModal from '@/components/SubscriptionModal';
 import VerifyingPill from '@/components/VerifyingPill';
 import MoviePurchaseModal from '@/components/MoviePurchaseModal';
+import WatchWarningModal from '@/components/WatchWarningModal';
+import { fetchMyWatchWarning, type WatchWarning } from '@/lib/watchGuard';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { getSubscriptionStatus } from '@/lib/subscription';
@@ -95,6 +97,27 @@ function App() {
     checkTelegramUserBlocked(tgUser.id, tgUser.username).then((result) => {
       setTelegramBlock({ checked: true, blocked: result.blocked });
     });
+  }, []);
+
+  // Mass-download detection now says something to the viewer before it
+  // does anything to them (see lib/watchGuard). Polled rather than pushed:
+  // a flag is raised by a database trigger while the person is mid-session,
+  // and a check only on boot would show them the warning the NEXT time
+  // they opened the app — after the behaviour it is trying to interrupt.
+  const [watchWarning, setWatchWarning] = useState<WatchWarning | null>(null);
+  useEffect(() => {
+    let active = true;
+    const check = () => {
+      fetchMyWatchWarning().then((w) => {
+        if (active) setWatchWarning((current) => current ?? w);
+      });
+    };
+    check();
+    const id = window.setInterval(check, 120_000);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
   }, []);
   const refreshSubscription = () => {
     getSubscriptionStatus().then((s) => {
@@ -174,6 +197,8 @@ function App() {
   // referral link (?startapp=ref_<telegram_id>, see lib/referral.ts and
   // AccountScreen's "Invite & Earn" card) instead tags this viewer as
   // referred by that person — it doesn't change what screen they land on.
+  // `?startapp=vip` opens the payment sheet straight away, which is what
+  // the auto-post's membership button links to.
   useEffect(() => {
     initTelegramApp();
     const startParam = getStartParam();
@@ -185,6 +210,12 @@ function App() {
     } else if (startParam?.startsWith('ref_')) {
       const referrerId = startParam.slice('ref_'.length);
       recordReferralIfPresent(referrerId);
+    } else if (startParam === 'vip') {
+      // The group's "become a member" button lands here. It opens the
+      // payment sheet directly rather than the home screen: somebody who
+      // tapped a button that says JOIN has already decided, and making
+      // them find the crown again is where that decision gets lost.
+      setShowSubscribe(true);
     }
   }, []);
 
@@ -499,6 +530,12 @@ function App() {
             hapticSuccess();
             refreshPurchasedMovies();
           }}
+        />
+      )}
+      {watchWarning && (
+        <WatchWarningModal
+          warning={watchWarning}
+          onDismiss={() => setWatchWarning(null)}
         />
       )}
       {subscriptionSheet}

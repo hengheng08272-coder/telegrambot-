@@ -21,16 +21,18 @@ import {
   ListVideo,
   Radio,
   Calendar,
+  Headset,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, errorMessage, type ShowEpisodeInfo } from '@/lib/api';
 import ShowCard from '@/components/ShowCard';
 import Badge, { type BadgeTone } from '@/components/Badge';
 import MovieCard from '@/components/MovieCard';
-import { MOVIE_PRICE } from '@/lib/moviePurchase';
+import { FALLBACK_PRICING, fetchMoviePricing, type MoviePricing } from '@/lib/moviePurchase';
 import SupporterTicker from '@/components/SupporterTicker';
 import CreatorCredit from '@/components/CreatorCredit';
 import NotificationBell from '@/components/NotificationBell';
+import { getAdminUsername, openAdminChat } from '@/lib/telegram';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import { getCurrentTelegramProfile } from '@/lib/telegram';
@@ -131,6 +133,10 @@ export default function HomeScreen({
     movies?: boolean;
   } | null>(null);
   const [tickerMessage, setTickerMessage] = useState<string | undefined>(undefined);
+  // Read once per mount so every price tag on the page agrees. Only ever
+  // what viewers are SHOWN — the charge itself is priced server-side when
+  // the ticket is opened (see create_movie_purchase).
+  const [moviePricing, setMoviePricing] = useState<MoviePricing>(FALLBACK_PRICING);
   const [episodeInfo, setEpisodeInfo] = useState<Record<string, ShowEpisodeInfo>>({});
 
   const touchStartX = useRef(0);
@@ -224,6 +230,16 @@ export default function HomeScreen({
     setInteracting(true);
     if (resumeTimer.current) clearTimeout(resumeTimer.current);
     resumeTimer.current = setTimeout(() => setInteracting(false), 3500);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetchMoviePricing().then((p) => {
+      if (active) setMoviePricing(p);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Auto-advance the centered card every ~5.5s, pause while interacting
@@ -371,7 +387,7 @@ export default function HomeScreen({
   const bingeRow = claim(bingeShows, 14);
   const ongoingRow = claim(ongoingShows);
   const genreRows = genres.map((g) => ({ genre: g, list: claim(showsByGenre(g.slug)) }));
-  const featuredMovieCard = movieRow[0] ?? null;
+  const hasMovieRow = movieRow.length > 0;
 
   if (loading) {
     return (
@@ -464,7 +480,7 @@ export default function HomeScreen({
             appears once the bar goes solid, so it never competes with the
             hero art underneath. */}
         <div
-          className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#2050D8]/50 to-transparent transition-opacity duration-300 ${
+          className={`pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#E8A33D]/50 to-transparent transition-opacity duration-300 ${
             heroVisible && !scrolled ? 'opacity-0' : 'opacity-100'
           }`}
           aria-hidden
@@ -503,13 +519,13 @@ export default function HomeScreen({
                 )}
               </div>
               {subscribed && (
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#0A101E]">
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-vip-gradient ring-2 ring-[#070707]">
                   <Crown className="h-2 w-2 text-black" />
                 </span>
               )}
               {rewardsAvailable === 'spin-ready' && (
                 <span
-                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
+                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-glow-pulse rounded-full bg-[#FF6B60] ring-2 ring-[#070707]"
                   aria-hidden
                 />
               )}
@@ -573,7 +589,7 @@ export default function HomeScreen({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.searchPlaceholder}
-              className="w-44 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#2050D8]/50 focus:bg-white/[0.07]"
+              className="w-44 rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:w-60 focus:border-[#E8A33D]/50 focus:bg-white/[0.07]"
             />
           </div>
 
@@ -581,6 +597,24 @@ export default function HomeScreen({
               VIP), kept visible on every screen size and every scroll
               position, not just the bottom utility bar. */}
           <NotificationBell title={t.notifications ?? 'Notifications'} emptyLabel={t.noNotifications ?? ''} />
+
+          {/* Talk to a person. Payments are the one thing here that can
+              go wrong in a way no screen can fix by itself — a transfer
+              that never confirmed, a title still locked — and until now
+              the only route to the admin was buried inside the subscribe
+              sheet, which is exactly where somebody who has already paid
+              is least likely to look again. A headset rather than a
+              speech bubble: a chat icon next to a bell reads as "app
+              messages", not as "a human will answer you". */}
+          <button
+            onClick={openAdminChat}
+            aria-label={`${t.supportLabel ?? 'Support'} @${getAdminUsername()}`}
+            title={`${t.supportLabel ?? 'Support'} · @${getAdminUsername()}`}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-[#4E86FF]/10 hover:text-[#8FB4FF] active:scale-90"
+          >
+            <Headset className="h-[18px] w-[18px]" />
+          </button>
+
           <button
             onClick={onOpenSubscription}
             aria-label={t.premium}
@@ -695,9 +729,20 @@ export default function HomeScreen({
           </section>
         ) : (
           <div className="pt-3">
-            {/* Free-to-watch leads the page. Everything below it needs a
+            {/* Continue Watching leads the page now, per request — a
+                returning viewer with something mid-episode sees it before
+                anything else. Uses `guide` (blue) — this row is about
+                *how the catalogue relates to you*, the same reason
+                "Recommended for You" is guide, not a fact about a show
+                (mark) or a money state (free/vip). Only exists once
+                localStorage actually has something in it, so a
+                first-time viewer never sees an empty rail. */}
+            {continueItems.length > 0 && (
+              <ContinueWatchingRail items={continueItems} onResumeEpisode={onResumeEpisode} />
+            )}
+            {/* Free-to-watch next. Everything below it needs a
                 membership, so the one row a signed-out viewer can act on
-                immediately goes first rather than three rows down. Plain
+                immediately still leads the paid catalogue. Plain
                 divider-row treatment like every other rail below it now
                 (no boxed panel background) — the FREE tag next to the
                 title already says what this row is without framing it.
@@ -719,16 +764,12 @@ export default function HomeScreen({
             {/* The ranked/numeral "Top 10" rail was removed per request —
                 the featured carousel above already surfaces what's trending
                 without repeating it as a second ranked row underneath. */}
-            {/* "Movies" showcase replaces the old "Continue Watching" row
-                here — the prime top-of-page spot now goes to the one-off
-                paid films instead, since there are only ever a handful of
-                them and they're easy to miss buried in a compact rail
-                further down. Down to a single card — the most-watched
-                movie — instead of a whole rail or grid, so the panel
-                stays short enough that the row underneath is still on
-                screen without scrolling. The rest of the catalog is one
-                tap away behind "View All" whenever there's more than one. */}
-            {featuredMovieCard && (
+            {/* Down to a single card — the most-watched movie — instead of
+                a whole rail or grid, so the panel stays short enough that
+                the row underneath is still on screen without scrolling.
+                The rest of the catalog is one tap away behind "View All"
+                whenever there's more than one. */}
+            {hasMovieRow && (
               <section
                 className="rail-section mt-8 overflow-hidden rounded-2xl border px-3 pb-3 pt-4 sm:px-4"
                 style={{
@@ -744,7 +785,7 @@ export default function HomeScreen({
                       aria-hidden
                     />
                     <Film className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.vip }} />
-                    <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.navMovies}</h2>
+                    <h2 className="truncate text-[15px] font-bold leading-[1.55] sm:text-lg">{t.navMovies}</h2>
                   </div>
                   {movieRow.length > 1 && (
                     <button
@@ -757,7 +798,39 @@ export default function HomeScreen({
                     </button>
                   )}
                 </div>
-                <MovieCard show={featuredMovieCard} onClick={onSelectShow} />
+
+                {/* One line saying what makes these different from
+                    everything else on the page. Films are the only thing
+                    here somebody can own outright, and that — not the
+                    price — is the reason to look. */}
+                <p className="-mt-1 mb-3 text-[11px] leading-relaxed text-white/45">
+                  {t.moviesRowSubtitle}
+                </p>
+
+                {/* A shelf, not a single pick. One card said "here is a
+                    film"; a row of them says "films are a section", which
+                    is what a growing pay-per-title catalog needs before
+                    anyone will think to swipe. Cards are just under full
+                    width so the next one always peeks in — the cheapest
+                    way to show there IS a next one. */}
+                {movieRow.length === 1 ? (
+                  <MovieCard
+                    show={movieRow[0]}
+                    onClick={onSelectShow}
+                    pricing={moviePricing}
+                  />
+                ) : (
+                  <div className="no-scrollbar -mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-pl-1 px-1 pb-1">
+                    {movieRow.map((movie) => (
+                      <div
+                        key={movie.id}
+                        className="w-[86%] shrink-0 snap-start sm:w-[48%] lg:w-[32%]"
+                      >
+                        <MovieCard show={movie} onClick={onSelectShow} pricing={moviePricing} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
             {recommendedRow.length > 0 && (
@@ -846,7 +919,7 @@ export default function HomeScreen({
                     aria-hidden
                   />
                   <Layers className="h-5 w-5 shrink-0" style={{ color: ROW_ACCENT.guide }} />
-                  <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{t.seasonsRowLabel}</h2>
+                  <h2 className="truncate text-[15px] font-bold leading-[1.55] sm:text-lg">{t.seasonsRowLabel}</h2>
                 </div>
                 {franchises.map((f) => (
                   <RailRow
@@ -896,7 +969,7 @@ export default function HomeScreen({
                 >
                   <span className="absolute inset-0 rounded-full animate-glow-pulse" aria-hidden />
                   <Gift className="h-4 w-4" />
-                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]" aria-hidden />
+                  <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#070707]" aria-hidden />
                 </button>
               </div>
             )}
@@ -1075,6 +1148,7 @@ function CoverflowHero({
 }: CoverflowHeroProps) {
   const [bgLoaded, setBgLoaded] = useState(false);
   const ambienceRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
   const [inList, setInList] = useState(() => isInWatchlist(hero.id));
   const bg = hero.banner_url ?? hero.poster_url ?? '';
 
@@ -1084,6 +1158,20 @@ function CoverflowHero({
     setBgLoaded(false);
     setInList(isInWatchlist(hero.id));
   }, [hero.id]);
+
+  // Keep the lit thumbnail on screen.
+  //
+  // The hero advances on a timer, but the strip underneath never moved
+  // with it: after a few slides the marked poster was somewhere off to
+  // the right, so the strip looked like it had lost track of the show
+  // above it — the one thing it exists to report. `nearest` rather than
+  // `center` so the row only moves when it has to, and `inline` only so
+  // the page itself never scrolls underneath the viewer.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const child = strip?.children[index] as HTMLElement | undefined;
+    child?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [index]);
 
   // Ambient background drifts a little slower than the page and fades out
   // as the viewer scrolls past the hero. This writes straight to the DOM
@@ -1155,7 +1243,7 @@ function CoverflowHero({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(90deg, transparent 0%, transparent 34%, rgba(10,16,30,0.72) 60%, rgba(10,16,30,0.92) 100%)',
+              'linear-gradient(90deg, transparent 0%, transparent 34%, rgba(0, 0, 0,0.72) 60%, rgba(0, 0, 0,0.92) 100%)',
           }}
         />
         {/* Fade the top into the header and the bottom into the page */}
@@ -1178,15 +1266,63 @@ function CoverflowHero({
           onClick={() => onSelectShow(hero)}
           aria-label={hero.title}
           className="hero-card-enter relative z-10 shrink-0"
-          style={{ width: '32%', maxWidth: 152 }}
+          style={{ width: '26%', maxWidth: 118 }}
         >
+          {/* Echo cards — the next two shows in the carousel, peeking out
+              from behind the centered poster at reduced size and opacity.
+              Real artwork, not flat color: a dimmed, desaturated preview
+              of what's coming reads as "there's more" far more clearly
+              than an empty shadow block would. Purely decorative (no
+              onClick of their own — the mini-poster strip below already
+              handles jumping to a specific show), so they carry
+              aria-hidden and sit behind the real button's hit area. */}
+          {shows.length > 1 && (
+            <div
+              className="pointer-events-none absolute z-0 aspect-[2/3] overflow-hidden rounded-lg"
+              style={{ top: '10%', left: '30%', width: '78%', filter: 'brightness(0.4) saturate(0.7)', opacity: 0.5 }}
+              aria-hidden
+            >
+              <img
+                src={shows[(index + 2) % shows.length]?.poster_url ?? ''}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
+          {shows.length > 1 && (
+            <div
+              className="pointer-events-none absolute z-0 aspect-[2/3] overflow-hidden rounded-lg"
+              style={{ top: '5%', left: '16%', width: '88%', filter: 'brightness(0.6) saturate(0.8)', opacity: 0.75 }}
+              aria-hidden
+            >
+              <img
+                src={shows[(index + 1) % shows.length]?.poster_url ?? ''}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
           {/* Lantern-glow poster card — a warm double-ring frame (jade
               inner line, antique-gold outer glow) stands in for the old
               rank numeral. It reads as "the one worth lighting up" without
               pinning the hero's identity to a view-count rank. */}
           <div
             className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-xl transition-transform duration-500"
-            style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.8), 0 6px 18px rgba(0,0,0,0.55)' }}
+            // A 60px black shadow under a 118px card is a shadow wider
+            // than the thing casting it — which is why the hero read as
+            // sitting in a hole while every other card on the page sits
+            // on the page. Brought back to the depth the rest of the app
+            // uses, and the light it was trying to imply is now stated
+            // properly: a thin warm rim, the colour of the brand, rather
+            // than a large absence of one.
+            style={{
+              boxShadow:
+                '0 10px 28px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(232,163,61,0.22)',
+            }}
           >
             <div className="pointer-events-none absolute inset-0 z-10 rounded-xl ring-1 ring-inset ring-white/12" />
             <img
@@ -1203,7 +1339,7 @@ function CoverflowHero({
             />
             <div
               className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 60%, rgba(10,16,30,0.6) 100%)' }}
+              style={{ background: 'linear-gradient(180deg, rgba(0, 0, 0,0) 60%, rgba(0, 0, 0,0.6) 100%)' }}
             />
             {/* Coming Soon — announced, but there is nothing to play yet.
                 It takes the whole top of the cover: a title in the Top 10
@@ -1268,7 +1404,15 @@ function CoverflowHero({
           <h2
             key={hero.id}
             onClick={() => onSelectShow(hero)}
-            className="cursor-pointer text-lg font-black leading-[1.05] text-white sm:text-2xl"
+            // 1.05 is a line box the height of the em box, which is
+            // fine for Anton — a Latin display face with nothing above
+            // the caps or below the baseline — and wrong for the
+            // Battambang behind it, which hangs a vowel above the
+            // consonant and a coeng below. The -webkit-box clamp brings
+            // overflow:hidden with it, so those marks were not merely
+            // tight here, they were sliced off: the biggest title on the
+            // screen was the most visibly broken one.
+            className="cursor-pointer text-lg font-black leading-[1.35] text-white sm:text-2xl"
             style={{
               fontFamily: '"Anton", Battambang, Inter, sans-serif',
               letterSpacing: '0.01em',
@@ -1324,8 +1468,8 @@ function CoverflowHero({
                 "Play" for something that cannot be played yet. */}
             <button
               onClick={() => onSelectShow(hero)}
-              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(32,80,216,0.4)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
-              style={{ background: 'linear-gradient(135deg, #2050D8, #1A3FAE 55%, #0E2560)' }}
+              className="flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_16px_rgba(32,80,216,0.45)] transition active:scale-95 sm:px-5 sm:py-2 sm:text-xs"
+              style={{ background: 'linear-gradient(135deg, #4E86FF, #2050D8 55%, #0E2560)' }}
             >
               {hero.coming_soon ? (
                 <>
@@ -1361,19 +1505,53 @@ function CoverflowHero({
           The centered show gets a lit ring; everything else sits at
           reduced opacity until tapped. */}
       {shows.length > 1 && (
-        <div className="rail-scroller no-scrollbar relative z-10 mx-auto mt-3 flex max-w-[1400px] gap-2 overflow-x-auto px-0.5 pb-1 sm:mt-4 sm:gap-2.5">
+        // The row fades out at both ends instead of stopping at a hard
+        // edge, which is the cheapest way to say "there is more this way"
+        // — and it is why the strip no longer needs to cram every cover
+        // into one screenful to look complete. The mask sits on the
+        // scroller, which stays still while its contents move; put on
+        // something that moves, it would travel with the posters.
+        <div
+          ref={stripRef}
+          className="strip-fade rail-scroller no-scrollbar relative z-10 mx-auto mt-3 flex max-w-[1400px] snap-x gap-2.5 overflow-x-auto px-3 pb-1 sm:mt-4 sm:gap-3"
+        >
           {shows.map((s, i) => (
             <button
               key={s.id}
               onClick={() => onGoTo(i)}
               aria-label={s.title}
-              className="shrink-0 overflow-hidden rounded-lg transition-all duration-300"
+              className="shrink-0 snap-center overflow-hidden rounded-[10px] transition-all duration-300"
+              // The selected thumbnail used a hard 2px white outline —
+              // the one pure-white edge anywhere in the app, brighter
+              // than the artwork it was framing, so the eye landed on the
+              // border instead of the poster. It is the brand's gold now,
+              // thinner, with a soft halo doing the work the thick line
+              // was doing: still unmistakably the chosen one, without
+              // shouting over the picture.
+              // 52px was small enough that ten covers fitted the screen
+              // and none of them read as anything — a row of stamps, not
+              // a row of shows. Fewer, larger, with room between them.
+              //
+              // Every cover keeps its own colours. Draining the
+              // saturation off the unselected ones did make the lit one
+              // stand out, and it did so by turning nine pieces of
+              // artwork into grey rectangles — a row of posters nobody
+              // wants to look at, which is the opposite of what a row of
+              // posters is for.
+              //
+              // The selected one is marked by DEPTH instead: the same
+              // shadow every card has, several times deeper, plus a lift.
+              // A card that floats higher is read as the one in front
+              // without anything else on the row having to be spoiled to
+              // say so.
               style={{
-                width: 52,
+                width: 64,
                 aspectRatio: '2 / 3',
-                opacity: i === index ? 1 : 0.4,
-                boxShadow: i === index ? '0 0 0 2px rgba(255,255,255,0.9)' : 'none',
-                transform: i === index ? 'translateY(-3px)' : 'none',
+                boxShadow:
+                  i === index
+                    ? '0 14px 30px rgba(0,0,0,0.85), 0 5px 12px rgba(0,0,0,0.6), 0 0 0 1.5px rgba(245,197,99,0.9)'
+                    : '0 2px 6px rgba(0,0,0,0.45)',
+                transform: i === index ? 'translateY(-5px) scale(1.06)' : 'none',
               }}
             >
               <img
@@ -1482,22 +1660,33 @@ function BottomNavItem({ icon, label, active, onClick, highlight }: BottomNavIte
     <button
       onClick={onClick}
       className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 transition ${
-        active ? 'text-[#4E86FF]' : highlight ? 'text-[#4E86FF]' : 'text-[#9AA4BD] active:text-white/80'
+        active ? 'text-[#F5C16B]' : highlight ? 'text-[#F5C16B]' : 'text-[#9AA4BD] active:text-white/80'
       }`}
     >
       {active && (
         <span
-          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#2050D8] to-transparent"
+          className="pointer-events-none absolute inset-x-4 top-0 h-[2px] rounded-full bg-gradient-to-r from-transparent via-[#E8A33D] to-transparent"
           aria-hidden
         />
       )}
       <span className="relative">
         {icon}
         {highlight && !active && (
-          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#4E86FF] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
+          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#F5C16B] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
         )}
       </span>
-      <span className={`max-w-full truncate px-0.5 text-[9.5px] leading-none ${highlight && !active ? 'font-bold' : 'font-semibold'}`}>{label}</span>
+      {/* 9.5px is small enough that a clipped Khmer vowel reads as a
+          smudge rather than as a missing mark, which is why these labels
+          looked blurry rather than obviously cut. leading-[1.5] gives the
+          line box room for the marks above and below; `truncate` still
+          keeps every tab to one line. */}
+      <span
+        className={`max-w-full truncate px-0.5 text-[10px] leading-[1.5] ${
+          highlight && !active ? 'font-bold' : 'font-semibold'
+        }`}
+      >
+        {label}
+      </span>
     </button>
   );
 }
@@ -1520,16 +1709,16 @@ function NavLink({ label, active, onClick, highlight }: NavLinkProps) {
         active
           ? 'font-display font-bold tracking-wide text-white'
           : highlight
-            ? 'font-bold text-[#4E86FF]'
+            ? 'font-bold text-[#F5C16B]'
             : 'font-semibold text-white/50 hover:text-white/80'
       }`}
     >
       {label}
       {highlight && !active && (
-        <span className="absolute -right-2 top-0.5 h-1.5 w-1.5 rounded-full bg-[#4E86FF] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
+        <span className="absolute -right-2 top-0.5 h-1.5 w-1.5 rounded-full bg-[#F5C16B] shadow-[0_0_6px_rgba(78,134,255,0.9)]" aria-hidden />
       )}
       {active && (
-        <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#4E86FF] to-[#2050D8] shadow-[0_0_10px_rgba(32,80,216,0.8)]" />
+        <span className="absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-gradient-to-r from-[#F5C16B] to-[#E8A33D] shadow-[0_0_10px_rgba(232, 163, 61,0.8)]" />
       )}
     </button>
   );
@@ -1569,6 +1758,89 @@ interface RailRowProps {
    *  group under one "series with seasons" heading and would otherwise
    *  each shout as loudly as a top-level rail. */
   subRow?: boolean;
+}
+
+/** The "Continue Watching" rail. Deliberately not a `RailRow`: its cards
+ *  are episode thumbnails (16:9, from `episode.thumbnail_url`) not poster
+ *  art (2:3), and each one resumes a specific episode on tap rather than
+ *  opening the show detail screen — different enough on both axes that
+ *  bending `RailRow`/`ShowCard` to fit would cost more than it saves.
+ *  Shares the same header grammar (accent bar, icon, title, gradient
+ *  rule) and the same `rail-section`/`rail-scroller` scroll behaviour so
+ *  it still reads as one row among the others, not a bolted-on widget. */
+function ContinueWatchingRail({
+  items,
+  onResumeEpisode,
+}: {
+  items: ContinueItem[];
+  onResumeEpisode: (show: Show, episodeId: string) => void;
+}) {
+  const scrollerRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) node.scrollLeft = 0;
+  }, []);
+  const accent = ROW_ACCENT.guide;
+  const { lang } = useLang();
+  const t = appText[lang];
+
+  return (
+    <section className="rail-section mt-8" style={{ '--row-accent': accent } as React.CSSProperties}>
+      <div
+        className="mb-4 h-px w-full"
+        style={{
+          background: `linear-gradient(90deg, ${tint(accent, 0.55)} 0%, ${tint(accent, 0.14)} 22%, rgba(255,255,255,0.05) 55%, transparent 100%)`,
+        }}
+        aria-hidden
+      />
+      <div className="mb-3 flex items-center gap-2">
+        <span
+          className="h-4 w-[3px] shrink-0 rounded-sm"
+          style={{ background: accent, boxShadow: `0 0 10px ${tint(accent, 0.5)}` }}
+          aria-hidden
+        />
+        <Clock className="h-5 w-5 shrink-0" style={{ color: accent }} aria-hidden />
+        <h2 className="truncate text-[15px] font-bold leading-[1.55] sm:text-lg">{t.continueWatching}</h2>
+      </div>
+      <div ref={scrollerRef} className="rail-scroller no-scrollbar flex gap-3 overflow-x-auto pb-3">
+        {items.map((item) => (
+          <button
+            key={item.show.id}
+            onClick={() => onResumeEpisode(item.show, item.episode.id)}
+            className="group w-[132px] shrink-0 text-left sm:w-[156px]"
+            style={{ scrollSnapAlign: 'start' }}
+          >
+            <div
+              className="relative aspect-video overflow-hidden rounded-xl border transition group-hover:-translate-y-0.5"
+              style={{ borderColor: tint(accent, 0.18) }}
+            >
+              <img
+                src={item.episode.thumbnail_url ?? item.show.banner_url ?? ''}
+                alt={item.episode.title}
+                loading="lazy"
+                decoding="async"
+                width={1600}
+                height={900}
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" aria-hidden />
+              <div className="absolute inset-0 flex items-center justify-center opacity-90 transition group-hover:opacity-100">
+                <div
+                  className="flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-sm"
+                  style={{ background: tint(accent, 0.85), boxShadow: `0 0 14px ${tint(accent, 0.5)}` }}
+                >
+                  <Play className="h-3 w-3 fill-white text-white" />
+                </div>
+              </div>
+              <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1 py-0.5 text-[8.5px] font-bold text-white/90">
+                {t.epShort} {item.episode.episode_number}
+              </span>
+            </div>
+            <p className="mt-1 truncate text-[11px] font-semibold text-white">{item.show.title}</p>
+            <p className="truncate text-[9.5px] text-[#9AA4BD]">{item.episode.title}</p>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function RailRow({
@@ -1622,7 +1894,13 @@ function RailRow({
     ) : rowAccess === 'free' ? (
       <Badge tone="free">{t.freeBadge}</Badge>
     ) : rowAccess === 'movie' ? (
-      <Badge tone="price">${MOVIE_PRICE}</Badge>
+      // Says "these are bought one at a time", not what they cost. Titles
+      // are priced individually now, so one number in a row heading would
+      // be right for the first card and wrong for the next — the price
+      // belongs on each card, where it can tell the truth.
+      <Badge tone="price" icon={<Film className="h-3 w-3" />}>
+        {t.movieOneOff}
+      </Badge>
     ) : rowAccess === 'vip' ? (
       <Badge tone="vip" icon={<Crown className="h-3 w-3" />}>
         {t.vipBadge}
@@ -1674,7 +1952,7 @@ function RailRow({
           {subRow ? (
             <h3 className="truncate text-[13px] font-bold text-white/90">{title}</h3>
           ) : (
-            <h2 className="truncate text-[15px] font-bold tracking-tight sm:text-lg">{title}</h2>
+            <h2 className="truncate text-[15px] font-bold leading-[1.55] sm:text-lg">{title}</h2>
           )}
           {/* The access badge the whole row shares, printed here instead
               of over every poster in it. A row-level `tag` (HOT, SOON)
