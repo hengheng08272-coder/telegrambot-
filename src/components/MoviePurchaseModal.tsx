@@ -47,6 +47,10 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
   const [currency, setCurrency] = useState<Currency>('USD');
   const [qrSrc, setQrSrc] = useState<string | null>(null);
   const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
+  // Which bank's QR is on screen. Only ever visible when the owner has
+  // pasted two, which they do because the banks disagree about what a
+  // payload may say — see BakongConfig.khqrTemplateAlt.
+  const [bank, setBank] = useState<'primary' | 'alt'>('primary');
   const [liveKhqr, setLiveKhqr] = useState<{ payload: string; image: string } | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
@@ -109,6 +113,7 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
         config: bakongConfig,
         amount: price,
         currency,
+        bank,
         billNumber: submissionId.slice(0, 8).toUpperCase(),
         storeLabel: show.title,
       });
@@ -123,7 +128,7 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
     return () => {
       cancelled = true;
     };
-  }, [bakongConfig, submissionId, price, currency, show.title]);
+  }, [bakongConfig, submissionId, price, currency, bank, show.title]);
 
   // Once a screenshot is sent, confirm-movie-payment-proof grants the
   // unlock synchronously — but poll a few times right after in case the
@@ -294,6 +299,32 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
                   </div>
                 )}
               </div>
+
+              {/* Which bank to pay. Shown only when two are configured,
+                  because with one there is no choice to offer — and the
+                  reason there can be two is that the banks will not
+                  accept the same payload, not that anyone wanted a
+                  setting. */}
+              {bakongConfig?.khqrTemplate && bakongConfig?.khqrTemplateAlt && (
+                <div className="flex gap-2">
+                  {([
+                    ['primary', bakongConfig.bankLabel || 'Bank 1'],
+                    ['alt', bakongConfig.bankLabelAlt || 'Bank 2'],
+                  ] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setBank(key)}
+                      className={`flex-1 rounded-xl border py-2 text-[12px] font-bold transition ${
+                        bank === key
+                          ? 'border-[#4E86FF]/50 bg-[#4E86FF]/15 text-white'
+                          : 'border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* The QR, given the whole width. This is what the dialog is
                   for — everything else on screen is a label for it. */}

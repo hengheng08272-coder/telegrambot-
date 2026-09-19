@@ -141,6 +141,10 @@ export default function SubscriptionModal({
   // whenever the owner hasn't configured Bakong, in which case everything
   // below falls back to the QR image they uploaded.
   const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
+  // Which bank's QR is on screen. Only ever offered when the owner has
+  // pasted two, which they do because the banks disagree about what a
+  // payload may say — see BakongConfig.khqrTemplateAlt.
+  const [bank, setBank] = useState<'primary' | 'alt'>('primary');
   const [liveKhqr, setLiveKhqr] = useState<{ payload: string; md5: string; image: string } | null>(
     null,
   );
@@ -484,6 +488,7 @@ export default function SubscriptionModal({
       const generated = await generateKhqr({
         config: bakongConfig,
         amount: payTier.price,
+        bank,
         billNumber: pending ? pending.id.slice(0, 8).toUpperCase() : null,
         storeLabel: lang === 'km' ? payTier.labelKm : payTier.labelEn,
         expiresInMs: WAIT_WINDOW_SECONDS * 1000,
@@ -501,7 +506,7 @@ export default function SubscriptionModal({
     return () => {
       cancelled = true;
     };
-  }, [bakongConfig, payTier, pending, lang]);
+  }, [bakongConfig, payTier, pending, lang, bank]);
 
   // Decode the tier's QR image once so the primary button can jump
   // straight into ABA. Cancelled on tier change so a slow decode can't
@@ -1668,6 +1673,32 @@ export default function SubscriptionModal({
                   have to find is a worse version of it. */}
               {payMode === 'manual' && !amountMismatch && !proofSent && (
                 <div className="mt-4">
+                  {/* Which bank to pay. Shown only when two templates are
+                      configured: with one there is no choice to offer,
+                      and the reason there can be two is that the banks
+                      will not accept the same payload, not that anyone
+                      wanted a setting. */}
+                  {bakongConfig?.khqrTemplate && bakongConfig?.khqrTemplateAlt && (
+                    <div className="mx-auto mb-3 flex max-w-[260px] gap-2">
+                      {([
+                        ['primary', bakongConfig.bankLabel || 'Bank 1'],
+                        ['alt', bakongConfig.bankLabelAlt || 'Bank 2'],
+                      ] as const).map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setBank(key)}
+                          className={`flex-1 rounded-xl border py-2 text-[12px] font-bold transition ${
+                            bank === key
+                              ? 'border-[color:var(--co-brand-ring)] bg-[color:var(--co-brand)]/12 text-[color:var(--co-text)]'
+                              : 'border-white/10 bg-white/[0.03] text-white/50'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {qrSrc ? (
                     <>
                       {liveKhqr ? (

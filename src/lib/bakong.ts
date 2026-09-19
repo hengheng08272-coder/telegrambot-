@@ -42,6 +42,27 @@ export interface BakongConfig {
   /** Merchant city, required by the KHQR spec, e.g. `Phnom Penh`. */
   city: string;
   /**
+   * A SECOND bank's own KHQR, offered beside the first.
+   *
+   * Not a nicety — the two banks disagree about what may be changed. ABA
+   * refuses a payload whose payee name was rewritten, so its QR has to
+   * go out under the account holder's own name; ACLEDA accepts the
+   * rewrite, so its QR can carry the shop's name instead. Neither can be
+   * made to behave like the other, which leaves offering both.
+   */
+  khqrTemplateAlt?: string;
+  /** What the picker calls each one, e.g. `ABA` and `ACLEDA`. */
+  bankLabel?: string;
+  bankLabelAlt?: string;
+  /**
+   * Whether the payee name in each template may be replaced with
+   * `merchantName`. Per template because the banks differ: leave it off
+   * for the one that refuses the rewrite. Unset means on, which is what
+   * this did before the flag existed.
+   */
+  renameTemplate?: boolean;
+  renameTemplateAlt?: boolean;
+  /**
    * Bank account number, when the account id alone does not identify the
    * account. ABA is the case that matters here: every ABA customer's KHQR
    * carries the SAME account id — `abaakhppxxx@abaa`, which is just ABA's
@@ -104,7 +125,18 @@ const SETTING_KEYS = {
   merchantId: 'bakong_merchant_id',
   merchantCategoryCode: 'bakong_mcc',
   khqrTemplate: 'bakong_khqr_template',
+  khqrTemplateAlt: 'bakong_khqr_template_alt',
+  bankLabel: 'bakong_bank_label',
+  bankLabelAlt: 'bakong_bank_label_alt',
+  renameTemplate: 'bakong_khqr_rename',
+  renameTemplateAlt: 'bakong_khqr_rename_alt',
 } as const;
+
+/** Settings store text; these two read it back as the flag it stands for.
+ *  Absent means on, so an install that predates the flag keeps behaving
+ *  exactly as it did. */
+const readFlag = (value: string | undefined): boolean => (value ?? '').trim() !== '0';
+const writeFlag = (on: boolean | undefined): string => (on === false ? '0' : '1');
 
 /**
  * Reads the owner's Bakong details. Returns null when they haven't been
@@ -130,18 +162,24 @@ export async function fetchBakongConfig(): Promise<BakongConfig | null> {
   const acquiringBank = (map.get(SETTING_KEYS.acquiringBank) ?? '').trim();
 
   const khqrTemplate = (map.get(SETTING_KEYS.khqrTemplate) ?? '').trim();
+  const khqrTemplateAlt = (map.get(SETTING_KEYS.khqrTemplateAlt) ?? '').trim();
 
   // Two ways to be configured. A pasted template stands on its own — it
   // already contains the account and the payee name, so neither field is
   // required alongside it. Without one, an account id and a name are
   // both needed: an id with no name shows the payer nothing
   // recognisable, and a name with no id pays nobody.
-  if (!khqrTemplate && (!accountId || !merchantName)) return null;
+  if (!khqrTemplate && !khqrTemplateAlt && (!accountId || !merchantName)) return null;
   return {
     accountId,
     merchantName,
     city,
     khqrTemplate: khqrTemplate || undefined,
+    khqrTemplateAlt: khqrTemplateAlt || undefined,
+    bankLabel: (map.get(SETTING_KEYS.bankLabel) ?? '').trim() || undefined,
+    bankLabelAlt: (map.get(SETTING_KEYS.bankLabelAlt) ?? '').trim() || undefined,
+    renameTemplate: readFlag(map.get(SETTING_KEYS.renameTemplate)),
+    renameTemplateAlt: readFlag(map.get(SETTING_KEYS.renameTemplateAlt)),
     accountInformation: accountInformation || undefined,
     acquiringBank: acquiringBank || undefined,
     merchantId: (map.get(SETTING_KEYS.merchantId) ?? '').trim() || undefined,
@@ -179,6 +217,19 @@ export async function saveBakongConfig(config: BakongConfig): Promise<void> {
     { key: SETTING_KEYS.merchantId, value: (config.merchantId ?? '').trim(), updated_at: now },
     { key: SETTING_KEYS.khqrTemplate, value: (config.khqrTemplate ?? '').trim(), updated_at: now },
     {
+      key: SETTING_KEYS.khqrTemplateAlt,
+      value: (config.khqrTemplateAlt ?? '').trim(),
+      updated_at: now,
+    },
+    { key: SETTING_KEYS.bankLabel, value: (config.bankLabel ?? '').trim(), updated_at: now },
+    { key: SETTING_KEYS.bankLabelAlt, value: (config.bankLabelAlt ?? '').trim(), updated_at: now },
+    { key: SETTING_KEYS.renameTemplate, value: writeFlag(config.renameTemplate), updated_at: now },
+    {
+      key: SETTING_KEYS.renameTemplateAlt,
+      value: writeFlag(config.renameTemplateAlt),
+      updated_at: now,
+    },
+    {
       key: SETTING_KEYS.merchantCategoryCode,
       value: (config.merchantCategoryCode ?? '').trim(),
       updated_at: now,
@@ -203,6 +254,9 @@ export interface GenerateKhqrOptions {
   storeLabel?: string | null;
   /** How long this QR stays valid; defaults to the 3-minute ticket window. */
   expiresInMs?: number;
+  /** Which of the owner's two bank templates to reuse. Ignored when only
+   *  one is configured, and entirely when neither is. */
+  bank?: 'primary' | 'alt';
 }
 
 export interface GeneratedKhqr {
@@ -305,29 +359,48 @@ export async function generateKhqrDetailed(
     billNumber,
     storeLabel,
     expiresInMs = 3 * 60 * 1000,
+    bank = 'primary',
   } = opts;
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, reason: 'bad-amount' };
 
   // Reusing the bank's own payload beats rebuilding one, so it is tried
   // first and the SDK never runs when a template is set.
-  if (config.khqrTemplate) {
+  //
+  // Which template, and whether its name may be rewritten, are asked
+  // together because they belong together: the flag describes the bank
+  // that issued THAT payload, not the shop. Falls back to whichever
+  // template exists, so asking for a bank that is not configured still
+  // produces a payable QR rather than nothing.
+  // Resolved together so the flag always belongs to the template that
+  // was actually chosen. Asking for the primary when only the second is
+  // configured falls through to it — and must take ITS permission with
+  // it, or a bank that refuses renamed payloads gets one anyway.
+  const usingAlt =
+    (bank === 'alt' && !!config.khqrTemplateAlt) ||
+    (!config.khqrTemplate && !!config.khqrTemplateAlt);
+  const template = usingAlt ? config.khqrTemplateAlt : config.khqrTemplate;
+  const mayRename = usingAlt ? config.renameTemplateAlt !== false : config.renameTemplate !== false;
+
+  if (template) {
     // A template is a real QR the bank issued, and tag 53 is the currency
     // it was issued in. Only the amount is rewritten, never that tag — so
     // asking for riel over a dollar template would produce a QR that
     // charges dollars while the app promises riel. Refuse instead: the
     // caller falls back to the uploaded image and the owner is told to
     // paste a template in the currency they are selling in.
-    const templateCurrency = readKhqrField(config.khqrTemplate, '53') === '116' ? 'KHR' : 'USD';
+    const templateCurrency = readKhqrField(template, '53') === '116' ? 'KHR' : 'USD';
     if (templateCurrency !== currency) {
       return { ok: false, reason: 'template-currency-mismatch' };
     }
 
-    const rewritten = applyKhqrTemplate(config.khqrTemplate, {
+    const rewritten = applyKhqrTemplate(template, {
       amount,
-      // Blank means "keep whatever name the bank wrote", which is the
-      // only name proven to be accepted until a payment with a replaced
-      // one has actually gone through.
-      merchantName: config.merchantName || null,
+      // Null means "keep whatever name the bank wrote". That is the only
+      // name proven to be accepted, and for at least one bank here it is
+      // the only one that works at all: ABA refuses a payload whose payee
+      // name was replaced, while ACLEDA takes it. Hence the per-template
+      // flag rather than one setting for both.
+      merchantName: mayRename ? config.merchantName || null : null,
     });
     if (!rewritten.ok) {
       const map = {
