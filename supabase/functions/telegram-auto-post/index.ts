@@ -66,7 +66,17 @@ Deno.serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const groupId = Deno.env.get("TELEGRAM_GROUP_ID")!;
-    const miniAppUrl = Deno.env.get("TELEGRAM_MINIAPP_URL")!;
+    // Normalised before anything is built on it. Telegram resolves a
+    // Mini App link by exact path, and two harmless-looking things in a
+    // pasted value stop it dead: a trailing slash
+    // (t.me/Bot/App/?startapp=… resolves to nothing) and a query string
+    // already on the end (…?x=1?startapp=… is not a URL). Both produce
+    // the bot's plain profile page with a START BOT button instead of
+    // the app, which looks like the link is wrong when the setting is.
+    const miniAppUrl = (Deno.env.get("TELEGRAM_MINIAPP_URL") ?? "")
+      .trim()
+      .split("?")[0]
+      .replace(/\/+$/, "");
     // Read from the Mini App URL rather than configured twice, so the
     // handle in the caption can never drift from the link beside it.
     // https://t.me/AnimetioMini_bot/App -> AnimetioMini_bot
