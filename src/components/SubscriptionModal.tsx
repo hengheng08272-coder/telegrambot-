@@ -420,6 +420,13 @@ export default function SubscriptionModal({
   const amountMismatch =
     !!payTier && qrAmount !== null && Math.abs(qrAmount - payTier.price) > 0.005;
 
+  // Is the KHQR ticket itself on screen? It prints the merchant name
+  // and the amount already, so whatever the pass says above it is a
+  // second copy of the same figure — see the pay step below, which
+  // drops its own amount line whenever this is true.
+  const ticketShowing =
+    payMode === 'manual' && !amountMismatch && !proofSent && !!liveKhqr;
+
   const abaDeeplink =
     !isRealGateway && isKhqrPayload(effectiveKhqr) && !amountMismatch
       ? buildAbaDeeplink(effectiveKhqr)
@@ -1613,6 +1620,17 @@ export default function SubscriptionModal({
                           ? t.subReadyQrTitle
                           : t.subReadyTitle}
                 </p>
+                {/* With the ticket on screen the plan moves up here,
+                    small and quiet, and the amount line below goes
+                    away entirely: a 26px display figure sitting beside
+                    a 13px Khmer plan name, directly above a ticket
+                    printing the same figure again, was two mismatched
+                    types arguing over one number. */}
+                {ticketShowing && (
+                  <p className="mt-1 text-[12px] font-bold text-[color:var(--co-text-dim)]">
+                    {planLabel(payTier)}
+                  </p>
+                )}
                 {!amountMismatch && !payCompact && (
                   <p className="mt-1.5 max-w-[17rem] text-[13px] leading-relaxed text-[color:var(--co-text-dim)]">
                     {proofSent
@@ -1630,6 +1648,7 @@ export default function SubscriptionModal({
                   printed one lists it. */}
               <div className={`co-tear -mx-5 ${payCompact ? 'my-3' : 'my-4'}`} />
 
+              {!ticketShowing && (
               <div className="space-y-2.5">
                 {!payCompact && (
                 <div className="flex items-baseline justify-between gap-3">
@@ -1675,6 +1694,7 @@ export default function SubscriptionModal({
                   </span>
                 </div>
               </div>
+              )}
 
               {/* The code itself, for anyone paying from another bank's
                   app. No save button: on a phone, "save" means a

@@ -93,6 +93,13 @@
     margin: 0 0 var(--co-s1); text-align: center;
     font-size: 15px; font-weight: 700; color: var(--co-text);
   }
+  /* The plan, named quietly under the heading — same family, same
+     weight class as the line above it, so the two read as one caption
+     instead of as a headline with a price stapled to its side. */
+  .pay-sub {
+    margin: 2px 0 0; text-align: center;
+    font-size: 12px; font-weight: 700; color: var(--co-text-dim);
+  }
   .label { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--co-text-dim); margin: 0; }
   /* Khmer gets neither the caps nor the tracking. Khmer has no case, and
      letter-spacing inserts a gap between every glyph — in Khmer that
@@ -311,10 +318,17 @@
            what it costs. The labelled "PLAN / AMOUNT DUE" rows this
            replaces said out loud what the two figures already are. -->
       <p class="pay-head" id="pay-head"></p>
+      <p class="pay-sub" id="pay-sub" hidden></p>
 
       <div class="tear"></div>
 
-      <div class="pass-row amount-row">
+      <!-- Only for a payment with no KHQR ticket under it (an uploaded
+           QR image, or a code that failed to draw). When the ticket is
+           there it prints the amount itself, and a display figure this
+           size beside a small Khmer plan name, directly above a second
+           copy of the same number, was two kinds of type arguing over
+           one figure. -->
+      <div class="pass-row amount-row" id="amount-row" hidden>
         <span class="plan" id="plan"></span>
         <span class="amount-wrap">
           <span class="amount" id="amount"></span>
@@ -457,9 +471,29 @@
   // The pass is always shown — even a link missing its labels still has
   // the code in it, and an empty page would tell the viewer nothing.
   el('pay-head').textContent = mode === 'qr' ? t.headScan : t.headAba;
+
+  // A KHQR payload with no uploaded image is the case that gets a drawn
+  // ticket, and that ticket prints the amount itself.
+  var ticketMode = !qr && !!khqr;
+
+  // Filled either way; which of the two is revealed depends on whether
+  // the ticket below will be carrying the figure.
+  el('pay-sub').textContent = plan || '';
   el('plan').textContent = plan || '—';
   el('amount').textContent = amountValue || '';
   el('amount-unit').textContent = amountValue ? currency : '';
+
+  // Falls back to the full amount row if the code never draws, so the
+  // total can't vanish with it.
+  var showAmountRow = function () {
+    el('pay-sub').hidden = true;
+    show(el('amount-row'));
+  };
+  if (ticketMode) {
+    if (plan) show(el('pay-sub'));
+  } else {
+    showAmountRow();
+  }
   el('ticket').textContent = ticket || '';
   show(el('pass'));
 
@@ -554,7 +588,10 @@
         el('qr-desktop-hint').textContent = t.qrDesktopHint;
         show(el('qr-card'));
       }).catch(function () {
-        // No QR to scan — the deeplink button below is still the main path.
+        // No QR to scan — the deeplink button below is still the main
+        // path, but nothing is now printing the amount, so the pass has
+        // to say it again.
+        showAmountRow();
       });
       return true;
     };
