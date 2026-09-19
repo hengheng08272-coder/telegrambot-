@@ -155,6 +155,11 @@ Deno.serve(async (req: Request) => {
 
     const posted: string[] = [];
     for (const show of batch) {
+      // Two facts on one line, separated rather than nested: how far the
+      // series has got, and whether it is still going. They used to be
+      // glued together as "កំពុងចាក់ដល់ភាគទី 188 (កំពុងចាក់)" — the same
+      // word twice in one breath, because the episode phrase already
+      // carried the status the bracket then repeated.
       let episodeLine = "";
       if (show.type === "movie") {
         episodeLine = "🎬 ភាពយន្តពេញមួយ";
@@ -167,12 +172,19 @@ Deno.serve(async (req: Request) => {
           .limit(1)
           .maybeSingle();
         episodeLine = latestEp
-          ? `📺 កំពុងចាក់ដល់ភាគទី ${latestEp.episode_number}`
+          ? `📺 ភាគទី ${latestEp.episode_number}`
           : "📺 ភាគថ្មីៗបន្ថែមឡើងឥតឈប់";
+
+        if (show.status === "completed") {
+          episodeLine += "  ·  ✅ ចប់ហើយ";
+        } else if (show.status === "ongoing") {
+          episodeLine += "  ·  🔴 កំពុងចាក់";
+        } else if (show.status) {
+          episodeLine += `  ·  ${show.status}`;
+        }
       }
-      if (show.status) {
-        const statusLabel = show.status === "completed" ? "ចប់ហើយ" : show.status === "ongoing" ? "កំពុងចាក់" : show.status;
-        episodeLine += ` (${statusLabel})`;
+      if (show.is_free) {
+        episodeLine += "  ·  🎁 ឥតគិតថ្លៃ";
       }
 
       const deepLink = `${miniAppUrl}?startapp=show_${show.id}`;
@@ -183,27 +195,39 @@ Deno.serve(async (req: Request) => {
       // that spreads furthest is the one somebody passes to a friend, and
       // it arrives with the buttons stripped. A line of @handles is the
       // part that still works in a screenshot.
-      const contactLine =
-        `📱 @${botUsername}  ·  💬 ជំនួយ @${supportUsername}`;
+      //
+      // One handle per line, not two either side of a dot. A Khmer word
+      // between two @handles is wide, and Telegram wrapped the pair
+      // mid-address on a phone — which reads as a broken link even
+      // though it is not one. A line each cannot wrap.
+      const contactLines = [
+        `🤖 Bot · @${botUsername}`,
+        `💬 ជំនួយ · @${supportUsername}`,
+      ].join("\n");
 
       const captionParts = [
         `🎬 <b>${show.title}</b>`,
         synopsis,
         episodeLine,
-        contactLine,
+        contactLines,
       ].filter(Boolean);
       const caption = truncate(captionParts.join("\n\n"), 1024);
 
-      // Two rows, because they answer two different questions: "watch
-      // THIS" and "who do I talk to". One row of three buttons would
-      // wrap to unreadable stubs in Khmer on a phone.
+      // One button per row, each one a different decision: watch THIS,
+      // subscribe, or ask a person. Side by side they wrapped to
+      // unreadable stubs in Khmer, and stacking them also puts the
+      // membership button — the one that earns anything — on a line of
+      // its own where it cannot be missed.
+      //
+      // There is no "open the Mini App" button any more. It landed on the
+      // home screen, which is where somebody already is once any of the
+      // other two buttons has taken them in; the post was spending a row
+      // on the least useful destination it had.
       const replyMarkup = {
         inline_keyboard: [
-          [{ text: "ចូលទស្សនា 📺", url: deepLink }],
-          [
-            { text: "📱 បើក Mini App", url: miniAppUrl },
-            { text: "💬 ជំនួយ", url: `https://t.me/${supportUsername}` },
-          ],
+          [{ text: "▶️  ចូលទស្សនា", url: deepLink }],
+          [{ text: "👑  ចូលជាសមាជិក VIP", url: `${miniAppUrl}?startapp=vip` }],
+          [{ text: "💬  ជំនួយ", url: `https://t.me/${supportUsername}` }],
         ],
       };
 

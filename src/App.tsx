@@ -197,6 +197,8 @@ function App() {
   // referral link (?startapp=ref_<telegram_id>, see lib/referral.ts and
   // AccountScreen's "Invite & Earn" card) instead tags this viewer as
   // referred by that person — it doesn't change what screen they land on.
+  // `?startapp=vip` opens the payment sheet straight away, which is what
+  // the auto-post's membership button links to.
   useEffect(() => {
     initTelegramApp();
     const startParam = getStartParam();
@@ -208,6 +210,12 @@ function App() {
     } else if (startParam?.startsWith('ref_')) {
       const referrerId = startParam.slice('ref_'.length);
       recordReferralIfPresent(referrerId);
+    } else if (startParam === 'vip') {
+      // The group's "become a member" button lands here. It opens the
+      // payment sheet directly rather than the home screen: somebody who
+      // tapped a button that says JOIN has already decided, and making
+      // them find the crown again is where that decision gets lost.
+      setShowSubscribe(true);
     }
   }, []);
 
