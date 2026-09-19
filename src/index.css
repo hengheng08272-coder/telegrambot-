@@ -1099,3 +1099,15 @@ h3 {
 .loading-sweep {
   animation: nint-loading-sweep 1.1s ease-in-out infinite;
 }
+
+/* The hero's thumbnail strip dissolves at both ends rather than stopping
+   at a hard edge, so a row that continues past the screen looks like it
+   continues. In px, not a percentage: a percentage of a 390px phone is
+   too short a ramp to finish a poster, and the fade reads as a smudge on
+   the first cover instead of as an edge. Applied to the scroller — the
+   element that stays put while its children move — for the same reason
+   the supporter ticker's fade lives on its container. */
+.strip-fade {
+  mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 44px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 44px), transparent 100%);
+}

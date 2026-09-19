@@ -15,6 +15,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 //   TELEGRAM_GROUP_ID      - the VIP group's chat id (negative number)
 //   TELEGRAM_MINIAPP_URL   - e.g. https://t.me/AnimetioMini_bot/App
 //                            (no query string)
+// Optional:
+//   TELEGRAM_BOT_USERNAME     - defaults to the handle inside MINIAPP_URL
+//   TELEGRAM_SUPPORT_USERNAME - the human to contact, default NintPlexminiapp
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,6 +67,18 @@ Deno.serve(async (req: Request) => {
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const groupId = Deno.env.get("TELEGRAM_GROUP_ID")!;
     const miniAppUrl = Deno.env.get("TELEGRAM_MINIAPP_URL")!;
+    // Read from the Mini App URL rather than configured twice, so the
+    // handle in the caption can never drift from the link beside it.
+    // https://t.me/AnimetioMini_bot/App -> AnimetioMini_bot
+    const botUsername =
+      (Deno.env.get("TELEGRAM_BOT_USERNAME") ?? "").trim().replace(/^@/, "") ||
+      miniAppUrl.match(/t\.me\/([A-Za-z0-9_]+)/)?.[1] ||
+      "AnimetioMini_bot";
+    // A person, not the bot: where a viewer goes when a payment needs a
+    // human. Same account the app's own support button opens.
+    const supportUsername =
+      (Deno.env.get("TELEGRAM_SUPPORT_USERNAME") ?? "").trim().replace(/^@/, "") ||
+      "NintPlexminiapp";
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     // `force: true` skips the interval check — used by the Admin Panel's
@@ -163,10 +178,34 @@ Deno.serve(async (req: Request) => {
       const deepLink = `${miniAppUrl}?startapp=show_${show.id}`;
       const synopsis = show.synopsis ? truncate(show.synopsis, 500) : "";
 
-      const captionParts = [`🎬 <b>${show.title}</b>`, synopsis, episodeLine].filter(Boolean);
+      // The handles go in the TEXT as well as on the buttons, and that is
+      // deliberate. Inline buttons do not survive a forward: the post
+      // that spreads furthest is the one somebody passes to a friend, and
+      // it arrives with the buttons stripped. A line of @handles is the
+      // part that still works in a screenshot.
+      const contactLine =
+        `📱 @${botUsername}  ·  💬 ជំនួយ @${supportUsername}`;
+
+      const captionParts = [
+        `🎬 <b>${show.title}</b>`,
+        synopsis,
+        episodeLine,
+        contactLine,
+      ].filter(Boolean);
       const caption = truncate(captionParts.join("\n\n"), 1024);
 
-      const replyMarkup = { inline_keyboard: [[{ text: "ចូលទស្សនា 📺", url: deepLink }]] };
+      // Two rows, because they answer two different questions: "watch
+      // THIS" and "who do I talk to". One row of three buttons would
+      // wrap to unreadable stubs in Khmer on a phone.
+      const replyMarkup = {
+        inline_keyboard: [
+          [{ text: "ចូលទស្សនា 📺", url: deepLink }],
+          [
+            { text: "📱 បើក Mini App", url: miniAppUrl },
+            { text: "💬 ជំនួយ", url: `https://t.me/${supportUsername}` },
+          ],
+        ],
+      };
 
       const sendResult = show.poster_url
         ? await tg(botToken, "sendPhoto", {

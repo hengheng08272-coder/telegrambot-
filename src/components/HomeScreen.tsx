@@ -1148,6 +1148,7 @@ function CoverflowHero({
 }: CoverflowHeroProps) {
   const [bgLoaded, setBgLoaded] = useState(false);
   const ambienceRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
   const [inList, setInList] = useState(() => isInWatchlist(hero.id));
   const bg = hero.banner_url ?? hero.poster_url ?? '';
 
@@ -1157,6 +1158,20 @@ function CoverflowHero({
     setBgLoaded(false);
     setInList(isInWatchlist(hero.id));
   }, [hero.id]);
+
+  // Keep the lit thumbnail on screen.
+  //
+  // The hero advances on a timer, but the strip underneath never moved
+  // with it: after a few slides the marked poster was somewhere off to
+  // the right, so the strip looked like it had lost track of the show
+  // above it — the one thing it exists to report. `nearest` rather than
+  // `center` so the row only moves when it has to, and `inline` only so
+  // the page itself never scrolls underneath the viewer.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const child = strip?.children[index] as HTMLElement | undefined;
+    child?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [index]);
 
   // Ambient background drifts a little slower than the page and fades out
   // as the viewer scrolls past the hero. This writes straight to the DOM
@@ -1490,13 +1505,22 @@ function CoverflowHero({
           The centered show gets a lit ring; everything else sits at
           reduced opacity until tapped. */}
       {shows.length > 1 && (
-        <div className="rail-scroller no-scrollbar relative z-10 mx-auto mt-3 flex max-w-[1400px] gap-2 overflow-x-auto px-0.5 pb-1 sm:mt-4 sm:gap-2.5">
+        // The row fades out at both ends instead of stopping at a hard
+        // edge, which is the cheapest way to say "there is more this way"
+        // — and it is why the strip no longer needs to cram every cover
+        // into one screenful to look complete. The mask sits on the
+        // scroller, which stays still while its contents move; put on
+        // something that moves, it would travel with the posters.
+        <div
+          ref={stripRef}
+          className="strip-fade rail-scroller no-scrollbar relative z-10 mx-auto mt-3 flex max-w-[1400px] snap-x gap-2.5 overflow-x-auto px-3 pb-1 sm:mt-4 sm:gap-3"
+        >
           {shows.map((s, i) => (
             <button
               key={s.id}
               onClick={() => onGoTo(i)}
               aria-label={s.title}
-              className="shrink-0 overflow-hidden rounded-lg transition-all duration-300"
+              className="shrink-0 snap-center overflow-hidden rounded-[10px] transition-all duration-300"
               // The selected thumbnail used a hard 2px white outline —
               // the one pure-white edge anywhere in the app, brighter
               // than the artwork it was framing, so the eye landed on the
@@ -1504,15 +1528,25 @@ function CoverflowHero({
               // thinner, with a soft halo doing the work the thick line
               // was doing: still unmistakably the chosen one, without
               // shouting over the picture.
+              // 52px was small enough that ten covers fitted the screen
+              // and none of them read as anything — a row of stamps, not
+              // a row of shows. Fewer, larger, with room between them.
+              //
+              // The unselected ones lose their colour rather than only
+              // their brightness: dimming alone left ten equally muddy
+              // rectangles, while draining the saturation makes the lit
+              // one the only colour in the row, which the eye finds
+              // before it finds anything else.
               style={{
-                width: 52,
+                width: 64,
                 aspectRatio: '2 / 3',
-                opacity: i === index ? 1 : 0.45,
+                opacity: i === index ? 1 : 0.55,
+                filter: i === index ? 'none' : 'saturate(0.35) brightness(0.8)',
                 boxShadow:
                   i === index
                     ? '0 0 0 1.5px rgba(245,197,99,0.95), 0 0 14px rgba(232,163,61,0.45), 0 6px 14px rgba(0,0,0,0.5)'
                     : '0 2px 6px rgba(0,0,0,0.4)',
-                transform: i === index ? 'translateY(-3px)' : 'none',
+                transform: i === index ? 'translateY(-4px) scale(1.04)' : 'none',
               }}
             >
               <img
