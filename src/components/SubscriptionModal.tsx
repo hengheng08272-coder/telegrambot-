@@ -37,6 +37,8 @@ import {
 } from '@/lib/bakong';
 import { compressReceipt } from '@/lib/imageCompress';
 import KhqrCard from '@/components/KhqrCard';
+import BankChoice from '@/components/BankChoice';
+import { formatAmount } from '@/lib/format';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
@@ -441,7 +443,11 @@ export default function SubscriptionModal({
           // image travels as a link.
           qrSrc: liveKhqr ? null : qrSrc,
           plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
-          amount: payTier ? `$${payTier.price}` : null,
+          // The bank's own form of the figure, with its unit alongside,
+          // so the browser page prints the same `2.00 USD` the sheet and
+          // the KHQR ticket print rather than a second version of it.
+          amount: payTier ? formatAmount(payTier.price).value : null,
+          currency: payTier ? formatAmount(payTier.price).unit : null,
           ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
           // The payload's own name, so the KHQR ticket on that page
           // carries the name the payer's bank will show them.
@@ -1195,7 +1201,7 @@ export default function SubscriptionModal({
                         >
                           {localNum(tr.months)}
                         </span>
-                        <span className="text-[9.5px] tracking-[0.16em] text-[color:var(--co-text-dim)]">
+                        <span className="co-untrack-km text-[9.5px] tracking-[0.16em] text-[color:var(--co-text-dim)]">
                           {t.subMonthsUnit}
                         </span>
                       </span>
@@ -1243,7 +1249,7 @@ export default function SubscriptionModal({
                 still deciding rather than still choosing. */}
             {!tiersLoading && visibleTiers.length > 0 && (
               <div className="mt-5 border-t border-[color:var(--co-line-soft)] pt-4">
-                <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--co-text-faint)]">
+                <p className="co-label mb-2.5 text-[color:var(--co-text-faint)]">
                   {t.subIncludesTitle}
                 </p>
                 <ul className="space-y-2">
@@ -1273,7 +1279,7 @@ export default function SubscriptionModal({
               className="co-card mb-5 flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition active:scale-[0.99]"
             >
               <span className="min-w-0">
-                <span className="block text-[11px] uppercase tracking-[0.16em] text-[color:var(--co-text-dim)]">
+                <span className="co-label block">
                   {t.subReceiptPlan}
                 </span>
                 <span className="mt-0.5 block truncate text-sm font-bold text-[color:var(--co-text)]">
@@ -1334,13 +1340,13 @@ export default function SubscriptionModal({
                     </span>
                     {abaPaymentEnabled ? (
                       <span
-                        className="rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
+                        className="co-untrack-km rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
                         style={{ backgroundColor: 'var(--co-brand-soft)', color: '#a9c0ff' }}
                       >
                         {t.subRecommended}
                       </span>
                     ) : (
-                      <span className="rounded-md bg-[#FF6B60]/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#FF6B60]">
+                      <span className="co-untrack-km rounded-md bg-[#FF6B60]/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#FF6B60]">
                         {t.subAbaDisabledBadge}
                       </span>
                     )}
@@ -1437,7 +1443,7 @@ export default function SubscriptionModal({
                   {t.subVipPass}
                 </span>
                 <span
-                  className="rounded-[3px] border border-white/45 px-1.5 py-0.5 text-[9.5px] tracking-[0.16em]"
+                  className="co-untrack-km rounded-[3px] border border-white/45 px-1.5 py-0.5 text-[9.5px] tracking-[0.16em]"
                   style={{ fontFamily: 'var(--co-font-display)', transform: 'rotate(-4deg)' }}
                 >
                   {t.subPaidStamp}
@@ -1652,15 +1658,20 @@ export default function SubscriptionModal({
                       t.subAmountDue
                     )}
                   </span>
+                  {/* Printed exactly as the KHQR ticket below prints it
+                      — same digits, same cents, same unit. The two used
+                      to disagree ($2 up here, 2.00 USD on the ticket),
+                      which is a moment of doubt on the one screen that
+                      cannot afford one. */}
                   <span className="flex items-baseline gap-1.5">
                     <span
                       className="leading-none tabular-nums text-[color:var(--co-text)]"
-                      style={{ fontFamily: 'var(--co-font-display)', fontSize: '28px' }}
+                      style={{ fontFamily: 'var(--co-font-display)', fontSize: '26px', letterSpacing: '0.01em' }}
                     >
-                      ${payTier.price}
+                      {formatAmount(payTier.price).value}
                     </span>
                     <span className="text-[11px] font-bold tracking-[0.1em] text-[color:var(--co-text-dim)]">
-                      USD
+                      {formatAmount(payTier.price).unit}
                     </span>
                   </span>
                 </div>
@@ -1679,24 +1690,14 @@ export default function SubscriptionModal({
                       will not accept the same payload, not that anyone
                       wanted a setting. */}
                   {bakongConfig?.khqrTemplate && bakongConfig?.khqrTemplateAlt && (
-                    <div className="mx-auto mb-3 flex max-w-[260px] gap-2">
-                      {([
-                        ['primary', bakongConfig.bankLabel || 'Bank 1'],
-                        ['alt', bakongConfig.bankLabelAlt || 'Bank 2'],
-                      ] as const).map(([key, label]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setBank(key)}
-                          className={`flex-1 rounded-xl border py-2 text-[12px] font-bold transition ${
-                            bank === key
-                              ? 'border-[color:var(--co-brand-ring)] bg-[color:var(--co-brand)]/12 text-[color:var(--co-text)]'
-                              : 'border-white/10 bg-white/[0.03] text-white/50'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
+                    <div className="mb-3.5">
+                      <BankChoice
+                        heading={t.subPayFrom}
+                        primaryLabel={bakongConfig.bankLabel || 'Bank 1'}
+                        altLabel={bakongConfig.bankLabelAlt || 'Bank 2'}
+                        value={bank}
+                        onChange={setBank}
+                      />
                     </div>
                   )}
                   {qrSrc ? (

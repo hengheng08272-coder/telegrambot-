@@ -434,6 +434,7 @@ export const appText = {
     subLoadingPlans: 'Loading plans…',
     subAllKhqrBanks: 'Works with every KHQR bank app',
     subScanWithYourBank: 'Scan this QR with your own banking app',
+    subPayFrom: 'Pay from',
 
     // Movie purchase / home rails — these were already read with an
     // inline English fallback (`t.buyMovie ?? 'Buy Movie'`), so Khmer
@@ -931,6 +932,7 @@ export const appText = {
     subLoadingPlans: 'កំពុងទាញគម្រោង…',
     subAllKhqrBanks: 'ស្កេនបានគ្រប់ App ធនាគារដែលប្រើ KHQR',
     subScanWithYourBank: 'ស្កេន QR នេះដោយ App ធនាគាររបស់អ្នក',
+    subPayFrom: 'បង់ពីធនាគារ',
 
     // Movie purchase / home rails
     recommendedForYou: 'ណែនាំសម្រាប់អ្នក',

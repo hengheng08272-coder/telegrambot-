@@ -156,7 +156,14 @@ export interface PayPageOptions {
   qrSrc?: string | null;
   /** Plan name and price, purely for what the page displays. */
   plan?: string | null;
+  /** Already formatted for display, e.g. `2.00` — no symbol, no unit. */
   amount?: string | null;
+  /**
+   * The unit `amount` is in, printed beside it. Sent explicitly because
+   * the page used to assume USD and print `USD` next to a riel figure —
+   * the one label on that screen a payer must be able to trust.
+   */
+  currency?: string | null;
   /** Short ticket reference, so a viewer can quote it in support chat. */
   ticket?: string | null;
   /** Merchant name, so the page can draw the same KHQR ticket the app does. */
@@ -200,6 +207,7 @@ export function buildPayPageUrl(opts: PayPageOptions): string {
   if (opts.qrSrc) params.set('qr', opts.qrSrc);
   if (opts.plan) params.set('plan', opts.plan);
   if (opts.amount) params.set('amount', opts.amount);
+  if (opts.currency) params.set('cur', opts.currency);
   if (opts.ticket) params.set('ticket', opts.ticket);
   if (opts.merchantName) params.set('name', opts.merchantName);
   if (opts.payLink) params.set('pay', opts.payLink);

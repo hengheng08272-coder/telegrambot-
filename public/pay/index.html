@@ -39,8 +39,8 @@
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
-    padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px));
-    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    padding: 12px 14px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
     background: var(--co-bg);
     background-image: var(--co-backdrop);
     background-repeat: no-repeat;
@@ -52,18 +52,17 @@
   }
   /* One screen, no scrolling: the whole point of this page is a single
      tap, and a payment page that has to be scrolled to find its button
-     is a payment that does not happen. Everything below is sized off the
-     viewport rather than off fixed pixels. */
+     is a payment that does not happen. */
   .wrap {
-    width: 100%; max-width: 400px; margin: auto;
+    width: 100%; max-width: 360px; margin: auto;
     display: flex; flex-direction: column;
   }
 
   /* Header — the same logo, at the same size, as the sheet the viewer
      was just looking at. */
   .brand { display: flex; align-items: center; gap: var(--co-s2); margin-bottom: var(--co-s3); order: 0; }
-  .brand img { width: 32px; height: 32px; object-fit: contain; }
-  .brand span { font-size: 13px; font-weight: 700; color: var(--co-text); }
+  .brand img { width: 26px; height: 26px; object-fit: contain; }
+  .brand span { font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--co-text-muted); }
 
   /* The pass — the same shape the in-app sheet draws, so the hand-off
      to a browser doesn't feel like a hand-off to a different product. */
@@ -73,24 +72,44 @@
     border-radius: var(--co-r-card);
     overflow: hidden;
     margin-bottom: var(--co-s3);
+    box-shadow: var(--co-shadow-card);
   }
   .pass-band {
     display: flex; align-items: center; justify-content: space-between; gap: var(--co-s3);
-    padding: 9px 14px; color: #fff;
+    padding: 8px 14px; color: #fff;
     background-image: linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%);
   }
-  .pass-title { font-family: var(--co-font-display); font-size: 12px; letter-spacing: .22em; }
+  .pass-title { font-family: var(--co-font-display); font-size: 11.5px; letter-spacing: .22em; }
   .mono { font-family: ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: .06em; color: rgba(255,255,255,.85); }
   .pass-body { padding: var(--co-s3) var(--co-s4) var(--co-s4); }
   .pass-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--co-s3); }
-  .amount-row { align-items: flex-end; margin-top: 2px; }
-  .label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--co-text-dim); margin: 0; }
-  .plan { font-size: 15px; font-weight: 700; margin: 2px 0 0; }
+  /* The amount sits under a hairline, the way a total sits at the foot
+     of a bill rather than floating in the middle of one. */
+  .amount-row {
+    align-items: baseline; margin-top: var(--co-s2);
+    padding-top: var(--co-s2); border-top: 1px solid var(--co-line-soft);
+  }
+  .label { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--co-text-dim); margin: 0; }
+  /* Khmer gets neither the caps nor the tracking. Khmer has no case, and
+     letter-spacing inserts a gap between every glyph — in Khmer that
+     means between a consonant and the vowel sign or coeng belonging to
+     it, so "គម្រោង" comes apart into "គ ម្រោ ង". */
+  :lang(km) .label, :lang(km) #orline { letter-spacing: normal; text-transform: none; font-size: 11px; }
+  :lang(km) #orline { font-size: 10px; }
+  .plan {
+    font-size: 14px; font-weight: 700; margin: 0;
+    max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* Amount and unit on one baseline, in the same proportion the app's
+     sheet and the KHQR ticket use. Tabular figures so the digits don't
+     shuffle sideways between plans. */
+  .amount-wrap { display: flex; align-items: baseline; gap: 6px; }
   .amount {
     font-family: var(--co-font-display);
-    font-size: clamp(26px, 7.5vw, 32px); line-height: 1; letter-spacing: .01em;
-    margin: 0;
+    font-size: 26px; line-height: 1; letter-spacing: .01em;
+    font-variant-numeric: tabular-nums; margin: 0;
   }
+  .amount-unit { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--co-text-dim); }
 
   /* No dark card around the code: the KHQR ticket is already a card,
      and wrapping a white card in a grey one just drew a second border
@@ -106,36 +125,52 @@
   .tear::before { left: -8px; }
   .tear::after { right: -8px; }
 
-  .qr-wrap { text-align: center; padding-top: var(--co-s1); }
+  .qr-wrap { text-align: center; }
   .qr-wrap img.qr-img {
-    width: min(52vw, 23vh); height: auto; border-radius: var(--co-r-btn);
+    width: min(48vw, 186px); height: auto; border-radius: var(--co-r-btn);
     background: #fff; padding: 8px; display: inline-block;
   }
-  .hint { font-size: 11px; color: var(--co-text-muted); margin: var(--co-s2) 0 0; text-align: center; }
+  .hint { font-size: 10.5px; line-height: 1.5; color: var(--co-text-dim); margin: var(--co-s2) auto 0; max-width: 17rem; }
   .desktop-hint { display: none; }
 
-  /* KHQR ticket drawn around a generated QR — mirrors KhqrCard.tsx. */
+  /* KHQR ticket drawn around a generated QR — mirrors KhqrCard.tsx,
+     down to the type scale. A QR only has to be big enough for a second
+     phone's camera; past that it stops being a code and starts being
+     wallpaper, pushing the pay button off the screen. */
   .khqr-ticket {
-    width: min(56vw, 25vh); min-width: 168px; margin: 0 auto;
+    width: min(48vw, 186px); min-width: 156px; margin: 0 auto;
     background: #fff; border-radius: 14px; overflow: hidden; text-align: left;
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
   .khqr-ticket .band {
-    background: #e11b24; padding: 8px 12px;
+    background: #e11b24; padding: 6px 12px;
     clip-path: polygon(0 0, 100% 0, 100% 55%, 88% 100%, 0 100%);
   }
-  .khqr-ticket .band p { margin: 0; text-align: center; color: #fff; font-size: 14px; font-weight: 900; letter-spacing: .12em; }
-  .khqr-ticket .body { padding: 8px 10px 10px; }
-  .khqr-ticket .name { margin: 0; font-size: 13px; font-weight: 700; color: #1a1a1a; }
-  .khqr-ticket .price { margin: 0; font-size: 19px; font-weight: 800; color: #1a1a1a; line-height: 1.2; }
-  .khqr-ticket .price span { font-size: 12px; font-weight: 600; color: #6b6b6b; margin-left: 4px; }
-  .khqr-ticket hr { border: 0; border-top: 1px dashed #d8d8d8; margin: 10px 0; }
+  .khqr-ticket .band p { margin: 0; text-align: center; color: #fff; font-size: 11.5px; font-weight: 900; letter-spacing: .14em; }
+  .khqr-ticket .body { padding: 8px 12px 12px; }
+  /* Name and amount on one baseline: the two things the payer checks
+     against their banking app, read together rather than stacked as two
+     separate headlines. */
+  .khqr-ticket .payee { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .khqr-ticket .name {
+    margin: 0; min-width: 0; flex: 1;
+    font-size: 11px; font-weight: 600; color: #1a1a1a;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .khqr-ticket .price {
+    margin: 0; flex-shrink: 0; white-space: nowrap;
+    font-size: 16px; font-weight: 800; color: #111; line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .khqr-ticket .price span { font-size: 9.5px; font-weight: 600; color: #8a8a8a; margin-left: 4px; }
+  .khqr-ticket hr { border: 0; border-top: 1px dashed #dcdcdc; margin: 8px 0; }
   .khqr-ticket canvas { width: 100%; height: auto; display: block; background: #fff; padding: 0; border-radius: 0; }
 
   a.btn, button.btn {
     display: flex; align-items: center; justify-content: center; gap: var(--co-s2);
-    width: 100%; max-width: 230px; margin: 0 auto var(--co-s2);
-    min-height: 44px; border: 0; cursor: pointer;
+    width: 100%; max-width: 250px; margin: 0 auto var(--co-s2);
+    min-height: 46px; border: 0; cursor: pointer;
     border-radius: var(--co-r-btn); padding: 12px 16px;
     font-family: inherit; font-size: 13.5px; font-weight: 800;
     text-decoration: none;
@@ -149,7 +184,7 @@
   }
   .btn-ghost {
     color: var(--co-text-muted); background: rgba(255,255,255,.04);
-    border: 1px solid var(--co-line); font-size: 13px;
+    border: 1px solid var(--co-line); font-size: 12.5px; min-height: 42px;
   }
   /* ABA blue, used on nothing but the PayWay fallback. */
   .btn-aba {
@@ -162,9 +197,8 @@
      space the button needed. */
   .steps {
     margin: 2px 0 var(--co-s2); text-align: center;
-    font-size: 11px; line-height: 1.5; color: var(--co-text-dim);
+    font-size: 10.5px; line-height: 1.5; color: var(--co-text-faint);
   }
-
 
   /* Warnings are amber, never red: red is the pay button on this page. */
   .note {
@@ -176,7 +210,7 @@
   .note.show { display: block; }
 
   .err { font-size: 13px; color: var(--co-amber); text-align: center; }
-  .back-hint { display: none; order: 8; margin-top: 0; font-size: 11px; color: var(--co-text-dim); }
+  .back-hint { display: none; order: 8; margin-top: 0; font-size: 10.5px; color: var(--co-text-faint); text-align: center; }
   .back-hint.show { display: block; }
   .foot { margin-top: var(--co-s2); text-align: center; font-size: 9px; color: var(--co-text-faint); }
 
@@ -204,20 +238,42 @@
      says so out loud instead of stacking two buttons. */
   #orline {
     display: flex; align-items: center; gap: var(--co-s3);
-    margin: 2px auto var(--co-s2); max-width: 230px;
+    /* width:100% is not redundant. `.wrap` is a column flex container,
+       and an auto left/right margin cancels the default stretch — so
+       without it this shrank to fit the word "or" and its two rules were
+       laid out at zero width, which is why the divider was invisible. */
+    width: 100%; margin: 2px auto var(--co-s2); max-width: 250px;
     font-size: 10px; letter-spacing: .12em; color: var(--co-text-faint);
   }
   #orline::before, #orline::after {
-    content: ''; flex: 1; height: 1px; background: var(--co-line);
+    content: ''; flex: 1; height: 1px; background: var(--co-line-strong);
   }
   /* Nobody reads three steps while holding a QR up to another phone. */
   .wrap.mode-qr #steps-card { display: none; }
 
+  /* A short phone (or a landscape one) has no room to spare: give the
+     code back some of it rather than pushing the button off the fold. */
+  @media (max-height: 700px) {
+    .khqr-ticket, .qr-wrap img.qr-img { width: min(40vw, 150px); min-width: 132px; }
+    .amount { font-size: 23px; }
+    .pass-body { padding: var(--co-s3) var(--co-s3) var(--co-s3); }
+    .foot { margin-top: var(--co-s1); }
+    .brand { margin-bottom: var(--co-s2); }
+    /* Too narrow for one line: give the payee name the full width back
+       rather than clipping it to "NintPlex…". It is one of the two
+       things the payer checks before they part with money. */
+    .khqr-ticket .payee { display: block; }
+    .khqr-ticket .name { margin-bottom: 1px; }
+    .hint { margin-top: var(--co-s1); }
+    .steps { margin: 0 0 var(--co-s1); }
+    #orline { margin-bottom: var(--co-s1); }
+  }
+
   /* Opened on a laptop: the deeplink is useless there, so the QR becomes
      the whole point and grows to something a phone can actually scan. */
   @media (min-width: 720px) and (pointer: fine) {
-    .qr-wrap img.qr-img { width: 300px; }
-    .khqr-ticket { width: 320px; }
+    .qr-wrap img.qr-img { width: 260px; }
+    .khqr-ticket { width: 260px; }
     .desktop-hint { display: block; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -256,7 +312,10 @@
       </div>
       <div class="pass-row amount-row">
         <span class="label" id="amount-label"></span>
-        <span class="amount" id="amount"></span>
+        <span class="amount-wrap">
+          <span class="amount" id="amount"></span>
+          <span class="amount-unit" id="amount-unit"></span>
+        </span>
       </div>
 
       <div class="tear"></div>
@@ -266,8 +325,10 @@
         <div class="khqr-ticket" id="qr-ticket" hidden>
           <div class="band"><p>KHQR</p></div>
           <div class="body">
-            <p class="name" id="qr-name"></p>
-            <p class="price" id="qr-price"></p>
+            <div class="payee">
+              <p class="name" id="qr-name"></p>
+              <p class="price" id="qr-price"></p>
+            </div>
             <hr />
             <canvas id="qr-canvas"></canvas>
           </div>
@@ -363,6 +424,18 @@
   var plan = params.get('plan');
   var amount = params.get('amount');
   var ticket = params.get('ticket');
+  // What unit the figure is in. Sent explicitly now; older links only
+  // carried a formatted string like "$2" or "៛4,000", so fall back to
+  // reading the symbol off the front of it rather than assuming dollars
+  // — printing "USD" next to a riel figure is the one label on this
+  // screen a payer has to be able to trust.
+  var currency = (params.get('cur') || '').toUpperCase();
+  if (currency !== 'USD' && currency !== 'KHR') {
+    currency = /^\s*៛/.test(amount || '') ? 'KHR' : 'USD';
+  }
+  // The digits alone — the unit is printed as its own element beside
+  // them, at its own size, on both the pass and the KHQR ticket.
+  var amountValue = (amount || '').replace(/^\s*[$៛]\s*/, '').replace(/\s*(USD|KHR)\s*$/i, '');
   var payLink = params.get('pay');
   var ret = params.get('ret');
   // Where to relaunch the Mini App if bringing Telegram forward didn't
@@ -388,7 +461,8 @@
   el('plan-label').textContent = t.planLabel;
   el('amount-label').textContent = t.amountDue;
   el('plan').textContent = plan || '—';
-  el('amount').textContent = amount || '';
+  el('amount').textContent = amountValue || '';
+  el('amount-unit').textContent = amountValue ? currency : '';
   el('ticket').textContent = ticket || '';
   show(el('pass'));
 
@@ -417,10 +491,14 @@
         canvas.style.height = 'auto';
         var name = params.get('name');
         if (name) el('qr-name').textContent = name;
-        // `amount` arrives already formatted for display (e.g. "$2.00");
-        // the ticket prints it the way ABA does, as "2.00 USD".
-        if (amount) {
-          el('qr-price').innerHTML = amount.replace(/^\$/, '') + ' <span>USD</span>';
+        // The ticket prints the figure the way a bank prints it — the
+        // same digits and the same unit the pass above it shows, so the
+        // two can never appear to disagree.
+        if (amountValue) {
+          el('qr-price').textContent = amountValue;
+          var unit = document.createElement('span');
+          unit.textContent = currency;
+          el('qr-price').appendChild(unit);
         }
         el('qr-ticket').hidden = false;
         el('qr-hint').textContent = mode === 'qr' ? t.qrHintScan : t.qrHint;

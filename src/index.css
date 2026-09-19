@@ -891,6 +891,35 @@ h3 {
     border-color: var(--co-line-strong);
   }
 
+  /* The small caps label above a value — "AMOUNT DUE", "PLAN".
+     Latin typography: spaced out, upper case, quiet.
+
+     Khmer gets neither. Khmer has no case at all, and letter-spacing
+     inserts a gap between every glyph — which in Khmer means between a
+     consonant and the vowel sign or coeng that belongs to it. Tracked
+     out, "គម្រោង" comes apart into "គ ម្រោ ង": not a considered label,
+     a broken word. So the Latin treatment is switched off wholesale
+     whenever the document is in Khmer (see useLang, which sets
+     <html lang>). */
+  .co-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--co-text-dim);
+  }
+  html:lang(km) .co-label {
+    letter-spacing: normal;
+    text-transform: none;
+    font-size: 11px;
+  }
+  /* Same rule for anything else that is tracked out for Latin: a Khmer
+     string must never carry letter-spacing. */
+  html:lang(km) .co-untrack-km {
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
   /* Step transition — the only motion in the flow (fade + 6px slide). */
   .co-enter {
     animation: co-enter 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;

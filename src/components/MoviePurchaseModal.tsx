@@ -7,6 +7,7 @@ import { formatAmount, type Currency } from '@/lib/format';
 import { fetchBakongConfig, generateKhqr, renderQrDataUrl, type BakongConfig } from '@/lib/bakong';
 import { readKhqrMerchant } from '@/lib/khqr';
 import KhqrCard from '@/components/KhqrCard';
+import BankChoice from '@/components/BankChoice';
 import {
   getMovieQr,
   getPendingMoviePurchase,
@@ -287,10 +288,10 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
                 </div>
                 {money && (
                   <div className="shrink-0 text-right">
-                    <p className="text-[10px] uppercase tracking-[0.14em] text-white/35">
+                    <p className="co-label text-white/35">
                       {t.subTotalDue}
                     </p>
-                    <p className="text-[19px] font-extrabold leading-tight text-white">
+                    <p className="text-[19px] font-extrabold leading-tight tabular-nums text-white">
                       {money.value}
                       <span className="ml-1 text-[11px] font-semibold text-white/45">
                         {money.unit}
@@ -306,24 +307,13 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
                   accept the same payload, not that anyone wanted a
                   setting. */}
               {bakongConfig?.khqrTemplate && bakongConfig?.khqrTemplateAlt && (
-                <div className="flex gap-2">
-                  {([
-                    ['primary', bakongConfig.bankLabel || 'Bank 1'],
-                    ['alt', bakongConfig.bankLabelAlt || 'Bank 2'],
-                  ] as const).map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => setBank(key)}
-                      className={`flex-1 rounded-xl border py-2 text-[12px] font-bold transition ${
-                        bank === key
-                          ? 'border-[#4E86FF]/50 bg-[#4E86FF]/15 text-white'
-                          : 'border-white/10 bg-white/[0.03] text-white/50 hover:bg-white/[0.06]'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <BankChoice
+                  heading={t.subPayFrom}
+                  primaryLabel={bakongConfig.bankLabel || 'Bank 1'}
+                  altLabel={bakongConfig.bankLabelAlt || 'Bank 2'}
+                  value={bank}
+                  onChange={setBank}
+                />
               )}
 
               {/* The QR, given the whole width. This is what the dialog is
@@ -342,7 +332,7 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
                 <img
                   src={qrSrc}
                   alt="KHQR"
-                  className="mx-auto w-full max-w-[300px] rounded-2xl border border-white/10 bg-white p-2.5 shadow-[0_18px_50px_rgba(0,0,0,0.6)]"
+                  className="mx-auto w-full max-w-[244px] rounded-2xl border border-white/10 bg-white p-2.5 shadow-[0_16px_40px_rgba(0,0,0,0.55)]"
                 />
               ) : (
                 <p className="rounded-xl border border-[#2050D8]/25 bg-[#2050D8]/5 p-4 text-center text-xs text-[#5B93FF]">
