@@ -1297,7 +1297,17 @@ function CoverflowHero({
               pinning the hero's identity to a view-count rank. */}
           <div
             className="relative z-10 aspect-[2/3] w-full overflow-hidden rounded-xl transition-transform duration-500"
-            style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.8), 0 6px 18px rgba(0,0,0,0.55)' }}
+            // A 60px black shadow under a 118px card is a shadow wider
+            // than the thing casting it — which is why the hero read as
+            // sitting in a hole while every other card on the page sits
+            // on the page. Brought back to the depth the rest of the app
+            // uses, and the light it was trying to imply is now stated
+            // properly: a thin warm rim, the colour of the brand, rather
+            // than a large absence of one.
+            style={{
+              boxShadow:
+                '0 10px 28px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px rgba(232,163,61,0.22)',
+            }}
           >
             <div className="pointer-events-none absolute inset-0 z-10 rounded-xl ring-1 ring-inset ring-white/12" />
             <img
@@ -1379,7 +1389,15 @@ function CoverflowHero({
           <h2
             key={hero.id}
             onClick={() => onSelectShow(hero)}
-            className="cursor-pointer text-lg font-black leading-[1.05] text-white sm:text-2xl"
+            // 1.05 is a line box the height of the em box, which is
+            // fine for Anton — a Latin display face with nothing above
+            // the caps or below the baseline — and wrong for the
+            // Battambang behind it, which hangs a vowel above the
+            // consonant and a coeng below. The -webkit-box clamp brings
+            // overflow:hidden with it, so those marks were not merely
+            // tight here, they were sliced off: the biggest title on the
+            // screen was the most visibly broken one.
+            className="cursor-pointer text-lg font-black leading-[1.35] text-white sm:text-2xl"
             style={{
               fontFamily: '"Anton", Battambang, Inter, sans-serif',
               letterSpacing: '0.01em',
@@ -1479,11 +1497,21 @@ function CoverflowHero({
               onClick={() => onGoTo(i)}
               aria-label={s.title}
               className="shrink-0 overflow-hidden rounded-lg transition-all duration-300"
+              // The selected thumbnail used a hard 2px white outline —
+              // the one pure-white edge anywhere in the app, brighter
+              // than the artwork it was framing, so the eye landed on the
+              // border instead of the poster. It is the brand's gold now,
+              // thinner, with a soft halo doing the work the thick line
+              // was doing: still unmistakably the chosen one, without
+              // shouting over the picture.
               style={{
                 width: 52,
                 aspectRatio: '2 / 3',
-                opacity: i === index ? 1 : 0.4,
-                boxShadow: i === index ? '0 0 0 2px rgba(255,255,255,0.9)' : 'none',
+                opacity: i === index ? 1 : 0.45,
+                boxShadow:
+                  i === index
+                    ? '0 0 0 1.5px rgba(245,197,99,0.95), 0 0 14px rgba(232,163,61,0.45), 0 6px 14px rgba(0,0,0,0.5)'
+                    : '0 2px 6px rgba(0,0,0,0.4)',
                 transform: i === index ? 'translateY(-3px)' : 'none',
               }}
             >

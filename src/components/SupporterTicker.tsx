@@ -27,7 +27,7 @@ export default function SupporterTicker({ trendingTitle, trendingPrefix, staticM
     // The inner div is the one being translated, so a mask applied there
     // travelled with the text and left both screen edges cutting the
     // letters off square.
-    <div className="ticker-fade pointer-events-none relative z-10 w-full overflow-hidden py-1">
+    <div className="ticker-fade pointer-events-none relative z-10 w-full overflow-hidden py-1.5">
       <style>{`
         @keyframes nint-ticker-scroll {
           from { transform: translateX(0); }
@@ -35,7 +35,11 @@ export default function SupporterTicker({ trendingTitle, trendingPrefix, staticM
         }
       `}</style>
       <div
-        className="flex w-max whitespace-nowrap text-[11px] font-semibold tracking-wide text-white/45"
+        // leading-[1.8] and no tracking: this strip is clipped by its own
+        // overflow:hidden, so a Khmer line needs a box taller than the
+        // letters or it is cut top and bottom — and widened tracking
+        // pulls the marks off the consonants they belong to.
+        className="flex w-max whitespace-nowrap text-[11px] font-semibold leading-[1.8] text-white/45"
         style={{ animation: 'nint-ticker-scroll 55s linear infinite' }}
       >
         <span>{repeated}</span>

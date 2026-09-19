@@ -17,11 +17,15 @@
 //
 // Two presets, matching the two shapes the app actually renders:
 //
-//   poster  2:3   600×900   — rails, grids, hero cover, detail header
-//   banner  16:9  1600×900  — hero ambience, show detail backdrop
+//   poster  2:3   720×1080  — rails, grids, hero cover, detail header
+//   banner  16:9  1920×1080 — hero ambience, show detail backdrop
 //
-// Those are ~2x the largest CSS size each is ever drawn at, which is the
-// point where a retina phone stops being able to tell the difference.
+// Sized for a phone at 3x, not 2x. "2x the largest CSS size" was the old
+// rule and it left no margin at all: the detail header draws a poster
+// near 240 CSS px, which is 720 real pixels on the phones this audience
+// actually uses, and 600 was already below that before any compression
+// happened. A poster is the thing being sold — it is the wrong place to
+// be exactly at the limit.
 //
 // Failure is never fatal: every path that cannot decode, draw or encode
 // returns the ORIGINAL file. A resize is a courtesy — it must never be
@@ -41,9 +45,15 @@ interface Preset {
   label: string;
 }
 
+// Quality is up too, and that matters more than the pixels here. WebP at
+// 0.86 is fine for photographs and visibly wrong for this catalog: key
+// art is airbrushed gradients and flat skies, exactly what a lossy
+// encoder turns to banding, and the softness shows on a poster long
+// before it would on a photo. 0.92 costs roughly a third more bytes on
+// an asset already under 150 KB.
 export const IMAGE_PRESETS: Record<ImageKind, Preset> = {
-  poster: { width: 600, height: 900, focusY: 0.42, quality: 0.86, label: '2:3 · 600×900' },
-  banner: { width: 1600, height: 900, focusY: 0.45, quality: 0.84, label: '16:9 · 1600×900' },
+  poster: { width: 720, height: 1080, focusY: 0.42, quality: 0.92, label: '2:3 · 720×1080' },
+  banner: { width: 1920, height: 1080, focusY: 0.45, quality: 0.9, label: '16:9 · 1920×1080' },
 };
 
 export interface PreparedImage {
