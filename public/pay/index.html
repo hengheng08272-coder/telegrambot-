@@ -83,11 +83,15 @@
   .mono { font-family: ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: .06em; color: rgba(255,255,255,.85); }
   .pass-body { padding: var(--co-s3) var(--co-s4) var(--co-s4); }
   .pass-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--co-s3); }
-  /* The amount sits under a hairline, the way a total sits at the foot
-     of a bill rather than floating in the middle of one. */
-  .amount-row {
-    align-items: baseline; margin-top: var(--co-s2);
-    padding-top: var(--co-s2); border-top: 1px solid var(--co-line-soft);
+  /* Plan on the left, total on the right, one line under the tear —
+     the shape the in-app sheet's compact pass uses. */
+  .amount-row { align-items: baseline; margin-top: var(--co-s1); }
+  /* What to do, said once at the top — the same line the in-app sheet
+     leads with, so a viewer handed over to the browser lands on the
+     screen they just left rather than on a different one. */
+  .pay-head {
+    margin: 0 0 var(--co-s1); text-align: center;
+    font-size: 15px; font-weight: 700; color: var(--co-text);
   }
   .label { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--co-text-dim); margin: 0; }
   /* Khmer gets neither the caps nor the tracking. Khmer has no case, and
@@ -97,8 +101,8 @@
   :lang(km) .label, :lang(km) #orline { letter-spacing: normal; text-transform: none; font-size: 11px; }
   :lang(km) #orline { font-size: 10px; }
   .plan {
-    font-size: 14px; font-weight: 700; margin: 0;
-    max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 13px; font-weight: 700; margin: 0; color: var(--co-text);
+    max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   /* Amount and unit on one baseline, in the same proportion the app's
      sheet and the KHQR ticket use. Tabular figures so the digits don't
@@ -125,7 +129,7 @@
   .tear::before { left: -8px; }
   .tear::after { right: -8px; }
 
-  .qr-wrap { text-align: center; }
+  .qr-wrap { text-align: center; margin-top: var(--co-s3); }
   .qr-wrap img.qr-img {
     width: min(48vw, 186px); height: auto; border-radius: var(--co-r-btn);
     background: #fff; padding: 8px; display: inline-block;
@@ -149,21 +153,21 @@
   }
   .khqr-ticket .band p { margin: 0; text-align: center; color: #fff; font-size: 11.5px; font-weight: 900; letter-spacing: .14em; }
   .khqr-ticket .body { padding: 8px 12px 12px; }
-  /* Name and amount on one baseline: the two things the payer checks
-     against their banking app, read together rather than stacked as two
-     separate headlines. */
-  .khqr-ticket .payee { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  /* Name on top, amount on the line beneath it — the order a
+     bank-issued KHQR ticket prints them in, which is the only order
+     this ticket is allowed to use: its whole job is to be
+     indistinguishable from the real thing. */
   .khqr-ticket .name {
-    margin: 0; min-width: 0; flex: 1;
-    font-size: 11px; font-weight: 600; color: #1a1a1a;
+    margin: 0;
+    font-size: 11.5px; font-weight: 700; color: #1a1a1a;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .khqr-ticket .price {
-    margin: 0; flex-shrink: 0; white-space: nowrap;
-    font-size: 16px; font-weight: 800; color: #111; line-height: 1;
+    margin: 0; white-space: nowrap;
+    font-size: 17px; font-weight: 800; color: #111; line-height: 1.2;
     font-variant-numeric: tabular-nums;
   }
-  .khqr-ticket .price span { font-size: 9.5px; font-weight: 600; color: #8a8a8a; margin-left: 4px; }
+  .khqr-ticket .price span { font-size: 10.5px; font-weight: 600; color: #8a8a8a; margin-left: 4px; }
   .khqr-ticket hr { border: 0; border-top: 1px dashed #dcdcdc; margin: 8px 0; }
   .khqr-ticket canvas { width: 100%; height: auto; display: block; background: #fff; padding: 0; border-radius: 0; }
 
@@ -259,11 +263,8 @@
     .pass-body { padding: var(--co-s3) var(--co-s3) var(--co-s3); }
     .foot { margin-top: var(--co-s1); }
     .brand { margin-bottom: var(--co-s2); }
-    /* Too narrow for one line: give the payee name the full width back
-       rather than clipping it to "NintPlex…". It is one of the two
-       things the payer checks before they part with money. */
-    .khqr-ticket .payee { display: block; }
-    .khqr-ticket .name { margin-bottom: 1px; }
+    .pay-head { font-size: 14px; }
+    .qr-wrap { margin-top: var(--co-s2); }
     .hint { margin-top: var(--co-s1); }
     .steps { margin: 0 0 var(--co-s1); }
     #orline { margin-bottom: var(--co-s1); }
@@ -306,29 +307,28 @@
       <span class="mono" id="ticket"></span>
     </div>
     <div class="pass-body">
-      <div class="pass-row">
-        <span class="label" id="plan-label"></span>
-        <span class="plan" id="plan"></span>
-      </div>
+      <!-- Same order the in-app sheet uses: what to do, a tear, then
+           what it costs. The labelled "PLAN / AMOUNT DUE" rows this
+           replaces said out loud what the two figures already are. -->
+      <p class="pay-head" id="pay-head"></p>
+
+      <div class="tear"></div>
+
       <div class="pass-row amount-row">
-        <span class="label" id="amount-label"></span>
+        <span class="plan" id="plan"></span>
         <span class="amount-wrap">
           <span class="amount" id="amount"></span>
           <span class="amount-unit" id="amount-unit"></span>
         </span>
       </div>
 
-      <div class="tear"></div>
-
       <div class="qr-wrap" id="qr-card" hidden>
         <img class="qr-img" id="qr" alt="KHQR" hidden />
         <div class="khqr-ticket" id="qr-ticket" hidden>
           <div class="band"><p>KHQR</p></div>
           <div class="body">
-            <div class="payee">
-              <p class="name" id="qr-name"></p>
-              <p class="price" id="qr-price"></p>
-            </div>
+            <p class="name" id="qr-name"></p>
+            <p class="price" id="qr-price"></p>
             <hr />
             <canvas id="qr-canvas"></canvas>
           </div>
@@ -375,7 +375,8 @@
 (function () {
   var STRINGS = {
     km: {
-      planLabel: 'គម្រោង',
+      headScan: 'ស្កេនដើម្បីទូទាត់',
+      headAba: 'ត្រៀមទូទាត់',
       openAba: 'បើក App ABA',
       or: 'ឬ',
       payway: 'បើកទំព័រ ABA PayWay ជំនួស',
@@ -383,8 +384,6 @@
       qrHintScan: 'ថតអេក្រង់ QR នេះទុក រួចស្កេនវាពី App ធនាគាររបស់អ្នក',
       openAbaAlt: 'ប្រើ ABA Mobile ជំនួស',
       qrDesktopHint: 'បើកលើកុំព្យូទ័រ? សូមស្កេន QR នេះដោយទូរស័ព្ទ។',
-      ticket: 'លេខយោង',
-      amountDue: 'ត្រូវបង់',
       openAppAgain: 'បើក Mini App ម្ដងទៀត',
       back: 'ត្រឡប់ទៅ App',
       backHint: 'បើមិនត្រឡប់ទេ សូមចុច «Done» ឬព្រួញថយក្រោយ នៅជ្រុងខាងលើ។',
@@ -394,7 +393,8 @@
       foot: 'ការទូទាត់ដោយសុវត្ថិភាព · ដំណើរការដោយ ABA PayWay KHQR',
     },
     en: {
-      planLabel: 'Plan',
+      headScan: 'Scan to pay',
+      headAba: 'Ready to pay',
       openAba: 'Open the ABA app',
       or: 'OR',
       payway: 'Open the ABA PayWay page instead',
@@ -402,8 +402,6 @@
       qrHintScan: 'Screenshot this QR, then scan it from your banking app',
       openAbaAlt: 'Use ABA Mobile instead',
       qrDesktopHint: 'On a computer? Scan this QR with your phone.',
-      ticket: 'Reference',
-      amountDue: 'Amount due',
       openAppAgain: 'Open the Mini App again',
       back: 'Back to the app',
       backHint: 'Nothing happened? Use "Done" or the back arrow at the top of the screen.',
@@ -458,8 +456,7 @@
 
   // The pass is always shown — even a link missing its labels still has
   // the code in it, and an empty page would tell the viewer nothing.
-  el('plan-label').textContent = t.planLabel;
-  el('amount-label').textContent = t.amountDue;
+  el('pay-head').textContent = mode === 'qr' ? t.headScan : t.headAba;
   el('plan').textContent = plan || '—';
   el('amount').textContent = amountValue || '';
   el('amount-unit').textContent = amountValue ? currency : '';
@@ -478,10 +475,62 @@
   } else if (khqr) {
     // A generated KHQR: draw it here from the payload. The encoder loads
     // with `defer`, so it may not be ready yet on a slow connection.
+    // The small round Bakong mark every real KHQR carries dead centre.
+    // Same asset and same proportions the in-app sheet draws (see
+    // drawKhqrBadge in src/lib/bakong.ts) — without it the code this
+    // page shows was visibly a different object from the one the sheet
+    // had just shown, on the screen where that matters most. The 'H'
+    // error correction the encoder uses survives ~30% obscured; this
+    // covers about 20%.
+    var drawBadge = function (canvas) {
+      return new Promise(function (done) {
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return done();
+        var cx = canvas.width / 2;
+        var cy = canvas.height / 2;
+        var outerR = canvas.width * 0.1;
+
+        // A soft shadow, the way a printed sticker badge sits slightly
+        // proud of the page rather than pasted flat onto it.
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.beginPath();
+        ctx.arc(cx, cy + outerR * 0.05, outerR * 1.04, 0, Math.PI * 2);
+        ctx.fill();
+
+        // A white ring behind the mark: the source file's red disc runs
+        // edge to edge, so without this it would sit flush against
+        // whatever QR module happens to be behind it.
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+        ctx.fill();
+
+        var size = outerR * 1.55;
+        var mark = new Image();
+        mark.onload = function () {
+          ctx.drawImage(mark, cx - size / 2, cy - size / 2, size, size);
+          done();
+        };
+        mark.onerror = function () {
+          // Asset missing (bad deploy, offline first paint): a plain red
+          // disc still reads as "this has a badge" rather than leaving a
+          // blank white hole punched in the code.
+          ctx.fillStyle = '#E11B24';
+          ctx.beginPath();
+          ctx.arc(cx, cy, outerR * 0.86, 0, Math.PI * 2);
+          ctx.fill();
+          done();
+        };
+        mark.src = '/assets/bakong-mark.png';
+      });
+    };
+
     var drawQr = function () {
       if (!window.renderKhqrCanvas) return false;
       var canvas = el('qr-canvas');
       window.renderKhqrCanvas(canvas, khqr).then(function () {
+        return drawBadge(canvas);
+      }).then(function () {
         // The encoder writes its own inline width/height on the canvas
         // (408px, whatever the payload needs), and an inline style beats
         // the stylesheet — which is why the ticket used to burst out of

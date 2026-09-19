@@ -5,7 +5,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Crown,
   ImagePlus,
   Loader2,
@@ -1764,44 +1763,36 @@ export default function SubscriptionModal({
                 </div>
               )}
 
-              {/* The window draining. Amber, and set in its own block
-                  directly under the amount rather than as a hairline at
-                  the foot of the dialog: it is the one thing on this
-                  screen that changes by itself, so it has to be findable
-                  without hunting. Amber and not red — the wait is
-                  information, not a threat. Stops once a receipt is sent. */}
+              {/* The window draining. Deliberately plain: this is the
+                  app telling the viewer it is watching for their
+                  payment, not warning them about anything. It used to
+                  be an amber panel with an alarm clock on it, which put
+                  the loudest thing on the screen next to the one thing
+                  nobody needs to act on. A spinner says "working", the
+                  countdown says how long, and the bar shows it going —
+                  amber is kept for the last-30-seconds prompt below,
+                  where there IS something to decide. Stops once a
+                  receipt is sent. */}
               {!proofSent && !amountMismatch && (
-                <div
-                  className="mt-3.5 rounded-[var(--co-r-btn)] px-3.5 py-3"
-                  style={{
-                    backgroundColor: 'rgba(255,184,77,0.10)',
-                    boxShadow: 'inset 0 0 0 1px rgba(255,184,77,0.32)',
-                  }}
-                >
+                <div className="mt-3.5 rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white/[0.03] px-3.5 py-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <span
-                      className="flex min-w-0 items-center gap-1.5 text-[11px] font-bold"
-                      style={{ color: 'var(--co-amber)' }}
-                    >
-                      <Clock className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{t.subCooldownNote}</span>
+                    <span className="flex min-w-0 items-center gap-2 text-[12px] font-bold text-[color:var(--co-text-muted)]">
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                      <span className="truncate">{t.subWaitingPayment}</span>
                     </span>
                     {/* Monospaced so the digits do not shuffle sideways
                         every second as the glyph widths change. */}
                     <span
-                      className="shrink-0 text-[15px] font-bold tabular-nums"
-                      style={{ fontFamily: 'ui-monospace, Menlo, monospace', color: 'var(--co-amber)' }}
+                      className="shrink-0 text-[14px] font-bold tabular-nums text-[color:var(--co-text-dim)]"
+                      style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}
                     >
                       {mmss}
                     </span>
                   </div>
-                  <div
-                    className="h-[3px] overflow-hidden rounded-full"
-                    style={{ backgroundColor: 'rgba(255,184,77,0.22)' }}
-                  >
+                  <div className="h-[3px] overflow-hidden rounded-full bg-white/10">
                     <div
-                      className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-                      style={{ width: `${waitPct}%`, backgroundColor: 'var(--co-amber)' }}
+                      className="h-full rounded-full bg-[color:var(--co-text-dim)] transition-[width] duration-1000 ease-linear"
+                      style={{ width: `${waitPct}%` }}
                     />
                   </div>
                 </div>

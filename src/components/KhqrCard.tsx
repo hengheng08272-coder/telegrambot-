@@ -78,32 +78,32 @@ export default function KhqrCard({
       </div>
 
       <div className={full ? 'px-3.5 pb-3.5 pt-2.5' : 'px-3 pb-3 pt-2'}>
-        {/* Name and amount on one baseline: the two things the payer
-            checks against their banking app, read together instead of
-            stacked as two separate headlines. */}
-        <div className="flex items-baseline justify-between gap-2">
-          <p
-            className={`min-w-0 flex-1 truncate text-left font-semibold text-[#1A1A1A] ${
-              full ? 'text-[12.5px]' : 'text-[11px]'
+        {/* Name on top, amount on the line beneath it. That is the order
+            a bank-issued KHQR ticket prints them in, and this ticket's
+            whole job is to be indistinguishable from one — putting them
+            side by side saved a few pixels and made it look like our
+            layout rather than the bank's. */}
+        <p
+          className={`truncate text-left font-bold text-[#1A1A1A] ${
+            full ? 'text-[13px]' : 'text-[11.5px]'
+          }`}
+        >
+          {merchantName}
+        </p>
+        <p
+          className={`text-left font-extrabold tabular-nums leading-tight text-[#111] ${
+            full ? 'text-[20px]' : 'text-[17px]'
+          }`}
+        >
+          {money.value}
+          <span
+            className={`ml-1 font-semibold text-[#8A8A8A] ${
+              full ? 'text-[12px]' : 'text-[10.5px]'
             }`}
           >
-            {merchantName}
-          </p>
-          <p
-            className={`shrink-0 whitespace-nowrap text-right font-extrabold tabular-nums leading-none text-[#111]  ${
-              full ? 'text-[19px]' : 'text-[16px]'
-            }`}
-          >
-            {money.value}
-            <span
-              className={`ml-1 font-semibold text-[#8A8A8A] ${
-                full ? 'text-[11px]' : 'text-[9.5px]'
-              }`}
-            >
-              {money.unit}
-            </span>
-          </p>
-        </div>
+            {money.unit}
+          </span>
+        </p>
 
         <div className={`border-t border-dashed border-[#DCDCDC] ${full ? 'my-2.5' : 'my-2'}`} />
 
