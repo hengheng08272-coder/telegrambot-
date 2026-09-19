@@ -1532,21 +1532,26 @@ function CoverflowHero({
               // and none of them read as anything — a row of stamps, not
               // a row of shows. Fewer, larger, with room between them.
               //
-              // The unselected ones lose their colour rather than only
-              // their brightness: dimming alone left ten equally muddy
-              // rectangles, while draining the saturation makes the lit
-              // one the only colour in the row, which the eye finds
-              // before it finds anything else.
+              // Every cover keeps its own colours. Draining the
+              // saturation off the unselected ones did make the lit one
+              // stand out, and it did so by turning nine pieces of
+              // artwork into grey rectangles — a row of posters nobody
+              // wants to look at, which is the opposite of what a row of
+              // posters is for.
+              //
+              // The selected one is marked by DEPTH instead: the same
+              // shadow every card has, several times deeper, plus a lift.
+              // A card that floats higher is read as the one in front
+              // without anything else on the row having to be spoiled to
+              // say so.
               style={{
                 width: 64,
                 aspectRatio: '2 / 3',
-                opacity: i === index ? 1 : 0.55,
-                filter: i === index ? 'none' : 'saturate(0.35) brightness(0.8)',
                 boxShadow:
                   i === index
-                    ? '0 0 0 1.5px rgba(245,197,99,0.95), 0 0 14px rgba(232,163,61,0.45), 0 6px 14px rgba(0,0,0,0.5)'
-                    : '0 2px 6px rgba(0,0,0,0.4)',
-                transform: i === index ? 'translateY(-4px) scale(1.04)' : 'none',
+                    ? '0 14px 30px rgba(0,0,0,0.85), 0 5px 12px rgba(0,0,0,0.6), 0 0 0 1.5px rgba(245,197,99,0.9)'
+                    : '0 2px 6px rgba(0,0,0,0.45)',
+                transform: i === index ? 'translateY(-5px) scale(1.06)' : 'none',
               }}
             >
               <img
