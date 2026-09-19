@@ -292,7 +292,29 @@ export async function shareReferralLink(): Promise<'shared' | 'copied' | 'failed
 // The `start_param` from a deep link like
 // https://t.me/YourBot/app?startapp=show_<id> arrives here as "show_<id>".
 export function getStartParam(): string | null {
-  return getTelegramWebApp()?.initDataUnsafe?.start_param ?? null;
+  const fromTelegram = getTelegramWebApp()?.initDataUnsafe?.start_param;
+  if (fromTelegram) return fromTelegram;
+
+  // The same link opened as an ordinary web page.
+  //
+  // A deep link only becomes `start_param` when Telegram itself launches
+  // the Mini App. Open the very same URL in a browser — because the link
+  // pointed at the site rather than at t.me, or because somebody pasted
+  // it, or because they are on a desktop with no Telegram installed — and
+  // the parameter is sitting right there in the query string while the
+  // app ignores it and shows the home screen. A group post advertising
+  // one specific show then lands nobody on that show.
+  //
+  // `tgWebAppStartParam` is the name Telegram itself uses when it hands a
+  // start parameter to a web URL; `startapp` is what the t.me link calls
+  // it, and is what somebody copying a link by hand will have.
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tgWebAppStartParam') ?? params.get('startapp') ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // The viewer's own Telegram identity, when opened for real inside
