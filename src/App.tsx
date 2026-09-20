@@ -255,6 +255,17 @@ function App() {
       if (data.session?.user) {
         const p = await fetchProfile(data.session.user.id);
         setProfile(p);
+        // A session restored from before passwordless admin existed
+        // carries is_admin but no admin_role, and a stored session used
+        // to skip the Telegram path entirely — so the owner kept
+        // landing in the panel with every owner-only section hidden and
+        // no way to fix it from inside the app.
+        //
+        // If the session on hand has no level, ask Telegram once. For a
+        // viewer this answers "not an admin" and changes nothing; for
+        // an administrator it replaces the old account with the one
+        // their verified identity maps to, level and all.
+        if (p && !p.admin_role) await signInWithTelegram();
       } else {
         // No stored session. Inside Telegram an administrator gets one
         // without typing anything: the edge function verifies the signed
