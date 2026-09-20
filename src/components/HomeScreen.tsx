@@ -22,6 +22,7 @@ import {
   Radio,
   Calendar,
   Headset,
+  ShieldCheck,
 } from 'lucide-react';
 import type { Show, ShowWithGenres, Genre } from '@/lib/types';
 import { fetchAllShows, fetchGenres, fetchTickerMessage, fetchShowEpisodeInfo, errorMessage, type ShowEpisodeInfo } from '@/lib/api';
@@ -60,6 +61,13 @@ interface HomeScreenProps {
    *  handler App.tsx already gives WatchlistScreen, reused here so the
    *  home-row cards behave identically. */
   onResumeEpisode: (show: Show, episodeId: string) => void;
+  /**
+   * Opens the admin panel. Passed only for an administrator, which is
+   * what keeps the button off everyone else's screen — the session it
+   * opens was granted server-side from verified Telegram initData, so
+   * hiding the button is presentation, not the access control.
+   */
+  onOpenAdmin?: () => void;
 }
 
 export type Tab = 'home' | 'search' | 'watchlist' | 'account';
@@ -112,6 +120,7 @@ export default function HomeScreen({
   setSearchOpen,
   onOpenLegal,
   onResumeEpisode,
+  onOpenAdmin,
 }: HomeScreenProps) {
   const { lang, setLang } = useLang();
   const t = appText[lang];
@@ -614,6 +623,21 @@ export default function HomeScreen({
           >
             <Headset className="h-[18px] w-[18px]" />
           </button>
+
+          {/* The way into the admin panel from a phone. The only door
+              used to be the desktop password screen, so an
+              administrator signed in from Telegram held the rights with
+              no way to reach them. */}
+          {onOpenAdmin && (
+            <button
+              onClick={onOpenAdmin}
+              aria-label={t.adminPanel ?? 'Admin'}
+              title={t.adminPanel ?? 'Admin'}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#2FD98C] transition hover:bg-[#2FD98C]/10 active:scale-90"
+            >
+              <ShieldCheck className="h-[18px] w-[18px]" />
+            </button>
+          )}
 
           <button
             onClick={onOpenSubscription}

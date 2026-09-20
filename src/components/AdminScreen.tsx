@@ -19,6 +19,7 @@ import {
   Wallet,
   QrCode,
   ShieldBan,
+  ShieldCheck,
   Eye,
   AlertTriangle,
   Lock,
@@ -46,6 +47,7 @@ import SubscriptionsPanel from '@/components/SubscriptionsPanel';
 import UsersPanel from '@/components/UsersPanel';
 import TelegramAutoPostPanel from '@/components/TelegramAutoPostPanel';
 import BlockedUsersPanel from '@/components/BlockedUsersPanel';
+import AdminUsersPanel from '@/components/AdminUsersPanel';
 import { usePresenceCount } from '@/lib/presence';
 
 interface AdminScreenProps {
@@ -251,6 +253,7 @@ export default function AdminScreen({ onBack, isSuperAdmin = false }: AdminScree
   const [usersOpen, setUsersOpen] = useState(false);
   const [telegramAutoPostOpen, setTelegramAutoPostOpen] = useState(false);
   const [blockedUsersOpen, setBlockedUsersOpen] = useState(false);
+  const [adminUsersOpen, setAdminUsersOpen] = useState(false);
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   useEffect(() => {
     supabase
@@ -922,6 +925,17 @@ export default function AdminScreen({ onBack, isSuperAdmin = false }: AdminScree
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3.5 py-1.5 text-xs font-bold text-[#2FD98C] transition hover:bg-[#2FD98C]/20"
           >
             <QrCode className="h-3.5 w-3.5" /> Subscriptions
+          </button>
+          )}
+          {/* Handing out and taking back keys. Owner-only for the
+              obvious reason: an admin who could edit this list could
+              promote himself, and the gate would mean nothing. */}
+          {isSuperAdmin && (
+          <button
+            onClick={() => setAdminUsersOpen(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" /> Admins
           </button>
           )}
           <button
@@ -2082,6 +2096,7 @@ export default function AdminScreen({ onBack, isSuperAdmin = false }: AdminScree
       {announcementsOpen && <AnnouncementsPanel onClose={() => setAnnouncementsOpen(false)} />}
       {telegramAutoPostOpen && <TelegramAutoPostPanel onClose={() => setTelegramAutoPostOpen(false)} />}
       {blockedUsersOpen && <BlockedUsersPanel onClose={() => setBlockedUsersOpen(false)} />}
+      {adminUsersOpen && <AdminUsersPanel onClose={() => setAdminUsersOpen(false)} />}
       {banLogOpen && <BanLogPanel onClose={() => setBanLogOpen(false)} />}
       {watchLogOpen && <WatchLogPanel onClose={() => setWatchLogOpen(false)} />}
       {paymentsOpen && <PaymentsPanel onClose={() => setPaymentsOpen(false)} />}
