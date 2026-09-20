@@ -14,6 +14,7 @@ import {
   submitMoviePurchaseIntent,
   attachMovieScreenshot,
   checkMoviePurchaseStatus,
+  expireStaleMoviePurchase,
 } from '@/lib/moviePurchase';
 
 interface Props {
@@ -21,6 +22,17 @@ interface Props {
   onClose: () => void;
   onUnlocked: (showId: string) => void;
 }
+
+/**
+ * How long a ticket stays live, matching VIP.
+ *
+ * The server closes a ticket out at 150 seconds (see
+ * expire_stale_movie_purchase); this is deliberately 30 seconds longer
+ * so the countdown can never reach zero before the row qualifies and
+ * leave the dialog asking the database to expire something it still
+ * considers fresh.
+ */
+const WAIT_WINDOW_SECONDS = 180;
 
 type Phase = 'loading' | 'pay' | 'sending' | 'unlocked' | 'rejected';
 
@@ -44,6 +56,8 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
   const t = appText[lang];
   const [phase, setPhase] = useState<Phase>('loading');
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
+  const expiringRef = useRef(false);
   const [price, setPrice] = useState<number | null>(null);
   const [currency, setCurrency] = useState<Currency>('USD');
   const [qrSrc, setQrSrc] = useState<string | null>(null);
@@ -75,6 +89,12 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
         setSubmissionId(ticket.id);
         setPrice(Number(ticket.amount));
         setCurrency(ticket.currency ?? 'USD');
+        // From the row's own age, not from when this dialog opened. A
+        // ticket reopened forty seconds in has forty seconds gone, and
+        // create_movie_purchase hands back a fresh one once the window
+        // has passed, so this can only ever be a live remainder.
+        const elapsed = Math.floor((Date.now() - new Date(ticket.submitted_at).getTime()) / 1000);
+        setSecondsLeft(Math.max(0, WAIT_WINDOW_SECONDS - elapsed));
       }
       setPhase('pay');
     })();
@@ -157,6 +177,38 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
     }, 4000);
     return () => window.clearInterval(poll);
   }, [phase, submissionId]);
+
+  // The clock. Only runs while the code is on screen: once a receipt is
+  // in flight the wait belongs to the admin, not to the payer.
+  useEffect(() => {
+    if (phase !== 'pay' || !submissionId || secondsLeft <= 0) return;
+    const tick = window.setInterval(() => setSecondsLeft((n) => Math.max(0, n - 1)), 1000);
+    return () => window.clearInterval(tick);
+  }, [phase, submissionId, secondsLeft]);
+
+  // Time up with nothing sent. Close the ticket out server-side, then
+  // re-read it rather than assuming: a false return means the row no
+  // longer qualifies, and the reason might be that it was just
+  // approved — showing "expired" over a film the viewer has paid for is
+  // the one outcome worth this extra round trip.
+  useEffect(() => {
+    if (phase !== 'pay' || !submissionId || secondsLeft > 0) return;
+    if (expiringRef.current) return;
+    expiringRef.current = true;
+    (async () => {
+      const closed = await expireStaleMoviePurchase(submissionId);
+      const status = closed ? 'rejected' : await checkMoviePurchaseStatus(submissionId);
+      expiringRef.current = false;
+      if (status === 'approved') {
+        setPhase('unlocked');
+        return;
+      }
+      // Back where they started, with a fresh ticket waiting on the
+      // next tap — the same thing the VIP sheet does rather than
+      // silently reopening a window nobody is watching.
+      onClose();
+    })();
+  }, [phase, submissionId, secondsLeft, onClose]);
 
   useEffect(() => {
     if (phase !== 'unlocked' || notifiedRef.current) return;
@@ -343,6 +395,31 @@ export default function MoviePurchaseModal({ show, onClose, onUnlocked }: Props)
               <p className="text-center text-[11px] leading-relaxed text-white/40">
                 {t.movieScanHint ?? 'Scan with any banking app. Unlocks automatically once paid.'}
               </p>
+
+              {/* The window draining — the one thing on this dialog that
+                  changes by itself, so it says so plainly rather than
+                  leaving the viewer to guess whether the code is still
+                  good. Same treatment as the VIP sheet. */}
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3.5 py-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2 text-[13px] font-bold text-white/60">
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                    <span className="truncate">{t.subWaitingPayment}</span>
+                  </span>
+                  <span
+                    className="shrink-0 text-[15px] font-bold tabular-nums text-white/45"
+                    style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}
+                  >
+                    {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}
+                  </span>
+                </div>
+                <div className="h-[3px] overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-white/35 transition-[width] duration-1000 ease-linear"
+                    style={{ width: `${(secondsLeft / WAIT_WINDOW_SECONDS) * 100}%` }}
+                  />
+                </div>
+              </div>
 
               <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3">
                 <p className="mb-2.5 text-[11px] font-semibold text-white/55">

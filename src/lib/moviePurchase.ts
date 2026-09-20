@@ -148,6 +148,20 @@ export async function submitMoviePurchaseIntent(
   return { error: null, id: newId as string };
 }
 
+// Closes out a ticket whose window ran out, so the bank matcher can
+// never attach a later, unrelated payment to a purchase the viewer
+// walked away from. Mirrors expireStaleSubmission for VIP. Returns false
+// when the row no longer qualifies — already decided, or a receipt was
+// attached, in which case it is waiting on the admin, not on the payer.
+export async function expireStaleMoviePurchase(purchaseId: string): Promise<boolean> {
+  const { id } = getIdentity();
+  const { data } = await supabase.rpc('expire_stale_movie_purchase', {
+    p_purchase_id: purchaseId,
+    p_telegram_user_id: id,
+  });
+  return data === true;
+}
+
 // Attaches the receipt and grants the unlock immediately (same
 // optimistic-grant tradeoff as attachScreenshotToSubmission /
 // confirm-payment-proof for VIP — see confirm-movie-payment-proof for
