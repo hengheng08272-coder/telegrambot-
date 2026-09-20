@@ -3,30 +3,21 @@ import {
   AlertTriangle,
   BadgeCheck,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Crown,
   ImagePlus,
   Loader2,
-  MessageCircle,
-  QrCode,
   RefreshCw,
+  MessageCircle,
   Send,
   Wallet,
   ShieldCheck,
   Sparkles,
   X,
-  Zap,
 } from 'lucide-react';
-import { openExternalLink, isInTelegram, getSupportLink } from '@/lib/telegram';
+import { openExternalLink, getSupportLink } from '@/lib/telegram';
 import {
   decodeKhqrFromImage,
-  isKhqrPayload,
-  buildAbaDeeplink,
-  buildPayPageUrl,
-  armDeeplinkFallback,
   readKhqrMerchant,
-  supportsAbaDeeplink,
   readKhqrAmount,
 } from '@/lib/khqr';
 import {
@@ -45,16 +36,12 @@ import {
   PRICING_TIERS,
   getEffectivePricingTiers,
   getHiddenTierKeys,
-  getAbaPaymentEnabled,
   type PricingTier,
   submitPaymentIntent,
   attachScreenshotToSubmission,
   getPendingSubmission,
   getQrCodes,
-  getPayLinks,
   getKhqrStrings,
-  createAbaCheckout,
-  type AbaCheckoutResult,
   checkBakongPayment,
   checkSubmissionStatus,
   getPaymentReceipt,
@@ -78,7 +65,7 @@ interface Props {
   onVerifyingChange?: (verifying: boolean) => void;
 }
 
-type Step = 'pick' | 'method' | 'pay';
+type Step = 'pick' | 'pay';
 
 // Small brand mark carried at the top of every checkout screen — in the
 // sheet, and on the standalone Safari page. Same logo, same size, so a
@@ -122,7 +109,6 @@ export default function SubscriptionModal({
   const { lang } = useLang();
   const t = appText[lang];
   const [step, setStep] = useState<Step>('pick');
-  const [payMode, setPayMode] = useState<'auto' | 'manual'>('auto');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -132,7 +118,6 @@ export default function SubscriptionModal({
   // shows skeleton rows rather than an empty screen with a dead CTA.
   const [tiersLoading, setTiersLoading] = useState(true);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
-  const [payLinks, setPayLinks] = useState<Record<string, string>>({});
   // KHQR payload read back out of the tier's QR image -> lets the primary
   // button jump straight into ABA instead of via PayWay's web page.
   const [khqrString, setKhqrString] = useState<string | null>(null);
@@ -150,7 +135,6 @@ export default function SubscriptionModal({
   const [liveKhqr, setLiveKhqr] = useState<{ payload: string; md5: string; image: string } | null>(
     null,
   );
-  const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
   const [decision, setDecision] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
@@ -169,33 +153,21 @@ export default function SubscriptionModal({
   // foreground afterwards — i.e. nothing opened. Without this the tap
   // silently does nothing and the viewer has no idea whether to wait,
   // retry, or scan the QR instead.
-  const [abaDidNotOpen, setAbaDidNotOpen] = useState(false);
   // Set the moment the viewer taps "Open ABA Mobile" — from then on the
   // primary action on the Auto tab switches from "go open the app" to
   // "upload the receipt", since they've already left once and the next
   // thing they do is come back with a screenshot. Reset on Change Plan /
   // a fresh ticket so a new payment starts on the open-app button again.
-  const [handedOff, setHandedOff] = useState(false);
   // The sheet opened straight onto a ticket that was already running —
   // Telegram reloads the Mini App every time it is opened, so this is
   // the ordinary case for someone coming back from their bank. They may
   // well have paid already, so the receipt box has to be there even
   // though this session never saw the hand-off happen.
-  const [resumedTicket, setResumedTicket] = useState(false);
   // True from the moment the viewer comes back to this sheet after being
   // handed off — the copy on the upload block changes from "optional"
   // to "you paid, send the receipt", which is the step people forget.
   const [returnedFromPay, setReturnedFromPay] = useState(false);
   const [highlightUpload, setHighlightUpload] = useState(false);
-  // Armed when ABA is picked as the method from inside Telegram: the
-  // checkout page is handed to the system browser as soon as this
-  // ticket's KHQR exists, without waiting for a second tap. Telegram's
-  // WebView cannot open `abamobilebank://` at all, so the in-app "Open
-  // ABA" button was never the thing that opened the bank — it only ever
-  // handed off to that page, and making the viewer tap twice for one
-  // hand-off bought nothing. Cleared once it fires (or once it is clear
-  // there is no page to hand off to).
-  const [autoHandOff, setAutoHandOff] = useState(false);
   // Guards the header X (and Telegram/system back) while a ticket is
   // actively open — one accidental tap should never silently drop a
   // payment in progress, so it asks first instead of closing right away.
@@ -208,10 +180,6 @@ export default function SubscriptionModal({
   const notifiedApprovedRef = useRef(false);
   const recyclingRef = useRef(false);
   const uploadBlockRef = useRef<HTMLDivElement | null>(null);
-  // Mirrors payMode for the recycle effect, which must not re-run (and
-  // re-open a ticket) just because the viewer's chosen method changed.
-  const payModeRef = useRef(payMode);
-  payModeRef.current = payMode;
   // Latest staged-preview object URL, so unmount can revoke it — the
   // component is unmounted by its parent the moment the sheet closes,
   // which is exactly when a staged-but-unsent photo leaks otherwise.
@@ -226,10 +194,6 @@ export default function SubscriptionModal({
 
   // Loaded from app_settings, not hardcoded — see getHiddenTierKeys().
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
-  // Admin kill switch for the "Pay with ABA Mobile" method — see
-  // getAbaPaymentEnabled(). Defaults true so the button doesn't flash
-  // disabled before this loads.
-  const [abaPaymentEnabled, setAbaPaymentEnabled] = useState(true);
   const visibleTiers = useMemo(
     () => tiers.filter((tr) => !hiddenKeys.has(tr.key)),
     [tiers, hiddenKeys],
@@ -261,15 +225,12 @@ export default function SubscriptionModal({
           setPending(null);
           return;
         }
-        setResumedTicket(true);
         setSecondsLeft(WAIT_WINDOW_SECONDS - elapsedSec);
         setStep('pay');
       }
     });
     getQrCodes().then(setQrImages);
-    getPayLinks().then(setPayLinks);
     getKhqrStrings().then(setStoredKhqr);
-    getAbaPaymentEnabled().then(setAbaPaymentEnabled);
     // Both are needed before a plan can be preselected, so they resolve
     // together rather than racing each other into setState.
     Promise.all([getEffectivePricingTiers(), getHiddenTierKeys()]).then(([rows, hidden]) => {
@@ -395,14 +356,6 @@ export default function SubscriptionModal({
   // so the payer lost the money AND got no VIP. With no QR configured the
   // viewer now gets the "contact the admin" message instead (subQrMissing).
   const qrSrc = liveKhqr?.image ?? (payTier ? qrImages[payTier.key] ?? null : null);
-  // Real gateway (server-verified, opens ABA app directly) takes
-  // priority over the static admin-pasted PayWay link, which in turn
-  // is only shown when the gateway isn't configured/failed.
-  const gatewayLink = abaCheckout?.configured ? abaCheckout.deeplink || abaCheckout.checkoutUrl : null;
-  const payLinkSrc = payTier ? gatewayLink || payLinks[payTier.key] || null : null;
-  const isRealGateway = Boolean(gatewayLink);
-  // A real gateway already hands us its own deeplink, so only fall back to
-  // rebuilding one from the QR image when there isn't one.
   // Prefer the payload saved when the admin uploaded the QR; only fall
   // back to decoding the image in the browser when that is missing (old
   // uploads, or before the migration was run).
@@ -426,60 +379,7 @@ export default function SubscriptionModal({
   // second copy of the same figure — see the pay step below, which
   // drops its own amount line whenever this is true.
   const ticketShowing =
-    payMode === 'manual' && !amountMismatch && !proofSent && !!liveKhqr;
-
-  const abaDeeplink =
-    !isRealGateway &&
-    isKhqrPayload(effectiveKhqr) &&
-    !amountMismatch &&
-    // PayWay's handler validates the merchant data as its own, so it
-    // refuses another bank's KHQR outright ("Invalid Qr Merchant
-    // Data") even though ABA's scanner reads the very same payload.
-    // A button that reliably errors is worse than no button.
-    supportsAbaDeeplink(effectiveKhqr)
-      ? buildAbaDeeplink(effectiveKhqr)
-      : null;
-
-  // The browser checkout page (public/pay/index.html) — now the only
-  // place a QR is ever shown. Keeping it out of the Mini App is not a
-  // cosmetic choice: inside Telegram's WebView `abamobilebank://` is
-  // swallowed, so the sheet could never open the bank itself, and a QR
-  // rendered on the same phone that is meant to scan it is useless. One
-  // page in the system browser does both jobs — it shows the QR big
-  // enough to screenshot, and its deeplink actually launches ABA.
-  const payPageUrl =
-    isKhqrPayload(effectiveKhqr) && !amountMismatch
-      ? buildPayPageUrl({
-          khqr: effectiveKhqr,
-          // A generated KHQR has no image URL to hand over (a rendered
-          // data URL is far too long for a query string), so the page
-          // draws that one from the payload itself. Only an uploaded
-          // image travels as a link.
-          qrSrc: liveKhqr ? null : qrSrc,
-          plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
-          // The bank's own form of the figure, with its unit alongside,
-          // so the browser page prints the same `2.00 USD` the sheet and
-          // the KHQR ticket print rather than a second version of it.
-          amount: payTier ? formatAmount(payTier.price).value : null,
-          currency: payTier ? formatAmount(payTier.price).unit : null,
-          ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
-          // The payload's own name, so the KHQR ticket on that page
-          // carries the name the payer's bank will show them.
-          merchantName: payeeName ?? bakongConfig?.merchantName ?? null,
-          // Handed over so the page can offer PayWay by itself if the
-          // deeplink doesn't open ABA — the fallback belongs where the
-          // failure happens, not back here where nobody is looking.
-          payLink: payLinkSrc,
-          // Which half of the page leads: the bank hand-off, or the QR.
-          mode: payMode === 'manual' ? 'qr' : 'aba',
-          lang,
-        })
-      : null;
-
-  // Inside Telegram the page IS the hand-off, for both methods. Outside
-  // it we are already in a real browser, so the ABA route uses the
-  // deeplink directly and no extra page gets in the way.
-  const handOffUrl = isInTelegram() ? payPageUrl : null;
+    !amountMismatch && !proofSent && !!liveKhqr;
 
   // The owner's Bakong details, read once when the sheet opens.
   useEffect(() => {
@@ -557,33 +457,6 @@ export default function SubscriptionModal({
   // native bridge call, not window.open, so opening it a beat later is
   // still honoured — that is only true inside Telegram, which is exactly
   // where this is armed.
-  useEffect(() => {
-    if (!autoHandOff || step !== 'pay' || !pending) return;
-
-    // A QR whose amount disagrees with the plan is not something to hand
-    // anybody off to. Disarm and let the warning below do the talking.
-    if (amountMismatch) {
-      setAutoHandOff(false);
-      return;
-    }
-
-    if (payPageUrl) {
-      setAutoHandOff(false);
-      setHandedOff(true);
-      setAbaDidNotOpen(false);
-      openExternalLink(payPageUrl);
-      return;
-    }
-
-    // No page to hand off to yet. Give the KHQR a few seconds to arrive,
-    // then disarm: a tier with no payload at all (no Bakong config, no
-    // stored KHQR, an undecodable image) must fall back to the ordinary
-    // in-app button instead of leaving a hand-off primed to fire minutes
-    // later, long after the viewer moved on.
-    const timer = window.setTimeout(() => setAutoHandOff(false), 8000);
-    return () => window.clearTimeout(timer);
-  }, [autoHandOff, step, pending, payPageUrl, amountMismatch]);
-
   // Coming back from the bank is where this flow used to lose people:
   // Safari hands the viewer back to a screen that looks exactly like the
   // one they left, with the last step — send the receipt — somewhere
@@ -591,7 +464,7 @@ export default function SubscriptionModal({
   // upload block is scrolled to and lit for two seconds, and its wording
   // changes from "optional" to "you paid, now send it".
   useEffect(() => {
-    if (step !== 'pay' || !handedOff || proofSent || decision !== 'waiting') return;
+    if (step !== 'pay' || proofSent || decision !== 'waiting') return;
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
@@ -605,7 +478,7 @@ export default function SubscriptionModal({
 
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [step, handedOff, proofSent, decision]);
+  }, [step, proofSent, decision]);
 
   // Everything a fresh payment attempt has to forget. Every exit from an
   // open ticket (change plan, change method, retry after a rejection)
@@ -614,7 +487,6 @@ export default function SubscriptionModal({
   // "upload your receipt" step for a payment that had never been started.
   const resetTicketState = () => {
     setPending(null);
-    setAbaCheckout(null);
     setDecision('waiting');
     setSecondsLeft(WAIT_WINDOW_SECONDS);
     setReceipt(null);
@@ -623,10 +495,6 @@ export default function SubscriptionModal({
     if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
     setProofFile(null);
     setProofPreviewUrl(null);
-    setHandedOff(false);
-    setResumedTicket(false);
-    setAbaDidNotOpen(false);
-    setAutoHandOff(false);
     setShowExitConfirm(false);
     setReturnedFromPay(false);
     setHighlightUpload(false);
@@ -640,20 +508,28 @@ export default function SubscriptionModal({
   // still change their mind about.
   const handlePickPlan = () => {
     if (!tier) return;
-    setError('');
-    setStep('method');
+    void openPaymentTicket();
   };
 
-  // Method sheet: ABA vs Other Bank / QR. Both open the same underlying
-  // payment ticket — this only decides which tab the Pay screen opens
-  // into. The admin is not messaged at this point either — only once
-  // there's something for them to actually act on: an ABA webhook match,
-  // or the viewer submitting a receipt photo (see handleAttachProof /
-  // confirm-payment-proof, which sends the photo itself with
-  // Confirm/Revoke buttons).
-  const handleSelectMethod = async (mode: 'auto' | 'manual') => {
+  /**
+   * Opens the payment ticket and goes straight to the code.
+   *
+   * There used to be a method step here — "ABA" beside "another bank's
+   * app" — and it is gone because the choice it offered was not real.
+   * The money is collected on one KHQR, and a KHQR is one standard:
+   * every member bank's app reads the same code. The ABA branch existed
+   * to hand off to `abamobilebank://`, which PayWay refuses for a code
+   * it did not issue, so on this account that route could only ever end
+   * in "Invalid Qr Merchant Data". A screen asking people to choose
+   * between a route that works and a route that cannot is a screen that
+   * loses payments.
+   *
+   * The admin is not messaged at this point — only once there is
+   * something for them to act on: a bank notification matching this
+   * ticket, or the viewer submitting a receipt photo.
+   */
+  const openPaymentTicket = async () => {
     if (!tier) return;
-    if (mode === 'auto' && !abaPaymentEnabled) return;
     setError('');
     setSubmitting(true);
     const { error: err, id } = await submitPaymentIntent({
@@ -663,28 +539,14 @@ export default function SubscriptionModal({
     setSubmitting(false);
     if (err || !id) {
       setError(err ?? t.subQrGenericError);
-      setStep('method');
+      setStep('pick');
       return;
     }
     onSubmitted();
     resetTicketState();
-    setPayMode(mode);
-    payModeRef.current = mode;
-    // Inside Telegram, picking ABA IS the hand-off: the checkout page
-    // opens in the system browser by itself once this ticket's KHQR is
-    // ready (see the hand-off effect), because Telegram's WebView cannot
-    // open `abamobilebank://` at all. The QR route stays here — its code
-    // is drawn in the sheet, where it can be screenshotted. Outside
-    // Telegram nothing is armed: there the deeplink is a real link the
-    // viewer taps, and a browser would block a pop-up opened without a
-    // tap anyway.
-    if (mode === 'auto' && isInTelegram()) setAutoHandOff(true);
     recyclingRef.current = false;
     const fresh = await getPendingSubmission();
-    if (fresh) {
-      setPending(fresh);
-      if (mode === 'auto') setAbaCheckout(await createAbaCheckout(fresh.id));
-    }
+    if (fresh) setPending(fresh);
     setStep('pay');
   };
 
@@ -770,20 +632,6 @@ export default function SubscriptionModal({
     if (pending) await cancelPaymentSubmission(pending.id);
     setStep('pick');
     resetTicketState();
-    setPayMode('auto');
-    payModeRef.current = 'auto';
-    recyclingRef.current = false;
-  };
-
-  // "Change Method" on the Pay screen — same idea as Change Plan (cancel
-  // the open ticket right away, no 150s floor) but drops back to the
-  // method sheet instead of the plan picker, since the plan itself is
-  // still the right one.
-  const handleChangeMethod = async () => {
-    recyclingRef.current = true;
-    if (pending) await cancelPaymentSubmission(pending.id);
-    setStep('method');
-    resetTicketState();
     recyclingRef.current = false;
   };
 
@@ -816,7 +664,7 @@ export default function SubscriptionModal({
   // the title and the plan restatement are all saying it a second time,
   // and between them they push the countdown and the upload box off the
   // bottom of a phone. Every other state keeps its full explanation.
-  const payCompact = !proofSent && !amountMismatch && !handedOff;
+  const payCompact = !proofSent && !amountMismatch;
 
   const mmss = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
   const waitPct = Math.max(0, Math.min(100, (secondsLeft / WAIT_WINDOW_SECONDS) * 100));
@@ -831,94 +679,6 @@ export default function SubscriptionModal({
   // their PIN in ABA, ask, and let them buy another three minutes.
   const showKeepWaiting =
     decision === 'waiting' && !proofSent && secondsLeft > 0 && secondsLeft <= NUDGE_AT_SECONDS;
-
-  // The one primary action on the pay dialog. What it points at depends
-  // on the route and on where we are running, but it is always a single
-  // button, and it always ends up somewhere the viewer can actually pay:
-  //
-  //   QR route          -> our checkout page (the QR lives there now)
-  //   ABA in Telegram   -> our checkout page (the WebView eats the scheme)
-  //   ABA in a browser  -> the real abamobilebank:// link
-  //   no deeplink at all-> the admin's PayWay link
-  const payPageAction = () => {
-    if (amountMismatch) return null;
-
-    const className = 'co-btn co-btn-primary px-4 py-4 text-[15px]';
-    const opened = () => {
-      setAbaDidNotOpen(false);
-      setHandedOff(true);
-    };
-
-    // The QR route has no button at all: its code is drawn in the sheet
-    // a few lines above, and a second way to reach the same code would
-    // only make the viewer wonder which one is the real one.
-    if (payMode === 'manual') return null;
-
-    // In Telegram: hand the checkout page to the system browser. No
-    // armDeeplinkFallback here — this hand-off is a plain https URL, and
-    // the "ABA didn't open" fallback now lives on that page, next to the
-    // QR it falls back to.
-    if (handOffUrl) {
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            opened();
-            openExternalLink(handOffUrl);
-          }}
-          className={className}
-        >
-          <Zap className="h-4 w-4" />
-          {t.subOpenInSafari}
-        </button>
-      );
-    }
-
-    // A REAL <a href="abamobilebank://...">, not a button that assigns
-    // location.href. Every WebView hands a non-http scheme to the OS when
-    // the viewer taps an actual link; a scripted navigation to the same
-    // string is routinely swallowed without an error, which is why the
-    // deeplink "worked like text, not a link". The fallback is only armed
-    // — the navigation itself belongs to the browser now.
-    if (abaDeeplink) {
-      return (
-        <a
-          href={abaDeeplink}
-          rel="noreferrer"
-          onClick={() => {
-            opened();
-            // Only fall back when there is somewhere to fall back TO.
-            armDeeplinkFallback(() => {
-              if (payLinkSrc) openExternalLink(payLinkSrc);
-              else setAbaDidNotOpen(true);
-            });
-          }}
-          className={className}
-        >
-          <Zap className="h-4 w-4" />
-          {t.subOpenAba}
-        </a>
-      );
-    }
-
-    if (payLinkSrc) {
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            opened();
-            openExternalLink(payLinkSrc);
-          }}
-          className={className}
-        >
-          <Zap className="h-4 w-4" />
-          {t.subOpenAba}
-        </button>
-      );
-    }
-
-    return null;
-  };
 
   // Shared receipt-upload widget: pick a screenshot, review it, tap send
   // to actually submit (that's the only moment the admin gets pinged).
@@ -989,17 +749,6 @@ export default function SubscriptionModal({
     </label>
   );
 
-  // The amount, printed the way a checkout prints it: the largest thing
-  // on the screen it belongs to.
-  const heroAmount = (value: string, size = 40) => (
-    <span
-      className="block leading-none text-[color:var(--co-text)]"
-      style={{ fontFamily: 'var(--co-font-display)', fontSize: `${size}px`, letterSpacing: '0.01em' }}
-    >
-      {value}
-    </span>
-  );
-
   const amberNote = (title: string, body: ReactNode) => (
     <div className="rounded-[var(--co-r-card)] border border-[color:var(--co-amber-line)] bg-[color:var(--co-amber-soft)] px-4 py-3.5">
       <p className="flex items-center gap-2 text-[13px] font-bold text-[color:var(--co-amber)]">
@@ -1027,23 +776,13 @@ export default function SubscriptionModal({
           Safari page too, so a viewer handed off to a browser can see
           they are still inside the same product. */}
       <header className="relative z-10 flex h-14 shrink-0 items-center justify-between px-4">
-        {step === 'method' ? (
-          <button
-            onClick={() => setStep('pick')}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.05] text-[color:var(--co-text-muted)] transition active:scale-90 hover:bg-white/10 hover:text-[color:var(--co-text)]"
-            aria-label={t.back}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        ) : (
-          <button
-            onClick={handleRequestClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.05] text-[color:var(--co-text-muted)] transition active:scale-90 hover:bg-white/10 hover:text-[color:var(--co-text)]"
-            aria-label={t.subCloseBtn}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+        <button
+          onClick={handleRequestClose}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.05] text-[color:var(--co-text-muted)] transition active:scale-90 hover:bg-white/10 hover:text-[color:var(--co-text)]"
+          aria-label={t.subCloseBtn}
+        >
+          <X className="h-4 w-4" />
+        </button>
         <span className="flex items-center gap-2">
           <img src={LOGO_SRC} alt="" className="h-8 w-8 shrink-0 object-contain" />
           {/* The wordmark, set to carry the same weight as the mark beside
@@ -1282,147 +1021,6 @@ export default function SubscriptionModal({
 
             {error && <div className="mt-4">{amberNote(t.subQrGenericError, error)}</div>}
           </div>
-        ) : step === 'method' ? (
-          /* ---------------------------- PAYMENT METHOD ---------------------------- */
-          <div key="method" className="co-enter">
-            {/* What is being bought, kept on screen while the method is
-                picked, with the amount as the hero. Tapping it goes back. */}
-            <button
-              type="button"
-              onClick={() => setStep('pick')}
-              className="co-card mb-5 flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition active:scale-[0.99]"
-            >
-              <span className="min-w-0">
-                <span className="co-label block">
-                  {t.subReceiptPlan}
-                </span>
-                <span className="mt-0.5 block truncate text-[15px] font-bold text-[color:var(--co-text)]">
-                  {planLabel(tier)}
-                </span>
-                <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--co-text-dim)]">
-                  <ChevronLeft className="h-3 w-3" />
-                  {t.subChangePlan}
-                </span>
-              </span>
-              <span className="shrink-0 text-right">{heroAmount(tier ? `$${tier.price}` : '—')}</span>
-            </button>
-
-            <h2 className="mb-3 text-[13px] font-bold text-[color:var(--co-text-muted)]">
-              {t.subSelectPayment}
-            </h2>
-
-            {!abaPaymentEnabled && (
-              <p className="mb-3 flex items-start gap-2 rounded-xl border border-[#FF6B60]/25 bg-[#FF6B60]/[0.06] px-3 py-2.5 text-[11px] leading-relaxed text-[#FF6B60]">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                {t.subAbaDisabledNotice}
-              </p>
-            )}
-
-            <div className="space-y-3">
-              {/* ABA blue lives here and nowhere else — unless the admin
-                  has flipped the kill switch (ABA's own KHQR rail is
-                  down), in which case this button goes inert and grey and
-                  the other-banks route below is what's left to tap. */}
-              <button
-                type="button"
-                onClick={() => handleSelectMethod('auto')}
-                disabled={submitting || !abaPaymentEnabled}
-                className="co-row flex w-full items-center gap-3 px-4 py-4 text-left disabled:opacity-50"
-                style={
-                  abaPaymentEnabled
-                    ? { borderColor: 'var(--co-aba-line)', backgroundColor: 'var(--co-aba-soft)' }
-                    : undefined
-                }
-              >
-                <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--co-r-chip)]"
-                  style={
-                    abaPaymentEnabled
-                      ? { backgroundColor: 'var(--co-aba-soft)', boxShadow: 'inset 0 0 0 1px var(--co-aba-line)' }
-                      : { backgroundColor: 'rgba(255,255,255,0.06)' }
-                  }
-                >
-                  <Zap
-                    className="h-5 w-5"
-                    style={{ color: abaPaymentEnabled ? 'var(--co-aba)' : 'var(--co-text-faint)' }}
-                  />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-[15px] font-bold text-[color:var(--co-text)]">
-                      {t.subMethodAbaTitle}
-                    </span>
-                    {abaPaymentEnabled ? (
-                      <span
-                        className="co-untrack-km rounded-md px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide"
-                        style={{ backgroundColor: 'var(--co-brand-soft)', color: '#a9c0ff' }}
-                      >
-                        {t.subRecommended}
-                      </span>
-                    ) : (
-                      <span className="co-untrack-km rounded-md bg-[#FF6B60]/15 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#FF6B60]">
-                        {t.subAbaDisabledBadge}
-                      </span>
-                    )}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-[color:var(--co-text-dim)]">
-                    {abaPaymentEnabled ? t.subMethodAbaDesc : t.subAbaDisabledNotice}
-                  </span>
-                </span>
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[color:var(--co-text-dim)]" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[color:var(--co-text-faint)]" />
-                )}
-              </button>
-
-              {/* One KHQR, every bank. There is deliberately no per-bank
-                  deeplink here: KHQR is a single standard, so the same QR
-                  is scannable from any banking app, and only ABA publishes
-                  a scheme worth linking to. This route lands on the same
-                  pay screen — the instructions are what change. */}
-              <button
-                type="button"
-                onClick={() => handleSelectMethod('manual')}
-                disabled={submitting}
-                className="co-row flex w-full items-center gap-3 px-4 py-4 text-left disabled:opacity-50"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--co-r-chip)] bg-white/[0.06]">
-                  <QrCode className="h-5 w-5 text-[color:var(--co-text-muted)]" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-bold text-[color:var(--co-text)]">
-                    {t.subMethodOtherTitle}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-[color:var(--co-text-dim)]">
-                    {t.subMethodOtherDesc}
-                  </span>
-                  <span className="mt-2 flex items-center gap-2">
-                    <img
-                      src="/assets/khqr-logo.png"
-                      alt="KHQR"
-                      className="h-4 w-auto object-contain opacity-80"
-                    />
-                    <span className="truncate text-[11px] text-[color:var(--co-text-faint)]">
-                      {t.subAllKhqrBanks}
-                    </span>
-                  </span>
-                </span>
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[color:var(--co-text-dim)]" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[color:var(--co-text-faint)]" />
-                )}
-              </button>
-            </div>
-
-            <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11px] text-[color:var(--co-text-faint)]">
-              <ShieldCheck className="h-3 w-3 shrink-0" style={{ color: 'var(--co-green)' }} />
-              {t.subSecuredCheckout}
-            </p>
-
-            {error && <div className="mt-4">{amberNote(t.subQrGenericError, error)}</div>}
-          </div>
         ) : decision === 'approved' ? (
           /* ---------------------------- PAID (RECEIPT) ---------------------------- */
           <div key="paid" className="co-enter mx-auto flex h-full max-w-[21rem] flex-col justify-center gap-5 py-4">
@@ -1534,8 +1132,6 @@ export default function SubscriptionModal({
                 onClick={() => {
                   setStep('pick');
                   resetTicketState();
-                  setPayMode('auto');
-                  payModeRef.current = 'auto';
                   recyclingRef.current = false;
                 }}
                 className="co-btn co-btn-primary py-4 text-[15px]"
@@ -1607,11 +1203,6 @@ export default function SubscriptionModal({
                     <Check className="h-6 w-6" style={{ color: 'var(--co-green)' }} />
                   ) : amountMismatch ? (
                     <AlertTriangle className="h-5 w-5" style={{ color: 'var(--co-amber)' }} />
-                  ) : handedOff ? (
-                    <Loader2
-                      className="h-5 w-5 animate-spin"
-                      style={{ color: 'var(--co-text-muted)' }}
-                    />
                   ) : (
                     <Wallet className="h-5 w-5" style={{ color: 'var(--co-text-muted)' }} />
                   )}
@@ -1622,11 +1213,7 @@ export default function SubscriptionModal({
                     ? t.subVerifyingTitle
                     : amountMismatch
                       ? t.subAmountMismatchTitle
-                      : handedOff
-                        ? t.subWaitingTitle
-                        : payMode === 'manual'
-                          ? t.subReadyQrTitle
-                          : t.subReadyTitle}
+                      : t.subReadyQrTitle}
                 </p>
                 {/* With the ticket on screen the plan moves up here,
                     small and quiet, and the amount line below goes
@@ -1641,13 +1228,7 @@ export default function SubscriptionModal({
                 )}
                 {!amountMismatch && !payCompact && (
                   <p className="mt-1.5 max-w-[17rem] text-[13px] leading-relaxed text-[color:var(--co-text-dim)]">
-                    {proofSent
-                      ? t.subVerifyingFree
-                      : handedOff
-                        ? t.subWaitingDesc
-                        : payMode === 'manual'
-                          ? t.subReadyQrDesc
-                          : t.subReadyDesc}
+                    {proofSent ? t.subVerifyingFree : t.subReadyQrDesc}
                   </p>
                 )}
               </div>
@@ -1709,7 +1290,7 @@ export default function SubscriptionModal({
                   screenshot, and every phone already has that gesture —
                   a button that downloads a PNG into a folder they then
                   have to find is a worse version of it. */}
-              {payMode === 'manual' && !amountMismatch && !proofSent && (
+              {!amountMismatch && !proofSent && (
                 <div className="mt-4">
                   {/* Which bank to pay. Shown only when two templates are
                       configured: with one there is no choice to offer,
@@ -1784,6 +1365,24 @@ export default function SubscriptionModal({
                       <p className="mx-auto mt-2.5 max-w-[16rem] text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
                         {t.subQrTapHint}
                       </p>
+
+                      {/* The acceptance mark. With the bank chooser gone
+                          this is what answers "will MY bank work?" — and
+                          the KHQR mark is the answer, because that is
+                          exactly what the mark means: one code, every
+                          member bank's app. Printing a handful of
+                          individual bank logos would say less and go
+                          stale the moment a bank joins or leaves. */}
+                      <div className="mx-auto mt-3 flex max-w-[17rem] flex-col items-center gap-1.5 border-t border-[color:var(--co-line-soft)] pt-3">
+                        <img
+                          src="/assets/khqr-logo.png"
+                          alt="KHQR"
+                          className="h-4 w-auto object-contain"
+                        />
+                        <span className="text-center text-[11px] leading-relaxed text-[color:var(--co-text-faint)]">
+                          {t.subAllKhqrBanks}
+                        </span>
+                      </div>
                     </>
                   ) : (
                     amberNote(t.subQrMissing, <>{t.subQrMissingDesc}{contactAdminLink}</>)
@@ -1863,51 +1462,15 @@ export default function SubscriptionModal({
                 </button>
               ) : (
                 <div className="mt-4 space-y-2.5">
-                  {/* Before the hand-off there is one button. After it,
-                      the only thing left to do is send the receipt, so
-                      the upload takes the primary slot. */}
-                  {/* The QR route has its own block above, including its
-                      own "no QR for this plan" message — this fallback is
-                      only for the bank route with nothing to open. */}
-                  {!handedOff &&
-                    payMode !== 'manual' &&
-                    (payPageAction() ?? (
-                      <p className="rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white/[0.03] p-3 text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
-                        {t.subQrMissing}
-                      </p>
-                    ))}
-
-                  {(handedOff || resumedTicket || payMode === 'manual') && (
-                    <div
-                      ref={uploadBlockRef}
-                      className={highlightUpload ? 'co-focus-ring rounded-[var(--co-r-btn)]' : ''}
-                    >
-                      {receiptUploadUi}
-                    </div>
-                  )}
-
-                  {/* The plain visible deeplink, kept for the one case it
-                      is needed: the styled button did nothing. Long-press
-                      gives "Open in ABA" / "Copy". */}
-                  {abaDeeplink && abaDidNotOpen && (
-                    <div className="rounded-[var(--co-r-btn)] border border-[color:var(--co-amber-line)] bg-[color:var(--co-amber-soft)] px-3 py-2.5">
-                      <p
-                        className="flex items-start gap-2 text-[11px] font-semibold leading-relaxed"
-                        style={{ color: 'var(--co-amber)' }}
-                      >
-                        <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-                        {t.subAbaDidNotOpen}
-                      </p>
-                      <a
-                        href={abaDeeplink}
-                        rel="noreferrer"
-                        className="mt-2 block break-all text-[11px] leading-relaxed underline underline-offset-2"
-                        style={{ color: 'var(--co-aba)' }}
-                      >
-                        {abaDeeplink}
-                      </a>
-                    </div>
-                  )}
+                  {/* There is one thing to do on this screen once the
+                      code is up: pay it, then send the receipt. So the
+                      upload takes the only slot. */}
+                  <div
+                    ref={uploadBlockRef}
+                    className={highlightUpload ? 'co-focus-ring rounded-[var(--co-r-btn)]' : ''}
+                  >
+                    {receiptUploadUi}
+                  </div>
 
                   {error && (
                     <div>
@@ -1927,29 +1490,8 @@ export default function SubscriptionModal({
               {/* Quiet text links, not buttons: everything below is a way
                   out, and none of it competes with the action above. */}
               <div className="mt-5 flex flex-col items-center gap-3 border-t border-[color:var(--co-line-soft)] pt-4">
-                {handedOff && !proofSent && payPageUrl && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAbaDidNotOpen(false);
-                      openExternalLink(payPageUrl);
-                    }}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-bold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    {t.subOpenPayPageAgain}
-                  </button>
-                )}
-
                 {!proofSent && (
                   <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={handleChangeMethod}
-                      className="text-[11px] font-semibold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
-                    >
-                      {t.subChangeMethod}
-                    </button>
                     <button
                       type="button"
                       onClick={handleChangePlan}
@@ -2007,10 +1549,18 @@ export default function SubscriptionModal({
           </div>
           <button
             onClick={handlePickPlan}
-            disabled={!tier}
+            disabled={!tier || submitting}
             className="co-btn co-btn-primary py-4 text-[15px]"
           >
-            <Crown className="h-4 w-4" />
+            {/* This opens the ticket on the server now that there is no
+                method step in between, so it has to show that it is
+                working — a slow network on a dead-looking button gets
+                tapped twice. */}
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Crown className="h-4 w-4" />
+            )}
             {t.subSelectPayment}
           </button>
           <p className="mt-2 flex items-center justify-center gap-1 text-[11px] text-[color:var(--co-text-faint)]">

@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import AdminPanelShell, { PanelTabs } from '@/components/AdminPanelShell';
 import {
-  buildAbaDeeplink,
   decodeKhqrFromFile,
   isKhqrPayload,
   readKhqrAmount,
@@ -262,7 +261,6 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [khqrDrafts, setKhqrDrafts] = useState<Record<string, string>>({});
   const [khqrEditingTier, setKhqrEditingTier] = useState<string | null>(null);
   const [savingKhqrTier, setSavingKhqrTier] = useState<string | null>(null);
-  const [copiedDeeplinkTier, setCopiedDeeplinkTier] = useState<string | null>(null);
 
   // ABA auto-confirm matching — the name printed on every real ABA
   // notification for this account, used by the aba-payment-webhook
@@ -1144,7 +1142,6 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 qrAmount !== null &&
                 Number.isFinite(priceNumber) &&
                 Math.abs(qrAmount - priceNumber) > 0.001;
-              const abaDeeplink = khqrValue ? buildAbaDeeplink(khqrValue) : null;
               return (
                 <div key={tier.key} className="flex flex-col rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="mb-3 flex items-center gap-3">
@@ -1440,60 +1437,6 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                           សូមធ្វើ QR ថ្មីតាមតម្លៃនេះ ឬកែតម្លៃឲ្យស្មើ QR។
                         </span>
                       </p>
-                    )}
-
-                    {/* A real anchor, so this is testable exactly the way
-                        a viewer's phone will meet it. Opening ABA from a
-                        genuine link is what works; the copy button is
-                        here so the same string can be pasted into a note
-                        or sent to a phone for a hands-on check. */}
-                    {abaDeeplink && (
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <a
-                          href={abaDeeplink}
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#6B85FF]/25 bg-[#6B85FF]/10 px-2.5 py-1 text-[11px] font-bold text-[#B6C3FF] no-underline transition hover:bg-[#6B85FF]/20"
-                        >
-                          <Zap className="h-3 w-3" /> សាកល្បងបើក ABA
-                        </a>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(abaDeeplink);
-                              setCopiedDeeplinkTier(tier.key);
-                              window.setTimeout(() => setCopiedDeeplinkTier(null), 2000);
-                            } catch {
-                              setError('ចម្លងមិនបាន — សូមចម្លងដោយដៃពីប្រអប់ខាងក្រោម។');
-                            }
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.07] px-2.5 py-1 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.11] hover:text-white/80"
-                        >
-                          {copiedDeeplinkTier === tier.key ? (
-                            <>
-                              <Check className="h-3 w-3 text-[#2FD98C]" /> ចម្លងរួច
-                            </>
-                          ) : (
-                            'ចម្លង deep link'
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* The link itself, underlined and wrapped — the same
-                        form it takes in a notes app, where a URL in plain
-                        text is auto-detected and styled. A web page never
-                        does that on its own: text is only a link when it
-                        is wrapped in an <a href>, so it is rendered that
-                        way here deliberately, to be checked and copied. */}
-                    {abaDeeplink && (
-                      <a
-                        href={abaDeeplink}
-                        rel="noreferrer"
-                        className="mt-2 block break-all rounded-lg bg-black/30 px-2.5 py-2 text-[11px] leading-relaxed text-[#B6C3FF] underline decoration-[#B6C3FF]/50 underline-offset-2"
-                      >
-                        {abaDeeplink}
-                      </a>
                     )}
 
                     {isEditingKhqr && (
