@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 // Called directly from the client (SubscriptionModal -> lib/subscription.ts
 // submitPaymentIntent) right after a payment_submissions row is
@@ -20,13 +21,48 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 //
 // Required secrets (Supabase Dashboard -> Edge Functions -> Secrets):
 //   TELEGRAM_BOT_TOKEN     - same bot already used for episode notices
-//   TELEGRAM_ADMIN_CHAT_ID - your personal Telegram chat id
+//   TELEGRAM_ADMIN_CHAT_ID - extra recipients (a group chat, or anyone
+//                            who is not in admin_users). Optional now.
+//   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY - to read admin_users
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+/**
+ * Everyone who should see a payment land.
+ *
+ * admin_users is the source of truth, so adding an administrator there
+ * puts them on these notifications with no second place to remember.
+ * TELEGRAM_ADMIN_CHAT_ID is merged in rather than replaced, because a
+ * group chat — or a recipient who is not an administrator — still has
+ * to work. Deduped: the owner is normally in both.
+ */
+async function adminChatIds(): Promise<string[]> {
+  const ids = new Set<string>();
+  for (const raw of (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "").split(/[,\s]+/)) {
+    const id = raw.trim();
+    if (id) ids.add(id);
+  }
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (url && key) {
+    try {
+      const db = createClient(url, key, { auth: { persistSession: false } });
+      const { data } = await db.from("admin_users").select("telegram_user_id");
+      for (const row of data ?? []) {
+        const id = String(row?.telegram_user_id ?? "").trim();
+        if (id) ids.add(id);
+      }
+    } catch {
+      // Table unreachable: the env-configured recipients still get it,
+      // which is the behaviour this function had before.
+    }
+  }
+  return [...ids];
+}
 
 const TIER_LABEL: Record<string, string> = {
   "1m": "1 Month",
@@ -52,7 +88,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID")!;
+    const chatIds = await adminChatIds();
 
     const headline =
       reason === "joined"
@@ -84,30 +120,40 @@ Deno.serve(async (req: Request) => {
       ]],
     };
 
-    let res: Response;
-    if (screenshot_url) {
-      res = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: adminChatId, photo: screenshot_url, caption, reply_markup: replyMarkup }),
-      });
-    } else {
-      res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: adminChatId, text: caption, reply_markup: replyMarkup }),
-      });
+    // One recipient failing must never silence the others: an admin who
+    // has never pressed Start on the bot answers 403 ("bot can't
+    // initiate conversation with a user"), and that is their setup
+    // problem, not a reason the owner misses the payment.
+    const method = screenshot_url ? "sendPhoto" : "sendMessage";
+    const results = await Promise.all(
+      chatIds.map(async (chatId) => {
+        try {
+          const res = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              screenshot_url
+                ? { chat_id: chatId, photo: screenshot_url, caption, reply_markup: replyMarkup }
+                : { chat_id: chatId, text: caption, reply_markup: replyMarkup },
+            ),
+          });
+          const data = await res.json();
+          return { chatId, ok: !!data.ok, error: data.description ?? null };
+        } catch (err) {
+          return { chatId, ok: false, error: String(err) };
+        }
+      }),
+    );
+
+    const delivered = results.filter((r) => r.ok).length;
+    if (delivered === 0) {
+      return new Response(
+        JSON.stringify({ error: "no_recipient_reached", results }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
-    const data = await res.json();
-    if (!data.ok) {
-      return new Response(JSON.stringify({ error: data.description }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ ok: true, delivered, results }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

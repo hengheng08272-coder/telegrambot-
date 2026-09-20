@@ -33,11 +33,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function adminChatIds(): string[] {
-  return (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "")
-    .split(/[,\s]+/)
-    .map((id) => id.trim())
-    .filter(Boolean);
+/**
+ * Everyone who should see a payment land.
+ *
+ * This already fanned out, but only over TELEGRAM_ADMIN_CHAT_ID, which
+ * meant a new administrator had to be remembered in a second place.
+ * admin_users is the source of truth now; the env var is merged in
+ * rather than replaced, because a group chat — or a recipient who is
+ * not an administrator — still has to work.
+ */
+async function adminChatIds(): Promise<string[]> {
+  const ids = new Set<string>();
+  for (const raw of (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "").split(/[,\s]+/)) {
+    const id = raw.trim();
+    if (id) ids.add(id);
+  }
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (url && key) {
+    try {
+      const db = createClient(url, key, { auth: { persistSession: false } });
+      const { data } = await db.from("admin_users").select("telegram_user_id");
+      for (const row of data ?? []) {
+        const id = String(row?.telegram_user_id ?? "").trim();
+        if (id) ids.add(id);
+      }
+    } catch {
+      // Table unreachable: env-configured recipients still get it.
+    }
+  }
+  return [...ids];
 }
 
 const TIER_LABEL: Record<string, string> = {
@@ -97,7 +122,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const chatIds = adminChatIds();
+    const chatIds = await adminChatIds();
     if (botToken && chatIds.length > 0) {
       const caption =
         PROOF_RECEIVED_CAPTION + `\n\n` +
