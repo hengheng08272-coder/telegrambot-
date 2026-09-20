@@ -524,6 +524,11 @@ function App() {
         setSearchOpen={setSearchOpen}
         onOpenLegal={() => setScreen({ name: 'legal' })}
         onResumeEpisode={handleResumeEpisode}
+        // Only an administrator is handed the door. The rights behind
+        // it were granted server-side from verified Telegram initData
+        // (see signInWithTelegram), so this decides which button to
+        // draw, not what anybody is allowed to do.
+        onOpenAdmin={isAdmin ? () => setScreen({ name: 'admin' }) : undefined}
       />
       {showSpin && (
         <LuckyDrawModal
