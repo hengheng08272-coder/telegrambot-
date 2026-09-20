@@ -231,6 +231,7 @@
   #pass { order: 1; }
   #orline { order: 2; }
   #open-aba { order: 3; }
+  #save-qr { order: 3; }
   #not-open { order: 4; }
   #payway { order: 5; }
   #steps-card { order: 6; }
@@ -370,6 +371,13 @@
     <span id="payway-label"></span>
   </a>
 
+  <!-- The route that works for another bank's KHQR: take the code with
+       you, then scan it from inside the bank app. -->
+  <a class="btn btn-primary" id="save-qr" hidden download="khqr.png">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 19h16"/></svg>
+    <span id="save-qr-label"></span>
+  </a>
+
   <p class="steps" id="steps-card" hidden><span id="steps"></span></p>
 
   <a class="btn btn-ghost" id="back" hidden>
@@ -391,6 +399,9 @@
     km: {
       headScan: 'ស្កេនដើម្បីទូទាត់',
       headAba: 'ត្រៀមទូទាត់',
+      saveQr: 'រក្សាទុករូប QR',
+      stepsScan: ['រក្សាទុក QR', 'បើក App ធនាគារ', 'ស្កេនរូបពីវិចិត្រសាល'],
+      qrHintSave: 'រក្សាទុក ឬថតអេក្រង់ QR នេះ រួចបើក App ធនាគាររបស់អ្នក ហើយស្កេនវាពីវិចិត្រសាល។',
       openAba: 'បើក App ABA',
       or: 'ឬ',
       payway: 'បើកទំព័រ ABA PayWay ជំនួស',
@@ -404,11 +415,14 @@
       notOpen: 'ABA មិនបានបើកទេ។ សូមប្រើជម្រើសខាងក្រោម ឬស្កេន QR ខាងលើ។',
       steps: ['បើក ABA', 'បញ្ជាក់ការទូទាត់', 'ផ្ញើវិក្កយបត្រ'],
       missing: 'តំណទូទាត់មិនត្រឹមត្រូវ។ សូមត្រឡប់ទៅ App ហើយចាប់ផ្តើមឡើងវិញ។',
-      foot: 'ការទូទាត់ដោយសុវត្ថិភាព · ដំណើរការដោយ ABA PayWay KHQR',
+      foot: 'ការទូទាត់ដោយសុវត្ថិភាព · ដំណើរការដោយ KHQR · Bakong',
     },
     en: {
       headScan: 'Scan to pay',
       headAba: 'Ready to pay',
+      saveQr: 'Save the QR image',
+      stepsScan: ['Save the QR', 'Open your bank app', 'Scan it from your gallery'],
+      qrHintSave: 'Save or screenshot this QR, then open your banking app and scan it from your gallery.',
       openAba: 'Open the ABA app',
       or: 'OR',
       payway: 'Open the ABA PayWay page instead',
@@ -422,7 +436,7 @@
       notOpen: 'ABA did not open. Use the option below, or scan the QR above.',
       steps: ['Open ABA', 'Confirm', 'Send the receipt'],
       missing: 'This payment link is incomplete. Please go back to the app and start again.',
-      foot: 'Secured checkout · Powered by ABA PayWay KHQR',
+      foot: 'Secured checkout · Powered by KHQR · Bakong',
     },
   };
 
@@ -459,6 +473,44 @@
   // ABA route, where the tap is the whole page.
   var mode = params.get('mode') === 'qr' ? 'qr' : 'aba';
 
+  // Which bank issued this code. Sub-tag 00 of the merchant-account
+  // field (tag 29 individual / tag 30 merchant) holds a Bakong handle
+  // whose domain names the member bank: khqr@aclb is ACLEDA, khqr@abaa
+  // is ABA. Same reading as readKhqrIssuer() in src/lib/khqr.ts.
+  function tlv(payload) {
+    var out = {}, i = 0;
+    while (i + 4 <= payload.length) {
+      var tag = payload.slice(i, i + 2);
+      var len = parseInt(payload.slice(i + 2, i + 4), 10);
+      if (!isFinite(len) || len < 0) break;
+      var value = payload.slice(i + 4, i + 4 + len);
+      if (value.length < len) break;
+      if (!(tag in out)) out[tag] = value;
+      i += 4 + len;
+    }
+    return out;
+  }
+  function khqrIssuer(payload) {
+    if (!payload) return null;
+    var top = tlv(payload);
+    var account = top['29'] || top['30'];
+    if (!account) return null;
+    var handle = tlv(account)['00'];
+    if (!handle) return null;
+    var at = handle.indexOf('@');
+    return at === -1 ? null : handle.slice(at + 1).trim().toLowerCase() || null;
+  }
+  // PayWay's handler validates the merchant data as its own, so it
+  // refuses another bank's KHQR outright ("Invalid Qr Merchant Data")
+  // while ABA's scanner -- a different code path -- reads the same
+  // payload and pays it. An unreadable issuer keeps the old behaviour
+  // rather than dropping the button on a payload this simply failed to
+  // parse.
+  function abaCanOpen(payload) {
+    var issuer = khqrIssuer(payload);
+    return issuer === null || issuer.indexOf('aba') === 0;
+  }
+
   function el(id) { return document.getElementById(id); }
   function show(node) { node.hidden = false; }
 
@@ -470,7 +522,10 @@
 
   // The pass is always shown — even a link missing its labels still has
   // the code in it, and an empty page would tell the viewer nothing.
-  el('pay-head').textContent = mode === 'qr' ? t.headScan : t.headAba;
+  // Without a hand-off to a bank app, scanning IS the payment, whatever
+  // route brought the viewer here.
+  el('pay-head').textContent =
+    mode === 'qr' || !abaCanOpen(khqr) ? t.headScan : t.headAba;
 
   // A KHQR payload with no uploaded image is the case that gets a drawn
   // ticket, and that ticket prints the amount itself.
@@ -584,7 +639,21 @@
           el('qr-price').appendChild(unit);
         }
         el('qr-ticket').hidden = false;
-        el('qr-hint').textContent = mode === 'qr' ? t.qrHintScan : t.qrHint;
+        // Now that pixels exist there is something to save. A data URL
+        // download works in Android Chrome; where the browser opens the
+        // image instead of saving it, long-pressing it still saves, and
+        // the hint below offers a screenshot either way.
+        if (!abaCanOpen(khqr)) {
+          try {
+            el('save-qr').href = canvas.toDataURL('image/png');
+            show(el('save-qr'));
+          } catch (e) {
+            // Tainted or oversized canvas: the hint alone still works.
+          }
+        }
+        el('qr-hint').textContent = !abaCanOpen(khqr)
+          ? t.qrHintSave
+          : mode === 'qr' ? t.qrHintScan : t.qrHint;
         el('qr-desktop-hint').textContent = t.qrDesktopHint;
         show(el('qr-card'));
       }).catch(function () {
@@ -598,7 +667,7 @@
     if (!drawQr()) window.addEventListener('load', drawQr);
   }
 
-  if (khqr) {
+  if (khqr && abaCanOpen(khqr)) {
     // Same formula as buildAbaDeeplink() in src/lib/khqr.ts.
     var deeplink = 'abamobilebank://ababank.com?type=payway&qrcode=' + encodeURIComponent(khqr);
 
@@ -653,6 +722,16 @@
 
 
     el('steps').textContent = t.steps
+      .map(function (line, i) { return String(i + 1) + '. ' + line; })
+      .join('  ·  ');
+    show(el('steps-card'));
+  } else if (khqr) {
+    // Another bank's KHQR. There is no hand-off worth offering, so the
+    // page says what does work: take the code with you and scan it from
+    // inside the bank app. The href is set once the code has been drawn
+    // (see drawQr) -- until then there is nothing to save.
+    el('save-qr-label').textContent = t.saveQr;
+    el('steps').textContent = t.stepsScan
       .map(function (line, i) { return String(i + 1) + '. ' + line; })
       .join('  ·  ');
     show(el('steps-card'));

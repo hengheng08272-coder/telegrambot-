@@ -26,6 +26,7 @@ import {
   buildPayPageUrl,
   armDeeplinkFallback,
   readKhqrMerchant,
+  supportsAbaDeeplink,
   readKhqrAmount,
 } from '@/lib/khqr';
 import {
@@ -428,7 +429,14 @@ export default function SubscriptionModal({
     payMode === 'manual' && !amountMismatch && !proofSent && !!liveKhqr;
 
   const abaDeeplink =
-    !isRealGateway && isKhqrPayload(effectiveKhqr) && !amountMismatch
+    !isRealGateway &&
+    isKhqrPayload(effectiveKhqr) &&
+    !amountMismatch &&
+    // PayWay's handler validates the merchant data as its own, so it
+    // refuses another bank's KHQR outright ("Invalid Qr Merchant
+    // Data") even though ABA's scanner reads the very same payload.
+    // A button that reliably errors is worse than no button.
+    supportsAbaDeeplink(effectiveKhqr)
       ? buildAbaDeeplink(effectiveKhqr)
       : null;
 
@@ -1088,20 +1096,20 @@ export default function SubscriptionModal({
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--co-amber-soft)]">
               <AlertTriangle className="h-5 w-5 text-[color:var(--co-amber)]" />
             </div>
-            <p className="text-sm font-bold text-[color:var(--co-text)]">{t.subExitConfirmTitle}</p>
-            <p className="mt-1.5 text-xs leading-relaxed text-[color:var(--co-text-muted)]">
+            <p className="text-[15px] font-bold text-[color:var(--co-text)]">{t.subExitConfirmTitle}</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[color:var(--co-text-muted)]">
               {t.subExitConfirmDesc}
             </p>
             <div className="mt-4 flex flex-col gap-2">
               <button
                 onClick={() => setShowExitConfirm(false)}
-                className="co-btn co-btn-primary py-3.5 text-xs"
+                className="co-btn co-btn-primary py-3.5 text-[15px]"
               >
                 {t.subExitConfirmContinue}
               </button>
               <button
                 onClick={handleExitAndDrop}
-                className="co-btn co-btn-ghost py-3.5 text-xs"
+                className="co-btn co-btn-ghost py-3.5 text-[15px]"
               >
                 {t.subExitConfirmExit}
               </button>
@@ -1136,7 +1144,7 @@ export default function SubscriptionModal({
               >
                 {t.subChoosePlan}
               </h2>
-              <p className="mt-1.5 text-xs text-[color:var(--co-text-dim)]">{t.subTagline}</p>
+              <p className="mt-1.5 text-[11px] text-[color:var(--co-text-dim)]">{t.subTagline}</p>
             </div>
 
             {/* Benefits, once, above the list — so the plan rows can be
@@ -1207,7 +1215,7 @@ export default function SubscriptionModal({
                         >
                           {localNum(tr.months)}
                         </span>
-                        <span className="co-untrack-km text-[9.5px] tracking-[0.16em] text-[color:var(--co-text-dim)]">
+                        <span className="co-untrack-km text-[11px] tracking-[0.16em] text-[color:var(--co-text-dim)]">
                           {t.subMonthsUnit}
                         </span>
                       </span>
@@ -1288,7 +1296,7 @@ export default function SubscriptionModal({
                 <span className="co-label block">
                   {t.subReceiptPlan}
                 </span>
-                <span className="mt-0.5 block truncate text-sm font-bold text-[color:var(--co-text)]">
+                <span className="mt-0.5 block truncate text-[15px] font-bold text-[color:var(--co-text)]">
                   {planLabel(tier)}
                 </span>
                 <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--co-text-dim)]">
@@ -1341,18 +1349,18 @@ export default function SubscriptionModal({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-[color:var(--co-text)]">
+                    <span className="text-[15px] font-bold text-[color:var(--co-text)]">
                       {t.subMethodAbaTitle}
                     </span>
                     {abaPaymentEnabled ? (
                       <span
-                        className="co-untrack-km rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
+                        className="co-untrack-km rounded-md px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide"
                         style={{ backgroundColor: 'var(--co-brand-soft)', color: '#a9c0ff' }}
                       >
                         {t.subRecommended}
                       </span>
                     ) : (
-                      <span className="co-untrack-km rounded-md bg-[#FF6B60]/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#FF6B60]">
+                      <span className="co-untrack-km rounded-md bg-[#FF6B60]/15 px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#FF6B60]">
                         {t.subAbaDisabledBadge}
                       </span>
                     )}
@@ -1383,7 +1391,7 @@ export default function SubscriptionModal({
                   <QrCode className="h-5 w-5 text-[color:var(--co-text-muted)]" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-[color:var(--co-text)]">
+                  <span className="block text-[15px] font-bold text-[color:var(--co-text)]">
                     {t.subMethodOtherTitle}
                   </span>
                   <span className="mt-0.5 block text-[11px] text-[color:var(--co-text-dim)]">
@@ -1428,10 +1436,10 @@ export default function SubscriptionModal({
               >
                 <Check className="h-8 w-8" style={{ color: 'var(--co-green)' }} />
               </div>
-              <p className="mt-4 text-lg font-bold text-[color:var(--co-text)]">
+              <p className="mt-4 text-[18px] font-bold text-[color:var(--co-text)]">
                 {t.subPaySuccessTitle}
               </p>
-              <p className="mt-1.5 max-w-[19rem] text-xs leading-relaxed text-[color:var(--co-text-muted)]">
+              <p className="mt-1.5 max-w-[19rem] text-[13px] leading-relaxed text-[color:var(--co-text-muted)]">
                 {t.subPaySuccessDesc}
               </p>
             </div>
@@ -1449,7 +1457,7 @@ export default function SubscriptionModal({
                   {t.subVipPass}
                 </span>
                 <span
-                  className="co-untrack-km rounded-[3px] border border-white/45 px-1.5 py-0.5 text-[9.5px] tracking-[0.16em]"
+                  className="co-untrack-km rounded-[3px] border border-white/45 px-1.5 py-0.5 text-[11px] tracking-[0.16em]"
                   style={{ fontFamily: 'var(--co-font-display)', transform: 'rotate(-4deg)' }}
                 >
                   {t.subPaidStamp}
@@ -1485,7 +1493,7 @@ export default function SubscriptionModal({
                   <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
                     {label}
                   </span>
-                  <span className="truncate text-xs font-semibold tabular-nums text-[color:var(--co-text)]">
+                  <span className="truncate text-[13px] font-semibold tabular-nums text-[color:var(--co-text)]">
                     {value}
                   </span>
                 </div>
@@ -1494,11 +1502,11 @@ export default function SubscriptionModal({
             </div>
 
             <div className="space-y-2.5">
-              <button onClick={onGoSpin} className="co-btn co-btn-primary py-4 text-sm">
+              <button onClick={onGoSpin} className="co-btn co-btn-primary py-4 text-[15px]">
                 <Sparkles className="h-4 w-4" />
                 {t.subGoDraw}
               </button>
-              <button onClick={onClose} className="co-btn co-btn-ghost py-4 text-sm">
+              <button onClick={onClose} className="co-btn co-btn-ghost py-4 text-[15px]">
                 {t.subStartWatching}
               </button>
             </div>
@@ -1513,8 +1521,8 @@ export default function SubscriptionModal({
               <AlertTriangle className="h-8 w-8" style={{ color: 'var(--co-amber)' }} />
             </div>
             <div>
-              <p className="text-lg font-bold text-[color:var(--co-text)]">{t.subRejectedTitle}</p>
-              <p className="mt-2 text-sm leading-relaxed text-[color:var(--co-text-muted)]">
+              <p className="text-[18px] font-bold text-[color:var(--co-text)]">{t.subRejectedTitle}</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-[color:var(--co-text-muted)]">
                 {t.subRejectedDesc}
               </p>
               <p className="mt-2 text-[11px] tabular-nums text-[color:var(--co-text-faint)]">
@@ -1530,7 +1538,7 @@ export default function SubscriptionModal({
                   payModeRef.current = 'auto';
                   recyclingRef.current = false;
                 }}
-                className="co-btn co-btn-primary py-4 text-sm"
+                className="co-btn co-btn-primary py-4 text-[15px]"
               >
                 <RefreshCw className="h-4 w-4" />
                 {t.subTryAgain}
@@ -1539,7 +1547,7 @@ export default function SubscriptionModal({
                 <button
                   type="button"
                   onClick={() => openExternalLink(supportLink)}
-                  className="co-btn co-btn-ghost py-4 text-sm"
+                  className="co-btn co-btn-ghost py-4 text-[15px]"
                 >
                   <MessageCircle className="h-4 w-4" />
                   {t.subContactAdminNow}
@@ -1552,10 +1560,10 @@ export default function SubscriptionModal({
              renamed in the admin panel while the sheet was open). */
           <div key="noplan" className="co-enter mx-auto flex h-full max-w-[21rem] flex-col items-center justify-center gap-4 text-center">
             <AlertTriangle className="h-8 w-8" style={{ color: 'var(--co-amber)' }} />
-            <p className="max-w-[17rem] text-sm leading-relaxed text-[color:var(--co-text-muted)]">
+            <p className="max-w-[17rem] text-[13px] leading-relaxed text-[color:var(--co-text-muted)]">
               {t.subQrMissing}
             </p>
-            <button onClick={handleChangePlan} className="co-btn co-btn-ghost px-5 py-3.5 text-sm">
+            <button onClick={handleChangePlan} className="co-btn co-btn-ghost px-5 py-3.5 text-[15px]">
               {t.subChangePlan}
             </button>
           </div>
@@ -1627,7 +1635,7 @@ export default function SubscriptionModal({
                     printing the same figure again, was two mismatched
                     types arguing over one number. */}
                 {ticketShowing && (
-                  <p className="mt-1 text-[12px] font-bold text-[color:var(--co-text-dim)]">
+                  <p className="mt-1 text-[13px] font-bold text-[color:var(--co-text-dim)]">
                     {planLabel(payTier)}
                   </p>
                 )}
@@ -1754,7 +1762,7 @@ export default function SubscriptionModal({
                               className="h-5 w-auto object-contain"
                             />
                             {(payeeName ?? bakongConfig?.merchantName) && (
-                              <span className="truncate text-[12px] font-bold uppercase tracking-wide text-[color:var(--co-text)]">
+                              <span className="truncate text-[13px] font-bold uppercase tracking-wide text-[color:var(--co-text)]">
                                 {payeeName ?? bakongConfig?.merchantName}
                               </span>
                             )}
@@ -1796,14 +1804,14 @@ export default function SubscriptionModal({
               {!proofSent && !amountMismatch && (
                 <div className="mt-3.5 rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white/[0.03] px-3.5 py-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className="flex min-w-0 items-center gap-2 text-[12px] font-bold text-[color:var(--co-text-muted)]">
+                    <span className="flex min-w-0 items-center gap-2 text-[13px] font-bold text-[color:var(--co-text-muted)]">
                       <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                       <span className="truncate">{t.subWaitingPayment}</span>
                     </span>
                     {/* Monospaced so the digits do not shuffle sideways
                         every second as the glyph widths change. */}
                     <span
-                      className="shrink-0 text-[14px] font-bold tabular-nums text-[color:var(--co-text-dim)]"
+                      className="shrink-0 text-[15px] font-bold tabular-nums text-[color:var(--co-text-dim)]"
                       style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}
                     >
                       {mmss}
@@ -1979,14 +1987,28 @@ export default function SubscriptionModal({
         >
           <div className="mb-2.5 flex items-baseline justify-between">
             <span className="text-[11px] text-[color:var(--co-text-dim)]">{t.subTotalDue}</span>
-            <span className="text-xl font-extrabold tabular-nums text-[color:var(--co-text)]">
-              {tier ? `$${tier.price}` : '—'}
+            {/* The same figure, in the same face, as the amount on the
+                pass two steps later. It used to be `$2` here and
+                `2.00 USD` there — one price written two ways inside one
+                purchase. */}
+            <span className="flex items-baseline gap-1.5">
+              <span
+                className="leading-none tabular-nums text-[color:var(--co-text)]"
+                style={{ fontFamily: 'var(--co-font-display)', fontSize: '22px', letterSpacing: '0.01em' }}
+              >
+                {tier ? formatAmount(tier.price).value : '—'}
+              </span>
+              {tier && (
+                <span className="text-[11px] font-bold tracking-[0.1em] text-[color:var(--co-text-dim)]">
+                  {formatAmount(tier.price).unit}
+                </span>
+              )}
             </span>
           </div>
           <button
             onClick={handlePickPlan}
             disabled={!tier}
-            className="co-btn co-btn-primary py-4 text-sm"
+            className="co-btn co-btn-primary py-4 text-[15px]"
           >
             <Crown className="h-4 w-4" />
             {t.subSelectPayment}
