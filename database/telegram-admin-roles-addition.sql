@@ -53,3 +53,10 @@ alter table public.profiles
 -- TO REVOKE SOMEBODY: delete their admin_users row. The edge function
 -- clears is_admin and admin_role on their next open, so removing the
 -- row is the whole gesture.
+--
+-- That is still true, but it is no longer the only way. The owner can
+-- now do it from the phone: admin panel -> Admins, which calls the
+-- telegram-admin-manage edge function. Same table, same rule, with two
+-- guards SQL by hand does not have -- you cannot remove yourself, and
+-- the last super_admin cannot be removed, because either one would
+-- leave nobody able to add anybody back.
