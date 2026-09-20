@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/supabaseClient';
-import { fetchProfile, type Profile } from '@/lib/auth';
+import { fetchProfile, signInWithTelegram, type Profile } from '@/lib/auth';
 import { fetchShowById, fetchEpisodesByShow, checkTelegramUserBlocked } from '@/lib/api';
 import type { Show, ShowWithGenres, Episode } from '@/lib/types';
 import { addToContinueWatching } from '@/lib/watchlist';
@@ -255,6 +255,13 @@ function App() {
       if (data.session?.user) {
         const p = await fetchProfile(data.session.user.id);
         setProfile(p);
+      } else {
+        // No stored session. Inside Telegram an administrator gets one
+        // without typing anything: the edge function verifies the signed
+        // initData and mints it. For everybody else this returns null
+        // and nothing changes — not being an admin is the ordinary case,
+        // not a failure. onAuthStateChange below loads the profile.
+        await signInWithTelegram();
       }
       setAuthReady(true);
     })();
@@ -391,7 +398,12 @@ function App() {
 
   if (screen.name === 'admin') {
     if (!profile?.is_admin) return null;
-    return <AdminScreen onBack={() => setScreen({ name: 'home' })} />;
+    return (
+      <AdminScreen
+        onBack={() => setScreen({ name: 'home' })}
+        isSuperAdmin={profile?.admin_role === 'super_admin'}
+      />
+    );
   }
 
   if (screen.name === 'watchlist') {

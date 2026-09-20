@@ -50,6 +50,17 @@ import { usePresenceCount } from '@/lib/presence';
 
 interface AdminScreenProps {
   onBack: () => void;
+  /**
+   * Whether this session is the owner's.
+   *
+   * A plain admin runs the day to day — confirming payments, adding and
+   * editing content. What they must not reach is anything that moves
+   * money or destroys work: prices, VIP plans, the KHQR details money
+   * arrives on, and deleting episodes. The gate is cosmetic on its own;
+   * the level itself is set server-side from verified Telegram
+   * initData, which is what makes it mean anything.
+   */
+  isSuperAdmin?: boolean;
 }
 
 interface ShowWithEpisodes extends Show {
@@ -213,7 +224,7 @@ function parseBulkEpisodeList(
   return { rows, skippedLines, mergedByNumber, repeatedUrls: 0 };
 }
 
-export default function AdminScreen({ onBack }: AdminScreenProps) {
+export default function AdminScreen({ onBack, isSuperAdmin = false }: AdminScreenProps) {
   const [shows, setShows] = useState<ShowWithEpisodes[]>([]);
   const watchingNow = usePresenceCount();
   const [watchesToday, setWatchesToday] = useState<number | null>(null);
@@ -897,18 +908,22 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
           {/* Pricing sits next to the approval queue rather than inside
               it: one is a daily job, the other is set once and revisited
               when a release is worth more than the rest. */}
+          {isSuperAdmin && (
           <button
             onClick={() => setMoviePricingOpen(true)}
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#F5C563]/30 bg-[#F5C563]/10 px-3.5 py-1.5 text-xs font-bold text-[#F5C563] transition hover:bg-[#F5C563]/20"
           >
             <DollarSign className="h-3.5 w-3.5" /> Movie prices
           </button>
+          )}
+          {isSuperAdmin && (
           <button
             onClick={() => setSubscriptionsOpen(true)}
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#2FD98C]/30 bg-[#2FD98C]/10 px-3.5 py-1.5 text-xs font-bold text-[#2FD98C] transition hover:bg-[#2FD98C]/20"
           >
             <QrCode className="h-3.5 w-3.5" /> Subscriptions
           </button>
+          )}
           <button
             onClick={() => setUsersOpen(true)}
             className="flex shrink-0 items-center gap-1.5 rounded-xl border border-[#4C6FFF]/30 bg-[#4C6FFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#4C6FFF] transition hover:bg-[#4C6FFF]/20"
@@ -1319,12 +1334,14 @@ export default function AdminScreen({ onBack }: AdminScreenProps) {
                       >
                         <Link2 className="h-3.5 w-3.5" /> Paste URL
                       </button>
+                      {isSuperAdmin && (
                       <button
                         onClick={() => handleDeleteEpisode(ep.id)}
                         className="rounded-lg p-2 text-white/40 transition hover:bg-[#FF6B60]/10 hover:text-[#FF6B60]"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
+                      )}
                     </div>
 
                     {pasteUrlFor === ep.id && (

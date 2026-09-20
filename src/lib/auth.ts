@@ -1,8 +1,12 @@
 import { supabase } from '@/lib/supabase/supabaseClient';
+import { getTelegramInitData } from '@/lib/telegram';
 
 export interface Profile {
   id: string;
   is_admin: boolean;
+  /** Which level this session was minted at. `is_admin` decides whether
+   *  the panel opens at all; this decides how much of it is live. */
+  admin_role?: 'admin' | 'super_admin' | null;
   display_name?: string | null;
   avatar_url?: string | null;
 }
@@ -95,11 +99,47 @@ export async function changePassword(
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, is_admin')
+    .select('id, is_admin, admin_role')
     .eq('id', userId)
     .maybeSingle();
   if (error) return null;
   return data as Profile | null;
+}
+
+/**
+ * Signs an administrator in from Telegram, with no password.
+ *
+ * The browser cannot be trusted to say who it is — getIdentity() reads
+ * the Telegram user client-side, and the anon key is in the bundle, so
+ * anyone could claim the owner's id. What IS trustworthy is the signed
+ * `initData` string Telegram puts in the WebApp: the edge function
+ * checks its HMAC against the bot token (which never reaches the
+ * browser), looks the verified id up in admin_users, and only then
+ * hands back a one-shot token. Everything here is worthless without
+ * that signature.
+ *
+ * Returns the role on success, or null for "not an administrator",
+ * which is the ordinary case for every viewer and is not an error.
+ */
+export async function signInWithTelegram(): Promise<'admin' | 'super_admin' | null> {
+  const initData = getTelegramInitData();
+  if (!initData) return null;
+  try {
+    const { data, error } = await supabase.functions.invoke('telegram-admin-session', {
+      body: { initData },
+    });
+    if (error || !data?.token_hash) return null;
+    // Exchanges the one-shot token for a real session. onAuthStateChange
+    // in App.tsx picks it up and loads the profile from there.
+    const { error: otpErr } = await supabase.auth.verifyOtp({
+      token_hash: data.token_hash as string,
+      type: 'magiclink',
+    });
+    if (otpErr) return null;
+    return (data.role as 'admin' | 'super_admin') ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function uploadAvatar(
