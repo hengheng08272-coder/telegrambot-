@@ -138,7 +138,7 @@ export default function ShowDetailScreen({
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(90deg, rgba(10,16,30,0.85) 0%, rgba(10,16,30,0.4) 50%, rgba(10,16,30,0.2) 100%), linear-gradient(0deg, rgba(10,16,30,1) 0%, rgba(10,16,30,0) 45%)',
+              'linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.2) 100%), linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 45%)',
           }}
         />
       </div>

@@ -1,11 +1,78 @@
 import { supabase } from '@/lib/supabase/supabaseClient';
 import { getCurrentTelegramUser } from '@/lib/telegram';
+import { isCurrency, type Currency } from '@/lib/format';
+import type { Show } from '@/lib/types';
 
-// Flat price for any standalone-purchasable movie. Not per-show — every
-// movie that isn't marked is_free sells for the same $1, so there is no
-// per-show price field to keep in sync.
-export const MOVIE_PRICE = 1;
+// What a movie costs when nothing more specific has been set — the value
+// a brand-new install starts at, and the last-resort fallback if the
+// settings read fails. The live default lives in app_settings
+// (`movie_price_default`) and each title may override it in
+// shows.movie_price, so this number is only ever a floor under those two.
+export const DEFAULT_MOVIE_PRICE = 1;
+
+/** Kept under its old name for callers that only want "the usual price". */
+export const MOVIE_PRICE = DEFAULT_MOVIE_PRICE;
+
 const QR_TIER_KEY = 'movie'; // row key in payment_qr_codes — see QrCodesPanel
+
+export interface MoviePricing {
+  /** Applies to every movie whose own movie_price is null. */
+  defaultPrice: number;
+  currency: Currency;
+}
+
+export const FALLBACK_PRICING: MoviePricing = {
+  defaultPrice: DEFAULT_MOVIE_PRICE,
+  currency: 'USD',
+};
+
+/**
+ * The catalog-wide price settings, read once per screen that shows a
+ * price.
+ *
+ * Deliberately NOT what the purchase is charged at — create_movie_purchase
+ * re-reads all of this server-side and writes its own number onto the
+ * ticket. What comes back here is only what the viewer is shown, so a
+ * stale or tampered value can mislead a price tag but can never change
+ * what is actually owed.
+ */
+export async function fetchMoviePricing(): Promise<MoviePricing> {
+  const { data } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .in('key', ['movie_price_default', 'movie_currency']);
+  const map = new Map((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]));
+  const parsed = Number(map.get('movie_price_default'));
+  const currency = map.get('movie_currency');
+  return {
+    defaultPrice: Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MOVIE_PRICE,
+    currency: isCurrency(currency) ? currency : 'USD',
+  };
+}
+
+export async function saveMoviePricing(pricing: MoviePricing): Promise<{ error: string | null }> {
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('app_settings').upsert([
+    { key: 'movie_price_default', value: String(pricing.defaultPrice), updated_at: now },
+    { key: 'movie_currency', value: pricing.currency, updated_at: now },
+  ]);
+  return { error: error?.message ?? null };
+}
+
+/** Sets (or clears, with null) one title's own price. */
+export async function saveMoviePrice(
+  showId: string,
+  price: number | null,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('shows').update({ movie_price: price }).eq('id', showId);
+  return { error: error?.message ?? null };
+}
+
+/** What this specific title costs today: its own price, else the default. */
+export function priceOf(show: Pick<Show, 'movie_price'>, pricing: MoviePricing): number {
+  const own = show.movie_price;
+  return typeof own === 'number' && own > 0 ? own : pricing.defaultPrice;
+}
 
 function getIdentity() {
   const user = getCurrentTelegramUser();
@@ -23,6 +90,9 @@ export interface MoviePurchase {
   show_id: string;
   status: 'pending' | 'approved' | 'rejected';
   amount: number;
+  /** What the SERVER decided this ticket costs — the figure to put on the
+   *  QR, rather than anything the client worked out for itself. */
+  currency: Currency;
   submitted_at: string;
 }
 
@@ -65,14 +135,31 @@ export async function submitMoviePurchaseIntent(
   showId: string,
 ): Promise<{ error: string | null; id: string | null }> {
   const { id, username } = getIdentity();
+  // No amount is sent. create_movie_purchase reads the price off the show
+  // (falling back to the catalog default) and writes that, so a caller
+  // cannot open a one-cent ticket for a ten-dollar film and then have the
+  // ABA ingest match the cent against it.
   const { data: newId, error } = await supabase.rpc('create_movie_purchase', {
     p_telegram_user_id: id,
     p_telegram_username: username,
     p_show_id: showId,
-    p_amount: MOVIE_PRICE,
   });
   if (error) return { error: error.message, id: null };
   return { error: null, id: newId as string };
+}
+
+// Closes out a ticket whose window ran out, so the bank matcher can
+// never attach a later, unrelated payment to a purchase the viewer
+// walked away from. Mirrors expireStaleSubmission for VIP. Returns false
+// when the row no longer qualifies — already decided, or a receipt was
+// attached, in which case it is waiting on the admin, not on the payer.
+export async function expireStaleMoviePurchase(purchaseId: string): Promise<boolean> {
+  const { id } = getIdentity();
+  const { data } = await supabase.rpc('expire_stale_movie_purchase', {
+    p_purchase_id: purchaseId,
+    p_telegram_user_id: id,
+  });
+  return data === true;
 }
 
 // Attaches the receipt and grants the unlock immediately (same

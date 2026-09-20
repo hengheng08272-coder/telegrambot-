@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import AdminPanelShell, { PanelTabs } from '@/components/AdminPanelShell';
 import {
-  buildAbaDeeplink,
   decodeKhqrFromFile,
   isKhqrPayload,
   readKhqrAmount,
@@ -50,6 +49,135 @@ const TEMPLATE_ERRORS: Record<TemplateFailure, string> = {
   'no-amount-field': 'QR នេះមិនមានចំនួនទឹកប្រាក់ទេ — ត្រូវបង្កើត QR ដែលដាក់ចំនួនស្រាប់',
   'name-too-long': 'ឈ្មោះវែងពេក (លើសពី ២៥ តួ)',
 };
+
+interface TemplateSlotProps {
+  accent: string;
+  heading: string;
+  template: string;
+  onTemplate: (value: string) => void;
+  /** What the member's bank picker calls this one. */
+  label: string;
+  onLabel: (value: string) => void;
+  labelPlaceholder: string;
+  /** Whether this bank's payload may have its payee name replaced. */
+  rename: boolean;
+  onRename: (value: boolean) => void;
+  /** The shop name that would replace it, for the preview line. */
+  displayName: string;
+  showIntro?: boolean;
+}
+
+/**
+ * One bank's pasted KHQR, with the two things that differ between banks.
+ *
+ * The label is what the member sees on the picker. The rename switch is
+ * the one that actually decides whether a payment goes through: ABA
+ * refuses a payload whose payee name was rewritten and ACLEDA accepts
+ * it, so the permission belongs to the template, not to the shop.
+ */
+function TemplateSlot({
+  accent,
+  heading,
+  template,
+  onTemplate,
+  label,
+  onLabel,
+  labelPlaceholder,
+  rename,
+  onRename,
+  displayName,
+  showIntro,
+}: TemplateSlotProps) {
+  const trimmed = template.trim();
+  const check = validateKhqrTemplate(trimmed);
+  const bankName = readKhqrField(trimmed, '59') ?? '—';
+  const shown = rename && displayName ? displayName : bankName;
+
+  return (
+    <div
+      className="mb-3 rounded-lg border p-3"
+      style={{ borderColor: `${accent}33`, background: `${accent}0D` }}
+    >
+      <label
+        className="mb-1 block text-[11px] font-bold uppercase tracking-wide"
+        style={{ color: accent }}
+      >
+        {heading}
+      </label>
+      {showIntro && (
+        <p className="mb-2 text-[11px] leading-relaxed text-white/50">
+          បង្កើត QR ណាមួយ<b className="text-white/70">ដែលមានចំនួនទឹកប្រាក់</b>ក្នុង App ធនាគាររបស់អ្នក →
+          ចុចឲ្យជាប់លើ QR → Copy → បិទភ្ជាប់ទីនេះ។ កម្មវិធីនឹងប្ដូរតែ
+          <b className="text-white/70">ចំនួនទឹកប្រាក់</b>ប៉ុណ្ណោះ រីឯផ្នែកឯទៀតរក្សាដដែលបេះបិទ —
+          ដូច្នេះធនាគារទទួលស្គាល់វាដូច QR ខ្លួនឯង។
+        </p>
+      )}
+      <textarea
+        value={template}
+        onChange={(e) => onTemplate(e.target.value)}
+        placeholder="00020101021229450016..."
+        rows={3}
+        className="w-full resize-y rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-white outline-none focus:border-white/30"
+      />
+
+      {trimmed && (
+        <div className="mt-1.5 text-[11px] font-semibold">
+          {check.ok ? (
+            <>
+              <p style={{ color: accent }}>✓ KHQR ត្រឹមត្រូវ</p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <input
+                  value={label}
+                  onChange={(e) => onLabel(e.target.value)}
+                  placeholder={labelPlaceholder}
+                  className="w-28 rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-[12px] font-bold text-white outline-none focus:border-white/30"
+                />
+                <span className="text-[11px] font-normal text-white/35">
+                  ឈ្មោះលើប៊ូតុងជ្រើសធនាគារ
+                </span>
+              </div>
+
+              {/* The switch that decides whether a payment is accepted at
+                  all, so it says what it does rather than naming a
+                  field. Off is the safe answer: the bank's own name is
+                  the only one proven to work. */}
+              <label className="mt-2 flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={rename}
+                  onChange={(e) => onRename(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[#2FD98C]"
+                />
+                <span className="text-[11px] font-normal leading-relaxed text-white/50">
+                  ប្ដូរឈ្មោះក្នុង QR នេះជា «ឈ្មោះបង្ហាញ»
+                  <span className="block text-white/30">
+                    ABA បដិសេធ QR ដែលប្ដូរឈ្មោះ — សូមទុកមិនធីកសម្រាប់ ABA។ ACLEDA ទទួលយកបាន។
+                  </span>
+                </span>
+              </label>
+
+              <p className="mt-2 font-normal text-white/45">
+                ឈ្មោះក្នុង QR ដែល paste៖ <b className="text-white/70">{bankName}</b>
+              </p>
+              <p className="mt-0.5 font-normal text-white/45">
+                ឈ្មោះដែលសមាជិកនឹងឃើញ៖{' '}
+                <b style={{ color: shown === bankName ? undefined : accent }} className={shown === bankName ? 'text-white/70' : ''}>
+                  {shown}
+                </b>
+                {rename && !displayName && (
+                  <span className="text-white/35"> — បំពេញ «ឈ្មោះបង្ហាញ» ខាងក្រោម</span>
+                )}
+              </p>
+            </>
+          ) : (
+            <span className="text-[#FF6B60]">{TEMPLATE_ERRORS[check.reason]}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   onClose: () => void;
@@ -133,7 +261,6 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [khqrDrafts, setKhqrDrafts] = useState<Record<string, string>>({});
   const [khqrEditingTier, setKhqrEditingTier] = useState<string | null>(null);
   const [savingKhqrTier, setSavingKhqrTier] = useState<string | null>(null);
-  const [copiedDeeplinkTier, setCopiedDeeplinkTier] = useState<string | null>(null);
 
   // ABA auto-confirm matching — the name printed on every real ABA
   // notification for this account, used by the aba-payment-webhook
@@ -158,6 +285,15 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   const [bakongMerchantId, setBakongMerchantId] = useState('');
   const [bakongMcc, setBakongMcc] = useState('');
   const [bakongTemplate, setBakongTemplate] = useState('');
+  // A second bank's own KHQR, offered beside the first. The two banks
+  // disagree about what may be changed — ABA refuses a payload whose
+  // payee name was rewritten, ACLEDA accepts it — so each slot carries
+  // its own label and its own permission to rename.
+  const [bakongTemplateAlt, setBakongTemplateAlt] = useState('');
+  const [bankLabel, setBankLabel] = useState('');
+  const [bankLabelAlt, setBankLabelAlt] = useState('');
+  const [renameTemplate, setRenameTemplate] = useState(true);
+  const [renameTemplateAlt, setRenameTemplateAlt] = useState(true);
   const [bakongSaving, setBakongSaving] = useState(false);
   const [bakongSaved, setBakongSaved] = useState(false);
   const [bakongPreview, setBakongPreview] = useState<string | null>(null);
@@ -201,6 +337,11 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       setBakongMerchantId(cfg.merchantId ?? '');
       setBakongMcc(cfg.merchantCategoryCode ?? '');
       setBakongTemplate(cfg.khqrTemplate ?? '');
+      setBakongTemplateAlt(cfg.khqrTemplateAlt ?? '');
+      setBankLabel(cfg.bankLabel ?? '');
+      setBankLabelAlt(cfg.bankLabelAlt ?? '');
+      setRenameTemplate(cfg.renameTemplate !== false);
+      setRenameTemplateAlt(cfg.renameTemplateAlt !== false);
     });
     fetchAbaMerchantName().then((name) => {
       if (name) setAbaMerchantName(name);
@@ -211,8 +352,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
   // Renders a sample $1 QR from whatever is typed in, so the owner can
   // scan it with their own banking app and confirm two things before any
   // member ever sees it: the money lands in the right account, and the
-  // name shown is the one they want.
-  const templateCheck = validateKhqrTemplate(bakongTemplate);
+  // name shown is the one they want. Each pasted template validates
+  // itself inside its own slot (see TemplateSlot).
 
   const handlePreviewBakong = async () => {
     setBakongPreview(null);
@@ -226,8 +367,11 @@ export default function SubscriptionsPanel({ onClose }: Props) {
       merchantId: bakongMerchantId.trim() || undefined,
       merchantCategoryCode: bakongMcc.trim() || undefined,
       khqrTemplate: bakongTemplate.trim() || undefined,
+      khqrTemplateAlt: bakongTemplateAlt.trim() || undefined,
+      renameTemplate,
+      renameTemplateAlt,
     };
-    if (!config.khqrTemplate && (!config.accountId || !config.merchantName)) {
+    if (!config.khqrTemplate && !config.khqrTemplateAlt && (!config.accountId || !config.merchantName)) {
       setBakongPreviewError('ត្រូវការ Account ID និងឈ្មោះ (ឬបិទភ្ជាប់ KHQR ខាងលើ)');
       return;
     }
@@ -237,6 +381,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
     // a working one.
     if (
       !config.khqrTemplate &&
+      !config.khqrTemplateAlt &&
       needsAccountInformation(config.accountId, config.merchantId) &&
       !config.accountInformation
     ) {
@@ -258,6 +403,8 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         'template-bad-checksum': TEMPLATE_ERRORS['bad-checksum'],
         'template-static': TEMPLATE_ERRORS['no-amount-field'],
         'template-name-too-long': TEMPLATE_ERRORS['name-too-long'],
+        'template-currency-mismatch':
+          'Template នេះជា QR រូបិយប័ណ្ណមួយផ្សេង — សូម paste template ជារូបិយប័ណ្ណដែលកំពុងលក់',
       };
       setBakongPreviewError(
         reasons[generated.reason] + (generated.detail ? ` (${generated.detail})` : ''),
@@ -316,6 +463,11 @@ export default function SubscriptionsPanel({ onClose }: Props) {
         merchantId: bakongMerchantId,
         merchantCategoryCode: bakongMcc,
         khqrTemplate: bakongTemplate,
+        khqrTemplateAlt: bakongTemplateAlt,
+        bankLabel,
+        bankLabelAlt,
+        renameTemplate,
+        renameTemplateAlt,
       });
       setBakongSaved(true);
       window.setTimeout(() => setBakongSaved(false), 2000);
@@ -668,63 +820,41 @@ export default function SubscriptionsPanel({ onClose }: Props) {
           </p>
           {/* Put first because it supersedes everything under it. A
               payload the bank itself issued needs no reconstruction, and
-              reconstruction is where ABA rejects us. */}
-          <div className="mb-3 rounded-lg border border-white/10 bg-black/20 p-3">
-            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[#2FD98C]">
-              ★ វិធីងាយបំផុត — បិទភ្ជាប់ KHQR ពីធនាគាររបស់អ្នក
-            </label>
-            <p className="mb-2 text-[11px] leading-relaxed text-white/50">
-              បង្កើត QR ណាមួយ<b className="text-white/70">ដែលមានចំនួនទឹកប្រាក់</b>ក្នុង App ធនាគាររបស់អ្នក →
-              ចុចឲ្យជាប់លើ QR → Copy → បិទភ្ជាប់ទីនេះ។ កម្មវិធីនឹងប្ដូរតែ
-              <b className="text-white/70">ចំនួនទឹកប្រាក់</b>ប៉ុណ្ណោះ រីឯផ្នែកឯទៀតរក្សាដដែលបេះបិទ —
-              ដូច្នេះធនាគារទទួលស្គាល់វាដូច QR ខ្លួនឯង។ បើបំពេញប្រអប់នេះ ប្រអប់ខាងក្រោមមិនប្រើទេ។
-            </p>
-            <textarea
-              value={bakongTemplate}
-              onChange={(e) => setBakongTemplate(e.target.value)}
-              placeholder="00020101021229450016..."
-              rows={3}
-              className="w-full resize-y rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-white outline-none focus:border-[#2FD98C]/50"
-            />
-            {bakongTemplate.trim() && (
-              <div className="mt-1.5 text-[11px] font-semibold">
-                {templateCheck.ok ? (
-                  <>
-                    <p className="text-[#2FD98C]">✓ KHQR ត្រឹមត្រូវ</p>
-                    {/* Two different names, and confusing them is easy: one
-                        is what the bank wrote in the paste, the other is
-                        what this app will actually put in the QR it hands
-                        a member. Showing only the first made an applied
-                        override look like it had done nothing. */}
-                    <p className="mt-1 font-normal text-white/45">
-                      ឈ្មោះក្នុង QR ដែល paste៖{' '}
-                      <b className="text-white/70">
-                        {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
-                      </b>
-                    </p>
-                    <p className="mt-0.5 font-normal text-white/45">
-                      ឈ្មោះដែលសមាជិកនឹងឃើញ៖{' '}
-                      {bakongName.trim() ? (
-                        <b className="text-[#2FD98C]">{bakongName.trim()}</b>
-                      ) : (
-                        <>
-                          <b className="text-white/70">
-                            {readKhqrField(bakongTemplate.trim(), '59') ?? '—'}
-                          </b>
-                          <span className="text-white/35">
-                            {' '}
-                            — បំពេញ «ឈ្មោះបង្ហាញ» ខាងក្រោម ដើម្បីប្ដូរ
-                          </span>
-                        </>
-                      )}
-                    </p>
-                  </>
-                ) : (
-                  <span className="text-[#FF6B60]">{TEMPLATE_ERRORS[templateCheck.reason]}</span>
-                )}
-              </div>
-            )}
-          </div>
+              reconstruction is where ABA rejects us.
+              
+              Two slots, because one is not enough: the banks disagree
+              about what may be altered. ABA refuses a payload whose payee
+              name was rewritten, so its QR has to go out under the
+              account holder's own name; ACLEDA accepts the rewrite, so
+              its QR can carry the shop's name. Neither can be made to
+              behave like the other, so both are offered and the member
+              picks. */}
+          <TemplateSlot
+            accent="#2FD98C"
+            heading="★ វិធីងាយបំផុត — បិទភ្ជាប់ KHQR ពីធនាគាររបស់អ្នក"
+            template={bakongTemplate}
+            onTemplate={setBakongTemplate}
+            label={bankLabel}
+            onLabel={setBankLabel}
+            labelPlaceholder="ឧ. ABA"
+            rename={renameTemplate}
+            onRename={setRenameTemplate}
+            displayName={bakongName.trim()}
+            showIntro
+          />
+
+          <TemplateSlot
+            accent="#5B93FF"
+            heading="ធនាគារទី២ (ស្រេចចិត្ត) — ឧ. ACLEDA"
+            template={bakongTemplateAlt}
+            onTemplate={setBakongTemplateAlt}
+            label={bankLabelAlt}
+            onLabel={setBankLabelAlt}
+            labelPlaceholder="ឧ. ACLEDA"
+            rename={renameTemplateAlt}
+            onRename={setRenameTemplateAlt}
+            displayName={bakongName.trim()}
+          />
 
           <div className="grid gap-2 sm:grid-cols-3">
             <div>
@@ -814,7 +944,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
           {/* The one field that decides whether ABA will accept the QR at
               all. Without it the payload describes an individual, which
               ABA displays correctly and then refuses to pay. */}
-          {!bakongMerchantId.trim() && !bakongTemplate.trim() && (
+          {!bakongMerchantId.trim() && !bakongTemplate.trim() && !bakongTemplateAlt.trim() && (
             <p className="mt-2 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-[#FFC55A]">
               បើគណនីរបស់អ្នកជា <b>ABA merchant</b> ត្រូវបំពេញ <b>Merchant ID</b> ជាដាច់ខាត។ បើគ្មានវាទេ
               ABA នឹងបង្ហាញ QR ត្រឹមត្រូវ តែពេលចុចបង់ វានឹងបដិសេធថា{' '}
@@ -826,6 +956,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
               on its own it reaches no account at all. Say so at the moment
               the owner pastes one, not after a member has paid. */}
           {!bakongTemplate.trim() &&
+            !bakongTemplateAlt.trim() &&
             needsAccountInformation(bakongAccountId, bakongMerchantId) &&
             !bakongAccountNumber.trim() && (
             <p className="mt-2 rounded-lg border border-[#FFC55A]/25 bg-[#FFC55A]/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-[#FFC55A]">
@@ -851,6 +982,7 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 // below cannot apply to it either. Everything else here
                 // only matters when there is no template.
                 (!bakongTemplate.trim() &&
+                  !bakongTemplateAlt.trim() &&
                   (!bakongAccountId.trim() ||
                     !bakongName.trim() ||
                     // Saving an ABA id with no account number would switch
@@ -1010,7 +1142,6 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                 qrAmount !== null &&
                 Number.isFinite(priceNumber) &&
                 Math.abs(qrAmount - priceNumber) > 0.001;
-              const abaDeeplink = khqrValue ? buildAbaDeeplink(khqrValue) : null;
               return (
                 <div key={tier.key} className="flex flex-col rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <div className="mb-3 flex items-center gap-3">
@@ -1306,60 +1437,6 @@ export default function SubscriptionsPanel({ onClose }: Props) {
                           សូមធ្វើ QR ថ្មីតាមតម្លៃនេះ ឬកែតម្លៃឲ្យស្មើ QR។
                         </span>
                       </p>
-                    )}
-
-                    {/* A real anchor, so this is testable exactly the way
-                        a viewer's phone will meet it. Opening ABA from a
-                        genuine link is what works; the copy button is
-                        here so the same string can be pasted into a note
-                        or sent to a phone for a hands-on check. */}
-                    {abaDeeplink && (
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <a
-                          href={abaDeeplink}
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-[#6B85FF]/25 bg-[#6B85FF]/10 px-2.5 py-1 text-[11px] font-bold text-[#B6C3FF] no-underline transition hover:bg-[#6B85FF]/20"
-                        >
-                          <Zap className="h-3 w-3" /> សាកល្បងបើក ABA
-                        </a>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(abaDeeplink);
-                              setCopiedDeeplinkTier(tier.key);
-                              window.setTimeout(() => setCopiedDeeplinkTier(null), 2000);
-                            } catch {
-                              setError('ចម្លងមិនបាន — សូមចម្លងដោយដៃពីប្រអប់ខាងក្រោម។');
-                            }
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.07] px-2.5 py-1 text-[11px] font-semibold text-white/55 transition hover:bg-white/[0.11] hover:text-white/80"
-                        >
-                          {copiedDeeplinkTier === tier.key ? (
-                            <>
-                              <Check className="h-3 w-3 text-[#2FD98C]" /> ចម្លងរួច
-                            </>
-                          ) : (
-                            'ចម្លង deep link'
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* The link itself, underlined and wrapped — the same
-                        form it takes in a notes app, where a URL in plain
-                        text is auto-detected and styled. A web page never
-                        does that on its own: text is only a link when it
-                        is wrapped in an <a href>, so it is rendered that
-                        way here deliberately, to be checked and copied. */}
-                    {abaDeeplink && (
-                      <a
-                        href={abaDeeplink}
-                        rel="noreferrer"
-                        className="mt-2 block break-all rounded-lg bg-black/30 px-2.5 py-2 text-[11px] leading-relaxed text-[#B6C3FF] underline decoration-[#B6C3FF]/50 underline-offset-2"
-                      >
-                        {abaDeeplink}
-                      </a>
                     )}
 
                     {isEditingKhqr && (

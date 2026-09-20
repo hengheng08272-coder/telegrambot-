@@ -31,6 +31,11 @@ interface Props {
   /** Sits on artwork rather than on the app's own surface — adds the
    *  blur and slightly heavier ground a poster needs behind it. */
   onArt?: boolean;
+  /** The 3px corner the mosaic layout uses everywhere, instead of the
+   *  app's usual 6px. A badge sitting in the corner of a 3px-cornered
+   *  poster is the one place the difference is visible: a rounder badge
+   *  inside a squarer frame reads as a sticker that missed its mark. */
+  square?: boolean;
 }
 
 // vip and price used to be solid, opaque fills (a gold gradient, a blue
@@ -48,12 +53,21 @@ const TONES: Record<BadgeTone, string> = {
   info: 'text-white/85 bg-white/10 ring-1 ring-inset ring-white/12',
 };
 
-export default function Badge({ tone = 'info', icon, children, className = '', onArt }: Props) {
+export default function Badge({ tone = 'info', icon, children, className = '', onArt, square }: Props) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-[3px] text-[9.5px] font-bold leading-none ${
-        TONES[tone]
-      } ${onArt ? 'backdrop-blur-sm shadow-[0_2px_8px_rgba(2,4,10,0.5)]' : ''} ${className}`}
+      // leading-[1.4], not leading-none. Battambang draws Khmer vowels
+      // above the consonant and coeng subscripts below it, both outside
+      // the em box; a line box the exact height of the em box therefore
+      // cuts them off, and every badge here sits inside something with
+      // overflow hidden, which turns that into a clean slice through the
+      // mark. The vertical padding comes down to match so the badge is
+      // the same height it always was — the glyphs just fit inside it now.
+      className={`inline-flex shrink-0 items-center gap-1 px-1.5 py-[1.5px] text-[9.5px] font-bold leading-[1.4] ${
+        square ? 'rounded-[3px]' : 'rounded-md'
+      } ${TONES[tone]} ${
+        onArt ? 'backdrop-blur-sm shadow-[0_2px_8px_rgba(2,4,10,0.5)]' : ''
+      } ${className}`}
     >
       {icon}
       {children}

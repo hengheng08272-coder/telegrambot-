@@ -72,8 +72,26 @@ Deno.serve(async (req: Request) => {
     const { data: show } = await admin.from("shows").select("title").eq("id", sub.show_id).maybeSingle();
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const adminChatId = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID");
-    if (botToken && adminChatId) {
+    // Everyone who should see a film sell. admin_users is the source of
+    // truth, so adding an administrator there puts them on these
+    // notifications with no second place to remember; the env var is
+    // merged in rather than replaced, because a group chat -- or a
+    // recipient who is not an administrator -- still has to work.
+    const chatIds = new Set<string>();
+    for (const raw of (Deno.env.get("TELEGRAM_ADMIN_CHAT_ID") ?? "").split(/[,\s]+/)) {
+      const id = raw.trim();
+      if (id) chatIds.add(id);
+    }
+    try {
+      const { data: admins } = await admin.from("admin_users").select("telegram_user_id");
+      for (const row of admins ?? []) {
+        const id = String(row?.telegram_user_id ?? "").trim();
+        if (id) chatIds.add(id);
+      }
+    } catch {
+      // Table unreachable: env-configured recipients still get it.
+    }
+    if (botToken && chatIds.size > 0) {
       const caption =
         `🎬 ការទិញរឿង${AUTO_GRANT_ON_PROOF ? " — បានដោះសោបណ្ដោះអាសន្ន" : ""}\n\n` +
         `👤 ${sub.telegram_username ? "@" + sub.telegram_username : sub.telegram_user_id}\n` +
@@ -82,21 +100,28 @@ Deno.serve(async (req: Request) => {
         `💵 $${sub.amount}\n\n` +
         `សូមផ្ទៀងផ្ទាត់ជាមួយបញ្ជីធនាគារ រួចចុច ✅ ដើម្បីបញ្ជាក់ ឬ ❌ ដើម្បីដកវិញ`;
 
-      await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: adminChatId,
-          photo: screenshot_url,
-          caption,
-          reply_markup: {
-            inline_keyboard: [[
-              { text: "✅ Confirm", callback_data: `movie_confirm:${submission_id}` },
-              { text: "❌ Revoke", callback_data: `movie_revoke:${submission_id}` },
-            ]],
-          },
-        }),
-      }).catch(() => {});
+      // Sent to each in parallel, each swallowing its own failure: an
+      // admin who has never pressed Start on the bot answers 403, and
+      // that must not stop the others being told.
+      await Promise.all(
+        [...chatIds].map((chatId) =>
+          fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              photo: screenshot_url,
+              caption,
+              reply_markup: {
+                inline_keyboard: [[
+                  { text: "✅ Confirm", callback_data: `movie_confirm:${submission_id}` },
+                  { text: "❌ Revoke", callback_data: `movie_revoke:${submission_id}` },
+                ]],
+              },
+            }),
+          }).catch(() => {}),
+        ),
+      );
     }
 
     return new Response(JSON.stringify({ ok: true, granted: AUTO_GRANT_ON_PROOF }), {

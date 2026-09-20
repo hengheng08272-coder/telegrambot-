@@ -39,8 +39,8 @@
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
-    padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px));
-    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    padding: 12px 14px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
     background: var(--co-bg);
     background-image: var(--co-backdrop);
     background-repeat: no-repeat;
@@ -52,18 +52,17 @@
   }
   /* One screen, no scrolling: the whole point of this page is a single
      tap, and a payment page that has to be scrolled to find its button
-     is a payment that does not happen. Everything below is sized off the
-     viewport rather than off fixed pixels. */
+     is a payment that does not happen. */
   .wrap {
-    width: 100%; max-width: 400px; margin: auto;
+    width: 100%; max-width: 360px; margin: auto;
     display: flex; flex-direction: column;
   }
 
   /* Header — the same logo, at the same size, as the sheet the viewer
      was just looking at. */
   .brand { display: flex; align-items: center; gap: var(--co-s2); margin-bottom: var(--co-s3); order: 0; }
-  .brand img { width: 32px; height: 32px; object-fit: contain; }
-  .brand span { font-size: 13px; font-weight: 700; color: var(--co-text); }
+  .brand img { width: 26px; height: 26px; object-fit: contain; }
+  .brand span { font-size: 12px; font-weight: 700; letter-spacing: .02em; color: var(--co-text-muted); }
 
   /* The pass — the same shape the in-app sheet draws, so the hand-off
      to a browser doesn't feel like a hand-off to a different product. */
@@ -73,24 +72,55 @@
     border-radius: var(--co-r-card);
     overflow: hidden;
     margin-bottom: var(--co-s3);
+    box-shadow: var(--co-shadow-card);
   }
   .pass-band {
     display: flex; align-items: center; justify-content: space-between; gap: var(--co-s3);
-    padding: 9px 14px; color: #fff;
+    padding: 8px 14px; color: #fff;
     background-image: linear-gradient(135deg, var(--co-brand) 0%, var(--co-brand-deep) 100%);
   }
-  .pass-title { font-family: var(--co-font-display); font-size: 12px; letter-spacing: .22em; }
+  .pass-title { font-family: var(--co-font-display); font-size: 11.5px; letter-spacing: .22em; }
   .mono { font-family: ui-monospace, Menlo, monospace; font-size: 10px; letter-spacing: .06em; color: rgba(255,255,255,.85); }
   .pass-body { padding: var(--co-s3) var(--co-s4) var(--co-s4); }
   .pass-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--co-s3); }
-  .amount-row { align-items: flex-end; margin-top: 2px; }
-  .label { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--co-text-dim); margin: 0; }
-  .plan { font-size: 15px; font-weight: 700; margin: 2px 0 0; }
+  /* Plan on the left, total on the right, one line under the tear —
+     the shape the in-app sheet's compact pass uses. */
+  .amount-row { align-items: baseline; margin-top: var(--co-s1); }
+  /* What to do, said once at the top — the same line the in-app sheet
+     leads with, so a viewer handed over to the browser lands on the
+     screen they just left rather than on a different one. */
+  .pay-head {
+    margin: 0 0 var(--co-s1); text-align: center;
+    font-size: 15px; font-weight: 700; color: var(--co-text);
+  }
+  /* The plan, named quietly under the heading — same family, same
+     weight class as the line above it, so the two read as one caption
+     instead of as a headline with a price stapled to its side. */
+  .pay-sub {
+    margin: 2px 0 0; text-align: center;
+    font-size: 12px; font-weight: 700; color: var(--co-text-dim);
+  }
+  .label { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--co-text-dim); margin: 0; }
+  /* Khmer gets neither the caps nor the tracking. Khmer has no case, and
+     letter-spacing inserts a gap between every glyph — in Khmer that
+     means between a consonant and the vowel sign or coeng belonging to
+     it, so "គម្រោង" comes apart into "គ ម្រោ ង". */
+  :lang(km) .label, :lang(km) #orline { letter-spacing: normal; text-transform: none; font-size: 11px; }
+  :lang(km) #orline { font-size: 10px; }
+  .plan {
+    font-size: 13px; font-weight: 700; margin: 0; color: var(--co-text);
+    max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* Amount and unit on one baseline, in the same proportion the app's
+     sheet and the KHQR ticket use. Tabular figures so the digits don't
+     shuffle sideways between plans. */
+  .amount-wrap { display: flex; align-items: baseline; gap: 6px; }
   .amount {
     font-family: var(--co-font-display);
-    font-size: clamp(26px, 7.5vw, 32px); line-height: 1; letter-spacing: .01em;
-    margin: 0;
+    font-size: 26px; line-height: 1; letter-spacing: .01em;
+    font-variant-numeric: tabular-nums; margin: 0;
   }
+  .amount-unit { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--co-text-dim); }
 
   /* No dark card around the code: the KHQR ticket is already a card,
      and wrapping a white card in a grey one just drew a second border
@@ -106,36 +136,52 @@
   .tear::before { left: -8px; }
   .tear::after { right: -8px; }
 
-  .qr-wrap { text-align: center; padding-top: var(--co-s1); }
+  .qr-wrap { text-align: center; margin-top: var(--co-s3); }
   .qr-wrap img.qr-img {
-    width: min(52vw, 23vh); height: auto; border-radius: var(--co-r-btn);
+    width: min(48vw, 186px); height: auto; border-radius: var(--co-r-btn);
     background: #fff; padding: 8px; display: inline-block;
   }
-  .hint { font-size: 11px; color: var(--co-text-muted); margin: var(--co-s2) 0 0; text-align: center; }
+  .hint { font-size: 10.5px; line-height: 1.5; color: var(--co-text-dim); margin: var(--co-s2) auto 0; max-width: 17rem; }
   .desktop-hint { display: none; }
 
-  /* KHQR ticket drawn around a generated QR — mirrors KhqrCard.tsx. */
+  /* KHQR ticket drawn around a generated QR — mirrors KhqrCard.tsx,
+     down to the type scale. A QR only has to be big enough for a second
+     phone's camera; past that it stops being a code and starts being
+     wallpaper, pushing the pay button off the screen. */
   .khqr-ticket {
-    width: min(56vw, 25vh); min-width: 168px; margin: 0 auto;
+    width: min(48vw, 186px); min-width: 156px; margin: 0 auto;
     background: #fff; border-radius: 14px; overflow: hidden; text-align: left;
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
   .khqr-ticket .band {
-    background: #e11b24; padding: 8px 12px;
+    background: #e11b24; padding: 6px 12px;
     clip-path: polygon(0 0, 100% 0, 100% 55%, 88% 100%, 0 100%);
   }
-  .khqr-ticket .band p { margin: 0; text-align: center; color: #fff; font-size: 14px; font-weight: 900; letter-spacing: .12em; }
-  .khqr-ticket .body { padding: 8px 10px 10px; }
-  .khqr-ticket .name { margin: 0; font-size: 13px; font-weight: 700; color: #1a1a1a; }
-  .khqr-ticket .price { margin: 0; font-size: 19px; font-weight: 800; color: #1a1a1a; line-height: 1.2; }
-  .khqr-ticket .price span { font-size: 12px; font-weight: 600; color: #6b6b6b; margin-left: 4px; }
-  .khqr-ticket hr { border: 0; border-top: 1px dashed #d8d8d8; margin: 10px 0; }
+  .khqr-ticket .band p { margin: 0; text-align: center; color: #fff; font-size: 11.5px; font-weight: 900; letter-spacing: .14em; }
+  .khqr-ticket .body { padding: 8px 12px 12px; }
+  /* Name on top, amount on the line beneath it — the order a
+     bank-issued KHQR ticket prints them in, which is the only order
+     this ticket is allowed to use: its whole job is to be
+     indistinguishable from the real thing. */
+  .khqr-ticket .name {
+    margin: 0;
+    font-size: 11.5px; font-weight: 700; color: #1a1a1a;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .khqr-ticket .price {
+    margin: 0; white-space: nowrap;
+    font-size: 17px; font-weight: 800; color: #111; line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+  }
+  .khqr-ticket .price span { font-size: 10.5px; font-weight: 600; color: #8a8a8a; margin-left: 4px; }
+  .khqr-ticket hr { border: 0; border-top: 1px dashed #dcdcdc; margin: 8px 0; }
   .khqr-ticket canvas { width: 100%; height: auto; display: block; background: #fff; padding: 0; border-radius: 0; }
 
   a.btn, button.btn {
     display: flex; align-items: center; justify-content: center; gap: var(--co-s2);
-    width: 100%; max-width: 230px; margin: 0 auto var(--co-s2);
-    min-height: 44px; border: 0; cursor: pointer;
+    width: 100%; max-width: 250px; margin: 0 auto var(--co-s2);
+    min-height: 46px; border: 0; cursor: pointer;
     border-radius: var(--co-r-btn); padding: 12px 16px;
     font-family: inherit; font-size: 13.5px; font-weight: 800;
     text-decoration: none;
@@ -149,7 +195,7 @@
   }
   .btn-ghost {
     color: var(--co-text-muted); background: rgba(255,255,255,.04);
-    border: 1px solid var(--co-line); font-size: 13px;
+    border: 1px solid var(--co-line); font-size: 12.5px; min-height: 42px;
   }
   /* ABA blue, used on nothing but the PayWay fallback. */
   .btn-aba {
@@ -162,9 +208,8 @@
      space the button needed. */
   .steps {
     margin: 2px 0 var(--co-s2); text-align: center;
-    font-size: 11px; line-height: 1.5; color: var(--co-text-dim);
+    font-size: 10.5px; line-height: 1.5; color: var(--co-text-faint);
   }
-
 
   /* Warnings are amber, never red: red is the pay button on this page. */
   .note {
@@ -176,7 +221,7 @@
   .note.show { display: block; }
 
   .err { font-size: 13px; color: var(--co-amber); text-align: center; }
-  .back-hint { display: none; order: 8; margin-top: 0; font-size: 11px; color: var(--co-text-dim); }
+  .back-hint { display: none; order: 8; margin-top: 0; font-size: 10.5px; color: var(--co-text-faint); text-align: center; }
   .back-hint.show { display: block; }
   .foot { margin-top: var(--co-s2); text-align: center; font-size: 9px; color: var(--co-text-faint); }
 
@@ -186,6 +231,7 @@
   #pass { order: 1; }
   #orline { order: 2; }
   #open-aba { order: 3; }
+  #save-qr { order: 3; }
   #not-open { order: 4; }
   #payway { order: 5; }
   #steps-card { order: 6; }
@@ -204,20 +250,39 @@
      says so out loud instead of stacking two buttons. */
   #orline {
     display: flex; align-items: center; gap: var(--co-s3);
-    margin: 2px auto var(--co-s2); max-width: 230px;
+    /* width:100% is not redundant. `.wrap` is a column flex container,
+       and an auto left/right margin cancels the default stretch — so
+       without it this shrank to fit the word "or" and its two rules were
+       laid out at zero width, which is why the divider was invisible. */
+    width: 100%; margin: 2px auto var(--co-s2); max-width: 250px;
     font-size: 10px; letter-spacing: .12em; color: var(--co-text-faint);
   }
   #orline::before, #orline::after {
-    content: ''; flex: 1; height: 1px; background: var(--co-line);
+    content: ''; flex: 1; height: 1px; background: var(--co-line-strong);
   }
   /* Nobody reads three steps while holding a QR up to another phone. */
   .wrap.mode-qr #steps-card { display: none; }
 
+  /* A short phone (or a landscape one) has no room to spare: give the
+     code back some of it rather than pushing the button off the fold. */
+  @media (max-height: 700px) {
+    .khqr-ticket, .qr-wrap img.qr-img { width: min(40vw, 150px); min-width: 132px; }
+    .amount { font-size: 23px; }
+    .pass-body { padding: var(--co-s3) var(--co-s3) var(--co-s3); }
+    .foot { margin-top: var(--co-s1); }
+    .brand { margin-bottom: var(--co-s2); }
+    .pay-head { font-size: 14px; }
+    .qr-wrap { margin-top: var(--co-s2); }
+    .hint { margin-top: var(--co-s1); }
+    .steps { margin: 0 0 var(--co-s1); }
+    #orline { margin-bottom: var(--co-s1); }
+  }
+
   /* Opened on a laptop: the deeplink is useless there, so the QR becomes
      the whole point and grows to something a phone can actually scan. */
   @media (min-width: 720px) and (pointer: fine) {
-    .qr-wrap img.qr-img { width: 300px; }
-    .khqr-ticket { width: 320px; }
+    .qr-wrap img.qr-img { width: 260px; }
+    .khqr-ticket { width: 260px; }
     .desktop-hint { display: block; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -250,16 +315,27 @@
       <span class="mono" id="ticket"></span>
     </div>
     <div class="pass-body">
-      <div class="pass-row">
-        <span class="label" id="plan-label"></span>
-        <span class="plan" id="plan"></span>
-      </div>
-      <div class="pass-row amount-row">
-        <span class="label" id="amount-label"></span>
-        <span class="amount" id="amount"></span>
-      </div>
+      <!-- Same order the in-app sheet uses: what to do, a tear, then
+           what it costs. The labelled "PLAN / AMOUNT DUE" rows this
+           replaces said out loud what the two figures already are. -->
+      <p class="pay-head" id="pay-head"></p>
+      <p class="pay-sub" id="pay-sub" hidden></p>
 
       <div class="tear"></div>
+
+      <!-- Only for a payment with no KHQR ticket under it (an uploaded
+           QR image, or a code that failed to draw). When the ticket is
+           there it prints the amount itself, and a display figure this
+           size beside a small Khmer plan name, directly above a second
+           copy of the same number, was two kinds of type arguing over
+           one figure. -->
+      <div class="pass-row amount-row" id="amount-row" hidden>
+        <span class="plan" id="plan"></span>
+        <span class="amount-wrap">
+          <span class="amount" id="amount"></span>
+          <span class="amount-unit" id="amount-unit"></span>
+        </span>
+      </div>
 
       <div class="qr-wrap" id="qr-card" hidden>
         <img class="qr-img" id="qr" alt="KHQR" hidden />
@@ -295,6 +371,13 @@
     <span id="payway-label"></span>
   </a>
 
+  <!-- The route that works for another bank's KHQR: take the code with
+       you, then scan it from inside the bank app. -->
+  <a class="btn btn-primary" id="save-qr" hidden download="khqr.png">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 19h16"/></svg>
+    <span id="save-qr-label"></span>
+  </a>
+
   <p class="steps" id="steps-card" hidden><span id="steps"></span></p>
 
   <a class="btn btn-ghost" id="back" hidden>
@@ -314,7 +397,11 @@
 (function () {
   var STRINGS = {
     km: {
-      planLabel: 'គម្រោង',
+      headScan: 'ស្កេនដើម្បីទូទាត់',
+      headAba: 'ត្រៀមទូទាត់',
+      saveQr: 'រក្សាទុករូប QR',
+      stepsScan: ['រក្សាទុក QR', 'បើក App ធនាគារ', 'ស្កេនរូបពីវិចិត្រសាល'],
+      qrHintSave: 'រក្សាទុក ឬថតអេក្រង់ QR នេះ រួចបើក App ធនាគាររបស់អ្នក ហើយស្កេនវាពីវិចិត្រសាល។',
       openAba: 'បើក App ABA',
       or: 'ឬ',
       payway: 'បើកទំព័រ ABA PayWay ជំនួស',
@@ -322,18 +409,20 @@
       qrHintScan: 'ថតអេក្រង់ QR នេះទុក រួចស្កេនវាពី App ធនាគាររបស់អ្នក',
       openAbaAlt: 'ប្រើ ABA Mobile ជំនួស',
       qrDesktopHint: 'បើកលើកុំព្យូទ័រ? សូមស្កេន QR នេះដោយទូរស័ព្ទ។',
-      ticket: 'លេខយោង',
-      amountDue: 'ត្រូវបង់',
       openAppAgain: 'បើក Mini App ម្ដងទៀត',
       back: 'ត្រឡប់ទៅ App',
       backHint: 'បើមិនត្រឡប់ទេ សូមចុច «Done» ឬព្រួញថយក្រោយ នៅជ្រុងខាងលើ។',
       notOpen: 'ABA មិនបានបើកទេ។ សូមប្រើជម្រើសខាងក្រោម ឬស្កេន QR ខាងលើ។',
       steps: ['បើក ABA', 'បញ្ជាក់ការទូទាត់', 'ផ្ញើវិក្កយបត្រ'],
       missing: 'តំណទូទាត់មិនត្រឹមត្រូវ។ សូមត្រឡប់ទៅ App ហើយចាប់ផ្តើមឡើងវិញ។',
-      foot: 'ការទូទាត់ដោយសុវត្ថិភាព · ដំណើរការដោយ ABA PayWay KHQR',
+      foot: 'ការទូទាត់ដោយសុវត្ថិភាព · ដំណើរការដោយ KHQR · Bakong',
     },
     en: {
-      planLabel: 'Plan',
+      headScan: 'Scan to pay',
+      headAba: 'Ready to pay',
+      saveQr: 'Save the QR image',
+      stepsScan: ['Save the QR', 'Open your bank app', 'Scan it from your gallery'],
+      qrHintSave: 'Save or screenshot this QR, then open your banking app and scan it from your gallery.',
       openAba: 'Open the ABA app',
       or: 'OR',
       payway: 'Open the ABA PayWay page instead',
@@ -341,15 +430,13 @@
       qrHintScan: 'Screenshot this QR, then scan it from your banking app',
       openAbaAlt: 'Use ABA Mobile instead',
       qrDesktopHint: 'On a computer? Scan this QR with your phone.',
-      ticket: 'Reference',
-      amountDue: 'Amount due',
       openAppAgain: 'Open the Mini App again',
       back: 'Back to the app',
       backHint: 'Nothing happened? Use "Done" or the back arrow at the top of the screen.',
       notOpen: 'ABA did not open. Use the option below, or scan the QR above.',
       steps: ['Open ABA', 'Confirm', 'Send the receipt'],
       missing: 'This payment link is incomplete. Please go back to the app and start again.',
-      foot: 'Secured checkout · Powered by ABA PayWay KHQR',
+      foot: 'Secured checkout · Powered by KHQR · Bakong',
     },
   };
 
@@ -363,6 +450,18 @@
   var plan = params.get('plan');
   var amount = params.get('amount');
   var ticket = params.get('ticket');
+  // What unit the figure is in. Sent explicitly now; older links only
+  // carried a formatted string like "$2" or "៛4,000", so fall back to
+  // reading the symbol off the front of it rather than assuming dollars
+  // — printing "USD" next to a riel figure is the one label on this
+  // screen a payer has to be able to trust.
+  var currency = (params.get('cur') || '').toUpperCase();
+  if (currency !== 'USD' && currency !== 'KHR') {
+    currency = /^\s*៛/.test(amount || '') ? 'KHR' : 'USD';
+  }
+  // The digits alone — the unit is printed as its own element beside
+  // them, at its own size, on both the pass and the KHQR ticket.
+  var amountValue = (amount || '').replace(/^\s*[$៛]\s*/, '').replace(/\s*(USD|KHR)\s*$/i, '');
   var payLink = params.get('pay');
   var ret = params.get('ret');
   // Where to relaunch the Mini App if bringing Telegram forward didn't
@@ -373,6 +472,44 @@
   // ABA button steps down to a quiet alternative. Anything else is the
   // ABA route, where the tap is the whole page.
   var mode = params.get('mode') === 'qr' ? 'qr' : 'aba';
+
+  // Which bank issued this code. Sub-tag 00 of the merchant-account
+  // field (tag 29 individual / tag 30 merchant) holds a Bakong handle
+  // whose domain names the member bank: khqr@aclb is ACLEDA, khqr@abaa
+  // is ABA. Same reading as readKhqrIssuer() in src/lib/khqr.ts.
+  function tlv(payload) {
+    var out = {}, i = 0;
+    while (i + 4 <= payload.length) {
+      var tag = payload.slice(i, i + 2);
+      var len = parseInt(payload.slice(i + 2, i + 4), 10);
+      if (!isFinite(len) || len < 0) break;
+      var value = payload.slice(i + 4, i + 4 + len);
+      if (value.length < len) break;
+      if (!(tag in out)) out[tag] = value;
+      i += 4 + len;
+    }
+    return out;
+  }
+  function khqrIssuer(payload) {
+    if (!payload) return null;
+    var top = tlv(payload);
+    var account = top['29'] || top['30'];
+    if (!account) return null;
+    var handle = tlv(account)['00'];
+    if (!handle) return null;
+    var at = handle.indexOf('@');
+    return at === -1 ? null : handle.slice(at + 1).trim().toLowerCase() || null;
+  }
+  // PayWay's handler validates the merchant data as its own, so it
+  // refuses another bank's KHQR outright ("Invalid Qr Merchant Data")
+  // while ABA's scanner -- a different code path -- reads the same
+  // payload and pays it. An unreadable issuer keeps the old behaviour
+  // rather than dropping the button on a payload this simply failed to
+  // parse.
+  function abaCanOpen(payload) {
+    var issuer = khqrIssuer(payload);
+    return issuer === null || issuer.indexOf('aba') === 0;
+  }
 
   function el(id) { return document.getElementById(id); }
   function show(node) { node.hidden = false; }
@@ -385,10 +522,33 @@
 
   // The pass is always shown — even a link missing its labels still has
   // the code in it, and an empty page would tell the viewer nothing.
-  el('plan-label').textContent = t.planLabel;
-  el('amount-label').textContent = t.amountDue;
+  // Without a hand-off to a bank app, scanning IS the payment, whatever
+  // route brought the viewer here.
+  el('pay-head').textContent =
+    mode === 'qr' || !abaCanOpen(khqr) ? t.headScan : t.headAba;
+
+  // A KHQR payload with no uploaded image is the case that gets a drawn
+  // ticket, and that ticket prints the amount itself.
+  var ticketMode = !qr && !!khqr;
+
+  // Filled either way; which of the two is revealed depends on whether
+  // the ticket below will be carrying the figure.
+  el('pay-sub').textContent = plan || '';
   el('plan').textContent = plan || '—';
-  el('amount').textContent = amount || '';
+  el('amount').textContent = amountValue || '';
+  el('amount-unit').textContent = amountValue ? currency : '';
+
+  // Falls back to the full amount row if the code never draws, so the
+  // total can't vanish with it.
+  var showAmountRow = function () {
+    el('pay-sub').hidden = true;
+    show(el('amount-row'));
+  };
+  if (ticketMode) {
+    if (plan) show(el('pay-sub'));
+  } else {
+    showAmountRow();
+  }
   el('ticket').textContent = ticket || '';
   show(el('pass'));
 
@@ -404,10 +564,62 @@
   } else if (khqr) {
     // A generated KHQR: draw it here from the payload. The encoder loads
     // with `defer`, so it may not be ready yet on a slow connection.
+    // The small round Bakong mark every real KHQR carries dead centre.
+    // Same asset and same proportions the in-app sheet draws (see
+    // drawKhqrBadge in src/lib/bakong.ts) — without it the code this
+    // page shows was visibly a different object from the one the sheet
+    // had just shown, on the screen where that matters most. The 'H'
+    // error correction the encoder uses survives ~30% obscured; this
+    // covers about 20%.
+    var drawBadge = function (canvas) {
+      return new Promise(function (done) {
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return done();
+        var cx = canvas.width / 2;
+        var cy = canvas.height / 2;
+        var outerR = canvas.width * 0.1;
+
+        // A soft shadow, the way a printed sticker badge sits slightly
+        // proud of the page rather than pasted flat onto it.
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.beginPath();
+        ctx.arc(cx, cy + outerR * 0.05, outerR * 1.04, 0, Math.PI * 2);
+        ctx.fill();
+
+        // A white ring behind the mark: the source file's red disc runs
+        // edge to edge, so without this it would sit flush against
+        // whatever QR module happens to be behind it.
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+        ctx.fill();
+
+        var size = outerR * 1.55;
+        var mark = new Image();
+        mark.onload = function () {
+          ctx.drawImage(mark, cx - size / 2, cy - size / 2, size, size);
+          done();
+        };
+        mark.onerror = function () {
+          // Asset missing (bad deploy, offline first paint): a plain red
+          // disc still reads as "this has a badge" rather than leaving a
+          // blank white hole punched in the code.
+          ctx.fillStyle = '#E11B24';
+          ctx.beginPath();
+          ctx.arc(cx, cy, outerR * 0.86, 0, Math.PI * 2);
+          ctx.fill();
+          done();
+        };
+        mark.src = '/assets/bakong-mark.png';
+      });
+    };
+
     var drawQr = function () {
       if (!window.renderKhqrCanvas) return false;
       var canvas = el('qr-canvas');
       window.renderKhqrCanvas(canvas, khqr).then(function () {
+        return drawBadge(canvas);
+      }).then(function () {
         // The encoder writes its own inline width/height on the canvas
         // (408px, whatever the payload needs), and an inline style beats
         // the stylesheet — which is why the ticket used to burst out of
@@ -417,24 +629,45 @@
         canvas.style.height = 'auto';
         var name = params.get('name');
         if (name) el('qr-name').textContent = name;
-        // `amount` arrives already formatted for display (e.g. "$2.00");
-        // the ticket prints it the way ABA does, as "2.00 USD".
-        if (amount) {
-          el('qr-price').innerHTML = amount.replace(/^\$/, '') + ' <span>USD</span>';
+        // The ticket prints the figure the way a bank prints it — the
+        // same digits and the same unit the pass above it shows, so the
+        // two can never appear to disagree.
+        if (amountValue) {
+          el('qr-price').textContent = amountValue;
+          var unit = document.createElement('span');
+          unit.textContent = currency;
+          el('qr-price').appendChild(unit);
         }
         el('qr-ticket').hidden = false;
-        el('qr-hint').textContent = mode === 'qr' ? t.qrHintScan : t.qrHint;
+        // Now that pixels exist there is something to save. A data URL
+        // download works in Android Chrome; where the browser opens the
+        // image instead of saving it, long-pressing it still saves, and
+        // the hint below offers a screenshot either way.
+        if (!abaCanOpen(khqr)) {
+          try {
+            el('save-qr').href = canvas.toDataURL('image/png');
+            show(el('save-qr'));
+          } catch (e) {
+            // Tainted or oversized canvas: the hint alone still works.
+          }
+        }
+        el('qr-hint').textContent = !abaCanOpen(khqr)
+          ? t.qrHintSave
+          : mode === 'qr' ? t.qrHintScan : t.qrHint;
         el('qr-desktop-hint').textContent = t.qrDesktopHint;
         show(el('qr-card'));
       }).catch(function () {
-        // No QR to scan — the deeplink button below is still the main path.
+        // No QR to scan — the deeplink button below is still the main
+        // path, but nothing is now printing the amount, so the pass has
+        // to say it again.
+        showAmountRow();
       });
       return true;
     };
     if (!drawQr()) window.addEventListener('load', drawQr);
   }
 
-  if (khqr) {
+  if (khqr && abaCanOpen(khqr)) {
     // Same formula as buildAbaDeeplink() in src/lib/khqr.ts.
     var deeplink = 'abamobilebank://ababank.com?type=payway&qrcode=' + encodeURIComponent(khqr);
 
@@ -489,6 +722,16 @@
 
 
     el('steps').textContent = t.steps
+      .map(function (line, i) { return String(i + 1) + '. ' + line; })
+      .join('  ·  ');
+    show(el('steps-card'));
+  } else if (khqr) {
+    // Another bank's KHQR. There is no hand-off worth offering, so the
+    // page says what does work: take the code with you and scan it from
+    // inside the bank app. The href is set once the code has been drawn
+    // (see drawQr) -- until then there is nothing to save.
+    el('save-qr-label').textContent = t.saveQr;
+    el('steps').textContent = t.stepsScan
       .map(function (line, i) { return String(i + 1) + '. ' + line; })
       .join('  ·  ');
     show(el('steps-card'));

@@ -1,10 +1,26 @@
+import { formatAmount, type Currency } from '@/lib/format';
+
 interface KhqrCardProps {
   /** Name the payer will see in their banking app. */
   merchantName: string;
-  /** Price in USD — printed the way ABA prints it, e.g. `2.00 USD`. */
+  /** Price, printed the way a bank prints it, e.g. `2.00 USD` / `4,000 KHR`. */
   amount: number;
+  /** Which money `amount` is in. Defaults to USD. */
+  currency?: Currency;
   /** Data URL of the generated QR. */
   qrDataUrl: string;
+  /**
+   * How much room the ticket takes.
+   *
+   * Both sizes are deliberately modest. A QR only has to be big enough
+   * for a second phone's camera to lock on from a comfortable distance,
+   * and roughly 200px of screen is already well past that — beyond it
+   * the code stops being a code and starts being wallpaper, pushing the
+   * amount, the bank choice and the pay button off the screen. `full` is
+   * for a dialog whose whole job is this one payment; `compact` is for
+   * the inline spot inside a taller scrolling form.
+   */
+  size?: 'compact' | 'full';
 }
 
 /**
@@ -19,26 +35,77 @@ interface KhqrCardProps {
  * asset, and the name and amount come from the payload's own values rather
  * than from whatever a picture happened to have printed on it.
  */
-export default function KhqrCard({ merchantName, amount, qrDataUrl }: KhqrCardProps) {
+export default function KhqrCard({
+  merchantName,
+  amount,
+  currency = 'USD',
+  qrDataUrl,
+  size = 'compact',
+}: KhqrCardProps) {
+  const full = size === 'full';
+  const money = formatAmount(amount, currency);
+
   return (
-    <div className="mx-auto w-full max-w-[220px] overflow-hidden rounded-xl bg-white shadow-[0_10px_34px_rgba(0,0,0,0.55)]">
+    // A real bank-issued KHQR ticket is set in a plain grown-up sans, not
+    // in the app's own display face. The ticket is the moment somebody is
+    // deciding whether to hand over money, so it should look like the
+    // ticket their banking app prints rather than like part of our UI —
+    // the merchant name and amount are exactly what they check.
+    <div
+      className={`mx-auto w-full overflow-hidden bg-white ${
+        full
+          ? 'max-w-[244px] rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.55)]'
+          : 'max-w-[196px] rounded-xl shadow-[0_10px_28px_rgba(0,0,0,0.5)]'
+      }`}
+      style={{
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      }}
+    >
       {/* Header band. The notch on the bottom-right is the KHQR ticket's
           own shape — a clipped corner, so it needs no artwork. */}
       <div
-        className="relative bg-[#E11B24] px-3 py-2"
+        className={`relative bg-[#E11B24] ${full ? 'px-3.5 py-2' : 'px-3 py-1.5'}`}
         style={{ clipPath: 'polygon(0 0, 100% 0, 100% 55%, 88% 100%, 0 100%)' }}
       >
-        <p className="text-center text-[13px] font-black tracking-[0.12em] text-white">KHQR</p>
+        <p
+          className={`text-center font-black tracking-[0.14em] text-white ${
+            full ? 'text-[13px]' : 'text-[11.5px]'
+          }`}
+        >
+          KHQR
+        </p>
       </div>
 
-      <div className="px-3 pb-3 pt-2.5">
-        <p className="truncate text-left text-[13px] font-bold text-[#1A1A1A]">{merchantName}</p>
-        <p className="text-left text-[17px] font-extrabold leading-tight text-[#1A1A1A]">
-          {amount.toFixed(2)}
-          <span className="ml-1 text-[11px] font-semibold text-[#6B6B6B]">USD</span>
+      <div className={full ? 'px-3.5 pb-3.5 pt-2.5' : 'px-3 pb-3 pt-2'}>
+        {/* Name on top, amount on the line beneath it. That is the order
+            a bank-issued KHQR ticket prints them in, and this ticket's
+            whole job is to be indistinguishable from one — putting them
+            side by side saved a few pixels and made it look like our
+            layout rather than the bank's. */}
+        <p
+          className={`truncate text-left font-bold text-[#1A1A1A] ${
+            full ? 'text-[13px]' : 'text-[11.5px]'
+          }`}
+        >
+          {merchantName}
+        </p>
+        <p
+          className={`text-left font-extrabold tabular-nums leading-tight text-[#111] ${
+            full ? 'text-[20px]' : 'text-[17px]'
+          }`}
+        >
+          {money.value}
+          <span
+            className={`ml-1 font-semibold text-[#8A8A8A] ${
+              full ? 'text-[12px]' : 'text-[10.5px]'
+            }`}
+          >
+            {money.unit}
+          </span>
         </p>
 
-        <div className="my-2.5 border-t border-dashed border-[#D8D8D8]" />
+        <div className={`border-t border-dashed border-[#DCDCDC] ${full ? 'my-2.5' : 'my-2'}`} />
 
         <img src={qrDataUrl} alt="KHQR" className="mx-auto block w-full" />
       </div>

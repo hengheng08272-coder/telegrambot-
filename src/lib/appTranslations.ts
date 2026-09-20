@@ -146,6 +146,17 @@ export const appText = {
     noNotifications: 'No announcements right now',
     trendingNowPrefix: 'Trending now',
     freeRowLabel: 'Free to Watch',
+    // The mosaic rows print their "see the rest" link as text
+    // rather than a chevron button, so it needs a form short
+    // enough to sit at the end of a heading without crowding
+    // the title. `viewAll` stays the accessible name.
+    viewAllShort: 'ALL',
+    continueRowLabel: 'Keep Watching',
+    subIncludesTitle: 'Included',
+    subIncl1: 'Every episode of every series, all seasons',
+    subIncl2: 'No ads, no waiting between episodes',
+    subIncl3: 'Unlocks the moment your payment clears',
+    watchNow: 'Watch Now',
     seasonShort: 'Season ',
     nextEpisode: 'Next episode',
     mute: 'Mute',
@@ -186,7 +197,9 @@ export const appText = {
     resume: 'Resume',
 
     // Subscription modal
-    subGoPremium: 'Go Premium',
+    // The modal header carries the brand, not a restatement of the
+    // button that opened it — the screen underneath already said VIP.
+    subGoPremium: 'NintPlex',
     subTagline: 'Unlimited episodes · Zero ads · Instant unlock',
     sub1Month: '1 Month',
     sub2Months: '2 Months',
@@ -402,7 +415,7 @@ export const appText = {
     subVerifyTitle: 'Confirm your payment',
     subVerifyDesc: 'It unlocks by itself once the bank confirms. Sending the receipt is the fastest way.',
     subVerifyingTitle: 'Checking your receipt',
-    subVerifyingFree: 'You can close this and keep watching — VIP unlocks by itself when it is confirmed.',
+    subVerifyingFree: 'Your receipt has gone to the admin. VIP unlocks as soon as they approve it — you can close this screen.',
     subCloseAndWatch: 'Close and start watching',
     subVerifyingPill: 'Verifying payment',
     subPreparingPhoto: 'Preparing the photo…',
@@ -421,6 +434,10 @@ export const appText = {
     subLoadingPlans: 'Loading plans…',
     subAllKhqrBanks: 'Works with every KHQR bank app',
     subScanWithYourBank: 'Scan this QR with your own banking app',
+    subConfirmPayTitle: 'Check and pay',
+    subPaymentMethod: 'Payment method',
+    subPayKhqrBtn: 'Pay with KHQR',
+    subPayFrom: 'Pay from',
 
     // Movie purchase / home rails — these were already read with an
     // inline English fallback (`t.buyMovie ?? 'Buy Movie'`), so Khmer
@@ -435,6 +452,27 @@ export const appText = {
     movieUploadReceipt: 'Paid? Attach your receipt to unlock instantly.',
     movieChangeScreenshot: 'Change',
     movieConfirmPay: 'Confirm Payment',
+    movieScanHint: 'Scan with any banking app. Unlocks automatically once paid.',
+    supportLabel: 'Support',
+    watchWarnTitle: 'Everything alright with playback?',
+    watchWarnBody:
+      'Our system noticed {count} episodes opened in about {minutes} minutes on your account. That usually means the video would not load and you kept tapping Next — not a problem, but it looks the same to us as copying the library.',
+    watchWarnTitleFinal: 'Please slow down',
+    watchWarnBodyFinal:
+      'This has now happened more than once on your account — {count} episodes in about {minutes} minutes. If it happens again, access will be paused automatically and an admin will have to restore it.',
+    watchWarnHint:
+      'If a video will not play, wait a few seconds or tap Retry instead of moving on to the next episode. Message the admin and we will fix it for you.',
+    watchWarnContact: 'Message the admin',
+    watchWarnUnderstood: 'I understand',
+    videoSlowTitle: 'Still loading — your connection looks slow',
+    videoSlowHint: 'Give it a moment, or tap Retry. Skipping to the next episode will not load any faster.',
+    videoRetry: 'Retry',
+    denyNotPurchased: 'This film has not been purchased.',
+    denyNoVideo: 'Video not available yet.',
+    denyNotSubscribed: 'This episode needs an active membership.',
+    denyRateLimited:
+      'You have opened a lot of different episodes in the last hour, so new ones are paused for a little while. Anything you have already watched still plays straight away. Message the admin if you need this lifted.',
+    moviesRowSubtitle: 'Buy once, watch forever — no membership needed',
     subAbaFallbackHint: 'Nothing opened? Scan the QR instead.',
 
     // Locked episode row
@@ -615,6 +653,13 @@ export const appText = {
     noNotifications: 'មិនទាន់មានការជូនដំណឹងទេឥឡូវនេះ',
     trendingNowPrefix: 'កំពុងពេញនិយម',
     freeRowLabel: 'មើលឥតគិតថ្លៃ',
+    viewAllShort: 'ទាំងអស់',
+    continueRowLabel: 'មើលបន្ត',
+    subIncludesTitle: 'រួមបញ្ចូល',
+    subIncl1: 'មើលបានគ្រប់ភាគ គ្រប់រដូវកាល',
+    subIncl2: 'គ្មានពាណិជ្ជកម្ម គ្មានរង់ចាំ',
+    subIncl3: 'ដោះសោភ្លាមៗ ពេលទូទាត់ជោគជ័យ',
+    watchNow: 'មើលឥឡូវ',
     seasonShort: 'រដូវកាល ',
     nextEpisode: 'ភាគបន្ទាប់',
     mute: 'បិទសំឡេង',
@@ -655,7 +700,7 @@ export const appText = {
     resume: 'បន្ត',
 
     // Subscription modal
-    subGoPremium: 'ក្លាយជាសមាជិក VIP',
+    subGoPremium: 'NintPlex',
     subTagline: 'មើលគ្មានដែនកំណត់ · គ្មានពាណិជ្ជកម្ម · ដោះសោភ្លាមៗ',
     sub1Month: '១ ខែ',
     sub2Months: '២ ខែ',
@@ -871,7 +916,7 @@ export const appText = {
     subVerifyTitle: 'បញ្ជាក់ការទូទាត់',
     subVerifyDesc: 'វាដោះសោដោយខ្លួនឯង ពេលធនាគារបញ្ជាក់។ ផ្ញើវិក្កយបត្រ គឺលឿនជាងគេ។',
     subVerifyingTitle: 'កំពុងផ្ទៀងផ្ទាត់វិក្កយបត្រ',
-    subVerifyingFree: 'អ្នកអាចបិទផ្ទាំងនេះ ហើយទៅមើលរឿងបាន — VIP នឹងដោះសោដោយខ្លួនឯង។',
+    subVerifyingFree: 'វិក្កយបត្ររបស់អ្នកបានទៅដល់អ្នកគ្រប់គ្រងហើយ។ VIP នឹងដោះសោភ្លាមៗ ពេលគាត់អនុម័ត — អ្នកអាចបិទផ្ទាំងនេះបាន។',
     subCloseAndWatch: 'បិទ ហើយទៅមើលរឿង',
     subVerifyingPill: 'កំពុងផ្ទៀងផ្ទាត់',
     subPreparingPhoto: 'កំពុងរៀបចំរូបភាព…',
@@ -890,6 +935,10 @@ export const appText = {
     subLoadingPlans: 'កំពុងទាញគម្រោង…',
     subAllKhqrBanks: 'ស្កេនបានគ្រប់ App ធនាគារដែលប្រើ KHQR',
     subScanWithYourBank: 'ស្កេន QR នេះដោយ App ធនាគាររបស់អ្នក',
+    subConfirmPayTitle: 'ផ្ទៀងផ្ទាត់ការទូទាត់',
+    subPaymentMethod: 'វិធីទូទាត់',
+    subPayKhqrBtn: 'KHQR ទូទាត់ប្រាក់',
+    subPayFrom: 'បង់ពីធនាគារ',
 
     // Movie purchase / home rails
     recommendedForYou: 'ណែនាំសម្រាប់អ្នក',
@@ -902,6 +951,27 @@ export const appText = {
     movieUploadReceipt: 'បង់រួចហើយ? បញ្ចូលវិក្កយបត្រ ដើម្បីដោះសោភ្លាមៗ។',
     movieChangeScreenshot: 'ប្ដូររូបភាព',
     movieConfirmPay: 'បញ្ជាក់ការទូទាត់',
+    movieScanHint: 'ស្កេនដោយ app ធនាគារណាក៏បាន។ បង់រួច ដោះសោស្វ័យប្រវត្តិ។',
+    supportLabel: 'ជំនួយ',
+    watchWarnTitle: 'តើការចាក់វីដេអូមានបញ្ហាទេ?',
+    watchWarnBody:
+      'ប្រព័ន្ធឃើញគណនីរបស់អ្នកបើកវគ្គ {count} ក្នុងរយៈពេលប្រមាណ {minutes} នាទី។ ជាធម្មតាវាមកពីវីដេអូមិនដំណើរការ ហើយអ្នកចុច «បន្ទាប់» ជាបន្តបន្ទាប់ — មិនអីទេ ប៉ុន្តែសម្រាប់ប្រព័ន្ធ វាមើលទៅដូចការចម្លងរឿងទាំងអស់។',
+    watchWarnTitleFinal: 'សូមបន្ថយល្បឿនបន្តិច',
+    watchWarnBodyFinal:
+      'រឿងនេះកើតឡើងលើសពីមួយដងហើយលើគណនីរបស់អ្នក — វគ្គ {count} ក្នុងប្រមាណ {minutes} នាទី។ បើកើតឡើងម្ដងទៀត ការចូលប្រើនឹងត្រូវផ្អាកដោយស្វ័យប្រវត្តិ ហើយត្រូវឱ្យ admin បើកឱ្យវិញ។',
+    watchWarnHint:
+      'បើវីដេអូមិនដំណើរការ សូមរង់ចាំបន្តិច ឬចុច «ព្យាយាមម្ដងទៀត» ជំនួសឱ្យការទៅវគ្គបន្ទាប់។ ផ្ញើសារមក admin យើងនឹងជួយដោះស្រាយជូន។',
+    watchWarnContact: 'ផ្ញើសារទៅ admin',
+    watchWarnUnderstood: 'ខ្ញុំយល់ហើយ',
+    videoSlowTitle: 'កំពុងផ្ទុក — អ៊ីនធឺណិតរបស់អ្នកហាក់ដូចជាយឺត',
+    videoSlowHint: 'សូមរង់ចាំបន្តិច ឬចុច «ព្យាយាមម្ដងទៀត»។ ការរំលងទៅវគ្គបន្ទាប់ក៏មិនលឿនជាងនេះដែរ។',
+    videoRetry: 'ព្យាយាមម្ដងទៀត',
+    denyNotPurchased: 'រឿងនេះមិនទាន់បានទិញទេ។',
+    denyNoVideo: 'វីដេអូមិនទាន់មានទេ។',
+    denyNotSubscribed: 'វគ្គនេះត្រូវការសមាជិកភាព។',
+    denyRateLimited:
+      'អ្នកបានបើកវគ្គ​ខុសៗគ្នា​ច្រើន​ក្នុង​មួយ​ម៉ោង​កន្លង​មក ដូច្នេះ​វគ្គ​ថ្មី​ត្រូវ​ផ្អាក​បណ្ដោះអាសន្ន។ រឿង​ដែល​អ្នក​ធ្លាប់​មើល​រួច​នៅ​តែ​ចាក់​បាន​ធម្មតា។ បើ​ត្រូវការ​ជំនួយ សូម​ផ្ញើសារ​ទៅ admin។',
+    moviesRowSubtitle: 'ទិញម្ដង មើលបានជារៀងរហូត — មិនចាំបាច់ជាសមាជិក',
     subAbaFallbackHint: 'មិនបានបើកទេ? សូមស្កេន QR ជំនួសវិញ។',
 
     // Locked episode row

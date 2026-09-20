@@ -8,6 +8,13 @@ interface TelegramWebApp {
   expand: () => void;
   colorScheme: 'light' | 'dark';
   themeParams: Record<string, string>;
+  /** The raw, SIGNED init string. `initDataUnsafe` below is the same
+   *  payload already parsed, and is named "unsafe" precisely because
+   *  anything can write those fields — only this string carries the HMAC
+   *  that proves Telegram produced it, so it is the one a server may
+   *  trust. Never read the user id from initDataUnsafe for an access
+   *  decision; send this and let the server verify it. */
+  initData?: string;
   initDataUnsafe?: {
     start_param?: string;
     user?: {
@@ -84,6 +91,12 @@ export function initTelegramApp() {
   tg.disableVerticalSwipes?.();
 }
 
+/** The signed init string, for server calls that must establish who the
+ *  viewer really is. Empty outside Telegram. */
+export function getTelegramInitData(): string {
+  return getTelegramWebApp()?.initData ?? '';
+}
+
 // Returns whether we're actually running inside Telegram (vs a plain
 // browser tab during local development).
 export function isInTelegram(): boolean {
@@ -151,6 +164,44 @@ export async function inviteFriend(): Promise<'shared' | 'copied' | 'failed' | '
 // simply doesn't offer the button rather than opening a dead link.
 export function getSupportLink(): string | null {
   return (import.meta.env.VITE_TELEGRAM_GROUP_LINK as string | undefined) || null;
+}
+
+// The admin a viewer messages when something goes wrong with a payment
+// or an account — a person, not the community group getSupportLink()
+// returns. It ships with a working default rather than requiring an env
+// var, because a support button that silently disappears when a variable
+// is unset is worse than no button at all: nobody ever finds out it was
+// meant to be there. Set VITE_TELEGRAM_ADMIN_USERNAME (no @) to point it
+// somewhere else.
+const DEFAULT_ADMIN_USERNAME = 'NintPlexminiapp';
+
+export function getAdminUsername(): string {
+  const configured = (import.meta.env.VITE_TELEGRAM_ADMIN_USERNAME as string | undefined) ?? '';
+  return configured.trim().replace(/^@/, '') || DEFAULT_ADMIN_USERNAME;
+}
+
+/**
+ * Opens a direct chat with the admin.
+ *
+ * Uses openTelegramLink, not openLink: a t.me address handed to openLink
+ * leaves Telegram for the system browser, which then has to bounce back
+ * into Telegram — two app switches and a confirmation dialog to start one
+ * chat. openTelegramLink stays inside the client and lands straight on
+ * the conversation. Outside Telegram (a plain browser tab) there is no
+ * client to stay inside, so the ordinary link path is right there.
+ */
+export function openAdminChat(): void {
+  const url = `https://t.me/${getAdminUsername()}`;
+  const tg = getTelegramWebApp();
+  if (tg?.openTelegramLink) {
+    try {
+      tg.openTelegramLink(url);
+      return;
+    } catch {
+      // Fall through to the browser path.
+    }
+  }
+  openExternalLink(url);
 }
 
 // Shares a deep link straight into a specific show
@@ -241,7 +292,29 @@ export async function shareReferralLink(): Promise<'shared' | 'copied' | 'failed
 // The `start_param` from a deep link like
 // https://t.me/YourBot/app?startapp=show_<id> arrives here as "show_<id>".
 export function getStartParam(): string | null {
-  return getTelegramWebApp()?.initDataUnsafe?.start_param ?? null;
+  const fromTelegram = getTelegramWebApp()?.initDataUnsafe?.start_param;
+  if (fromTelegram) return fromTelegram;
+
+  // The same link opened as an ordinary web page.
+  //
+  // A deep link only becomes `start_param` when Telegram itself launches
+  // the Mini App. Open the very same URL in a browser — because the link
+  // pointed at the site rather than at t.me, or because somebody pasted
+  // it, or because they are on a desktop with no Telegram installed — and
+  // the parameter is sitting right there in the query string while the
+  // app ignores it and shows the home screen. A group post advertising
+  // one specific show then lands nobody on that show.
+  //
+  // `tgWebAppStartParam` is the name Telegram itself uses when it hands a
+  // start parameter to a web URL; `startapp` is what the t.me link calls
+  // it, and is what somebody copying a link by hand will have.
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tgWebAppStartParam') ?? params.get('startapp') ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // The viewer's own Telegram identity, when opened for real inside

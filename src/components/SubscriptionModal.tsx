@@ -3,29 +3,22 @@ import {
   AlertTriangle,
   BadgeCheck,
   Check,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
   Crown,
   ImagePlus,
+  ChevronLeft,
   Loader2,
-  MessageCircle,
   QrCode,
   RefreshCw,
+  MessageCircle,
   Send,
   Wallet,
   ShieldCheck,
   Sparkles,
   X,
-  Zap,
 } from 'lucide-react';
-import { openExternalLink, isInTelegram, getSupportLink } from '@/lib/telegram';
+import { openExternalLink, getSupportLink } from '@/lib/telegram';
 import {
   decodeKhqrFromImage,
-  isKhqrPayload,
-  buildAbaDeeplink,
-  buildPayPageUrl,
-  armDeeplinkFallback,
   readKhqrMerchant,
   readKhqrAmount,
 } from '@/lib/khqr';
@@ -37,22 +30,21 @@ import {
 } from '@/lib/bakong';
 import { compressReceipt } from '@/lib/imageCompress';
 import KhqrCard from '@/components/KhqrCard';
+import BankStrip from '@/components/BankStrip';
+import BankChoice from '@/components/BankChoice';
+import { formatAmount } from '@/lib/format';
 import { useLang } from '@/lib/useLang';
 import { appText } from '@/lib/appTranslations';
 import {
   PRICING_TIERS,
   getEffectivePricingTiers,
   getHiddenTierKeys,
-  getAbaPaymentEnabled,
   type PricingTier,
   submitPaymentIntent,
   attachScreenshotToSubmission,
   getPendingSubmission,
   getQrCodes,
-  getPayLinks,
   getKhqrStrings,
-  createAbaCheckout,
-  type AbaCheckoutResult,
   checkBakongPayment,
   checkSubmissionStatus,
   getPaymentReceipt,
@@ -76,13 +68,16 @@ interface Props {
   onVerifyingChange?: (verifying: boolean) => void;
 }
 
-type Step = 'pick' | 'method' | 'pay';
+type Step = 'pick' | 'confirm' | 'pay';
 
 // Small brand mark carried at the top of every checkout screen — in the
 // sheet, and on the standalone Safari page. Same logo, same size, so a
 // viewer handed off to a browser can see they are still inside the same
 // product and not on some payment site.
-const LOGO_SRC = '/assets/images/logo-transparent.png';
+// The NintPlex mark. The old NINT ANIME logo is left in place as a file
+// so nothing that still points at it 404s, but every screen the viewer
+// actually meets now carries the new one.
+const LOGO_SRC = '/assets/images/nintplex-logo.png';
 
 // How long one payment ticket stays open while the ABA auto-confirm
 // webhook listens for a matching bank notification. When this hits zero
@@ -117,7 +112,6 @@ export default function SubscriptionModal({
   const { lang } = useLang();
   const t = appText[lang];
   const [step, setStep] = useState<Step>('pick');
-  const [payMode, setPayMode] = useState<'auto' | 'manual'>('auto');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -127,7 +121,6 @@ export default function SubscriptionModal({
   // shows skeleton rows rather than an empty screen with a dead CTA.
   const [tiersLoading, setTiersLoading] = useState(true);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
-  const [payLinks, setPayLinks] = useState<Record<string, string>>({});
   // KHQR payload read back out of the tier's QR image -> lets the primary
   // button jump straight into ABA instead of via PayWay's web page.
   const [khqrString, setKhqrString] = useState<string | null>(null);
@@ -138,10 +131,13 @@ export default function SubscriptionModal({
   // whenever the owner hasn't configured Bakong, in which case everything
   // below falls back to the QR image they uploaded.
   const [bakongConfig, setBakongConfig] = useState<BakongConfig | null>(null);
+  // Which bank's QR is on screen. Only ever offered when the owner has
+  // pasted two, which they do because the banks disagree about what a
+  // payload may say — see BakongConfig.khqrTemplateAlt.
+  const [bank, setBank] = useState<'primary' | 'alt'>('primary');
   const [liveKhqr, setLiveKhqr] = useState<{ payload: string; md5: string; image: string } | null>(
     null,
   );
-  const [abaCheckout, setAbaCheckout] = useState<AbaCheckoutResult | null>(null);
   const [tiers, setTiers] = useState<PricingTier[]>(PRICING_TIERS);
   const [secondsLeft, setSecondsLeft] = useState(WAIT_WINDOW_SECONDS);
   const [decision, setDecision] = useState<'waiting' | 'approved' | 'rejected'>('waiting');
@@ -160,33 +156,21 @@ export default function SubscriptionModal({
   // foreground afterwards — i.e. nothing opened. Without this the tap
   // silently does nothing and the viewer has no idea whether to wait,
   // retry, or scan the QR instead.
-  const [abaDidNotOpen, setAbaDidNotOpen] = useState(false);
   // Set the moment the viewer taps "Open ABA Mobile" — from then on the
   // primary action on the Auto tab switches from "go open the app" to
   // "upload the receipt", since they've already left once and the next
   // thing they do is come back with a screenshot. Reset on Change Plan /
   // a fresh ticket so a new payment starts on the open-app button again.
-  const [handedOff, setHandedOff] = useState(false);
   // The sheet opened straight onto a ticket that was already running —
   // Telegram reloads the Mini App every time it is opened, so this is
   // the ordinary case for someone coming back from their bank. They may
   // well have paid already, so the receipt box has to be there even
   // though this session never saw the hand-off happen.
-  const [resumedTicket, setResumedTicket] = useState(false);
   // True from the moment the viewer comes back to this sheet after being
   // handed off — the copy on the upload block changes from "optional"
   // to "you paid, send the receipt", which is the step people forget.
   const [returnedFromPay, setReturnedFromPay] = useState(false);
   const [highlightUpload, setHighlightUpload] = useState(false);
-  // Armed when ABA is picked as the method from inside Telegram: the
-  // checkout page is handed to the system browser as soon as this
-  // ticket's KHQR exists, without waiting for a second tap. Telegram's
-  // WebView cannot open `abamobilebank://` at all, so the in-app "Open
-  // ABA" button was never the thing that opened the bank — it only ever
-  // handed off to that page, and making the viewer tap twice for one
-  // hand-off bought nothing. Cleared once it fires (or once it is clear
-  // there is no page to hand off to).
-  const [autoHandOff, setAutoHandOff] = useState(false);
   // Guards the header X (and Telegram/system back) while a ticket is
   // actively open — one accidental tap should never silently drop a
   // payment in progress, so it asks first instead of closing right away.
@@ -199,10 +183,6 @@ export default function SubscriptionModal({
   const notifiedApprovedRef = useRef(false);
   const recyclingRef = useRef(false);
   const uploadBlockRef = useRef<HTMLDivElement | null>(null);
-  // Mirrors payMode for the recycle effect, which must not re-run (and
-  // re-open a ticket) just because the viewer's chosen method changed.
-  const payModeRef = useRef(payMode);
-  payModeRef.current = payMode;
   // Latest staged-preview object URL, so unmount can revoke it — the
   // component is unmounted by its parent the moment the sheet closes,
   // which is exactly when a staged-but-unsent photo leaks otherwise.
@@ -217,10 +197,6 @@ export default function SubscriptionModal({
 
   // Loaded from app_settings, not hardcoded — see getHiddenTierKeys().
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
-  // Admin kill switch for the "Pay with ABA Mobile" method — see
-  // getAbaPaymentEnabled(). Defaults true so the button doesn't flash
-  // disabled before this loads.
-  const [abaPaymentEnabled, setAbaPaymentEnabled] = useState(true);
   const visibleTiers = useMemo(
     () => tiers.filter((tr) => !hiddenKeys.has(tr.key)),
     [tiers, hiddenKeys],
@@ -252,15 +228,12 @@ export default function SubscriptionModal({
           setPending(null);
           return;
         }
-        setResumedTicket(true);
         setSecondsLeft(WAIT_WINDOW_SECONDS - elapsedSec);
         setStep('pay');
       }
     });
     getQrCodes().then(setQrImages);
-    getPayLinks().then(setPayLinks);
     getKhqrStrings().then(setStoredKhqr);
-    getAbaPaymentEnabled().then(setAbaPaymentEnabled);
     // Both are needed before a plan can be preselected, so they resolve
     // together rather than racing each other into setState.
     Promise.all([getEffectivePricingTiers(), getHiddenTierKeys()]).then(([rows, hidden]) => {
@@ -386,14 +359,6 @@ export default function SubscriptionModal({
   // so the payer lost the money AND got no VIP. With no QR configured the
   // viewer now gets the "contact the admin" message instead (subQrMissing).
   const qrSrc = liveKhqr?.image ?? (payTier ? qrImages[payTier.key] ?? null : null);
-  // Real gateway (server-verified, opens ABA app directly) takes
-  // priority over the static admin-pasted PayWay link, which in turn
-  // is only shown when the gateway isn't configured/failed.
-  const gatewayLink = abaCheckout?.configured ? abaCheckout.deeplink || abaCheckout.checkoutUrl : null;
-  const payLinkSrc = payTier ? gatewayLink || payLinks[payTier.key] || null : null;
-  const isRealGateway = Boolean(gatewayLink);
-  // A real gateway already hands us its own deeplink, so only fall back to
-  // rebuilding one from the QR image when there isn't one.
   // Prefer the payload saved when the admin uploaded the QR; only fall
   // back to decoding the image in the browser when that is missing (old
   // uploads, or before the migration was run).
@@ -412,47 +377,12 @@ export default function SubscriptionModal({
   const amountMismatch =
     !!payTier && qrAmount !== null && Math.abs(qrAmount - payTier.price) > 0.005;
 
-  const abaDeeplink =
-    !isRealGateway && isKhqrPayload(effectiveKhqr) && !amountMismatch
-      ? buildAbaDeeplink(effectiveKhqr)
-      : null;
-
-  // The browser checkout page (public/pay/index.html) — now the only
-  // place a QR is ever shown. Keeping it out of the Mini App is not a
-  // cosmetic choice: inside Telegram's WebView `abamobilebank://` is
-  // swallowed, so the sheet could never open the bank itself, and a QR
-  // rendered on the same phone that is meant to scan it is useless. One
-  // page in the system browser does both jobs — it shows the QR big
-  // enough to screenshot, and its deeplink actually launches ABA.
-  const payPageUrl =
-    isKhqrPayload(effectiveKhqr) && !amountMismatch
-      ? buildPayPageUrl({
-          khqr: effectiveKhqr,
-          // A generated KHQR has no image URL to hand over (a rendered
-          // data URL is far too long for a query string), so the page
-          // draws that one from the payload itself. Only an uploaded
-          // image travels as a link.
-          qrSrc: liveKhqr ? null : qrSrc,
-          plan: payTier ? (lang === 'km' ? payTier.labelKm : payTier.labelEn) : null,
-          amount: payTier ? `$${payTier.price}` : null,
-          ticket: pending ? pending.id.slice(0, 8).toUpperCase() : null,
-          // The payload's own name, so the KHQR ticket on that page
-          // carries the name the payer's bank will show them.
-          merchantName: payeeName ?? bakongConfig?.merchantName ?? null,
-          // Handed over so the page can offer PayWay by itself if the
-          // deeplink doesn't open ABA — the fallback belongs where the
-          // failure happens, not back here where nobody is looking.
-          payLink: payLinkSrc,
-          // Which half of the page leads: the bank hand-off, or the QR.
-          mode: payMode === 'manual' ? 'qr' : 'aba',
-          lang,
-        })
-      : null;
-
-  // Inside Telegram the page IS the hand-off, for both methods. Outside
-  // it we are already in a real browser, so the ABA route uses the
-  // deeplink directly and no extra page gets in the way.
-  const handOffUrl = isInTelegram() ? payPageUrl : null;
+  // Is the KHQR ticket itself on screen? It prints the merchant name
+  // and the amount already, so whatever the pass says above it is a
+  // second copy of the same figure — see the pay step below, which
+  // drops its own amount line whenever this is true.
+  const ticketShowing =
+    !amountMismatch && !proofSent && !!liveKhqr;
 
   // The owner's Bakong details, read once when the sheet opens.
   useEffect(() => {
@@ -481,6 +411,7 @@ export default function SubscriptionModal({
       const generated = await generateKhqr({
         config: bakongConfig,
         amount: payTier.price,
+        bank,
         billNumber: pending ? pending.id.slice(0, 8).toUpperCase() : null,
         storeLabel: lang === 'km' ? payTier.labelKm : payTier.labelEn,
         expiresInMs: WAIT_WINDOW_SECONDS * 1000,
@@ -498,7 +429,7 @@ export default function SubscriptionModal({
     return () => {
       cancelled = true;
     };
-  }, [bakongConfig, payTier, pending, lang]);
+  }, [bakongConfig, payTier, pending, lang, bank]);
 
   // Decode the tier's QR image once so the primary button can jump
   // straight into ABA. Cancelled on tier change so a slow decode can't
@@ -529,33 +460,6 @@ export default function SubscriptionModal({
   // native bridge call, not window.open, so opening it a beat later is
   // still honoured — that is only true inside Telegram, which is exactly
   // where this is armed.
-  useEffect(() => {
-    if (!autoHandOff || step !== 'pay' || !pending) return;
-
-    // A QR whose amount disagrees with the plan is not something to hand
-    // anybody off to. Disarm and let the warning below do the talking.
-    if (amountMismatch) {
-      setAutoHandOff(false);
-      return;
-    }
-
-    if (payPageUrl) {
-      setAutoHandOff(false);
-      setHandedOff(true);
-      setAbaDidNotOpen(false);
-      openExternalLink(payPageUrl);
-      return;
-    }
-
-    // No page to hand off to yet. Give the KHQR a few seconds to arrive,
-    // then disarm: a tier with no payload at all (no Bakong config, no
-    // stored KHQR, an undecodable image) must fall back to the ordinary
-    // in-app button instead of leaving a hand-off primed to fire minutes
-    // later, long after the viewer moved on.
-    const timer = window.setTimeout(() => setAutoHandOff(false), 8000);
-    return () => window.clearTimeout(timer);
-  }, [autoHandOff, step, pending, payPageUrl, amountMismatch]);
-
   // Coming back from the bank is where this flow used to lose people:
   // Safari hands the viewer back to a screen that looks exactly like the
   // one they left, with the last step — send the receipt — somewhere
@@ -563,7 +467,7 @@ export default function SubscriptionModal({
   // upload block is scrolled to and lit for two seconds, and its wording
   // changes from "optional" to "you paid, now send it".
   useEffect(() => {
-    if (step !== 'pay' || !handedOff || proofSent || decision !== 'waiting') return;
+    if (step !== 'pay' || proofSent || decision !== 'waiting') return;
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
@@ -577,7 +481,7 @@ export default function SubscriptionModal({
 
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [step, handedOff, proofSent, decision]);
+  }, [step, proofSent, decision]);
 
   // Everything a fresh payment attempt has to forget. Every exit from an
   // open ticket (change plan, change method, retry after a rejection)
@@ -586,7 +490,6 @@ export default function SubscriptionModal({
   // "upload your receipt" step for a payment that had never been started.
   const resetTicketState = () => {
     setPending(null);
-    setAbaCheckout(null);
     setDecision('waiting');
     setSecondsLeft(WAIT_WINDOW_SECONDS);
     setReceipt(null);
@@ -595,10 +498,6 @@ export default function SubscriptionModal({
     if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
     setProofFile(null);
     setProofPreviewUrl(null);
-    setHandedOff(false);
-    setResumedTicket(false);
-    setAbaDidNotOpen(false);
-    setAutoHandOff(false);
     setShowExitConfirm(false);
     setReturnedFromPay(false);
     setHighlightUpload(false);
@@ -613,19 +512,28 @@ export default function SubscriptionModal({
   const handlePickPlan = () => {
     if (!tier) return;
     setError('');
-    setStep('method');
+    setStep('confirm');
   };
 
-  // Method sheet: ABA vs Other Bank / QR. Both open the same underlying
-  // payment ticket — this only decides which tab the Pay screen opens
-  // into. The admin is not messaged at this point either — only once
-  // there's something for them to actually act on: an ABA webhook match,
-  // or the viewer submitting a receipt photo (see handleAttachProof /
-  // confirm-payment-proof, which sends the photo itself with
-  // Confirm/Revoke buttons).
-  const handleSelectMethod = async (mode: 'auto' | 'manual') => {
+  /**
+   * Opens the payment ticket and goes straight to the code.
+   *
+   * There used to be a method step here — "ABA" beside "another bank's
+   * app" — and it is gone because the choice it offered was not real.
+   * The money is collected on one KHQR, and a KHQR is one standard:
+   * every member bank's app reads the same code. The ABA branch existed
+   * to hand off to `abamobilebank://`, which PayWay refuses for a code
+   * it did not issue, so on this account that route could only ever end
+   * in "Invalid Qr Merchant Data". A screen asking people to choose
+   * between a route that works and a route that cannot is a screen that
+   * loses payments.
+   *
+   * The admin is not messaged at this point — only once there is
+   * something for them to act on: a bank notification matching this
+   * ticket, or the viewer submitting a receipt photo.
+   */
+  const openPaymentTicket = async () => {
     if (!tier) return;
-    if (mode === 'auto' && !abaPaymentEnabled) return;
     setError('');
     setSubmitting(true);
     const { error: err, id } = await submitPaymentIntent({
@@ -635,28 +543,14 @@ export default function SubscriptionModal({
     setSubmitting(false);
     if (err || !id) {
       setError(err ?? t.subQrGenericError);
-      setStep('method');
+      setStep('confirm');
       return;
     }
     onSubmitted();
     resetTicketState();
-    setPayMode(mode);
-    payModeRef.current = mode;
-    // Inside Telegram, picking ABA IS the hand-off: the checkout page
-    // opens in the system browser by itself once this ticket's KHQR is
-    // ready (see the hand-off effect), because Telegram's WebView cannot
-    // open `abamobilebank://` at all. The QR route stays here — its code
-    // is drawn in the sheet, where it can be screenshotted. Outside
-    // Telegram nothing is armed: there the deeplink is a real link the
-    // viewer taps, and a browser would block a pop-up opened without a
-    // tap anyway.
-    if (mode === 'auto' && isInTelegram()) setAutoHandOff(true);
     recyclingRef.current = false;
     const fresh = await getPendingSubmission();
-    if (fresh) {
-      setPending(fresh);
-      if (mode === 'auto') setAbaCheckout(await createAbaCheckout(fresh.id));
-    }
+    if (fresh) setPending(fresh);
     setStep('pay');
   };
 
@@ -742,20 +636,6 @@ export default function SubscriptionModal({
     if (pending) await cancelPaymentSubmission(pending.id);
     setStep('pick');
     resetTicketState();
-    setPayMode('auto');
-    payModeRef.current = 'auto';
-    recyclingRef.current = false;
-  };
-
-  // "Change Method" on the Pay screen — same idea as Change Plan (cancel
-  // the open ticket right away, no 150s floor) but drops back to the
-  // method sheet instead of the plan picker, since the plan itself is
-  // still the right one.
-  const handleChangeMethod = async () => {
-    recyclingRef.current = true;
-    if (pending) await cancelPaymentSubmission(pending.id);
-    setStep('method');
-    resetTicketState();
     recyclingRef.current = false;
   };
 
@@ -782,6 +662,14 @@ export default function SubscriptionModal({
     onClose();
   };
 
+  // The plain "scan this" state: nothing sent, nothing wrong, nothing
+  // pending. It is the only state on this step that can be trimmed —
+  // the QR says "scan me" by being a QR, so the icon, the sentence under
+  // the title and the plan restatement are all saying it a second time,
+  // and between them they push the countdown and the upload box off the
+  // bottom of a phone. Every other state keeps its full explanation.
+  const payCompact = !proofSent && !amountMismatch;
+
   const mmss = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
   const waitPct = Math.max(0, Math.min(100, (secondsLeft / WAIT_WINDOW_SECONDS) * 100));
   const ticketRef = pending ? pending.id.slice(0, 8).toUpperCase() : '—';
@@ -795,94 +683,6 @@ export default function SubscriptionModal({
   // their PIN in ABA, ask, and let them buy another three minutes.
   const showKeepWaiting =
     decision === 'waiting' && !proofSent && secondsLeft > 0 && secondsLeft <= NUDGE_AT_SECONDS;
-
-  // The one primary action on the pay dialog. What it points at depends
-  // on the route and on where we are running, but it is always a single
-  // button, and it always ends up somewhere the viewer can actually pay:
-  //
-  //   QR route          -> our checkout page (the QR lives there now)
-  //   ABA in Telegram   -> our checkout page (the WebView eats the scheme)
-  //   ABA in a browser  -> the real abamobilebank:// link
-  //   no deeplink at all-> the admin's PayWay link
-  const payPageAction = () => {
-    if (amountMismatch) return null;
-
-    const className = 'co-btn co-btn-primary px-4 py-4 text-[15px]';
-    const opened = () => {
-      setAbaDidNotOpen(false);
-      setHandedOff(true);
-    };
-
-    // The QR route has no button at all: its code is drawn in the sheet
-    // a few lines above, and a second way to reach the same code would
-    // only make the viewer wonder which one is the real one.
-    if (payMode === 'manual') return null;
-
-    // In Telegram: hand the checkout page to the system browser. No
-    // armDeeplinkFallback here — this hand-off is a plain https URL, and
-    // the "ABA didn't open" fallback now lives on that page, next to the
-    // QR it falls back to.
-    if (handOffUrl) {
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            opened();
-            openExternalLink(handOffUrl);
-          }}
-          className={className}
-        >
-          <Zap className="h-4 w-4" />
-          {t.subOpenInSafari}
-        </button>
-      );
-    }
-
-    // A REAL <a href="abamobilebank://...">, not a button that assigns
-    // location.href. Every WebView hands a non-http scheme to the OS when
-    // the viewer taps an actual link; a scripted navigation to the same
-    // string is routinely swallowed without an error, which is why the
-    // deeplink "worked like text, not a link". The fallback is only armed
-    // — the navigation itself belongs to the browser now.
-    if (abaDeeplink) {
-      return (
-        <a
-          href={abaDeeplink}
-          rel="noreferrer"
-          onClick={() => {
-            opened();
-            // Only fall back when there is somewhere to fall back TO.
-            armDeeplinkFallback(() => {
-              if (payLinkSrc) openExternalLink(payLinkSrc);
-              else setAbaDidNotOpen(true);
-            });
-          }}
-          className={className}
-        >
-          <Zap className="h-4 w-4" />
-          {t.subOpenAba}
-        </a>
-      );
-    }
-
-    if (payLinkSrc) {
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            opened();
-            openExternalLink(payLinkSrc);
-          }}
-          className={className}
-        >
-          <Zap className="h-4 w-4" />
-          {t.subOpenAba}
-        </button>
-      );
-    }
-
-    return null;
-  };
 
   // Shared receipt-upload widget: pick a screenshot, review it, tap send
   // to actually submit (that's the only moment the admin gets pinged).
@@ -953,17 +753,6 @@ export default function SubscriptionModal({
     </label>
   );
 
-  // The amount, printed the way a checkout prints it: the largest thing
-  // on the screen it belongs to.
-  const heroAmount = (value: string, size = 40) => (
-    <span
-      className="block leading-none text-[color:var(--co-text)]"
-      style={{ fontFamily: 'var(--co-font-display)', fontSize: `${size}px`, letterSpacing: '0.01em' }}
-    >
-      {value}
-    </span>
-  );
-
   const amberNote = (title: string, body: ReactNode) => (
     <div className="rounded-[var(--co-r-card)] border border-[color:var(--co-amber-line)] bg-[color:var(--co-amber-soft)] px-4 py-3.5">
       <p className="flex items-center gap-2 text-[13px] font-bold text-[color:var(--co-amber)]">
@@ -991,7 +780,7 @@ export default function SubscriptionModal({
           Safari page too, so a viewer handed off to a browser can see
           they are still inside the same product. */}
       <header className="relative z-10 flex h-14 shrink-0 items-center justify-between px-4">
-        {step === 'method' ? (
+        {step === 'confirm' ? (
           <button
             onClick={() => setStep('pick')}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.05] text-[color:var(--co-text-muted)] transition active:scale-90 hover:bg-white/10 hover:text-[color:var(--co-text)]"
@@ -1010,8 +799,16 @@ export default function SubscriptionModal({
         )}
         <span className="flex items-center gap-2">
           <img src={LOGO_SRC} alt="" className="h-8 w-8 shrink-0 object-contain" />
-          <span className="text-[13px] font-bold text-[color:var(--co-text)]">
-            {t.subGoPremium}
+          {/* The wordmark, set to carry the same weight as the mark beside
+              it: the display face at the logo's own cap height, with PLEX
+              in the brand red. Plain 13px body text next to a 32px logo
+              read as a caption for the picture rather than as the name of
+              the product. */}
+          <span
+            className="text-[20px] leading-none text-[color:var(--co-text)]"
+            style={{ fontFamily: 'var(--co-font-display)', letterSpacing: '0.02em' }}
+          >
+            NINT<span style={{ color: '#E6231F' }}>PLEX</span>
           </span>
         </span>
         <span className="h-10 w-10" />
@@ -1052,20 +849,20 @@ export default function SubscriptionModal({
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--co-amber-soft)]">
               <AlertTriangle className="h-5 w-5 text-[color:var(--co-amber)]" />
             </div>
-            <p className="text-sm font-bold text-[color:var(--co-text)]">{t.subExitConfirmTitle}</p>
-            <p className="mt-1.5 text-xs leading-relaxed text-[color:var(--co-text-muted)]">
+            <p className="text-[15px] font-bold text-[color:var(--co-text)]">{t.subExitConfirmTitle}</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[color:var(--co-text-muted)]">
               {t.subExitConfirmDesc}
             </p>
             <div className="mt-4 flex flex-col gap-2">
               <button
                 onClick={() => setShowExitConfirm(false)}
-                className="co-btn co-btn-primary py-3.5 text-xs"
+                className="co-btn co-btn-primary py-3.5 text-[15px]"
               >
                 {t.subExitConfirmContinue}
               </button>
               <button
                 onClick={handleExitAndDrop}
-                className="co-btn co-btn-ghost py-3.5 text-xs"
+                className="co-btn co-btn-ghost py-3.5 text-[15px]"
               >
                 {t.subExitConfirmExit}
               </button>
@@ -1100,7 +897,7 @@ export default function SubscriptionModal({
               >
                 {t.subChoosePlan}
               </h2>
-              <p className="mt-1.5 text-xs text-[color:var(--co-text-dim)]">{t.subTagline}</p>
+              <p className="mt-1.5 text-[11px] text-[color:var(--co-text-dim)]">{t.subTagline}</p>
             </div>
 
             {/* Benefits, once, above the list — so the plan rows can be
@@ -1152,6 +949,12 @@ export default function SubscriptionModal({
                       aria-label={`${planLabel(tr)} — $${tr.price}`}
                       className={`co-ticket w-full text-left ${selected ? 'co-ticket-selected' : ''}`}
                     >
+                      {/* The plan's tab, hung off the ticket's top edge.
+                          It used to be an inline chip wedged between the
+                          pitch and the price, which is the row already
+                          carrying the most to read. */}
+                      {tr.badge === 'best' && <span className="co-tab co-tab-gold">{t.subBestValue}</span>}
+                      {tr.badge === 'popular' && <span className="co-tab">{t.subPopular}</span>}
                       {/* The stub: how long the pass runs, in the numerals
                           the viewer reads prices in. */}
                       <span className="co-ticket-stub">
@@ -1165,7 +968,7 @@ export default function SubscriptionModal({
                         >
                           {localNum(tr.months)}
                         </span>
-                        <span className="text-[9.5px] tracking-[0.16em] text-[color:var(--co-text-dim)]">
+                        <span className="co-untrack-km text-[11px] tracking-[0.16em] text-[color:var(--co-text-dim)]">
                           {t.subMonthsUnit}
                         </span>
                       </span>
@@ -1194,11 +997,6 @@ export default function SubscriptionModal({
                           </span>
                         </span>
 
-                        {tr.badge === 'best' && <span className="co-stamp shrink-0">{t.subBestValue}</span>}
-                        {tr.badge === 'popular' && (
-                          <span className="co-stamp co-stamp-quiet shrink-0">{t.subPopular}</span>
-                        )}
-
                         <span
                           className="shrink-0 leading-none tabular-nums"
                           style={{ fontFamily: 'var(--co-font-display)', fontSize: '22px' }}
@@ -1212,148 +1010,128 @@ export default function SubscriptionModal({
               </div>
             )}
 
+            {/* What the membership is, spelled out once under the price
+                comparison. The three chips above say it in two words
+                each; this is the sentence version, for the viewer who is
+                still deciding rather than still choosing. */}
+            {!tiersLoading && visibleTiers.length > 0 && (
+              <div className="mt-5 border-t border-[color:var(--co-line-soft)] pt-4">
+                <p className="co-label mb-2.5 text-[color:var(--co-text-faint)]">
+                  {t.subIncludesTitle}
+                </p>
+                <ul className="space-y-2">
+                  {[t.subIncl1, t.subIncl2, t.subIncl3].map((line) => (
+                    <li key={line} className="flex items-start gap-2.5">
+                      <Check
+                        className="mt-[2px] h-3.5 w-3.5 shrink-0"
+                        style={{ color: 'var(--co-green)' }}
+                      />
+                      <span className="text-[13px] leading-snug text-[color:var(--co-text-dim)]">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {error && <div className="mt-4">{amberNote(t.subQrGenericError, error)}</div>}
           </div>
-        ) : step === 'method' ? (
-          /* ---------------------------- PAYMENT METHOD ---------------------------- */
-          <div key="method" className="co-enter">
-            {/* What is being bought, kept on screen while the method is
-                picked, with the amount as the hero. Tapping it goes back. */}
+        ) : step === 'confirm' ? (
+          /* ---------------------------- CHECK AND PAY ---------------------------- */
+          /* A review screen, not a choice screen. There is one way to
+             pay, so nothing here asks a question — it states what is
+             being bought, what it costs and what will read the code,
+             and then offers the one button. The step exists because
+             money leaving without a last look is how people end up
+             paying for the wrong plan. */
+          <div key="confirm" className="co-enter mx-auto flex h-full max-w-[21rem] flex-col justify-center gap-4 py-4">
+            <p className="text-center text-[18px] font-bold text-[color:var(--co-text)]">
+              {t.subConfirmPayTitle}
+            </p>
+
+            {/* What is being bought. Tapping it goes back to the plans —
+                the same affordance the header's arrow gives, put where
+                the thumb already is. */}
             <button
               type="button"
               onClick={() => setStep('pick')}
-              className="co-card mb-5 flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition active:scale-[0.99]"
+              className="co-card w-full px-4 py-3.5 text-left transition active:scale-[0.99]"
             >
-              <span className="min-w-0">
-                <span className="block text-[11px] uppercase tracking-[0.16em] text-[color:var(--co-text-dim)]">
-                  {t.subReceiptPlan}
-                </span>
-                <span className="mt-0.5 block truncate text-sm font-bold text-[color:var(--co-text)]">
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="co-label block">{t.subReceiptPlan}</span>
+                <span className="max-w-[62%] truncate text-[15px] font-bold text-[color:var(--co-text)]">
                   {planLabel(tier)}
                 </span>
-                <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--co-text-dim)]">
-                  <ChevronLeft className="h-3 w-3" />
-                  {t.subChangePlan}
+              </span>
+              <span className="mt-3 flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
+                <span className="co-label block pb-1">{t.subTotalDue}</span>
+                <span className="flex items-baseline gap-1.5">
+                  <span
+                    className="leading-none tabular-nums text-[color:var(--co-text)]"
+                    style={{
+                      fontFamily: 'var(--co-font-display)',
+                      fontSize: '26px',
+                      letterSpacing: '0.01em',
+                    }}
+                  >
+                    {tier ? formatAmount(tier.price).value : '—'}
+                  </span>
+                  {tier && (
+                    <span className="text-[11px] font-bold tracking-[0.1em] text-[color:var(--co-text-dim)]">
+                      {formatAmount(tier.price).unit}
+                    </span>
+                  )}
                 </span>
               </span>
-              <span className="shrink-0 text-right">{heroAmount(tier ? `$${tier.price}` : '—')}</span>
             </button>
 
-            <h2 className="mb-3 text-[13px] font-bold text-[color:var(--co-text-muted)]">
-              {t.subSelectPayment}
-            </h2>
-
-            {!abaPaymentEnabled && (
-              <p className="mb-3 flex items-start gap-2 rounded-xl border border-[#FF6B60]/25 bg-[#FF6B60]/[0.06] px-3 py-2.5 text-[11px] leading-relaxed text-[#FF6B60]">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                {t.subAbaDisabledNotice}
-              </p>
-            )}
-
-            <div className="space-y-3">
-              {/* ABA blue lives here and nowhere else — unless the admin
-                  has flipped the kill switch (ABA's own KHQR rail is
-                  down), in which case this button goes inert and grey and
-                  the other-banks route below is what's left to tap. */}
-              <button
-                type="button"
-                onClick={() => handleSelectMethod('auto')}
-                disabled={submitting || !abaPaymentEnabled}
-                className="co-row flex w-full items-center gap-3 px-4 py-4 text-left disabled:opacity-50"
-                style={
-                  abaPaymentEnabled
-                    ? { borderColor: 'var(--co-aba-line)', backgroundColor: 'var(--co-aba-soft)' }
-                    : undefined
-                }
-              >
-                <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--co-r-chip)]"
-                  style={
-                    abaPaymentEnabled
-                      ? { backgroundColor: 'var(--co-aba-soft)', boxShadow: 'inset 0 0 0 1px var(--co-aba-line)' }
-                      : { backgroundColor: 'rgba(255,255,255,0.06)' }
-                  }
-                >
-                  <Zap
-                    className="h-5 w-5"
-                    style={{ color: abaPaymentEnabled ? 'var(--co-aba)' : 'var(--co-text-faint)' }}
-                  />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-[color:var(--co-text)]">
-                      {t.subMethodAbaTitle}
-                    </span>
-                    {abaPaymentEnabled ? (
-                      <span
-                        className="rounded-md px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide"
-                        style={{ backgroundColor: 'var(--co-brand-soft)', color: '#a9c0ff' }}
-                      >
-                        {t.subRecommended}
-                      </span>
-                    ) : (
-                      <span className="rounded-md bg-[#FF6B60]/15 px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-[#FF6B60]">
-                        {t.subAbaDisabledBadge}
-                      </span>
-                    )}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-[color:var(--co-text-dim)]">
-                    {abaPaymentEnabled ? t.subMethodAbaDesc : t.subAbaDisabledNotice}
-                  </span>
-                </span>
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[color:var(--co-text-dim)]" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[color:var(--co-text-faint)]" />
-                )}
-              </button>
-
-              {/* One KHQR, every bank. There is deliberately no per-bank
-                  deeplink here: KHQR is a single standard, so the same QR
-                  is scannable from any banking app, and only ABA publishes
-                  a scheme worth linking to. This route lands on the same
-                  pay screen — the instructions are what change. */}
-              <button
-                type="button"
-                onClick={() => handleSelectMethod('manual')}
-                disabled={submitting}
-                className="co-row flex w-full items-center gap-3 px-4 py-4 text-left disabled:opacity-50"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--co-r-chip)] bg-white/[0.06]">
+            {/* How it will be paid. Not a picker — a statement, with the
+                marks that answer "will my bank read this?". */}
+            <div className="co-card px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--co-r-chip)] bg-white/[0.06]">
                   <QrCode className="h-5 w-5 text-[color:var(--co-text-muted)]" />
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-[color:var(--co-text)]">
-                    {t.subMethodOtherTitle}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-[color:var(--co-text-dim)]">
-                    {t.subMethodOtherDesc}
-                  </span>
-                  <span className="mt-2 flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <span className="co-label block">{t.subPaymentMethod}</span>
+                  <span className="mt-0.5 flex items-center gap-2">
                     <img
                       src="/assets/khqr-logo.png"
                       alt="KHQR"
-                      className="h-4 w-auto object-contain opacity-80"
+                      className="h-4 w-auto shrink-0 object-contain"
                     />
-                    <span className="truncate text-[11px] text-[color:var(--co-text-faint)]">
-                      {t.subAllKhqrBanks}
-                    </span>
                   </span>
-                </span>
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[color:var(--co-text-dim)]" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[color:var(--co-text-faint)]" />
-                )}
-              </button>
+                </div>
+              </div>
+              <div className="mt-3 border-t border-[color:var(--co-line-soft)] pt-3">
+                <BankStrip />
+                <p className="mt-2 text-center text-[11px] leading-relaxed text-[color:var(--co-text-faint)]">
+                  {t.subAllKhqrBanks}
+                </p>
+              </div>
             </div>
 
-            <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11px] text-[color:var(--co-text-faint)]">
+            <button
+              onClick={() => void openPaymentTicket()}
+              disabled={!tier || submitting}
+              className="co-btn co-btn-primary py-4 text-[15px]"
+            >
+              {/* This opens the ticket on the server, so it has to show
+                  that it is working — a slow network on a dead-looking
+                  button gets tapped twice. */}
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <QrCode className="h-4 w-4" />
+              )}
+              {t.subPayKhqrBtn}
+            </button>
+
+            <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-[color:var(--co-text-faint)]">
               <ShieldCheck className="h-3 w-3 shrink-0" style={{ color: 'var(--co-green)' }} />
               {t.subSecuredCheckout}
             </p>
 
-            {error && <div className="mt-4">{amberNote(t.subQrGenericError, error)}</div>}
+            {error && amberNote(t.subQrGenericError, error)}
           </div>
         ) : decision === 'approved' ? (
           /* ---------------------------- PAID (RECEIPT) ---------------------------- */
@@ -1368,10 +1146,10 @@ export default function SubscriptionModal({
               >
                 <Check className="h-8 w-8" style={{ color: 'var(--co-green)' }} />
               </div>
-              <p className="mt-4 text-lg font-bold text-[color:var(--co-text)]">
+              <p className="mt-4 text-[18px] font-bold text-[color:var(--co-text)]">
                 {t.subPaySuccessTitle}
               </p>
-              <p className="mt-1.5 max-w-[19rem] text-xs leading-relaxed text-[color:var(--co-text-muted)]">
+              <p className="mt-1.5 max-w-[19rem] text-[13px] leading-relaxed text-[color:var(--co-text-muted)]">
                 {t.subPaySuccessDesc}
               </p>
             </div>
@@ -1389,7 +1167,7 @@ export default function SubscriptionModal({
                   {t.subVipPass}
                 </span>
                 <span
-                  className="rounded-[3px] border border-white/45 px-1.5 py-0.5 text-[9.5px] tracking-[0.16em]"
+                  className="co-untrack-km rounded-[3px] border border-white/45 px-1.5 py-0.5 text-[11px] tracking-[0.16em]"
                   style={{ fontFamily: 'var(--co-font-display)', transform: 'rotate(-4deg)' }}
                 >
                   {t.subPaidStamp}
@@ -1425,7 +1203,7 @@ export default function SubscriptionModal({
                   <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
                     {label}
                   </span>
-                  <span className="truncate text-xs font-semibold tabular-nums text-[color:var(--co-text)]">
+                  <span className="truncate text-[13px] font-semibold tabular-nums text-[color:var(--co-text)]">
                     {value}
                   </span>
                 </div>
@@ -1434,11 +1212,11 @@ export default function SubscriptionModal({
             </div>
 
             <div className="space-y-2.5">
-              <button onClick={onGoSpin} className="co-btn co-btn-primary py-4 text-sm">
+              <button onClick={onGoSpin} className="co-btn co-btn-primary py-4 text-[15px]">
                 <Sparkles className="h-4 w-4" />
                 {t.subGoDraw}
               </button>
-              <button onClick={onClose} className="co-btn co-btn-ghost py-4 text-sm">
+              <button onClick={onClose} className="co-btn co-btn-ghost py-4 text-[15px]">
                 {t.subStartWatching}
               </button>
             </div>
@@ -1453,8 +1231,8 @@ export default function SubscriptionModal({
               <AlertTriangle className="h-8 w-8" style={{ color: 'var(--co-amber)' }} />
             </div>
             <div>
-              <p className="text-lg font-bold text-[color:var(--co-text)]">{t.subRejectedTitle}</p>
-              <p className="mt-2 text-sm leading-relaxed text-[color:var(--co-text-muted)]">
+              <p className="text-[18px] font-bold text-[color:var(--co-text)]">{t.subRejectedTitle}</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-[color:var(--co-text-muted)]">
                 {t.subRejectedDesc}
               </p>
               <p className="mt-2 text-[11px] tabular-nums text-[color:var(--co-text-faint)]">
@@ -1466,11 +1244,9 @@ export default function SubscriptionModal({
                 onClick={() => {
                   setStep('pick');
                   resetTicketState();
-                  setPayMode('auto');
-                  payModeRef.current = 'auto';
                   recyclingRef.current = false;
                 }}
-                className="co-btn co-btn-primary py-4 text-sm"
+                className="co-btn co-btn-primary py-4 text-[15px]"
               >
                 <RefreshCw className="h-4 w-4" />
                 {t.subTryAgain}
@@ -1479,7 +1255,7 @@ export default function SubscriptionModal({
                 <button
                   type="button"
                   onClick={() => openExternalLink(supportLink)}
-                  className="co-btn co-btn-ghost py-4 text-sm"
+                  className="co-btn co-btn-ghost py-4 text-[15px]"
                 >
                   <MessageCircle className="h-4 w-4" />
                   {t.subContactAdminNow}
@@ -1492,10 +1268,10 @@ export default function SubscriptionModal({
              renamed in the admin panel while the sheet was open). */
           <div key="noplan" className="co-enter mx-auto flex h-full max-w-[21rem] flex-col items-center justify-center gap-4 text-center">
             <AlertTriangle className="h-8 w-8" style={{ color: 'var(--co-amber)' }} />
-            <p className="max-w-[17rem] text-sm leading-relaxed text-[color:var(--co-text-muted)]">
+            <p className="max-w-[17rem] text-[13px] leading-relaxed text-[color:var(--co-text-muted)]">
               {t.subQrMissing}
             </p>
-            <button onClick={handleChangePlan} className="co-btn co-btn-ghost px-5 py-3.5 text-sm">
+            <button onClick={handleChangePlan} className="co-btn co-btn-ghost px-5 py-3.5 text-[15px]">
               {t.subChangePlan}
             </button>
           </div>
@@ -1522,8 +1298,9 @@ export default function SubscriptionModal({
                 </span>
               </div>
 
-              <div className="p-5">
+              <div className={payCompact ? 'p-4' : 'p-5'}>
               <div className="flex flex-col items-center text-center">
+                {!payCompact && (
                 <span
                   className="flex h-12 w-12 items-center justify-center rounded-full"
                   style={{
@@ -1538,44 +1315,43 @@ export default function SubscriptionModal({
                     <Check className="h-6 w-6" style={{ color: 'var(--co-green)' }} />
                   ) : amountMismatch ? (
                     <AlertTriangle className="h-5 w-5" style={{ color: 'var(--co-amber)' }} />
-                  ) : handedOff ? (
-                    <Loader2
-                      className="h-5 w-5 animate-spin"
-                      style={{ color: 'var(--co-text-muted)' }}
-                    />
                   ) : (
                     <Wallet className="h-5 w-5" style={{ color: 'var(--co-text-muted)' }} />
                   )}
                 </span>
-                <p className="mt-3 text-[15px] font-bold text-[color:var(--co-text)]">
+                )}
+                <p className={`text-[15px] font-bold text-[color:var(--co-text)] ${payCompact ? '' : 'mt-3'}`}>
                   {proofSent
                     ? t.subVerifyingTitle
                     : amountMismatch
                       ? t.subAmountMismatchTitle
-                      : handedOff
-                        ? t.subWaitingTitle
-                        : payMode === 'manual'
-                          ? t.subReadyQrTitle
-                          : t.subReadyTitle}
+                      : t.subReadyQrTitle}
                 </p>
-                {!amountMismatch && (
+                {/* With the ticket on screen the plan moves up here,
+                    small and quiet, and the amount line below goes
+                    away entirely: a 26px display figure sitting beside
+                    a 13px Khmer plan name, directly above a ticket
+                    printing the same figure again, was two mismatched
+                    types arguing over one number. */}
+                {ticketShowing && (
+                  <p className="mt-1 text-[13px] font-bold text-[color:var(--co-text-dim)]">
+                    {planLabel(payTier)}
+                  </p>
+                )}
+                {!amountMismatch && !payCompact && (
                   <p className="mt-1.5 max-w-[17rem] text-[13px] leading-relaxed text-[color:var(--co-text-dim)]">
-                    {proofSent
-                      ? t.subVerifyingFree
-                      : handedOff
-                        ? t.subWaitingDesc
-                        : payMode === 'manual'
-                          ? t.subReadyQrDesc
-                          : t.subReadyDesc}
+                    {proofSent ? t.subVerifyingFree : t.subReadyQrDesc}
                   </p>
                 )}
               </div>
 
               {/* Below the tear: what the pass is for, the way a
                   printed one lists it. */}
-              <div className="co-tear -mx-5 my-4" />
+              <div className={`co-tear -mx-5 ${payCompact ? 'my-3' : 'my-4'}`} />
 
+              {!ticketShowing && (
               <div className="space-y-2.5">
+                {!payCompact && (
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="shrink-0 text-[11px] text-[color:var(--co-text-dim)]">
                     {t.subReceiptPlan}
@@ -1584,33 +1360,66 @@ export default function SubscriptionModal({
                     {planLabel(payTier)}
                   </span>
                 </div>
+                )}
                 {/* The amount gets its own line, above the rule, the way
                     a total sits at the bottom of a bill. */}
-                <div className="flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
-                  <span className="shrink-0 pb-1 text-[11px] text-[color:var(--co-text-dim)]">
-                    {t.subAmountDue}
+                <div
+                  className={`flex items-end justify-between gap-3 ${
+                    payCompact ? '' : 'border-t border-[color:var(--co-line-soft)] pt-3'
+                  }`}
+                >
+                  <span className="min-w-0 shrink pb-1 text-[11px] text-[color:var(--co-text-dim)]">
+                    {payCompact ? (
+                      <span className="block truncate font-bold text-[color:var(--co-text)]">
+                        {planLabel(payTier)}
+                      </span>
+                    ) : (
+                      t.subAmountDue
+                    )}
                   </span>
+                  {/* Printed exactly as the KHQR ticket below prints it
+                      — same digits, same cents, same unit. The two used
+                      to disagree ($2 up here, 2.00 USD on the ticket),
+                      which is a moment of doubt on the one screen that
+                      cannot afford one. */}
                   <span className="flex items-baseline gap-1.5">
                     <span
                       className="leading-none tabular-nums text-[color:var(--co-text)]"
-                      style={{ fontFamily: 'var(--co-font-display)', fontSize: '28px' }}
+                      style={{ fontFamily: 'var(--co-font-display)', fontSize: '26px', letterSpacing: '0.01em' }}
                     >
-                      ${payTier.price}
+                      {formatAmount(payTier.price).value}
                     </span>
                     <span className="text-[11px] font-bold tracking-[0.1em] text-[color:var(--co-text-dim)]">
-                      USD
+                      {formatAmount(payTier.price).unit}
                     </span>
                   </span>
                 </div>
               </div>
+              )}
 
               {/* The code itself, for anyone paying from another bank's
                   app. No save button: on a phone, "save" means a
                   screenshot, and every phone already has that gesture —
                   a button that downloads a PNG into a folder they then
                   have to find is a worse version of it. */}
-              {payMode === 'manual' && !amountMismatch && !proofSent && (
+              {!amountMismatch && !proofSent && (
                 <div className="mt-4">
+                  {/* Which bank to pay. Shown only when two templates are
+                      configured: with one there is no choice to offer,
+                      and the reason there can be two is that the banks
+                      will not accept the same payload, not that anyone
+                      wanted a setting. */}
+                  {bakongConfig?.khqrTemplate && bakongConfig?.khqrTemplateAlt && (
+                    <div className="mb-3.5">
+                      <BankChoice
+                        heading={t.subPayFrom}
+                        primaryLabel={bakongConfig.bankLabel || 'Bank 1'}
+                        altLabel={bakongConfig.bankLabelAlt || 'Bank 2'}
+                        value={bank}
+                        onChange={setBank}
+                      />
+                    </div>
+                  )}
                   {qrSrc ? (
                     <>
                       {liveKhqr ? (
@@ -1646,7 +1455,7 @@ export default function SubscriptionModal({
                               className="h-5 w-auto object-contain"
                             />
                             {(payeeName ?? bakongConfig?.merchantName) && (
-                              <span className="truncate text-[12px] font-bold uppercase tracking-wide text-[color:var(--co-text)]">
+                              <span className="truncate text-[13px] font-bold uppercase tracking-wide text-[color:var(--co-text)]">
                                 {payeeName ?? bakongConfig?.merchantName}
                               </span>
                             )}
@@ -1668,6 +1477,24 @@ export default function SubscriptionModal({
                       <p className="mx-auto mt-2.5 max-w-[16rem] text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
                         {t.subQrTapHint}
                       </p>
+
+                      {/* The acceptance mark. With the bank chooser gone
+                          this is what answers "will MY bank work?" — and
+                          the KHQR mark is the answer, because that is
+                          exactly what the mark means: one code, every
+                          member bank's app. Printing a handful of
+                          individual bank logos would say less and go
+                          stale the moment a bank joins or leaves. */}
+                      <div className="mx-auto mt-3 flex max-w-[17rem] flex-col items-center gap-1.5 border-t border-[color:var(--co-line-soft)] pt-3">
+                        <img
+                          src="/assets/khqr-logo.png"
+                          alt="KHQR"
+                          className="h-4 w-auto object-contain"
+                        />
+                        <span className="text-center text-[11px] leading-relaxed text-[color:var(--co-text-faint)]">
+                          {t.subAllKhqrBanks}
+                        </span>
+                      </div>
                     </>
                   ) : (
                     amberNote(t.subQrMissing, <>{t.subQrMissingDesc}{contactAdminLink}</>)
@@ -1675,22 +1502,37 @@ export default function SubscriptionModal({
                 </div>
               )}
 
-              {/* The window draining, drawn as one thin line: the wait is
-                  information, not a threat. It stops once a receipt is sent. */}
+              {/* The window draining. Deliberately plain: this is the
+                  app telling the viewer it is watching for their
+                  payment, not warning them about anything. It used to
+                  be an amber panel with an alarm clock on it, which put
+                  the loudest thing on the screen next to the one thing
+                  nobody needs to act on. A spinner says "working", the
+                  countdown says how long, and the bar shows it going —
+                  amber is kept for the last-30-seconds prompt below,
+                  where there IS something to decide. Stops once a
+                  receipt is sent. */}
               {!proofSent && !amountMismatch && (
-                <div className="mt-4">
-                  <div className="h-[3px] overflow-hidden rounded-full bg-white/[0.07]">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-                      style={{ width: `${waitPct}%`, backgroundColor: 'var(--co-brand)' }}
-                    />
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-[11px] text-[color:var(--co-text-faint)]">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {t.subCooldownNote}
+                <div className="mt-3.5 rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white/[0.03] px-3.5 py-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2 text-[13px] font-bold text-[color:var(--co-text-muted)]">
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                      <span className="truncate">{t.subWaitingPayment}</span>
                     </span>
-                    <span className="tabular-nums">{mmss}</span>
+                    {/* Monospaced so the digits do not shuffle sideways
+                        every second as the glyph widths change. */}
+                    <span
+                      className="shrink-0 text-[15px] font-bold tabular-nums text-[color:var(--co-text-dim)]"
+                      style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}
+                    >
+                      {mmss}
+                    </span>
+                  </div>
+                  <div className="h-[3px] overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-[color:var(--co-text-dim)] transition-[width] duration-1000 ease-linear"
+                      style={{ width: `${waitPct}%` }}
+                    />
                   </div>
                 </div>
               )}
@@ -1732,51 +1574,15 @@ export default function SubscriptionModal({
                 </button>
               ) : (
                 <div className="mt-4 space-y-2.5">
-                  {/* Before the hand-off there is one button. After it,
-                      the only thing left to do is send the receipt, so
-                      the upload takes the primary slot. */}
-                  {/* The QR route has its own block above, including its
-                      own "no QR for this plan" message — this fallback is
-                      only for the bank route with nothing to open. */}
-                  {!handedOff &&
-                    payMode !== 'manual' &&
-                    (payPageAction() ?? (
-                      <p className="rounded-[var(--co-r-btn)] border border-[color:var(--co-line)] bg-white/[0.03] p-3 text-center text-[11px] leading-relaxed text-[color:var(--co-text-dim)]">
-                        {t.subQrMissing}
-                      </p>
-                    ))}
-
-                  {(handedOff || resumedTicket || payMode === 'manual') && (
-                    <div
-                      ref={uploadBlockRef}
-                      className={highlightUpload ? 'co-focus-ring rounded-[var(--co-r-btn)]' : ''}
-                    >
-                      {receiptUploadUi}
-                    </div>
-                  )}
-
-                  {/* The plain visible deeplink, kept for the one case it
-                      is needed: the styled button did nothing. Long-press
-                      gives "Open in ABA" / "Copy". */}
-                  {abaDeeplink && abaDidNotOpen && (
-                    <div className="rounded-[var(--co-r-btn)] border border-[color:var(--co-amber-line)] bg-[color:var(--co-amber-soft)] px-3 py-2.5">
-                      <p
-                        className="flex items-start gap-2 text-[11px] font-semibold leading-relaxed"
-                        style={{ color: 'var(--co-amber)' }}
-                      >
-                        <AlertTriangle className="mt-[1px] h-3.5 w-3.5 shrink-0" />
-                        {t.subAbaDidNotOpen}
-                      </p>
-                      <a
-                        href={abaDeeplink}
-                        rel="noreferrer"
-                        className="mt-2 block break-all text-[11px] leading-relaxed underline underline-offset-2"
-                        style={{ color: 'var(--co-aba)' }}
-                      >
-                        {abaDeeplink}
-                      </a>
-                    </div>
-                  )}
+                  {/* There is one thing to do on this screen once the
+                      code is up: pay it, then send the receipt. So the
+                      upload takes the only slot. */}
+                  <div
+                    ref={uploadBlockRef}
+                    className={highlightUpload ? 'co-focus-ring rounded-[var(--co-r-btn)]' : ''}
+                  >
+                    {receiptUploadUi}
+                  </div>
 
                   {error && (
                     <div>
@@ -1796,29 +1602,8 @@ export default function SubscriptionModal({
               {/* Quiet text links, not buttons: everything below is a way
                   out, and none of it competes with the action above. */}
               <div className="mt-5 flex flex-col items-center gap-3 border-t border-[color:var(--co-line-soft)] pt-4">
-                {handedOff && !proofSent && payPageUrl && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAbaDidNotOpen(false);
-                      openExternalLink(payPageUrl);
-                    }}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-bold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    {t.subOpenPayPageAgain}
-                  </button>
-                )}
-
                 {!proofSent && (
                   <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={handleChangeMethod}
-                      className="text-[11px] font-semibold text-[color:var(--co-text-dim)] underline decoration-[color:var(--co-line-strong)] underline-offset-4 transition hover:text-[color:var(--co-text)]"
-                    >
-                      {t.subChangeMethod}
-                    </button>
                     <button
                       type="button"
                       onClick={handleChangePlan}
@@ -1856,14 +1641,28 @@ export default function SubscriptionModal({
         >
           <div className="mb-2.5 flex items-baseline justify-between">
             <span className="text-[11px] text-[color:var(--co-text-dim)]">{t.subTotalDue}</span>
-            <span className="text-xl font-extrabold tabular-nums text-[color:var(--co-text)]">
-              {tier ? `$${tier.price}` : '—'}
+            {/* The same figure, in the same face, as the amount on the
+                pass two steps later. It used to be `$2` here and
+                `2.00 USD` there — one price written two ways inside one
+                purchase. */}
+            <span className="flex items-baseline gap-1.5">
+              <span
+                className="leading-none tabular-nums text-[color:var(--co-text)]"
+                style={{ fontFamily: 'var(--co-font-display)', fontSize: '22px', letterSpacing: '0.01em' }}
+              >
+                {tier ? formatAmount(tier.price).value : '—'}
+              </span>
+              {tier && (
+                <span className="text-[11px] font-bold tracking-[0.1em] text-[color:var(--co-text-dim)]">
+                  {formatAmount(tier.price).unit}
+                </span>
+              )}
             </span>
           </div>
           <button
             onClick={handlePickPlan}
             disabled={!tier}
-            className="co-btn co-btn-primary py-4 text-sm"
+            className="co-btn co-btn-primary py-4 text-[15px]"
           >
             <Crown className="h-4 w-4" />
             {t.subSelectPayment}

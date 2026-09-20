@@ -156,7 +156,14 @@ export interface PayPageOptions {
   qrSrc?: string | null;
   /** Plan name and price, purely for what the page displays. */
   plan?: string | null;
+  /** Already formatted for display, e.g. `2.00` — no symbol, no unit. */
   amount?: string | null;
+  /**
+   * The unit `amount` is in, printed beside it. Sent explicitly because
+   * the page used to assume USD and print `USD` next to a riel figure —
+   * the one label on that screen a payer must be able to trust.
+   */
+  currency?: string | null;
   /** Short ticket reference, so a viewer can quote it in support chat. */
   ticket?: string | null;
   /** Merchant name, so the page can draw the same KHQR ticket the app does. */
@@ -200,6 +207,7 @@ export function buildPayPageUrl(opts: PayPageOptions): string {
   if (opts.qrSrc) params.set('qr', opts.qrSrc);
   if (opts.plan) params.set('plan', opts.plan);
   if (opts.amount) params.set('amount', opts.amount);
+  if (opts.currency) params.set('cur', opts.currency);
   if (opts.ticket) params.set('ticket', opts.ticket);
   if (opts.merchantName) params.set('name', opts.merchantName);
   if (opts.payLink) params.set('pay', opts.payLink);
@@ -318,4 +326,40 @@ export function readKhqrAmount(payload: string | null | undefined): number | nul
 export function readKhqrMerchant(payload: string | null | undefined): string | null {
   if (!isKhqrPayload(payload)) return null;
   return readTlv(payload).get('59')?.trim() || null;
+}
+
+/**
+ * The bank that issued a KHQR, read off the account handle inside the
+ * merchant-account field: tag 29 for an individual account, tag 30 for
+ * a registered merchant. Sub-tag 00 holds a Bakong handle whose domain
+ * names the member bank -- `khqr@aclb` for ACLEDA, `khqr@abaa` for ABA.
+ * Returns that domain in lower case, or null when it can't be read.
+ */
+export function readKhqrIssuer(payload: string | null | undefined): string | null {
+  if (!isKhqrPayload(payload)) return null;
+  const account = readTlv(payload).get('29') ?? readTlv(payload).get('30');
+  if (!account) return null;
+  const handle = readTlv(account).get('00');
+  if (!handle) return null;
+  const at = handle.indexOf('@');
+  return at === -1 ? null : handle.slice(at + 1).trim().toLowerCase() || null;
+}
+
+/**
+ * Whether ABA Mobile's `type=payway` deeplink is worth offering for this
+ * payload.
+ *
+ * It is worth offering for ABA's own codes and nothing else. That
+ * handler is PayWay's, and PayWay validates the merchant data as its
+ * own: handed an ACLEDA-issued KHQR it answers "Invalid Qr Merchant
+ * Data" and goes no further -- even though ABA's *scanner*, a different
+ * code path entirely, reads the same payload and pays it without
+ * complaint. So a deeplink button on a non-ABA code is a button that
+ * reliably fails, and the QR beside it is the route that works.
+ */
+export function supportsAbaDeeplink(payload: string | null | undefined): boolean {
+  const issuer = readKhqrIssuer(payload);
+  // Unknown issuer keeps the old behaviour rather than silently
+  // dropping the button on a payload this parser simply didn't read.
+  return issuer === null || issuer.startsWith('aba');
 }

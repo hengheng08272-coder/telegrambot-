@@ -25,9 +25,6 @@ interface ShowCardProps {
    *  title text or the meta line, and repeating it would say the same
    *  thing twice. */
   seasonNumber?: number;
-  /** Franchise name with the season marker removed — used as the card's
-   *  visible title in the seasons row. */
-  displayTitle?: string;
   /** Season number of the paid season that follows this (free) one.
    *  Renders a gold "season N" chip — the reason the free row exists,
    *  said out loud on the card. */
@@ -41,6 +38,13 @@ interface ShowCardProps {
    *  all share one access level: the badge is then printed once in the
    *  row's own heading instead of stamped over every poster in it. */
   hideAccessBadge?: boolean;
+  /** The series name with its season suffix stripped off (see
+   *  lib/seasons), used as the caption instead of the raw title. A
+   *  franchise row lists "Naruto Season 1", "Naruto Season 2" … and
+   *  captions that all begin with the same words truncate to the same
+   *  unreadable stub; the season itself is already shown as its own pill.
+   *  Falls back to show.title when no base name was parsed. */
+  displayTitle?: string;
 }
 
 /**
@@ -53,14 +57,23 @@ const ACCESS_CHIP = {
 } as const;
 
 /**
- * Every caption is exactly this tall — one title line plus one meta line —
- * whether or not the show actually has an episode count, a season, or a
- * "finished" tag to put in it. Cards in a rail are laid out side by side,
- * so a caption that grows a line on one card and not the next is what
- * makes a row look broken; reserving the space unconditionally is what
- * makes that impossible rather than merely unlikely.
+ * Every caption is exactly this tall — one title line plus one meta line
+ * — whether or not the
+ * show actually has an episode count, a season, or a "finished" tag to
+ * put in it. Cards in a rail are laid out side by side, so a caption that
+ * grows a line on one card and not the next is what makes a row look
+ * broken; reserving the space unconditionally is what makes that
+ * impossible rather than merely unlikely.
+ *
+ * 36px was measured against two lines set at line-height 1, which is a
+ * height only Latin fits in. Khmer hangs a vowel above the consonant and
+ * a coeng below it — both outside the em box — so at line-height 1 the
+ * line box cuts through them top and bottom, and `truncate`'s overflow
+ * hidden makes the cut clean rather than merely tight. The lines now
+ * breathe at 1.45 and this box is remeasured to hold them:
+ * 13px×1.45 + 4px gap + 11px×1.45 ≈ 39px.
  */
-const CAPTION_H = 'h-[34px]';
+const CAPTION_H = 'h-[40px]';
 
 export default function ShowCard({
   show,
@@ -69,10 +82,10 @@ export default function ShowCard({
   rank,
   large,
   seasonNumber,
-  displayTitle,
   titleFromSeason,
   continuesAtSeason,
   hideAccessBadge,
+  displayTitle,
 }: ShowCardProps) {
   const [loaded, setLoaded] = useState(false);
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -81,7 +94,7 @@ export default function ShowCard({
 
   // The season this card is, read off its own title — the catalog keeps it
   // in the title text rather than a column (see lib/seasons).
-  const { base: seasonStrippedTitle, season: ownSeason } = parseSeason(show.title);
+  const { season: ownSeason } = parseSeason(show.title);
 
   // Added within the last week — a plain fact read off created_at, not an
   // admin toggle, so it clears on its own instead of needing to be turned
@@ -175,7 +188,7 @@ export default function ShowCard({
             fontSize: 'clamp(100px, 32vw, 168px)',
             fontWeight: 900,
             lineHeight: 1,
-            color: 'rgba(10,16,30,0.5)',
+            color: 'rgba(0,0,0,0.5)',
             WebkitTextStroke: '2.5px rgba(255,255,255,0.9)',
             fontFamily: '"Anton", Battambang, Inter, sans-serif',
             filter:
@@ -197,7 +210,7 @@ export default function ShowCard({
             card sits in (see lib/rowAccent), so a cover in the free row
             lifts in green and one in the movies row in gold. */}
         <div
-          className={`poster-frame aspect-[2/3] overflow-hidden rounded-xl bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
+          className={`poster-frame aspect-[2/3] overflow-hidden rounded-[14px] bg-[#151926] ring-1 ring-white/[0.09] transition duration-300 ease-out ${
             large ? 'shadow-[0_18px_46px_rgba(0,0,0,0.7)]' : 'shadow-[0_6px_18px_rgba(0,0,0,0.5)]'
           }`}
         >
@@ -223,22 +236,17 @@ export default function ShowCard({
           {rank && (
             <div
               className="absolute inset-0"
-              style={{ background: 'linear-gradient(180deg, rgba(10,16,30,0) 35%, rgba(10,16,30,0.95) 100%)' }}
+              style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.95) 100%)' }}
             />
           )}
-          {/* Title — overlaid on the poster for ranked (Top 10) cards so
-              the row reads as pure artwork instead of poster + caption.
-              Every other row puts it in the caption below. */}
-          {rank && (
+          {/* Ranked cards print only the episode count over the art —
+              the title is already lettered into the poster itself, the
+              same reason the caption below carries none either. */}
+          {rank && show.type !== 'movie' && !!latestEpisode && (
             <div className="absolute inset-x-0 bottom-0 z-[1] p-2.5">
-              <h3 className="truncate text-[13px] font-bold leading-tight text-[#FFE7B0] drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
-                {show.title}
-              </h3>
-              {show.type !== 'movie' && !!latestEpisode && (
-                <p className="mt-0.5 truncate text-[10.5px] font-semibold text-white/55">
-                  {t.epShort} {latestEpisode}
-                </p>
-              )}
+              <p className="truncate text-[11px] font-bold text-white/85 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
+                {t.epShort} {latestEpisode}
+              </p>
             </div>
           )}
 
@@ -249,7 +257,7 @@ export default function ShowCard({
               one a viewer had already seen on the same screen. */}
           {!show.coming_soon && isNew && (
             <span
-              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0A101E]"
+              className="absolute right-2 top-2 z-[2] h-2.5 w-2.5 rounded-full bg-[#FF6B60] ring-2 ring-[#0a101e]"
               style={{ boxShadow: '0 0 8px rgba(255,107,96,0.7)' }}
               aria-label={t.newTag ?? 'NEW'}
               title={t.newTag ?? 'NEW'}
@@ -277,7 +285,7 @@ export default function ShowCard({
           // watchable now, gold ones need a membership.
           <div className={`mt-2 flex items-center px-0.5 ${CAPTION_H}`}>
             <span
-              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-[3px] text-[11px] font-black leading-none ring-1 ring-inset ${
+              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-[1px] text-[11px] font-black leading-[1.45] ring-1 ring-inset ${
                 show.is_free ? ACCESS_CHIP.free : ACCESS_CHIP.member
               }`}
             >
@@ -287,20 +295,14 @@ export default function ShowCard({
           </div>
         ) : (
           <div className={`mt-2 px-0.5 ${CAPTION_H}`}>
-            <h3
-              className={`truncate font-semibold leading-tight text-white/95 transition group-hover:text-[#4E86FF] ${
-                large ? 'text-[13.5px]' : 'text-[13px]'
-              }`}
-            >
-              {/* The season is on the meta line right below, so the title
-                  drops the " រដូវកាលទី១" it carries in the raw data —
-                  on a card this narrow that suffix was eating the width
-                  and truncating before the number even showed. */}
-              {displayTitle ?? (ownSeason !== null ? seasonStrippedTitle : show.title)}
-            </h3>
-            {/* One muted line for everything else. Rendered even when
-                empty so the card keeps its height — see CAPTION_H. */}
-            <p className="mt-1 flex items-center gap-1 truncate text-[10.5px] font-semibold leading-none text-white/40">
+            {/* Title on top, then what the artwork cannot say: season,
+                episode count, whether the series has finished. Both lines
+                render even when empty so every card in a rail keeps the
+                same height — see CAPTION_H. */}
+            <p className="truncate text-[13px] font-semibold leading-[1.45] text-white/95">
+              {displayTitle?.trim() || show.title}
+            </p>
+            <p className="mt-1 flex items-center gap-1 truncate text-[11px] font-semibold leading-[1.45] text-white/40">
               {meta.map((part, i) => (
                 <span key={part} className="shrink-0 whitespace-nowrap">
                   {i > 0 && <span className="mr-1 text-white/25">·</span>}
