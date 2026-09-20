@@ -434,6 +434,9 @@ export const appText = {
     subLoadingPlans: 'Loading plans…',
     subAllKhqrBanks: 'Works with every KHQR bank app',
     subScanWithYourBank: 'Scan this QR with your own banking app',
+    subConfirmPayTitle: 'Check and pay',
+    subPaymentMethod: 'Payment method',
+    subPayKhqrBtn: 'Pay with KHQR',
     subPayFrom: 'Pay from',
 
     // Movie purchase / home rails — these were already read with an
@@ -932,6 +935,9 @@ export const appText = {
     subLoadingPlans: 'កំពុងទាញគម្រោង…',
     subAllKhqrBanks: 'ស្កេនបានគ្រប់ App ធនាគារដែលប្រើ KHQR',
     subScanWithYourBank: 'ស្កេន QR នេះដោយ App ធនាគាររបស់អ្នក',
+    subConfirmPayTitle: 'ផ្ទៀងផ្ទាត់ការទូទាត់',
+    subPaymentMethod: 'វិធីទូទាត់',
+    subPayKhqrBtn: 'KHQR ទូទាត់ប្រាក់',
     subPayFrom: 'បង់ពីធនាគារ',
 
     // Movie purchase / home rails

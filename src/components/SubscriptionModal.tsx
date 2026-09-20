@@ -5,7 +5,9 @@ import {
   Check,
   Crown,
   ImagePlus,
+  ChevronLeft,
   Loader2,
+  QrCode,
   RefreshCw,
   MessageCircle,
   Send,
@@ -28,6 +30,7 @@ import {
 } from '@/lib/bakong';
 import { compressReceipt } from '@/lib/imageCompress';
 import KhqrCard from '@/components/KhqrCard';
+import BankStrip from '@/components/BankStrip';
 import BankChoice from '@/components/BankChoice';
 import { formatAmount } from '@/lib/format';
 import { useLang } from '@/lib/useLang';
@@ -65,7 +68,7 @@ interface Props {
   onVerifyingChange?: (verifying: boolean) => void;
 }
 
-type Step = 'pick' | 'pay';
+type Step = 'pick' | 'confirm' | 'pay';
 
 // Small brand mark carried at the top of every checkout screen — in the
 // sheet, and on the standalone Safari page. Same logo, same size, so a
@@ -508,7 +511,8 @@ export default function SubscriptionModal({
   // still change their mind about.
   const handlePickPlan = () => {
     if (!tier) return;
-    void openPaymentTicket();
+    setError('');
+    setStep('confirm');
   };
 
   /**
@@ -539,7 +543,7 @@ export default function SubscriptionModal({
     setSubmitting(false);
     if (err || !id) {
       setError(err ?? t.subQrGenericError);
-      setStep('pick');
+      setStep('confirm');
       return;
     }
     onSubmitted();
@@ -776,13 +780,23 @@ export default function SubscriptionModal({
           Safari page too, so a viewer handed off to a browser can see
           they are still inside the same product. */}
       <header className="relative z-10 flex h-14 shrink-0 items-center justify-between px-4">
-        <button
-          onClick={handleRequestClose}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.05] text-[color:var(--co-text-muted)] transition active:scale-90 hover:bg-white/10 hover:text-[color:var(--co-text)]"
-          aria-label={t.subCloseBtn}
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {step === 'confirm' ? (
+          <button
+            onClick={() => setStep('pick')}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.05] text-[color:var(--co-text-muted)] transition active:scale-90 hover:bg-white/10 hover:text-[color:var(--co-text)]"
+            aria-label={t.back}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        ) : (
+          <button
+            onClick={handleRequestClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.05] text-[color:var(--co-text-muted)] transition active:scale-90 hover:bg-white/10 hover:text-[color:var(--co-text)]"
+            aria-label={t.subCloseBtn}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
         <span className="flex items-center gap-2">
           <img src={LOGO_SRC} alt="" className="h-8 w-8 shrink-0 object-contain" />
           {/* The wordmark, set to carry the same weight as the mark beside
@@ -1020,6 +1034,104 @@ export default function SubscriptionModal({
             )}
 
             {error && <div className="mt-4">{amberNote(t.subQrGenericError, error)}</div>}
+          </div>
+        ) : step === 'confirm' ? (
+          /* ---------------------------- CHECK AND PAY ---------------------------- */
+          /* A review screen, not a choice screen. There is one way to
+             pay, so nothing here asks a question — it states what is
+             being bought, what it costs and what will read the code,
+             and then offers the one button. The step exists because
+             money leaving without a last look is how people end up
+             paying for the wrong plan. */
+          <div key="confirm" className="co-enter mx-auto flex h-full max-w-[21rem] flex-col justify-center gap-4 py-4">
+            <p className="text-center text-[18px] font-bold text-[color:var(--co-text)]">
+              {t.subConfirmPayTitle}
+            </p>
+
+            {/* What is being bought. Tapping it goes back to the plans —
+                the same affordance the header's arrow gives, put where
+                the thumb already is. */}
+            <button
+              type="button"
+              onClick={() => setStep('pick')}
+              className="co-card w-full px-4 py-3.5 text-left transition active:scale-[0.99]"
+            >
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="co-label block">{t.subReceiptPlan}</span>
+                <span className="max-w-[62%] truncate text-[15px] font-bold text-[color:var(--co-text)]">
+                  {planLabel(tier)}
+                </span>
+              </span>
+              <span className="mt-3 flex items-end justify-between gap-3 border-t border-[color:var(--co-line-soft)] pt-3">
+                <span className="co-label block pb-1">{t.subTotalDue}</span>
+                <span className="flex items-baseline gap-1.5">
+                  <span
+                    className="leading-none tabular-nums text-[color:var(--co-text)]"
+                    style={{
+                      fontFamily: 'var(--co-font-display)',
+                      fontSize: '26px',
+                      letterSpacing: '0.01em',
+                    }}
+                  >
+                    {tier ? formatAmount(tier.price).value : '—'}
+                  </span>
+                  {tier && (
+                    <span className="text-[11px] font-bold tracking-[0.1em] text-[color:var(--co-text-dim)]">
+                      {formatAmount(tier.price).unit}
+                    </span>
+                  )}
+                </span>
+              </span>
+            </button>
+
+            {/* How it will be paid. Not a picker — a statement, with the
+                marks that answer "will my bank read this?". */}
+            <div className="co-card px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--co-r-chip)] bg-white/[0.06]">
+                  <QrCode className="h-5 w-5 text-[color:var(--co-text-muted)]" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="co-label block">{t.subPaymentMethod}</span>
+                  <span className="mt-0.5 flex items-center gap-2">
+                    <img
+                      src="/assets/khqr-logo.png"
+                      alt="KHQR"
+                      className="h-4 w-auto shrink-0 object-contain"
+                    />
+                  </span>
+                </div>
+              </div>
+              <div className="mt-3 border-t border-[color:var(--co-line-soft)] pt-3">
+                <BankStrip />
+                <p className="mt-2 text-center text-[11px] leading-relaxed text-[color:var(--co-text-faint)]">
+                  {t.subAllKhqrBanks}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => void openPaymentTicket()}
+              disabled={!tier || submitting}
+              className="co-btn co-btn-primary py-4 text-[15px]"
+            >
+              {/* This opens the ticket on the server, so it has to show
+                  that it is working — a slow network on a dead-looking
+                  button gets tapped twice. */}
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <QrCode className="h-4 w-4" />
+              )}
+              {t.subPayKhqrBtn}
+            </button>
+
+            <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-[color:var(--co-text-faint)]">
+              <ShieldCheck className="h-3 w-3 shrink-0" style={{ color: 'var(--co-green)' }} />
+              {t.subSecuredCheckout}
+            </p>
+
+            {error && amberNote(t.subQrGenericError, error)}
           </div>
         ) : decision === 'approved' ? (
           /* ---------------------------- PAID (RECEIPT) ---------------------------- */
@@ -1549,18 +1661,10 @@ export default function SubscriptionModal({
           </div>
           <button
             onClick={handlePickPlan}
-            disabled={!tier || submitting}
+            disabled={!tier}
             className="co-btn co-btn-primary py-4 text-[15px]"
           >
-            {/* This opens the ticket on the server now that there is no
-                method step in between, so it has to show that it is
-                working — a slow network on a dead-looking button gets
-                tapped twice. */}
-            {submitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Crown className="h-4 w-4" />
-            )}
+            <Crown className="h-4 w-4" />
             {t.subSelectPayment}
           </button>
           <p className="mt-2 flex items-center justify-center gap-1 text-[11px] text-[color:var(--co-text-faint)]">
